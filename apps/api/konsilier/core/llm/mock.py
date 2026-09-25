@@ -118,11 +118,12 @@ class HeuristicMockProvider:
         return {"narrative": " ".join(t if t.endswith(".") else f"{t}." for t in texts)}
 
     def _classify_response(self, p: dict[str, Any]) -> dict[str, Any]:
-        text = (p.get("text") or "").strip().lower()
+        original = (p.get("text") or "").strip()
+        text = original.lower()
         if not text:
             return {"response_class": "none", "summary": ""}
         hints: dict[str, list[str]] = p.get("hints", {})
         for cls in ("partial", "refusal", "full"):  # partial first: "частично отказать"
             if any(h.lower() in text for h in hints.get(cls, [])):
-                return {"response_class": cls, "summary": text[:200]}
-        return {"response_class": "unclear", "summary": text[:200]}
+                return {"response_class": cls, "summary": original[:200]}
+        return {"response_class": "unclear", "summary": original[:200]}

@@ -1,0 +1,86 @@
+# docker compose up  →  web :3000, api :8000, bot, postgres, s3 (:8333), mailpit (:8025 UI)
+name: konsilier
+
+x-env: &env
+  env_file:
+    - path: .env
+      required: false
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: konsilier
+      POSTGRES_PASSWORD: konsilier
+      POSTGRES_DB: konsilier
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U konsilier"]
+      interval: 5s
+      retries: 20
+    ports: ["5432:5432"]
+
+  # S3-compatible object storage. SeaweedFS is used because the free minio/minio image is
+  # no longer pullable; any S3 endpoint works (MinIO, AWS S3, ...) — only S3_* vars change.
+  s3:
+    image: chrislusf/seaweedfs:latest
+    command: server -s3 -dir=/data -s3.port=8333
+    volumes: [s3data:/data]
+    ports: ["8333:8333"]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025"]
+
+  api:
+    <<: *env
+    build: {context: ., dockerfile: apps/api/Dockerfile}
+    environment:
+      DATABASE_URL: postgresql+psycopg://konsilier:konsilier@postgres:5432/konsilier
+      PACKS_DIR: /app/packs
+      STORAGE_BACKEND: s3
+      S3_ENDPOINT_URL: http://s3:8333
+      S3_BUCKET: konsilier
+      S3_ACCESS_KEY: konsilier
+      S3_SECRET_KEY: konsilier-secret
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-opus-5}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me-admin}
+      BOT_API_SECRET: ${BOT_API_SECRET:-change-me-bot}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres: {condition: service_healthy}
+      s3: {condition: service_started}
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 20
+
+  bot:
+    <<: *env
+    build: {context: ., dockerfile: apps/bot/Dockerfile}
+    environment:
+      API_URL: http://api:8000
+      BOT_API_SECRET: ${BOT_API_SECRET:-change-me-bot}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    depends_on:
+      api: {condition: service_healthy}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_TELEGRAM_BOT: ${NEXT_PUBLIC_TELEGRAM_BOT:-konsilier_bot}
+    depends_on: [api]
+    ports: ["3000:3000"]
+
+volumes:
+  pgdata:
+  s3data:
