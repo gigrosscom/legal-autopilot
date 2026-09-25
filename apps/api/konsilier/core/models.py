@@ -73,7 +73,7 @@ class Organization(TimestampMixin, Base):
 class Case(TimestampMixin, Base):
     __tablename__ = "cases"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
-    jurisdiction: Mapped[str] = mapped_column(String(2), index=True)
+    jurisdiction: Mapped[str | None] = mapped_column(String(2), index=True)  # None until qualified
     ontology_code: Mapped[str | None] = mapped_column(String(64))
     scenario_id: Mapped[str | None] = mapped_column(String(128), index=True)
     scenario_version: Mapped[str | None] = mapped_column(String(32))

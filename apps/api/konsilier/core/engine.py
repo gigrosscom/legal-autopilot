@@ -457,7 +457,10 @@ class CaseEngine:
         addressee = self._addressee(case, sc, pack, spec)
         llm = self.llm_for(case)
         if not case.narrative:
-            case.narrative = ai.write_narrative(llm, sc, pack, lang, dict(case.facts), title)
+            # the narrative needs no personal data: names/ids are printed in the header by the template
+            facts = {fl.name: display(fl, case.facts[fl.name]) for fl in sc.intake
+                     if fl.name in case.facts and fl.type != "evidence" and not fl.pii}
+            case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title)
             self._save_vault(case, llm)
         ctx = self.document_context(case, sc, pack, spec, addressee)
         docx = render_docx(pack.packs_root / spec.template, ctx,
@@ -590,6 +593,8 @@ class CaseEngine:
               comment: str | None, actor: str) -> Outcome:
         if result not in OUTCOME_RESULTS:
             raise EngineError("bad_result")
+        if amount_recovered is not None:
+            amount_recovered = Decimal(str(amount_recovered)).quantize(Decimal("0.01"))
         self.transition(session, case, S.RESOLVED, actor, result=result)
         created = case.created_at if case.created_at.tzinfo else case.created_at.replace(tzinfo=timezone.utc)
         now = datetime.now(timezone.utc)

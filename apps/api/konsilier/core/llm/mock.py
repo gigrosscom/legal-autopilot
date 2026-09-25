@@ -65,7 +65,7 @@ class HeuristicMockProvider:
                 best_id, best_hits = sc["id"], hits
         if best_id is None:
             return {"scenario_id": None, "confidence": 0.0, "reason": "no keywords matched"}
-        return {"scenario_id": best_id, "confidence": min(0.95, 0.45 + 0.2 * best_hits),
+        return {"scenario_id": best_id, "confidence": min(0.95, 0.35 + 0.15 * best_hits),
                 "reason": f"{best_hits} keyword(s) matched"}
 
     def _extract_fields(self, p: dict[str, Any]) -> dict[str, Any]:
@@ -113,12 +113,9 @@ class HeuristicMockProvider:
 
     def _narrative(self, p: dict[str, Any]) -> dict[str, Any]:
         facts = p["facts"]
-        lines = []
-        for f in p["fields"]:
-            value = facts.get(f["name"])
-            if value and f["type"] != "evidence":
-                lines.append(f"{f['label']}: {value}.")
-        return {"narrative": " ".join(lines)}
+        texts = [str(facts[f["name"]]).strip() for f in p["fields"]
+                 if f["type"] == "longtext" and facts.get(f["name"])]
+        return {"narrative": " ".join(t if t.endswith(".") else f"{t}." for t in texts)}
 
     def _classify_response(self, p: dict[str, Any]) -> dict[str, Any]:
         text = (p.get("text") or "").strip().lower()

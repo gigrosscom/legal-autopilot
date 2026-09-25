@@ -1,0 +1,77 @@
+id: kz.consumer.refund
+version: 0.1.0
+ontology: CONSUMER.GOODS.REFUND
+jurisdiction: KZ
+languages: [ru, kk]
+owner: lawyer:kz-01
+reviewed_at: null          # no lawyer sign-off yet → DRAFT disclaimer on every document
+published: true
+title:
+  ru: Возврат денег за товар или услугу
+  kk: Тауар немесе қызмет үшін ақшаны қайтару
+summary:
+  ru: Продавец, магазин или маркетплейс не возвращает деньги за некачественный, недоставленный товар или неоказанную услугу.
+  kk: Сатушы сапасыз, жеткізілмеген тауар немесе көрсетілмеген қызмет үшін ақшаны қайтармайды.
+classification:
+  keywords:
+    ru: [вернуть деньги, возврат, вернуть товар, некачественн, брак, сломал, не доставил, не привез, маркетплейс, магазин, продавец, интернет-магазин, услуг, заказ, товар]
+    kk: [ақшаны қайтар, қайтару, сапасыз, тауар, дүкен, сатушы, тапсырыс]
+  examples:
+    ru:
+      - Купил телефон в интернет-магазине, через неделю сломался, деньги не возвращают
+      - Заказал шкаф на маркетплейсе, прошло два месяца — не доставили
+claim:
+  type: refund
+  amount_field: amount
+intake:
+  - seller_name
+  - seller_bin: {optional: true, pattern: '^\d{12}$'}
+  - goods_description
+  - purchase_date: {type: date}
+  - amount: {type: money, currency: KZT}
+  - problem_description: {type: longtext}
+  - applicant_name: {pii: person}
+  - applicant_phone: {type: phone, pii: phone}
+  - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - seller_email: {type: email, optional: true}
+  - evidence: [receipt, order_screenshot, correspondence]
+parties:
+  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin}
+  respondent: {kind: business, name_field: seller_name, id_field: seller_bin, email_field: seller_email}
+actions:
+  - id: claim_to_seller
+    title: {ru: Претензия продавцу о возврате денег, kk: Сатушыға ақшаны қайтару туралы талап-арыз}
+    template: kz/templates/consumer/claim_seller.docx
+    channel: email_or_user_submits
+    addressee: {party: respondent}
+    deadline: {calendar_days: 10, norm_ref: TODO}
+    norm_refs: [TODO]
+    demands:
+      ru: "вернуть уплаченную мной денежную сумму в размере {amount} {currency} за «{goods_description}» в установленный законом срок и сообщить о принятом решении письменно."
+    instructions:
+      ru:
+        - "Распечатайте претензию в двух экземплярах и подпишите оба."
+        - "Вручите один экземпляр продавцу ({addressee}) и попросите поставить на втором отметку о принятии: дата, ФИО, подпись. Либо отправьте заказным письмом с уведомлением о вручении."
+        - "Если продавец работает только онлайн — отправьте претензию через чат поддержки или на e-mail {addressee_email} и сохраните скриншоты."
+        - "Нажмите «Отправил» — мы начнём отсчёт срока ответа ({deadline_days} дн.) и напомним за 2 дня."
+  - id: complaint_consumer_authority
+    when: claim_to_seller.response in [none, refusal, partial]
+    title: {ru: Жалоба в орган по защите прав потребителей, kk: Тұтынушылардың құқықтарын қорғау органына шағым}
+    template: kz/templates/consumer/complaint_authority.docx
+    channel: user_submits          # the user files it on eOtinish
+    addressee: {authority: consumer_protection}
+    deadline: {business_days: 15, norm_ref: TODO}
+    norm_refs: [TODO]
+    demands:
+      ru: "провести проверку по изложенным фактам и принять меры в отношении продавца для восстановления моих прав потребителя, о результатах сообщить мне."
+    instructions:
+      ru:
+        - "Зайдите на {submit_url} (вход по ЭЦП или через SMS-код)."
+        - "Выберите «Подать обращение» → категория «Жалоба», получатель — {addressee}."
+        - "Вставьте текст жалобы из документа и приложите PDF, претензию продавцу и доказательства (чек, скриншоты, переписку)."
+        - "Сохраните регистрационный номер обращения и нажмите «Отправил»."
+  - id: handoff_lawyer
+    kind: handoff
+    when: complaint_consumer_authority.response in [none, refusal]
+    title: {ru: Передача дела юристу, kk: Істі заңгерге беру}
+pricing: {model: fixed, amount: 1990, currency: KZT}

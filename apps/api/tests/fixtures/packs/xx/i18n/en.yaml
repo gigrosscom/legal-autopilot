@@ -1,0 +1,5 @@
+llm_hints:
+  response:
+    full: [paid]
+    partial: [some of]
+    refusal: [refuse]

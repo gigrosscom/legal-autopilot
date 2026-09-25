@@ -1,0 +1,25 @@
+# Қазақ тілі — заготовка. Missing keys fall back to ru.yaml.
+# TODO(i18n): full translation reviewed by a native-speaking lawyer.
+language_name: қазақ тілі
+
+interview:
+  intro: "Бұл «{scenario}» сценарийіне ұқсайды. Бірнеше қысқа сұрақ қоямын."
+  required: "Бұл жауапсыз құжатты дайындау мүмкін емес."
+  skip_words: [өткізу, жоқ, білмеймін, пропустить, skip]
+
+statuses:
+  intake: Ақпарат жинау
+  qualified: Деректер жиналды
+  action_ready: Құжат дайын
+  submitted: Жіберілді
+  awaiting_response: Жауап күтілуде
+  escalated: Эскалация
+  handed_to_lawyer: Заңгерде
+  resolved: Жабылды
+
+responses:
+  full: Толық қанағаттандырылды
+  partial: Ішінара қанағаттандырылды
+  refusal: Бас тарту
+  none: Жауап жоқ
+  unclear: Түсініксіз жауап

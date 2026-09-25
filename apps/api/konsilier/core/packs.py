@@ -198,9 +198,12 @@ class PackRegistry:
         return self.pack_for_scenario(scenario_id).scenarios[scenario_id]
 
     def published(self, country: str | None = None) -> list[Scenario]:
+        """Published scenarios; test packs are only visible when asked for by country."""
         out = []
         for pack in self.packs.values():
             if country and pack.country != country.upper():
+                continue
+            if not country and pack.manifest.status != "live":
                 continue
             out.extend(s for s in pack.scenarios.values() if s.published)
         return out

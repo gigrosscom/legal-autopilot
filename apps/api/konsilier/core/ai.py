@@ -158,7 +158,7 @@ def extract_evidence(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPa
 
 def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,
                     facts: dict[str, Any], action_title: str) -> str:
-    specs = _field_specs(scenario, pack, lang)
+    specs = _field_specs(scenario, pack, lang, only=list(facts))
     schema = {
         "type": "object",
         "properties": {"narrative": {"type": "string"}},
