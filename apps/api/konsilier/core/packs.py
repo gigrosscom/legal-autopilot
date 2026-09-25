@@ -1,0 +1,206 @@
+"""Jurisdiction packs: everything country-specific, loaded from ``packs/<cc>/`` as data."""
+
+from __future__ import annotations
+
+import logging
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Any
+from zoneinfo import ZoneInfo
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+from .scenario import Scenario, ScenarioValidationError, load_scenario_file
+
+log = logging.getLogger(__name__)
+
+Localized = dict[str, str]
+
+
+class PackValidationError(Exception):
+    pass
+
+
+class AuthoritySpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    name: Localized
+    submit_url: str | None = None
+    address: Localized = Field(default_factory=dict)
+    email: str | None = None
+    norm_ref: str = "TODO"
+
+
+class ComplianceSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    ai_label: Localized  # mandatory mark on every document and result screen
+    draft_disclaimer: Localized
+    service_disclaimer: Localized
+
+
+class PackManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    country: str
+    name: Localized
+    currency: str
+    timezone: str
+    languages: tuple[str, ...]
+    default_language: str
+    holidays: tuple[date, ...] = ()
+    reminder_before_days: tuple[int, ...] = (2, 0)
+    authorities: dict[str, AuthoritySpec] = Field(default_factory=dict)
+    compliance: ComplianceSpec
+    status: str = "live"  # live | test
+
+    @field_validator("country")
+    @classmethod
+    def _cc(cls, v: str) -> str:
+        if len(v) != 2 or not v.isalpha() or not v.isupper():
+            raise ValueError("country must be an ISO 3166-1 alpha-2 code in upper case")
+        return v
+
+    @field_validator("timezone")
+    @classmethod
+    def _tz(cls, v: str) -> str:
+        ZoneInfo(v)
+        return v
+
+
+class JurisdictionPack:
+    def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
+                 i18n: dict[str, dict], scenarios: dict[str, Scenario]):
+        self.root = root
+        self.packs_root = packs_root
+        self.manifest = manifest
+        self.i18n = i18n
+        self.scenarios = scenarios
+
+    # ---- identity ------------------------------------------------------
+    @property
+    def country(self) -> str:
+        return self.manifest.country
+
+    @property
+    def currency(self) -> str:
+        return self.manifest.currency
+
+    @property
+    def tz(self) -> ZoneInfo:
+        return ZoneInfo(self.manifest.timezone)
+
+    # ---- i18n ----------------------------------------------------------
+    def t(self, lang: str, key: str, default: str | None = None, **kwargs: Any) -> str:
+        for candidate in (lang, self.manifest.default_language):
+            node: Any = self.i18n.get(candidate, {})
+            for part in key.split("."):
+                node = node.get(part) if isinstance(node, dict) else None
+            if isinstance(node, str):
+                return node.format_map(_SafeDict(kwargs)) if kwargs else node
+        return default if default is not None else key
+
+    def localized(self, value: Localized, lang: str) -> str:
+        return value.get(lang) or value.get(self.manifest.default_language) or next(iter(value.values()), "")
+
+    def lang(self, lang: str | None) -> str:
+        return lang if lang in self.manifest.languages else self.manifest.default_language
+
+    # ---- calendar ------------------------------------------------------
+    def add_days(self, start: date, calendar_days: int | None, business_days: int | None) -> date:
+        if calendar_days is not None:
+            return start + timedelta(days=calendar_days)
+        assert business_days is not None
+        d, left = start, business_days
+        holidays = set(self.manifest.holidays)
+        while left:
+            d += timedelta(days=1)
+            if d.weekday() < 5 and d not in holidays:
+                left -= 1
+        return d
+
+    def local_now(self) -> datetime:
+        return datetime.now(self.tz)
+
+
+class _SafeDict(dict):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
+
+
+def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
+    manifest_path = root / "pack.yaml"
+    try:
+        manifest = PackManifest.model_validate(yaml.safe_load(manifest_path.read_text("utf-8")))
+    except (ValidationError, yaml.YAMLError) as e:
+        raise PackValidationError(f"{manifest_path}: {e}") from e
+    if manifest.default_language not in manifest.languages:
+        raise PackValidationError(f"{manifest_path}: default_language not in languages")
+    for lang in manifest.languages:
+        if lang not in manifest.compliance.ai_label:
+            raise PackValidationError(f"{manifest_path}: compliance.ai_label missing {lang!r}")
+
+    i18n: dict[str, dict] = {}
+    for lang in manifest.languages:
+        p = root / "i18n" / f"{lang}.yaml"
+        if p.is_file():
+            i18n[lang] = yaml.safe_load(p.read_text("utf-8")) or {}
+
+    scenarios: dict[str, Scenario] = {}
+    errors: list[str] = []
+    for path in sorted((root / "scenarios").glob("*.yaml")):
+        try:
+            sc = load_scenario_file(path, packs_root=packs_root)
+        except ScenarioValidationError as e:
+            errors.append(str(e))
+            continue
+        if sc.jurisdiction != manifest.country:
+            errors.append(f"{path}: jurisdiction {sc.jurisdiction} ≠ pack {manifest.country}")
+            continue
+        extra = set(sc.languages) - set(manifest.languages)
+        if extra:
+            errors.append(f"{path}: languages {sorted(extra)} not supported by pack")
+            continue
+        for a in sc.actions:
+            if a.addressee and a.addressee.authority and a.addressee.authority not in manifest.authorities:
+                errors.append(f"{path}: action {a.id} refers to unknown authority {a.addressee.authority!r}")
+        if sc.id in scenarios:
+            errors.append(f"{path}: duplicate scenario id {sc.id}")
+        scenarios[sc.id] = sc
+    if errors:
+        raise PackValidationError("\n".join(errors))
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios)
+
+
+class PackRegistry:
+    """All jurisdiction packs found under one directory."""
+
+    def __init__(self, packs: dict[str, JurisdictionPack]):
+        self.packs = packs
+
+    @classmethod
+    def load(cls, packs_root: Path) -> "PackRegistry":
+        packs: dict[str, JurisdictionPack] = {}
+        for sub in sorted(p for p in packs_root.iterdir() if (p / "pack.yaml").is_file()):
+            pack = load_pack(sub, packs_root)
+            packs[pack.country] = pack
+            log.info("loaded pack %s with %d scenarios", pack.country, len(pack.scenarios))
+        return cls(packs)
+
+    def pack(self, country: str) -> JurisdictionPack:
+        return self.packs[country.upper()]
+
+    def pack_for_scenario(self, scenario_id: str) -> JurisdictionPack:
+        for pack in self.packs.values():
+            if scenario_id in pack.scenarios:
+                return pack
+        raise KeyError(scenario_id)
+
+    def scenario(self, scenario_id: str) -> Scenario:
+        return self.pack_for_scenario(scenario_id).scenarios[scenario_id]
+
+    def published(self, country: str | None = None) -> list[Scenario]:
+        out = []
+        for pack in self.packs.values():
+            if country and pack.country != country.upper():
+                continue
+            out.extend(s for s in pack.scenarios.values() if s.published)
+        return out

@@ -1,0 +1,672 @@
+"""CaseEngine — the deterministic driver of a case.
+
+The engine owns every decision about *what happens next*: which question to ask,
+which scenario action comes next (by ``when`` conditions from YAML), when a
+deadline starts, when a lawyer must approve. The LLM is only consulted for
+language tasks through ``core.ai``.
+"""
+
+from __future__ import annotations
+
+import io
+import logging
+import uuid
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from . import ai
+from .adapters.payment import PaymentAdapter
+from .adapters.storage import Storage
+from .adapters.submission import SubmissionAdapter
+from .deadlines import DeadlineScheduler
+from .documents import PdfConverter, render_docx
+from .fields import FieldError, display, normalize
+from .llm import Attachment, LLMProvider, RedactingLLM
+from .models import Action, AuditLog, Case, Claim, Evidence, Organization, Outcome, Party, User, utcnow
+from .notify import Notifier
+from .packs import JurisdictionPack, PackRegistry
+from .pii import PiiVault
+from .scenario import ActionSpec, Scenario
+from .state_machine import CaseStatus, assert_transition
+
+log = logging.getLogger(__name__)
+
+S = CaseStatus
+OUTCOME_RESULTS = ("won", "partial", "lost", "settled", "abandoned")
+
+
+class EngineError(Exception):
+    """A request that is valid HTTP but not allowed in the current case state."""
+
+    def __init__(self, code: str, message: str | None = None):
+        self.code = code
+        super().__init__(message or code)
+
+
+@dataclass
+class Question:
+    field: str
+    text: str
+    type: str
+    optional: bool
+    evidence_kinds: list[dict[str, str]] = field(default_factory=list)
+
+
+@dataclass
+class Reply:
+    message: str
+    question: Question | None = None
+    intake_complete: bool = False
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class Proposal:
+    type: str  # prepare_action | handoff | close | clarify | wait | none
+    action_id: str | None = None
+    title: str | None = None
+    response_class: str | None = None
+    suggested_result: str | None = None
+    message: str = ""
+
+
+@dataclass
+class EngineConfig:
+    qualify_min_confidence: float = 0.6
+    approval_required_first_n: int = 50
+    extract_images_with_llm: bool = False
+
+
+class CaseEngine:
+    def __init__(self, *, packs: PackRegistry, llm: LLMProvider, storage: Storage, pdf: PdfConverter,
+                 scheduler: DeadlineScheduler, notifier: Notifier, payments: PaymentAdapter,
+                 submissions: dict[str, SubmissionAdapter], config: EngineConfig):
+        self.packs = packs
+        self.llm_provider = llm
+        self.storage = storage
+        self.pdf = pdf
+        self.scheduler = scheduler
+        self.notifier = notifier
+        self.payments = payments
+        self.submissions = submissions
+        self.config = config
+
+    # ================================================================ helpers
+    def llm_for(self, case: Case) -> RedactingLLM:
+        return RedactingLLM(self.llm_provider, PiiVault(case.pii_map))
+
+    def _save_vault(self, case: Case, llm: RedactingLLM) -> None:
+        case.pii_map = dict(llm.vault.mapping)
+
+    def scenario_of(self, case: Case) -> Scenario:
+        if not case.scenario_id:
+            raise EngineError("no_scenario")
+        sc = self.packs.scenario(case.scenario_id)
+        if case.scenario_version and sc.version != case.scenario_version:
+            log.warning("case %s uses %s@%s, loaded %s", case.id, sc.id, case.scenario_version, sc.version)
+        return sc
+
+    def pack_of(self, case: Case) -> JurisdictionPack:
+        if case.jurisdiction:
+            return self.packs.pack(case.jurisdiction)
+        return self._fallback_pack(case.language)
+
+    def _fallback_pack(self, lang: str) -> JurisdictionPack:
+        live = [p for p in self.packs.packs.values() if p.manifest.status == "live"] or list(self.packs.packs.values())
+        for p in live:
+            if lang in p.manifest.languages:
+                return p
+        return live[0]
+
+    def audit(self, session: Session, case: Case | None, actor: str, event: str,
+              from_status: str | None = None, to_status: str | None = None, **data: Any) -> None:
+        session.add(AuditLog(case_id=case.id if case else None, actor=actor, event=event,
+                             from_status=from_status, to_status=to_status, data=_jsonable(data)))
+
+    def transition(self, session: Session, case: Case, target: CaseStatus, actor: str, **data: Any) -> None:
+        current = case.status
+        assert_transition(current, target)
+        case.status = target.value
+        self.audit(session, case, actor, "status_changed", current, target.value, **data)
+
+    # ================================================================ intake
+    def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
+                   channel: str | None = None, country: str | None = None) -> tuple[Case, Reply]:
+        lang = language or user.language or "ru"
+        country = (country or user.country or "").upper() or None
+        if country and country not in self.packs.packs:
+            raise EngineError("country_not_supported")
+        case = Case(owner_id=user.id, language=lang, channel=channel or user.channel,
+                    jurisdiction=country, initial_text=text, facts={}, skipped_fields=[], pii_map={})
+        session.add(case)
+        session.flush()
+        self.audit(session, case, f"user:{user.id}", "case_created", None, case.status, channel=case.channel)
+        reply = self._qualify_and_continue(session, case, text)
+        return case, reply
+
+    def _qualify_and_continue(self, session: Session, case: Case, text: str) -> Reply:
+        llm = self.llm_for(case)
+        candidates = self.packs.published(case.jurisdiction)
+        sid, confidence, reason = ai.qualify(llm, candidates, self.packs.packs, text, case.language)
+        case.qualification_confidence = confidence
+        if sid is None:
+            case.needs_review = True
+            self.audit(session, case, "system", "qualification_failed", reason=reason)
+            pack = self.pack_of(case)
+            self._save_vault(case, llm)
+            return Reply(message=pack.t(pack.lang(case.language), "interview.no_scenario"))
+        sc = self.packs.scenario(sid)
+        pack = self.packs.pack(sc.jurisdiction)
+        case.scenario_id, case.scenario_version = sc.id, sc.version
+        case.jurisdiction = sc.jurisdiction
+        case.ontology_code = sc.ontology
+        case.language = pack.lang(case.language)
+        case.currency = pack.currency
+        case.needs_review = confidence < self.config.qualify_min_confidence
+        self.audit(session, case, "system", "qualified_scenario", scenario_id=sc.id,
+                   confidence=confidence, needs_review=case.needs_review, reason=reason)
+        # bulk extraction from the free story
+        missing = self.missing_fields(case, sc)
+        values = ai.extract_fields(llm, sc, pack, case.language, text, None, missing)
+        self._apply_values(case, sc, pack, values, llm, strict=False)
+        self._save_vault(case, llm)
+        intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language))
+        reply = self._next_step(session, case, sc, pack)
+        reply.message = f"{intro}\n\n{reply.message}".strip()
+        return reply
+
+    def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
+        return [f.name for f in sc.intake if f.name not in case.facts and f.name not in (case.skipped_fields or [])]
+
+    def _apply_values(self, case: Case, sc: Scenario, pack: JurisdictionPack, values: dict[str, Any],
+                      llm: RedactingLLM | None, strict: bool, overwrite: bool = False) -> dict[str, str]:
+        errors: dict[str, str] = {}
+        facts = dict(case.facts)
+        today = pack.local_now().date()
+        for name, raw in values.items():
+            try:
+                f = sc.field(name)
+            except KeyError:
+                continue
+            if f.type == "evidence" or (name in facts and not overwrite):
+                continue
+            try:
+                facts[name] = normalize(f, raw, today=today)
+            except FieldError as e:
+                errors[name] = e.code
+                continue
+            if f.pii and llm is not None:
+                llm.vault.register(f.pii, facts[name])
+            if name in (case.skipped_fields or []):
+                case.skipped_fields = [s for s in case.skipped_fields if s != name]
+        case.facts = facts
+        if sc.claim and sc.claim.amount_field and sc.claim.amount_field in facts:
+            case.amount_at_stake = Decimal(str(facts[sc.claim.amount_field]))
+        return errors if strict else {}
+
+    def question_for(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> Question:
+        f = sc.field(name)
+        text = pack.localized(f.question, lang) if f.question else pack.t(
+            lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name))
+        kinds = [{"kind": k, "label": pack.t(lang, f"evidence.{k}", default=k)} for k in f.evidence_kinds]
+        return Question(field=name, text=text, type=f.type, optional=f.optional, evidence_kinds=kinds)
+
+    def _next_step(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack) -> Reply:
+        lang = case.language
+        missing = self.missing_fields(case, sc)
+        if missing:
+            case.pending_field = missing[0]
+            q = self.question_for(sc, pack, lang, missing[0])
+            return Reply(message=q.text, question=q)
+        case.pending_field = None
+        if case.status == S.INTAKE.value:
+            self._sync_parties_and_claim(session, case, sc, pack)
+            self.transition(session, case, S.QUALIFIED, "system")
+        return Reply(message=pack.t(lang, "interview.done", summary=self.facts_summary(case, sc, pack)),
+                     intake_complete=True)
+
+    def facts_summary(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
+        lines = []
+        for f in sc.intake:
+            if f.type == "evidence":
+                n = sum(1 for e in case.evidence if e.kind in f.evidence_kinds)
+                if n:
+                    lines.append(f"• {ai.field_label(sc, pack, case.language, f.name)}: {n}")
+                continue
+            if f.name in case.facts:
+                lines.append(f"• {ai.field_label(sc, pack, case.language, f.name)}: {display(f, case.facts[f.name])}")
+        return "\n".join(lines)
+
+    def handle_message(self, session: Session, case: Case, text: str) -> Reply:
+        if case.status != S.INTAKE.value:
+            raise EngineError("not_in_intake")
+        if not case.scenario_id:
+            combined = f"{case.initial_text or ''}\n{text}".strip()
+            case.initial_text = combined
+            return self._qualify_and_continue(session, case, combined)
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        lang = case.language
+        llm = self.llm_for(case)
+        pending = case.pending_field
+        if pending:
+            f = sc.field(pending)
+            if _is_skip(text, pack, lang):
+                if not f.optional:
+                    q = self.question_for(sc, pack, lang, pending)
+                    return Reply(message=f"{pack.t(lang, 'interview.required')}\n{q.text}", question=q,
+                                 error="required")
+                case.skipped_fields = [*(case.skipped_fields or []), pending]
+                return self._next_step(session, case, sc, pack)
+            if f.type == "evidence":
+                q = self.question_for(sc, pack, lang, pending)
+                return Reply(message=f"{pack.t(lang, 'interview.upload_or_skip')}\n{q.text}", question=q)
+            if f.pii:
+                # personal data is taken verbatim, it never goes to the LLM
+                values = {pending: text}
+            else:
+                values = ai.extract_fields(llm, sc, pack, lang, text, pending, self.missing_fields(case, sc))
+                values.setdefault(pending, text)
+            errors = self._apply_values(case, sc, pack, values, llm, strict=True)
+            self._save_vault(case, llm)
+            if pending in errors:
+                q = self.question_for(sc, pack, lang, pending)
+                msg = pack.t(lang, f"errors.{errors[pending]}", default=pack.t(lang, "errors.generic"))
+                return Reply(message=f"{msg}\n{q.text}", question=q, error=errors[pending])
+        return self._next_step(session, case, sc, pack)
+
+    # ================================================================ evidence
+    def add_evidence(self, session: Session, case: Case, *, kind: str, filename: str, content_type: str,
+                     data: bytes) -> Evidence:
+        ev = Evidence(case_id=case.id, kind=kind, filename=filename, content_type=content_type,
+                      extracted_facts={})
+        ev.id = uuid.uuid4()
+        ev.storage_key = self.storage.put(f"cases/{case.id}/evidence/{ev.id}/{_safe_name(filename)}",
+                                          data, content_type)
+        ev.text = extract_text(content_type, data)
+        session.add(ev)
+        case.evidence.append(ev)
+        if case.scenario_id and case.status == S.INTAKE.value:
+            sc, pack = self.scenario_of(case), self.pack_of(case)
+            llm = self.llm_for(case)
+            attachments: tuple[Attachment, ...] = ()
+            if content_type.startswith("image/") and self.config.extract_images_with_llm:
+                attachments = (Attachment(content_type, data, filename),)
+            if ev.text or attachments:
+                facts, summary = ai.extract_evidence(llm, sc, pack, case.language, ev.text, attachments)
+                valid: dict[str, Any] = {}
+                today = pack.local_now().date()
+                for name, raw in facts.items():
+                    try:
+                        valid[name] = normalize(sc.field(name), raw, today=today)
+                    except (FieldError, KeyError):
+                        continue
+                ev.extracted_facts = valid
+                self._save_vault(case, llm)
+        self.audit(session, case, "user", "evidence_added", kind=kind, filename=filename)
+        return ev
+
+    def confirm_evidence(self, session: Session, case: Case, evidence: Evidence,
+                         facts: dict[str, Any] | None) -> Reply:
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        llm = self.llm_for(case)
+        chosen = evidence.extracted_facts if facts is None else facts
+        errors = self._apply_values(case, sc, pack, chosen, llm, strict=True, overwrite=True)
+        self._save_vault(case, llm)
+        evidence.confirmed = True
+        self.audit(session, case, "user", "evidence_confirmed", evidence_id=str(evidence.id),
+                   facts=list(chosen), errors=errors)
+        # an uploaded file satisfies the evidence question it belongs to
+        for f in sc.intake:
+            if f.type == "evidence" and evidence.kind in f.evidence_kinds and f.name not in case.facts:
+                case.facts = {**case.facts, f.name: "provided"}
+        if case.status != S.INTAKE.value:
+            return Reply(message="")
+        reply = self._next_step(session, case, sc, pack)
+        if errors:
+            reply.error = ",".join(f"{k}:{v}" for k, v in errors.items())
+        return reply
+
+    # ================================================================ actions
+    def responses(self, case: Case) -> dict[str, str | None]:
+        return {a.action_id: a.response_class for a in case.actions}
+
+    def next_action_spec(self, case: Case, sc: Scenario) -> ActionSpec | None:
+        if not case.actions:
+            return sc.actions[0]
+        done = {a.action_id for a in case.actions}
+        responses = self.responses(case)
+        for spec in sc.actions:
+            if spec.id in done:
+                continue
+            cond = spec.condition
+            if cond and cond.evaluate(responses):
+                return spec
+        return None
+
+    def proposal(self, case: Case) -> Proposal:
+        if not case.scenario_id:
+            return Proposal(type="none")
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        lang = case.language
+        status = CaseStatus(case.status)
+        if status == S.INTAKE:
+            return Proposal(type="none")
+        if status == S.QUALIFIED:
+            spec = sc.actions[0]
+            return Proposal(type="prepare_action", action_id=spec.id, title=pack.localized(spec.title, lang),
+                            message=pack.t(lang, "proposal.prepare", action=pack.localized(spec.title, lang)))
+        if status in (S.ACTION_READY, S.SUBMITTED, S.HANDED_TO_LAWYER, S.RESOLVED):
+            return Proposal(type="wait")
+        last = case.actions[-1]
+        if last.response_class is None:
+            return Proposal(type="wait", message=pack.t(lang, "proposal.wait"))
+        rc = last.response_class
+        if rc == "unclear":
+            return Proposal(type="clarify", response_class=rc, message=pack.t(lang, "proposal.clarify"))
+        if rc == "full":
+            return Proposal(type="close", response_class=rc, suggested_result="won",
+                            message=pack.t(lang, "proposal.close_won"))
+        spec = self.next_action_spec(case, sc)
+        if spec is None:
+            return Proposal(type="close", response_class=rc,
+                            suggested_result="partial" if rc == "partial" else "lost",
+                            message=pack.t(lang, "proposal.no_more_steps"))
+        title = pack.localized(spec.title, lang)
+        if spec.kind == "handoff":
+            return Proposal(type="handoff", action_id=spec.id, title=title, response_class=rc,
+                            message=pack.t(lang, "proposal.handoff"))
+        return Proposal(type="prepare_action", action_id=spec.id, title=title, response_class=rc,
+                        message=pack.t(lang, "proposal.escalate", action=title))
+
+    def approval_required(self, session: Session, case: Case) -> bool:
+        if case.needs_review:
+            return True
+        rank = session.scalar(select(func.count()).select_from(Case).where(
+            Case.scenario_id == case.scenario_id, Case.created_at <= case.created_at))
+        return (rank or 0) <= self.config.approval_required_first_n
+
+    def prepare_next_action(self, session: Session, case: Case, actor: str) -> Action:
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        status = CaseStatus(case.status)
+        if status == S.INTAKE:
+            reply = self._next_step(session, case, sc, pack)
+            if not reply.intake_complete:
+                raise EngineError("intake_incomplete")
+            status = CaseStatus(case.status)
+        # re-preparing a rejected document for the same action
+        if status == S.ACTION_READY and case.actions and case.actions[-1].approval_status == "rejected":
+            return self._render_action(session, case, sc, pack, sc.action(case.actions[-1].action_id),
+                                       case.actions[-1], actor)
+        if status not in (S.QUALIFIED, S.AWAITING_RESPONSE, S.ESCALATED):
+            raise EngineError("cannot_prepare_now")
+        if status != S.QUALIFIED:
+            last = case.actions[-1] if case.actions else None
+            if not last or not last.response_class:
+                raise EngineError("response_required")
+            if last.response_class in ("full", "unclear"):
+                raise EngineError("no_escalation_for_response")
+        spec = self.next_action_spec(case, sc)
+        if spec is None:
+            raise EngineError("no_next_action")
+        if status == S.AWAITING_RESPONSE:
+            self.transition(session, case, S.ESCALATED, actor, reason=case.actions[-1].response_class)
+        action = Action(case_id=case.id, sequence=len(case.actions) + 1, action_id=spec.id, kind=spec.kind,
+                        channel=spec.channel, is_draft_scenario=sc.is_draft)
+        session.add(action)
+        case.actions.append(action)
+        if spec.kind == "handoff":
+            action.status = "done"
+            self.transition(session, case, S.HANDED_TO_LAWYER, actor, action=spec.id)
+            self.notifier.notify(session, case, "handoff", pack.t(case.language, "notifications.handoff"))
+            return action
+        if not case.paid and sc.pricing.model == "fixed":
+            inv = self.payments.create_invoice(case_id=str(case.id), amount=Decimal(str(sc.pricing.amount)),
+                                               currency=sc.pricing.currency or pack.currency)
+            case.paid = inv.status == "paid"
+            self.audit(session, case, "system", "invoice_created", invoice=inv.id, status=inv.status,
+                       amount=str(inv.amount), currency=inv.currency)
+        return self._render_action(session, case, sc, pack, spec, action, actor)
+
+    def _addressee(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec) -> dict[str, Any]:
+        lang = case.language
+        if spec.addressee is None:
+            return {}
+        if spec.addressee.authority:
+            auth = pack.manifest.authorities[spec.addressee.authority]
+            return {"kind": "authority", "key": spec.addressee.authority, "name": pack.localized(auth.name, lang),
+                    "address": pack.localized(auth.address, lang) if auth.address else "",
+                    "email": auth.email, "submit_url": auth.submit_url, "id": None}
+        party = sc.parties[spec.addressee.party]
+        get = lambda attr: case.facts.get(getattr(party, attr)) if getattr(party, attr) else None  # noqa: E731
+        return {"kind": party.kind, "key": spec.addressee.party, "name": get("name_field") or "",
+                "id": get("id_field"), "email": get("email_field"), "address": get("address_field") or "",
+                "submit_url": None}
+
+    def _render_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack,
+                       spec: ActionSpec, action: Action, actor: str) -> Action:
+        lang = case.language
+        title = pack.localized(spec.title, lang)
+        addressee = self._addressee(case, sc, pack, spec)
+        llm = self.llm_for(case)
+        if not case.narrative:
+            case.narrative = ai.write_narrative(llm, sc, pack, lang, dict(case.facts), title)
+            self._save_vault(case, llm)
+        ctx = self.document_context(case, sc, pack, spec, addressee)
+        docx = render_docx(pack.packs_root / spec.template, ctx,
+                           ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
+                           draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
+                           if sc.is_draft else None)
+        base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
+        action.docx_key = self.storage.put(f"{base}.docx", docx,
+                                           "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        pdf = self.pdf.convert(docx)
+        action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
+        action.addressee = addressee
+        action.instructions = [
+            s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
+                                                      spec.instructions.get(pack.manifest.default_language) or ())
+        ]
+        if self.approval_required(session, case):
+            action.approval_status, action.status = "pending", "pending_approval"
+        else:
+            action.approval_status, action.status = "not_required", "ready"
+        if case.status != S.ACTION_READY.value:
+            self.transition(session, case, S.ACTION_READY, actor, action=spec.id)
+        self.audit(session, case, actor, "document_generated", action=spec.id,
+                   approval=action.approval_status, pdf=bool(pdf))
+        return action
+
+    def document_context(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
+                         addressee: dict[str, Any]) -> dict[str, Any]:
+        lang = case.language
+        f = {fl.name: display(fl, case.facts.get(fl.name)) for fl in sc.intake if fl.type != "evidence"}
+        applicant = {}
+        if "applicant" in sc.parties:
+            p = sc.parties["applicant"]
+            applicant = {"name": f.get(p.name_field, ""), "id": f.get(p.id_field or "", ""),
+                         "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", "")}
+        evidence = [pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
+                    for e in case.evidence if e.kind != "response"]
+        previous = [{"title": pack.localized(sc.action(a.action_id).title, lang),
+                     "date": a.submitted_at.strftime("%d.%m.%Y") if a.submitted_at else "",
+                     "response": pack.t(lang, f"responses.{a.response_class}", default=a.response_class or "")}
+                    for a in case.actions if a.action_id != spec.id and a.submitted_at]
+        today = pack.local_now().date().strftime("%d.%m.%Y")
+        fmt = {**f, "addressee": addressee.get("name", ""), "submit_url": addressee.get("submit_url") or "",
+               "addressee_email": addressee.get("email") or "", "currency": case.currency or pack.currency,
+               "today": today}
+        if spec.deadline:
+            fmt["deadline_days"] = spec.deadline.calendar_days or spec.deadline.business_days
+        demands = pack.localized(spec.demands, lang).format_map(_Fmt(fmt)) if spec.demands else ""
+        return {
+            "title": pack.localized(spec.title, lang),
+            "f": f,
+            "applicant": applicant,
+            "addressee": addressee,
+            "narrative": case.narrative or f.get("problem_description", ""),
+            "demands": demands,
+            "norm_refs": list(spec.norm_refs),
+            "evidence": evidence,
+            "previous_actions": previous,
+            "date": today,
+            "currency": case.currency or pack.currency,
+            "fmt": fmt,
+        }
+
+    def approve(self, session: Session, action: Action, reviewer: str, approved: bool, note: str | None) -> None:
+        if action.approval_status != "pending":
+            raise EngineError("not_pending")
+        case = session.get(Case, action.case_id)
+        action.approval_status = "approved" if approved else "rejected"
+        action.status = "ready" if approved else "rejected"
+        action.approved_by, action.approval_note = reviewer, note
+        self.audit(session, case, f"admin:{reviewer}", "document_approved" if approved else "document_rejected",
+                   action=action.action_id, note=note)
+        pack = self.pack_of(case)
+        key = "notifications.approved" if approved else "notifications.rejected"
+        self.notifier.notify(session, case, "approval", pack.t(case.language, key))
+
+    def mark_submitted(self, session: Session, case: Case, action: Action, actor: str,
+                       via: str = "user_submits") -> None:
+        if action.kind != "document" or action.status != "ready":
+            raise EngineError("document_not_ready")
+        if case.status != S.ACTION_READY.value:
+            raise EngineError("cannot_submit_now")
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        spec = sc.action(action.action_id)
+        if via == "email":
+            if spec.channel == "user_submits":
+                raise EngineError("email_not_allowed")
+            adapter = self.submissions["email"]
+            files = [(f"{spec.id}.docx", self.storage.get(action.docx_key),
+                      "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
+            if action.pdf_key:
+                files.append((f"{spec.id}.pdf", self.storage.get(action.pdf_key), "application/pdf"))
+            user = session.get(User, case.owner_id)
+            adapter.submit(to_email=(action.addressee or {}).get("email"), subject=pack.localized(spec.title, case.language),
+                           body=pack.t(case.language, "email.body"), reply_to=user.email, attachments=files)
+        now = utcnow()
+        action.status, action.submitted_at, action.submitted_via = "submitted", now, via
+        self.transition(session, case, S.SUBMITTED, actor, action=spec.id, via=via)
+        if spec.deadline:
+            start = now.astimezone(pack.tz).date()
+            due = pack.add_days(start, spec.deadline.calendar_days, spec.deadline.business_days)
+            remind = list(spec.deadline.remind_before_days or pack.manifest.reminder_before_days)
+            self.scheduler.schedule(session, case, action, due, spec.deadline.norm_ref, remind)
+            self.audit(session, case, "system", "deadline_created", action=spec.id, due=due.isoformat(),
+                       norm_ref=spec.deadline.norm_ref)
+        self.transition(session, case, S.AWAITING_RESPONSE, "system", action=spec.id)
+
+    def record_response(self, session: Session, case: Case, action: Action, *, text: str | None,
+                        response_class: str | None = None, actor: str = "user") -> Proposal:
+        if case.status != S.AWAITING_RESPONSE.value or not case.actions or case.actions[-1].id != action.id:
+            raise EngineError("not_awaiting_response")
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        summary = ""
+        if response_class is None:
+            if text and text.strip():
+                llm = self.llm_for(case)
+                response_class, summary = ai.classify_response(
+                    llm, pack, case.language, text, pack.localized(sc.action(action.action_id).title, case.language))
+                self._save_vault(case, llm)
+            else:
+                response_class = "none"
+        action.response_class, action.response_summary, action.responded_at = response_class, summary, utcnow()
+        action.status = "responded"
+        self.scheduler.cancel_for_action(session, action, status="met" if response_class != "none" else "expired")
+        self.audit(session, case, actor, "response_recorded", action=action.action_id,
+                   response_class=response_class, classified_by="user" if text is None else "llm")
+        return self.proposal(case)
+
+    def close(self, session: Session, case: Case, *, result: str, amount_recovered: Decimal | None,
+              comment: str | None, actor: str) -> Outcome:
+        if result not in OUTCOME_RESULTS:
+            raise EngineError("bad_result")
+        self.transition(session, case, S.RESOLVED, actor, result=result)
+        created = case.created_at if case.created_at.tzinfo else case.created_at.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        for a in case.actions:
+            self.scheduler.cancel_for_action(session, a, status="cancelled")
+        outcome = Outcome(case_id=case.id, result=result, amount_recovered=amount_recovered,
+                          currency=case.currency, days_to_resolution=max(0, (now - created).days),
+                          resolved_at_step=case.actions[-1].action_id if case.actions else None,
+                          scenario_id=case.scenario_id, scenario_version=case.scenario_version,
+                          comment=comment, resolved_at=now)
+        session.add(outcome)
+        case.outcome = outcome
+        self.audit(session, case, actor, "outcome_recorded", result=result,
+                   amount_recovered=str(amount_recovered) if amount_recovered is not None else None,
+                   days=outcome.days_to_resolution, step=outcome.resolved_at_step)
+        return outcome
+
+    # ================================================================ parties/claims
+    def _sync_parties_and_claim(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack) -> None:
+        existing = {p.role for p in case.parties}
+        for role, spec in sc.parties.items():
+            if role in existing:
+                continue
+            name = case.facts.get(spec.name_field)
+            if role == "applicant":
+                session.add(Party(case_id=case.id, role=role, user_id=case.owner_id, display_name=name))
+                continue
+            org = Organization(country=case.jurisdiction, kind=spec.kind, name=name or "?",
+                               registration_id=case.facts.get(spec.id_field) if spec.id_field else None,
+                               email=case.facts.get(spec.email_field) if spec.email_field else None,
+                               address=case.facts.get(spec.address_field) if spec.address_field else None)
+            session.add(org)
+            session.flush()
+            session.add(Party(case_id=case.id, role=role, organization_id=org.id, display_name=name))
+        if sc.claim and not case.claims:
+            session.add(Claim(case_id=case.id, type=sc.claim.type, amount=case.amount_at_stake,
+                              currency=case.currency,
+                              norm_refs=sorted({r for a in sc.actions for r in a.norm_refs})))
+
+
+# ==================================================================== utils
+class _Fmt(dict):
+    def __missing__(self, key: str) -> str:
+        return ""
+
+
+def _is_skip(text: str, pack: JurisdictionPack, lang: str) -> bool:
+    words = pack.i18n.get(lang, {}).get("interview", {}).get("skip_words", []) or []
+    t = text.strip().lower().strip(".!")
+    return t in {w.lower() for w in words} or t in {"-", "—", "/skip"}
+
+
+def _safe_name(name: str) -> str:
+    keep = "".join(c if c.isalnum() or c in "._-" else "_" for c in name)
+    return keep[-100:] or "file"
+
+
+def extract_text(content_type: str, data: bytes) -> str | None:
+    if content_type == "application/pdf":
+        try:
+            from pypdf import PdfReader
+
+            reader = PdfReader(io.BytesIO(data))
+            return "\n".join((page.extract_text() or "") for page in reader.pages).strip() or None
+        except Exception as e:  # damaged PDF etc.
+            log.warning("pdf text extraction failed: %s", e)
+            return None
+    if content_type.startswith("text/"):
+        return data.decode("utf-8", errors="replace")
+    return None
+
+
+def _jsonable(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [_jsonable(v) for v in obj]
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    return str(obj)
