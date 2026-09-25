@@ -1,0 +1,4 @@
+# TODO(i18n): full Kazakh translation. Missing keys fall back to ru.yaml.
+new_case: "Жарайды, жаңа іс бастаймыз. Не болғанын сипаттаңыз."
+buttons:
+  skip: "⏭ Өткізу"
