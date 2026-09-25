@@ -34,7 +34,7 @@ packs/
   kz/                       ДАННЫЕ юрисдикции: pack.yaml, scenarios/*.yaml,
                             templates/**/*.docx, i18n/{ru,kk}.yaml, REVIEW.md
 scripts/                    генерация DOCX-шаблонов, утилиты
-docker-compose.yml          postgres, minio, mailpit, api, bot, web
+docker-compose.yml          postgres, s3 (SeaweedFS), mailpit, api, bot, web
 ```
 
 ## Ключевые интерфейсы
