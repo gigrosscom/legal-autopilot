@@ -11,3 +11,7 @@ data/
 *.db
 .DS_Store
 apps/web/next-env.d.ts
+
+# local release archives
+konsilier-mvp-*.zip
+konsilier-mvp-*.bundle
