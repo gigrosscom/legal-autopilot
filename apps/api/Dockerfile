@@ -12,6 +12,9 @@ WORKDIR /app/apps/api
 COPY apps/api/ ./
 RUN pip install --no-cache-dir ".[dev]"
 COPY packs/ /app/packs/
+COPY scripts/ /app/scripts/
+# DOCX templates are pack data; regenerate them if the checkout has none (e.g. text-only mirrors).
+RUN [ -f /app/packs/kz/templates/consumer/claim_seller.docx ] || python /app/scripts/build_kz_templates.py
 ENV PACKS_DIR=/app/packs
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && uvicorn --factory konsilier.main:app_factory --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn --factory konsilier.main:app_factory --host 0.0.0.0 --port ${PORT:-8000}"]
