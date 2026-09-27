@@ -11,8 +11,10 @@ services:
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
+    # The directory (not the single file) is mounted so `git reset` updates are visible; update.sh reloads Caddy.
+    command: caddy run --config /etc/caddy/conf/Caddyfile --adapter caddyfile
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./:/etc/caddy/conf:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [web, api]

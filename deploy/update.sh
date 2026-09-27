@@ -37,6 +37,8 @@ main() {
     log "deploying ${REMOTE:0:7}"
     if docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build --remove-orphans; then
       docker image prune -f >/dev/null
+      docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T caddy \
+        caddy reload --config /etc/caddy/conf/Caddyfile --adapter caddyfile >/dev/null 2>&1 || log "caddy reload failed"
       sleep 20
       API=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api \
         python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/health').status)" 2>&1 | tail -1)
@@ -45,7 +47,8 @@ main() {
       set -a; . ./.env; set +a
       HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
         printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)
-      log "deployed ${REMOTE:0:7} api=$API web=$WEB $HTTPS"
+      CACHE=$(curl -sI --max-time 20 "https://$SITE_DOMAIN/" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2-)
+      log "deployed ${REMOTE:0:7} api=$API web=$WEB $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
       log "deploy of ${REMOTE:0:7} FAILED"
