@@ -110,3 +110,15 @@ def test_universal_case_shows_forum_choice_then_acknowledgement():
     ack = case_screen({**base, "scenario": {"id": "x"}, "coverage": {"options": []},
                        "safety": {"pending_ack": "false_report"}})
     assert ack.buttons == [[("Понимаю и подтверждаю", "ack:c1:false_report")]]
+
+
+def test_profile_texts_fit_telegram_limits():
+    from konsilier_bot.i18n import t
+    from konsilier_bot.main import BOT_COMMANDS
+
+    for lang in ("ru", "kk"):
+        assert len(t("profile.short", lang)) <= 120
+        assert len(t("profile.description", lang).strip()) <= 512
+        for c in BOT_COMMANDS:
+            assert 0 < len(t(f"profile.commands.{c}", lang)) <= 256
+            assert t(f"profile.commands.{c}", lang) != f"profile.commands.{c}"
