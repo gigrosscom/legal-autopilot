@@ -29,3 +29,32 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: elpai
+  name:
+    en: Egyptian Legal Portal for Legislation (IDSC)
+    ru: Правовой портал законодательства Египта (IDSC)
+    ar: البوابة القانونية للتشريعات المصرية
+  url: https://elpai.idsc.gov.eg/
+  operator: Information and Decision Support Center (IDSC), Egyptian Cabinet
+  kind: legislation
+  languages:
+  - ar
+  access: web
+  api: unknown
+  reuse_note: Has subscription options; free access scope not confirmed.
+  verified_on: 2026-09-27
+- id: cassation
+  name:
+    en: 'Court of Cassation: judgments'
+    ru: 'Кассационный суд Египта: решения'
+    ar: محكمة النقض - الأحكام
+  url: https://www.cc.gov.eg/
+  operator: Court of Cassation of the Arab Republic of Egypt
+  kind: case_law
+  languages:
+  - ar
+  access: web
+  api: unknown

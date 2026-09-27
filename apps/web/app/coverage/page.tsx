@@ -6,9 +6,11 @@ import { Alert, Button, Section } from "@/components/ui";
 import { errorText, publicApi } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
+type LegalSource = { id: string; name: string; url: string; operator: string; kind: string };
+
 type Coverage = {
   branches: { id: string; title: string; situation: string }[];
-  countries: { country: string; name: string; status: string; cells: Record<string, Level> }[];
+  countries: { country: string; name: string; status: string; cells: Record<string, Level>; legal_sources?: LegalSource[] }[];
 };
 
 const LEGEND: Level[] = ["verified", "scenario_draft", "universal", "lawyer", "soon"];
@@ -70,6 +72,26 @@ export default function CoveragePage() {
             ))}
           </ul>
           <Waitlist countries={planned} />
+        </Section>
+      )}
+
+      {data && data.countries.some((c) => c.legal_sources?.length) && (
+        <Section title={t("coverage.sourcesTitle")} lead={t("coverage.sourcesLead")}>
+          <div className="space-y-2">
+            {[...live, ...planned].filter((c) => c.legal_sources?.length).map((c) => (
+              <details key={c.country} className="card" open={c.status === "live"}>
+                <summary className="cursor-pointer font-semibold">{c.name}</summary>
+                <ul className="mt-3 space-y-2">
+                  {c.legal_sources!.map((s) => (
+                    <li key={s.id} className="text-sm">
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="link break-words">{s.name}</a>
+                      <span className="block text-xs text-muted">{t(`coverage.sourceKind.${s.kind}`)} · {s.operator}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
         </Section>
       )}
     </div>

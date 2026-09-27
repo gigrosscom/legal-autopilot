@@ -38,3 +38,35 @@ compliance:
     tr: Konsilier.AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri takip
       eder. Dava daha ileri taşınmalıysa platformdaki profesyonel bir avukat devreye
       girer. Belgeler sizin adınıza sunulur.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: e_qanun
+  name:
+    en: Unified Electronic Database of Legal Acts e-qanun.az
+    ru: Единая электронная база правовых актов e-qanun.az
+    az: Hüquqi aktların vahid elektron bazası
+  url: https://e-qanun.az/
+  operator: Ministry of Justice of the Republic of Azerbaijan
+  kind: legislation
+  languages:
+  - az
+  access: web
+  api: unknown
+  reuse_note: Free of charge; also includes selected Supreme Court decisions. Combined with the State Register of
+    Legal Acts since 2021.
+  verified_on: 2026-09-27
+- id: supreme_court
+  name:
+    en: 'Supreme Court: plenum and chamber decisions'
+    ru: 'Верховный суд: постановления Пленума и палат'
+    az: 'Ali Məhkəmə: qərarlar'
+  url: https://supremecourt.gov.az/az
+  operator: Supreme Court of the Republic of Azerbaijan
+  kind: case_law
+  languages:
+  - az
+  - en
+  access: web
+  api: unknown
+  verified_on: 2026-09-27

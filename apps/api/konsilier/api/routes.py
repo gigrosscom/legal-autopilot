@@ -328,8 +328,15 @@ def coverage(lang: str = "ru", container: Container = Depends(get_container)) ->
                 cells[b.id] = "soon"
         countries.append({"country": pack.country, "name": pack.manifest.name.get(lang) or pack.localized(pack.manifest.name, lg),
                           "status": pack.manifest.status, "languages": list(pack.manifest.languages),
-                          "cells": cells})
+                          "cells": cells, "legal_sources": [_legal_source_view(s, lang, lg) for s in pack.manifest.legal_sources]})
     return {"branches": branches, "countries": countries}
+
+
+def _legal_source_view(src: Any, lang: str, pack_lang: str) -> dict[str, Any]:
+    """Public view of an official legal database: name in the asked language, link and kind."""
+    return {"id": src.id, "name": src.name.get(lang) or src.name.get(pack_lang) or src.name["en"], "url": src.url, "operator": src.operator,
+            "kind": src.kind, "languages": list(src.languages), "access": src.access,
+            "verified_on": src.verified_on.isoformat() if src.verified_on else None}
 
 
 def _scenario_branch(cov: Any, sc: Any) -> str | None:

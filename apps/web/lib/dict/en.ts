@@ -261,6 +261,9 @@ const en: Dict = {
     plannedTitle: "Coming soon: CIS and the Middle East",
     plannedLead: "We are preparing verified data for these countries with local lawyers. Not accepting cases yet.",
     waitlistTitle: "Notify me at launch",
+    sourcesTitle: "Official sources of law",
+    sourcesLead: "We only link to and cite official government databases. Links open in a new tab.",
+    sourceKind: { legislation: "Legislation", case_law: "Case law", gazette: "Official gazette", registry: "Registry" },
   },
   how: {
     eyebrow: "How it works",
