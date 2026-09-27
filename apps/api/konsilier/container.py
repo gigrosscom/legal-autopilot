@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -16,6 +16,9 @@ from .core.db import make_engine, make_session_factory
 from .core.deadlines import DbDeadlineScheduler
 from .core.documents import PdfConverter, build_pdf_converter
 from .core.engine import CaseEngine, EngineConfig
+from .identity.ncanode import NcaNode, SignatureVerifier
+from .identity.senders import Sender, build_email, build_sms
+from .identity.service import Identities
 from .core.llm import LLMProvider, build_provider
 from .core.notify import Notifier
 from .core.packs import PackRegistry
@@ -31,11 +34,21 @@ class Container:
     scheduler: DbDeadlineScheduler
     notifier: Notifier
     engine: CaseEngine
+    identities: Identities = field(default_factory=lambda: Identities("change-me-identity"))
+    email_sender: Sender | None = None
+    sms_sender: Sender | None = None
+    signature_verifier: SignatureVerifier | None = None
+
+    def identity_methods(self) -> dict[str, bool]:
+        ecp = self.signature_verifier is not None
+        return {"email": self.email_sender is not None, "phone": self.sms_sender is not None,
+                "ecp": ecp, "egov": ecp and bool(self.settings.egov_org_bin)}
 
 
 def build_container(settings: Settings, *, llm: LLMProvider | None = None, storage: Storage | None = None,
                     pdf: PdfConverter | None = None, channels: dict[str, ChannelAdapter] | None = None,
-                    packs: PackRegistry | None = None) -> Container:
+                    packs: PackRegistry | None = None, email_sender: Sender | None = None,
+                    sms_sender: Sender | None = None, signature_verifier: SignatureVerifier | None = None) -> Container:
     db = make_engine(settings.database_url)
     factory = make_session_factory(db)
     packs = packs or PackRegistry.load(settings.packs_dir)
@@ -57,4 +70,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                             approval_required_first_n=settings.approval_required_first_n,
                             extract_images_with_llm=settings.extract_images_with_llm),
     )
-    return Container(settings, db, factory, packs, storage, scheduler, notifier, engine)
+    return Container(settings, db, factory, packs, storage, scheduler, notifier, engine,
+                     identities=Identities(settings.identity_secret),
+                     email_sender=email_sender or build_email(settings),
+                     sms_sender=sms_sender or build_sms(settings),
+                     signature_verifier=signature_verifier or (NcaNode(settings.ncanode_url) if settings.ncanode_url else None))
