@@ -249,7 +249,7 @@ class WaitlistEntry(Base):
 
 
 class LawyerApplication(Base):
-    """A lawyer / advocate / human-rights defender applying to join (founders programme)."""
+    """A lawyer / advocate / human-rights defender applying to join (partner programme)."""
 
     __tablename__ = "lawyer_applications"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

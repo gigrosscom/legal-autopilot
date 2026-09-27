@@ -34,7 +34,7 @@ const BENEFITS = [
 const FAQ = [
   {
     q: "Сколько платформа берёт с юриста?",
-    a: "С гонорара — 0%. Базовый тариф бесплатный. Pro (без лимита откликов, приоритет, ИИ-инструменты, CRM) — " + PRO_PRICE + ". Для программы «Основатели» Pro бесплатно 12 месяцев.",
+    a: "С гонорара — 0%. Базовый тариф бесплатный. Pro (без лимита откликов, приоритет, ИИ-инструменты, CRM) — " + PRO_PRICE + ". Для участников программы «Партнёр Konsilier.AI» Pro бесплатно 12 месяцев.",
   },
   {
     q: "Кто может присоединиться?",
@@ -117,7 +117,7 @@ function ShareCard({ name, demo }: { name: string; demo: boolean }) {
   return (
     <div className="mx-auto w-full max-w-sm rounded-3xl bg-gradient-to-br from-[#1f6f5c] to-[#14213d] p-5 text-white shadow-lg">
       <div className="text-xs uppercase tracking-widest opacity-70">
-        Konsilier.AI · {demo ? "пример карточки" : "юрист-основатель"}
+        Konsilier.AI · {demo ? "пример карточки" : "партнёр платформы"}
       </div>
       <div className="mt-3 text-xl font-bold">{demo ? "Айгерим Н." : name}</div>
       <div className="text-sm opacity-80">Защита прав потребителей · Алматы</div>
@@ -134,7 +134,7 @@ function ShareCard({ name, demo }: { name: string; demo: boolean }) {
         </div>
       ) : (
         <div className="mt-4 text-sm opacity-90">
-          ⭐ Основатель платформы. Рейтинг по доказанным результатам появится после первых завершённых дел.
+          ⭐ Партнёр Konsilier.AI. Рейтинг по доказанным результатам появится после первых завершённых дел.
         </div>
       )}
       <div className="mt-4 rounded-xl bg-white/10 p-2 text-center text-xs">konsilier.com · запись к юристу</div>
@@ -157,7 +157,7 @@ function ApplyForm() {
     () => (done && typeof window !== "undefined" ? `${window.location.origin}/for-lawyers?ref=${done.referral_code}` : ""),
     [done],
   );
-  const shareText = `Присоединяюсь к Konsilier.AI — платформе, где юристы получают готовые дела с досье, 0% комиссии с гонорара и оплату по этапам. Программа «Основатели»: Pro бесплатно 12 месяцев. `;
+  const shareText = `Присоединяюсь к Konsilier.AI — платформе, где юристы получают готовые дела с досье, 0% комиссии с гонорара и оплату по этапам. Программа «Партнёр Konsilier.AI»: Pro бесплатно 12 месяцев. `;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -211,7 +211,7 @@ function ApplyForm() {
 
   return (
     <form onSubmit={submit} className="card space-y-3">
-      <h3 className="text-xl font-bold">Стать юристом-основателем</h3>
+      <h3 className="text-xl font-bold">Стать партнёром Konsilier.AI</h3>
       {ref && <p className="chip bg-brand/10 text-brand">Вас пригласил коллега · +3 месяца Pro</p>}
       <input className="input" required minLength={3} placeholder="ФИО" value={form.full_name} onChange={set("full_name")} />
       <select className="input" value={form.kind} onChange={set("kind")}>
@@ -261,10 +261,10 @@ export default function ForLawyers() {
             выигранных делах. 0% с вашего гонорара.
           </p>
           <div className="flex flex-wrap gap-3">
-            <a href="#apply" className="btn-primary px-6 py-3 text-base">Стать основателем — бесплатно</a>
+            <a href="#apply" className="btn-primary px-6 py-3 text-base">Стать партнёром — бесплатно</a>
             <a href="/lawyers" className="btn-ghost px-6 py-3 text-base">Как выглядит рейтинг</a>
           </div>
-          <p className="text-sm text-ink/60">Первые 100 юристов — Pro бесплатно на 12 месяцев и значок «Основатель».</p>
+          <p className="text-sm text-ink/60">Первые 100 юристов — Pro бесплатно на 12 месяцев и статус «Партнёр» — при участии в пилоте.</p>
         </div>
         <DossierPreview />
       </section>
@@ -331,6 +331,36 @@ export default function ForLawyers() {
         </div>
       </section>
 
+      {/* PARTNER PROGRAMME */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold">Программа «Партнёр Konsilier.AI»</h2>
+        <p className="text-ink/70">
+          Первые 100 проверенных юристов, адвокатов и правозащитников, которые вместе с нами проводят пилот платформы.
+          Статус — не за регистрацию, а за участие.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="card space-y-2">
+            <h3 className="font-semibold">Что делает партнёр</h3>
+            <ul className="list-inside list-disc space-y-1 text-sm text-ink/70">
+              <li>Проходит проверку статуса и личности.</li>
+              <li>Берёт в работу дела с платформы в пилотный период (первые 3 месяца).</li>
+              <li>Соблюдает стандарты: прозрачная цена до начала работы, сроки этапов, отметки о ходе дела в карточке.</li>
+              <li>Раз в месяц даёт обратную связь по документам и сценариям — что исправить, чего не хватает.</li>
+            </ul>
+          </div>
+          <div className="card space-y-2 border-brand ring-2 ring-brand/20">
+            <h3 className="font-semibold">Что получает партнёр</h3>
+            <ul className="list-inside list-disc space-y-1 text-sm text-ink/70">
+              <li>Pro бесплатно на 12 месяцев.</li>
+              <li>Статус «Партнёр» в профиле и карточке.</li>
+              <li>Приоритет в выдаче дел в пилотный период.</li>
+              <li>Влияние на продукт: сценарии и шаблоны строятся с учётом практики партнёров.</li>
+            </ul>
+          </div>
+        </div>
+        <p className="text-xs text-ink/50">Если условия участия не выполняются, статус снимается, аккаунт остаётся на базовом тарифе.</p>
+      </section>
+
       {/* PRICING */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">Тарифы</h2>
@@ -343,7 +373,7 @@ export default function ForLawyers() {
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">Pro</h3>
-              <span className="chip bg-brand text-white">Основателям 12 мес. бесплатно</span>
+              <span className="chip bg-brand text-white">Партнёрам 12 мес. бесплатно</span>
             </div>
             <div className="text-2xl font-bold">{PRO_PRICE}</div>
             <p className="text-sm text-ink/70">Без лимита откликов, приоритет в выдаче, ИИ-черновики, контроль сроков, CRM своих клиентов.</p>
