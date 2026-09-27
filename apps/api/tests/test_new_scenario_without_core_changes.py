@@ -64,7 +64,7 @@ def test_core_has_no_country_specific_code():
     """Guard: the global core must not branch on (or mention) particular countries."""
     forbidden = re.compile(r"""(['"](KZ|kz|KZT|XX)['"]|\bKZT\b|Kazakh|Казахстан|eotinish|АРРФР|\bИИН\b|\bБИН\b)""")
     offenders = []
-    for path in CORE.rglob("*.py"):
+    for path in [*CORE.rglob("*.py"), *CORE.rglob("*.yaml")]:
         for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
             if forbidden.search(line):
                 offenders.append(f"{path.relative_to(CORE)}:{n}: {line.strip()}")

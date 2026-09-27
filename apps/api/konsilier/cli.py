@@ -4,6 +4,7 @@
     python -m konsilier.cli todos [PACKS_DIR]
     python -m konsilier.cli tick
     python -m konsilier.cli backup      # pg_dump → S3 bucket (backups/…) or ./data/backups
+    python -m konsilier.cli review CC [PACKS_DIR]   # refresh the generated table in packs/<cc>/REVIEW.md
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ from .core.packs import PackRegistry, PackValidationError
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "backup":
         return backup()
+    if argv and argv[0] == "review" and len(argv) > 1:
+        return review(argv[1], Path(argv[2]) if len(argv) > 2 else get_settings().packs_dir)
     if not argv or argv[0] not in ("validate", "todos", "tick"):
         print(__doc__)
         return 2
@@ -61,6 +64,42 @@ def backup() -> int:
     key = f"backups/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d_%H%M}.sql.gz"
     build_storage(settings).put(key, gzip.compress(dump), "application/gzip")
     print("backup stored:", key, f"{len(dump) // 1024} KiB")
+    return 0
+
+
+REVIEW_BEGIN = "<!-- BEGIN generated: coverage review -->"
+REVIEW_END = "<!-- END generated: coverage review -->"
+
+
+def review_table(pack) -> str:
+    rows = pack.coverage.review_rows() if pack.coverage else []
+    lines = [REVIEW_BEGIN,
+             "## Реестр универсального пути: статус проверки",
+             "",
+             "Генерируется командой `python -m konsilier.cli review <cc>`. Не редактировать вручную.",
+             "",
+             "| Вид | Запись | Статус | Кем подписано |",
+             "|---|---|---|---|"]
+    lines += [f"| {kind} | `{rid}` | {status} | {who} |" for kind, rid, status, who in rows]
+    lines.append(REVIEW_END)
+    return "\n".join(lines)
+
+
+def review(country: str, packs_dir: Path) -> int:
+    """Refresh the generated review table in REVIEW.md, keeping the lawyer's own notes."""
+    registry = PackRegistry.load(packs_dir)
+    pack = registry.pack(country)
+    path = pack.root / "REVIEW.md"
+    text = path.read_text("utf-8") if path.is_file() else ""
+    table = review_table(pack)
+    if REVIEW_BEGIN in text and REVIEW_END in text:
+        head, rest = text.split(REVIEW_BEGIN, 1)
+        text = head + table + rest.split(REVIEW_END, 1)[1]
+    else:
+        text = text.rstrip() + "\n\n" + table + "\n"
+    path.write_text(text, "utf-8")
+    todo = sum(1 for r in (pack.coverage.review_rows() if pack.coverage else []) if r[2] == "TODO")
+    print(f"{path}: {todo} TODO")
     return 0
 
 

@@ -47,3 +47,32 @@
 | 23 | Персональные данные | Согласие на обработку ПДн (закон РК «О персональных данных и их защите»), место хранения БД (локализация на территории РК), срок хранения. |
 | 24 | `i18n/kk.yaml`, `kk:` в сценариях | Перевод на казахский выполнен (интерфейс, вопросы, инструкции); нужна проверка юридической терминологии юристом — носителем языка. Документы (претензии, жалобы) остаются на русском. |
 | 25 | Первые 50 дел каждого сценария | Проходят обязательное одобрение юристом в админке (`APPROVAL_REQUIRED_FIRST_N`). |
+
+<!-- BEGIN generated: coverage review -->
+## Реестр универсального пути: статус проверки
+
+Генерируется командой `python -m konsilier.cli review <cc>`. Не редактировать вручную.
+
+| Вид | Запись | Статус | Кем подписано |
+|---|---|---|---|
+| forum | `kz.court.district` | TODO | — |
+| forum | `kz.court.appeal` | TODO | — |
+| forum | `kz.police` | TODO | — |
+| forum | `kz.prosecutor` | TODO | — |
+| forum | `kz.regulator.financial` | TODO | — |
+| forum | `kz.regulator.consumer` | TODO | — |
+| forum | `kz.labor_inspection` | TODO | — |
+| forum | `kz.ombudsman` | TODO | — |
+| forum | `kz.mediation` | TODO | — |
+| document | `appeal` | TODO | — |
+| document | `complaint` | TODO | — |
+| document | `lawsuit` | TODO | — |
+| document | `statement` | TODO | — |
+| routing | `upl_notice` | TODO | — |
+| routing | `false_report_norm` | TODO | — |
+| emergency | `112` | TODO | — |
+| emergency | `102` | TODO | — |
+| emergency | `103` | TODO | — |
+| emergency | `150` | TODO | — |
+| routing | `high_amount_threshold` | TODO | — |
+<!-- END generated: coverage review -->

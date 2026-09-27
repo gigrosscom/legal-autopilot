@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from .coverage import Coverage, CoverageValidationError, load_coverage
 from .scenario import Scenario, ScenarioValidationError, load_scenario_file
 
 log = logging.getLogger(__name__)
@@ -68,8 +69,10 @@ class PackManifest(BaseModel):
 
 class JurisdictionPack:
     def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
-                 i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None):
+                 i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None,
+                 coverage: Coverage | None = None):
         self.demo_lawyers = demo_lawyers or {}
+        self.coverage = coverage
         self.root = root
         self.packs_root = packs_root
         self.manifest = manifest
@@ -166,11 +169,16 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
         if sc.id in scenarios:
             errors.append(f"{path}: duplicate scenario id {sc.id}")
         scenarios[sc.id] = sc
+    coverage = None
+    try:
+        coverage = load_coverage(root, packs_root, manifest.country, manifest.languages)
+    except CoverageValidationError as e:
+        errors += e.errors
     if errors:
         raise PackValidationError("\n".join(errors))
     demo_path = root / "demo" / "lawyers.yaml"
     demo = yaml.safe_load(demo_path.read_text("utf-8")) if demo_path.is_file() else {}
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo)
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage)
 
 
 class PackRegistry:
