@@ -97,3 +97,15 @@ def test_client_drives_a_case(api_app):
         await api.close()
 
     asyncio.run(scenario())
+
+
+def test_profile_texts_fit_telegram_limits():
+    from konsilier_bot.i18n import t
+    from konsilier_bot.main import BOT_COMMANDS
+
+    for lang in ("ru", "kk"):
+        assert len(t("profile.short", lang)) <= 120
+        assert len(t("profile.description", lang).strip()) <= 512
+        for c in BOT_COMMANDS:
+            assert 0 < len(t(f"profile.commands.{c}", lang)) <= 256
+            assert t(f"profile.commands.{c}", lang) != f"profile.commands.{c}"
