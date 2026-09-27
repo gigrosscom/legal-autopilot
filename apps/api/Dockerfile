@@ -4,7 +4,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PATH=/opt/venv/bin:$PATH
 # LibreOffice (headless Writer) for DOCX → PDF; DejaVu fonts cover Cyrillic/Kazakh.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 python3-venv libreoffice-writer-nogui fonts-dejavu-core ca-certificates \
+ && apt-get install -y --no-install-recommends python3 python3-venv postgresql-client libreoffice-writer-nogui fonts-dejavu-core ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/venv
 

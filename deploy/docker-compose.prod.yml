@@ -1,0 +1,63 @@
+# Production stack for a single Linux server (Yandex Cloud / PS Cloud / any Ubuntu VM).
+#   docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build
+# Caddy terminates HTTPS (Let's Encrypt) for SITE_DOMAIN, www.SITE_DOMAIN and API_DOMAIN.
+name: konsilier
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web, api]
+
+  api:
+    build: {context: .., dockerfile: apps/api/Dockerfile}
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      PACKS_DIR: /app/packs
+      STORAGE_LOCAL_DIR: /data/files
+      CORS_ORIGINS: https://${SITE_DOMAIN},https://www.${SITE_DOMAIN}
+    volumes: [api_data:/data]
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+        NEXT_PUBLIC_TELEGRAM_BOT: ${TELEGRAM_BOT_USERNAME:-konsilier_bot}
+    restart: unless-stopped
+
+  bot:
+    build: {context: .., dockerfile: apps/bot/Dockerfile}
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      API_URL: http://api:8000
+    depends_on: [api]
+
+  # Only when there is no managed PostgreSQL: COMPOSE_PROFILES=localdb and
+  # DATABASE_URL=postgresql+psycopg://konsilier:<password>@postgres:5432/konsilier
+  postgres:
+    image: postgres:16-alpine
+    profiles: [localdb]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: konsilier
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:-change-me}
+      POSTGRES_DB: konsilier
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+volumes:
+  caddy_data:
+  caddy_config:
+  api_data:
+  pgdata:

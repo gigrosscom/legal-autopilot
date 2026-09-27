@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     s3_bucket: str = "konsilier"
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
+    s3_region: str | None = None  # provider region name, if the S3 endpoint requires one
 
     llm_provider: str = "mock"  # anthropic | mock
     llm_model: str = "claude-opus-5"

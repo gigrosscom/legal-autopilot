@@ -1,0 +1,8 @@
+[Unit]
+Description=Konsilier: database backup to object storage
+ConditionPathExists=/opt/konsilier/.env
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/konsilier
+ExecStart=/usr/bin/docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -m konsilier.cli backup

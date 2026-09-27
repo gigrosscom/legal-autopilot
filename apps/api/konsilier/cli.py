@@ -3,6 +3,7 @@
     python -m konsilier.cli validate [PACKS_DIR]
     python -m konsilier.cli todos [PACKS_DIR]
     python -m konsilier.cli tick
+    python -m konsilier.cli backup      # pg_dump → S3 bucket (backups/…) or ./data/backups
 """
 
 from __future__ import annotations
@@ -15,6 +16,8 @@ from .core.packs import PackRegistry, PackValidationError
 
 
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "backup":
+        return backup()
     if not argv or argv[0] not in ("validate", "todos", "tick"):
         print(__doc__)
         return 2
@@ -38,6 +41,26 @@ def main(argv: list[str]) -> int:
             else:
                 for todo in sc.todos():
                     print(todo)
+    return 0
+
+
+def backup() -> int:
+    """Dump the database with pg_dump and store it in the configured storage (S3 or local)."""
+    import datetime
+    import gzip
+    import subprocess
+
+    from .core.adapters.storage import build_storage
+
+    settings = get_settings()
+    url = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+    if not url.startswith("postgresql://"):
+        print("backup supports PostgreSQL only", file=sys.stderr)
+        return 1
+    dump = subprocess.run(["pg_dump", "--no-owner", "--format=plain", url], check=True, capture_output=True).stdout
+    key = f"backups/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d_%H%M}.sql.gz"
+    build_storage(settings).put(key, gzip.compress(dump), "application/gzip")
+    print("backup stored:", key, f"{len(dump) // 1024} KiB")
     return 0
 
 

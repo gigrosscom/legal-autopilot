@@ -33,12 +33,13 @@ class LocalStorage:
 class S3Storage:
     """S3-compatible storage (MinIO locally)."""
 
-    def __init__(self, endpoint_url: str | None, bucket: str, access_key: str | None, secret_key: str | None):
+    def __init__(self, endpoint_url: str | None, bucket: str, access_key: str | None, secret_key: str | None,
+                 region: str | None = None):
         import boto3
 
         self.bucket = bucket
         self.client = boto3.client("s3", endpoint_url=endpoint_url, aws_access_key_id=access_key,
-                                   aws_secret_access_key=secret_key)
+                                   aws_secret_access_key=secret_key, region_name=region)
         try:
             self.client.head_bucket(Bucket=bucket)
         except Exception:
@@ -54,5 +55,6 @@ class S3Storage:
 
 def build_storage(settings) -> Storage:
     if settings.storage_backend == "s3":
-        return S3Storage(settings.s3_endpoint_url, settings.s3_bucket, settings.s3_access_key, settings.s3_secret_key)
+        return S3Storage(settings.s3_endpoint_url, settings.s3_bucket, settings.s3_access_key, settings.s3_secret_key,
+                         settings.s3_region)
     return LocalStorage(Path(settings.storage_local_dir))

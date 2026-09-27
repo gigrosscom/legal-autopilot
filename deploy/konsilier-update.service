@@ -1,0 +1,8 @@
+[Unit]
+Description=Konsilier: pull and redeploy when the branch changed
+ConditionPathExists=/opt/konsilier/.env
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/konsilier/deploy/update.sh
