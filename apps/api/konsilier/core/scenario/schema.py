@@ -81,15 +81,16 @@ class DeadlineSpec(_Strict):
 
 
 class AddresseeSpec(_Strict):
-    """Who receives the document: a case party or a pack-level authority."""
+    """Who receives the document: a case party, a pack-level authority or a forum from the pack registry."""
 
     party: str | None = None  # e.g. "respondent"
     authority: str | None = None  # key in pack.authorities
+    forum: str | None = None  # forum id in the pack's coverage registry (universal path)
 
     @model_validator(mode="after")
     def _one_of(self) -> "AddresseeSpec":
-        if (self.party is None) == (self.authority is None):
-            raise ValueError("addressee needs exactly one of party / authority")
+        if sum(x is not None for x in (self.party, self.authority, self.forum)) != 1:
+            raise ValueError("addressee needs exactly one of party / authority / forum")
         return self
 
 
@@ -159,6 +160,7 @@ class Scenario(_Strict):
     id: str
     version: str
     ontology: str
+    taxonomy: str | None = None  # dispute type id in the coverage taxonomy (e.g. "consumer.refund")
     jurisdiction: str
     languages: tuple[str, ...]
     owner: str

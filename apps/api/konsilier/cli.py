@@ -5,6 +5,7 @@
     python -m konsilier.cli tick
     python -m konsilier.cli backup      # pg_dump → S3 bucket (backups/…) or ./data/backups
     python -m konsilier.cli review CC [PACKS_DIR]   # refresh the generated table in packs/<cc>/REVIEW.md
+    python -m konsilier.cli forums-export CC OUT.yaml  # admin drafts → YAML for a reviewed PR
 """
 
 from __future__ import annotations
@@ -19,6 +20,8 @@ from .core.packs import PackRegistry, PackValidationError
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "backup":
         return backup()
+    if argv and argv[0] == "forums-export" and len(argv) > 2:
+        return forums_export(argv[1], Path(argv[2]))
     if argv and argv[0] == "review" and len(argv) > 1:
         return review(argv[1], Path(argv[2]) if len(argv) > 2 else get_settings().packs_dir)
     if not argv or argv[0] not in ("validate", "todos", "tick"):
@@ -64,6 +67,32 @@ def backup() -> int:
     key = f"backups/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d_%H%M}.sql.gz"
     build_storage(settings).put(key, gzip.compress(dump), "application/gzip")
     print("backup stored:", key, f"{len(dump) // 1024} KiB")
+    return 0
+
+
+def forums_export(country: str, out: Path) -> int:
+    """Write pending admin drafts as a forums YAML file to be reviewed and merged by PR."""
+    import yaml
+    from sqlalchemy import select
+
+    from .container import build_container
+    from .core.models import ForumDraft
+
+    container = build_container(get_settings())
+    with container.session_factory() as s:
+        drafts = list(s.scalars(select(ForumDraft).where(ForumDraft.country == country.upper(),
+                                                         ForumDraft.status == "draft").order_by(ForumDraft.id)))
+        latest: dict[str, dict] = {}
+        for d in drafts:
+            latest[d.forum_id] = d.data  # the newest draft per forum wins
+        header = (f"# Admin drafts exported {len(latest)} forum record(s) for {country.upper()}.\n"
+                  "# Review with a lawyer, then merge into packs/<cc>/forums/ by pull request.\n")
+        out.write_text(header + yaml.safe_dump({"forums": list(latest.values())}, allow_unicode=True,
+                                               sort_keys=False), "utf-8")
+        for d in drafts:
+            d.status = "exported"
+        s.commit()
+    print(f"{out}: {len(latest)} forum(s)")
     return 0
 
 

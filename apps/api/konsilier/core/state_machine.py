@@ -19,8 +19,9 @@ class CaseStatus(str, Enum):
 S = CaseStatus
 
 TRANSITIONS: dict[CaseStatus, frozenset[CaseStatus]] = {
-    S.INTAKE: frozenset({S.QUALIFIED}),
-    S.QUALIFIED: frozenset({S.ACTION_READY}),
+    # → handed_to_lawyer from intake/qualified: coverage level 3 (ADR 0001, approved 27.09.2026)
+    S.INTAKE: frozenset({S.QUALIFIED, S.HANDED_TO_LAWYER}),
+    S.QUALIFIED: frozenset({S.ACTION_READY, S.HANDED_TO_LAWYER}),
     S.ACTION_READY: frozenset({S.SUBMITTED}),
     S.SUBMITTED: frozenset({S.AWAITING_RESPONSE}),
     S.AWAITING_RESPONSE: frozenset({S.RESOLVED, S.ESCALATED}),
@@ -30,6 +31,23 @@ TRANSITIONS: dict[CaseStatus, frozenset[CaseStatus]] = {
 }
 
 TERMINAL = frozenset({S.RESOLVED})
+
+# Kanban board (ADR 0001 §15): columns are lifecycle stages, not new statuses. A case always sits in exactly
+# one column and never disappears — resolved cases stay in the last one.
+BOARD_COLUMNS: tuple[tuple[str, tuple[CaseStatus, ...]], ...] = (
+    ("intake", (S.INTAKE,)),
+    ("qualified", (S.QUALIFIED,)),
+    ("action_ready", (S.ACTION_READY,)),
+    ("submitted", (S.SUBMITTED, S.AWAITING_RESPONSE)),
+    ("escalated", (S.ESCALATED,)),
+    ("handed_to_lawyer", (S.HANDED_TO_LAWYER,)),
+    ("resolved", (S.RESOLVED,)),
+)
+
+
+def board_column(status: CaseStatus | str) -> str:
+    st = CaseStatus(status)
+    return next(col for col, statuses in BOARD_COLUMNS if st in statuses)
 
 
 class InvalidTransition(Exception):

@@ -224,6 +224,92 @@ def confirm_evidence(case_id: uuid.UUID, evidence_id: uuid.UUID, body: ConfirmIn
     return {"reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
 
 
+class ForumIn(BaseModel):
+    forum_id: str
+
+
+@router.post("/cases/{case_id}/forum")
+def choose_forum(case_id: uuid.UUID, body: ForumIn, user: User = Depends(current_user),
+                 session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """Universal path: the user picks where to file from the pack's registry candidates."""
+    case = load_case(case_id, session, user)
+    try:
+        reply = container.engine.choose_forum(session, case, body.forum_id, actor=f"user:{user.id}")
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    return {"reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
+
+
+@router.get("/coverage")
+def coverage(lang: str = "ru", container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Countries × branches with honest statuses: verified scenario / universal path with a lawyer / soon."""
+    from ..core.coverage import global_taxonomy
+
+    tax = global_taxonomy()
+    branches = [{"id": b.id, "title": b.title.get(lang) or b.title.get("en") or b.id,
+                 "situation": b.situation.get(lang) or b.situation.get("en") or ""} for b in tax.branches]
+    countries = []
+    for pack in container.packs.packs.values():
+        if pack.manifest.status == "test":
+            continue
+        lg = pack.lang(lang)
+        cov = pack.coverage
+        cells: dict[str, str] = {}
+        for b in tax.branches:
+            if pack.manifest.status == "planned":
+                cells[b.id] = "soon"
+            elif any(_scenario_branch(cov, sc) == b.id and sc.published and not sc.is_draft
+                     for sc in pack.scenarios.values()):
+                cells[b.id] = "verified"
+            elif any(_scenario_branch(cov, sc) == b.id and sc.published for sc in pack.scenarios.values()):
+                cells[b.id] = "scenario_draft"
+            elif cov is not None and cov.has_registry and b.id not in cov.routing.lawyer_only and any(
+                    f.accepts_case(d, r) for d in cov.disputes.values() if d.branch == b.id
+                    for r in d.applicant_roles for f in cov.forums.values()):
+                cells[b.id] = "universal"
+            elif cov is not None and cov.has_registry:
+                cells[b.id] = "lawyer"
+            else:
+                cells[b.id] = "soon"
+        countries.append({"country": pack.country, "name": pack.localized(pack.manifest.name, lg),
+                          "status": pack.manifest.status, "languages": list(pack.manifest.languages),
+                          "cells": cells})
+    return {"branches": branches, "countries": countries}
+
+
+def _scenario_branch(cov: Any, sc: Any) -> str | None:
+    """Branch of a scenario via its ``taxonomy:`` link in YAML."""
+    if sc.taxonomy and cov is not None and sc.taxonomy in cov.disputes:
+        return cov.dispute(sc.taxonomy).branch
+    return None
+
+
+@router.get("/forums")
+def list_forums(country: str, lang: str = "ru", branch: str | None = None,
+                container: Container = Depends(get_container)) -> list[dict[str, Any]]:
+    """Public view of a pack's forum registry, with verification status."""
+    try:
+        pack = container.packs.pack(country)
+    except KeyError as e:
+        raise HTTPException(404, "unknown country") from e
+    cov = pack.coverage
+    if cov is None:
+        return []
+    lg = pack.lang(lang)
+    out = []
+    for f in cov.forums.values():
+        if branch and not any(branch in r.branches or any(d.startswith(branch + ".") for d in r.dispute_types)
+                              for r in f.accepts):
+            continue
+        out.append({"id": f.id, "type": f.type, "name": pack.localized(f.name, lg), "legal_effect": f.legal_effect,
+                    "verified": f.verified, "appeals_to": list(f.appeals_to),
+                    "channels": [{"kind": c.kind, "url": c.url} for c in f.submission],
+                    "fee": None if not f.fee or f.fee.amount is None else {"amount": f.fee.amount,
+                                                                          "currency": f.fee.currency}})
+    return out
+
+
 @router.post("/cases/{case_id}/actions/next")
 def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
                  container: Container = Depends(get_container)):

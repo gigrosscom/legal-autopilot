@@ -1,6 +1,7 @@
 id: kz.consumer.refund
 version: 0.1.0
 ontology: CONSUMER.GOODS.REFUND
+taxonomy: consumer.refund
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01

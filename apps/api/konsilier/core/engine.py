@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai
+from . import ai, qualifier
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -27,7 +27,20 @@ from .deadlines import DeadlineScheduler
 from .documents import PdfConverter, render_docx
 from .fields import FieldError, display, normalize
 from .llm import Attachment, LLMProvider, RedactingLLM
-from .models import Action, AuditLog, Case, Claim, Evidence, Organization, Outcome, Party, User, utcnow
+from .generic import GenericRef, is_generic
+from .models import (
+    Action,
+    AuditLog,
+    Case,
+    Claim,
+    DemandSignal,
+    Evidence,
+    Organization,
+    Outcome,
+    Party,
+    User,
+    utcnow,
+)
 from .notify import Notifier
 from .packs import JurisdictionPack, PackRegistry
 from .pii import PiiVault
@@ -63,6 +76,8 @@ class Reply:
     question: Question | None = None
     intake_complete: bool = False
     error: str | None = None
+    # universal path: forums to choose from ({id, name, type, legal_effect, verified, …})
+    options: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -161,8 +176,11 @@ class CaseEngine:
             case.needs_review = True
             self.audit(session, case, "system", "qualification_failed", reason=reason)
             pack = self.pack_of(case)
+            if pack.coverage is not None and pack.coverage.has_registry:
+                return self._route_universal(session, case, pack, llm, text)
             self._save_vault(case, llm)
             return Reply(message=pack.t(pack.lang(case.language), "interview.no_scenario"))
+        case.coverage_level = qualifier.LEVEL_VERIFIED
         sc = self.packs.scenario(sid)
         pack = self.packs.pack(sc.jurisdiction)
         case.scenario_id, case.scenario_version = sc.id, sc.version
@@ -182,6 +200,91 @@ class CaseEngine:
         reply = self._next_step(session, case, sc, pack)
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply
+
+    # ================================================================ universal path (ADR 0001)
+    def _route_universal(self, session: Session, case: Case, pack: JurisdictionPack, llm: RedactingLLM,
+                         text: str) -> Reply:
+        cov = pack.coverage
+        assert cov is not None
+        lang = pack.lang(case.language)
+        result = ai.classify_taxonomy(llm, qualifier.taxonomy_options(cov, lang),
+                                      sorted({r for d in cov.disputes.values() for r in d.applicant_roles}),
+                                      text, lang)
+        self._save_vault(case, llm)
+        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake)
+        case.jurisdiction = case.jurisdiction or pack.country
+        case.taxonomy = route.to_taxonomy()
+        case.route_reasons = route.reasons
+        case.qualification_confidence = route.confidence
+        branch = cov.dispute(route.dispute_id).branch if route.dispute_id else None
+        session.add(DemandSignal(country=pack.country, branch=branch, dispute_type=route.dispute_id,
+                                 level=route.level or "unclassified", reason=",".join(route.reasons) or None))
+        self.audit(session, case, "system", "qualified_level", level=route.level, dispute=route.dispute_id,
+                   role=route.role, confidence=route.confidence, reasons=route.reasons, flags=route.flags)
+        if route.level is None:
+            return Reply(message=pack.t(lang, "interview.no_scenario"))
+        if route.level == qualifier.LEVEL_LAWYER:
+            return self._handoff_level3(session, case, pack)
+        case.coverage_level = qualifier.LEVEL_UNIVERSAL
+        case.needs_review = True  # universal documents always need a lawyer's approval
+        if len(route.forums) == 1:
+            return self.choose_forum(session, case, route.forums[0].id, actor="system")
+        return Reply(message=pack.t(lang, "routing.choose_forum",
+                                    dispute=pack.localized(cov.dispute(route.dispute_id).title, lang)),
+                     options=[self.forum_option(pack, f, lang) for f in route.forums])
+
+    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str) -> dict[str, Any]:
+        return {"id": forum.id, "name": pack.localized(forum.name, lang), "type": forum.type,
+                "legal_effect": forum.legal_effect, "verified": forum.verified,
+                "channels": [ch.kind for ch in forum.submission],
+                "deadline_known": forum.response_deadline is not None}
+
+    def forum_options(self, case: Case) -> list[dict[str, Any]]:
+        """Forums the user may still choose from (universal case waiting for a choice)."""
+        if case.coverage_level != qualifier.LEVEL_UNIVERSAL or case.scenario_id or not case.taxonomy:
+            return []
+        pack = self.pack_of(case)
+        cov = pack.coverage
+        if cov is None or not case.taxonomy.get("dispute_id"):
+            return []
+        dispute = cov.dispute(case.taxonomy["dispute_id"])
+        return [self.forum_option(pack, f, case.language)
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])]
+
+    def choose_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
+        if case.status != S.INTAKE.value or case.scenario_id:
+            raise EngineError("forum_already_chosen")
+        if forum_id not in {o["id"] for o in self.forum_options(case)}:
+            raise EngineError("forum_not_allowed")
+        pack = self.pack_of(case)
+        ref = GenericRef(pack.country, case.taxonomy["dispute_id"], case.taxonomy["role"], forum_id)
+        sc = self.packs.scenario(ref.scenario_id)
+        case.forum_id = forum_id
+        case.scenario_id, case.scenario_version = sc.id, sc.version
+        case.ontology_code = sc.ontology
+        case.language = pack.lang(case.language)
+        case.currency = pack.currency
+        self.audit(session, case, actor, "forum_chosen", forum=forum_id, scenario_id=sc.id)
+        llm = self.llm_for(case)
+        values = ai.extract_fields(llm, sc, pack, case.language, case.initial_text or "", None,
+                                   self.missing_fields(case, sc))
+        self._apply_values(case, sc, pack, values, llm, strict=False)
+        self._save_vault(case, llm)
+        forum_name = pack.localized(pack.coverage.forums[forum_id].name, case.language)
+        intro = pack.t(case.language, "routing.universal_intro", forum=forum_name)
+        reply = self._next_step(session, case, sc, pack)
+        reply.message = f"{intro}\n\n{reply.message}".strip()
+        return reply
+
+    def _handoff_level3(self, session: Session, case: Case, pack: JurisdictionPack) -> Reply:
+        lang = pack.lang(case.language)
+        case.coverage_level = qualifier.LEVEL_LAWYER
+        case.needs_review = True
+        self.transition(session, case, S.HANDED_TO_LAWYER, "system", reasons=case.route_reasons)
+        reasons = "; ".join(pack.t(lang, f"routing.reasons.{r}", default=r) for r in case.route_reasons)
+        message = pack.t(lang, "routing.handed_to_lawyer", reasons=reasons)
+        self.notifier.notify(session, case, "handoff", message)
+        return Reply(message=message)
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
         return [f.name for f in sc.intake if f.name not in case.facts and f.name not in (case.skipped_fields or [])]
@@ -248,6 +351,10 @@ class CaseEngine:
     def handle_message(self, session: Session, case: Case, text: str) -> Reply:
         if case.status != S.INTAKE.value:
             raise EngineError("not_in_intake")
+        if not case.scenario_id and case.coverage_level == qualifier.LEVEL_UNIVERSAL and case.taxonomy:
+            pack = self.pack_of(case)
+            return Reply(message=pack.t(pack.lang(case.language), "routing.choose_forum_first"),
+                         options=self.forum_options(case))
         if not case.scenario_id:
             combined = f"{case.initial_text or ''}\n{text}".strip()
             case.initial_text = combined
@@ -387,7 +494,7 @@ class CaseEngine:
                         message=pack.t(lang, "proposal.escalate", action=title))
 
     def approval_required(self, session: Session, case: Case) -> bool:
-        if case.needs_review:
+        if case.needs_review or case.coverage_level == qualifier.LEVEL_UNIVERSAL or is_generic(case.scenario_id):
             return True
         rank = session.scalar(select(func.count()).select_from(Case).where(
             Case.scenario_id == case.scenario_id, Case.created_at <= case.created_at))
@@ -439,6 +546,13 @@ class CaseEngine:
         lang = case.language
         if spec.addressee is None:
             return {}
+        if spec.addressee.forum:
+            forum = pack.coverage.forums[spec.addressee.forum]
+            portal = next((c.url for c in forum.submission if c.kind == "portal"), None)
+            email = next((c.email for c in forum.submission if c.kind == "email"), None)
+            return {"kind": "forum", "key": forum.id, "name": pack.localized(forum.name, lang), "address": "",
+                    "email": email, "submit_url": portal, "id": None, "type": forum.type,
+                    "legal_effect": forum.legal_effect, "verified": forum.verified}
         if spec.addressee.authority:
             auth = pack.manifest.authorities[spec.addressee.authority]
             return {"kind": "authority", "key": spec.addressee.authority, "name": pack.localized(auth.name, lang),
@@ -461,6 +575,9 @@ class CaseEngine:
             facts = {fl.name: display(fl, case.facts[fl.name]) for fl in sc.intake
                      if fl.name in case.facts and fl.type != "evidence" and not fl.pii}
             case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title)
+            self._save_vault(case, llm)
+        if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
+            case.formal_demands = ai.write_demands(llm, pack, lang, str(case.facts["desired_outcome"]), title)
             self._save_vault(case, llm)
         ctx = self.document_context(case, sc, pack, spec, addressee)
         docx = render_docx(pack.packs_root / spec.template, ctx,
@@ -505,7 +622,7 @@ class CaseEngine:
         today = pack.local_now().date().strftime("%d.%m.%Y")
         fmt = {**f, "addressee": addressee.get("name", ""), "submit_url": addressee.get("submit_url") or "",
                "addressee_email": addressee.get("email") or "", "currency": case.currency or pack.currency,
-               "today": today}
+               "today": today, "formal_demands": case.formal_demands or f.get("desired_outcome", "")}
         if spec.deadline:
             fmt["deadline_days"] = spec.deadline.calendar_days or spec.deadline.business_days
         demands = pack.localized(spec.demands, lang).format_map(_Fmt(fmt)) if spec.demands else ""

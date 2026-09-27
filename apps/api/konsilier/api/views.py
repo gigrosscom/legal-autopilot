@@ -13,6 +13,26 @@ from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
 from ..core.models import AuditLog, Case, Deadline
 from ..core.roadmap import build_roadmap
+from ..core.state_machine import board_column
+
+
+def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[str, Any]:
+    """Coverage level and what it means for this case (ADR 0001): shown to the user on every step."""
+    cov = pack.coverage
+    out: dict[str, Any] = {"level": case.coverage_level, "dispute": None, "forum": None, "reasons": [],
+                           "options": engine.forum_options(case), "upl_notice": None}
+    tax = case.taxonomy or {}
+    if cov is not None:
+        if tax.get("dispute_id") in cov.disputes:
+            d = cov.dispute(tax["dispute_id"])
+            out["dispute"] = {"id": d.id, "title": pack.localized(d.title, lang), "branch": d.branch}
+        if case.forum_id in cov.forums:
+            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
+        if cov.routing.upl_notice:
+            out["upl_notice"] = pack.localized(cov.routing.upl_notice.text, lang)
+    out["reasons"] = [{"code": r, "label": pack.t(lang, f"routing.reasons.{r}", default=r)}
+                      for r in (case.route_reasons or [])]
+    return out
 
 
 def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool = False) -> dict[str, Any]:
@@ -23,6 +43,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "id": str(case.id),
         "status": case.status,
         "status_label": pack.t(lang, f"statuses.{case.status}", default=case.status),
+        "stage": board_column(case.status),
         "needs_review": case.needs_review,
         "jurisdiction": case.jurisdiction,
         "language": lang,
@@ -39,6 +60,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "proposal": None,
         "roadmap": None,
         "outcome": None,
+        "coverage": coverage_view(engine, case, pack, lang),
     }
     if case.scenario_id:
         sc = engine.scenario_of(case)

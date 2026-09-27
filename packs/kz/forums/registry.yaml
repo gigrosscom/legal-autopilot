@@ -8,8 +8,8 @@ forums:
     type: court
     instance: first
     name:
-      ru: "Районный (городской) суд по подсудности — TODO: уточнить конкретный суд"
-      kk: "Сотталуы бойынша аудандық (қалалық) сот — TODO: нақты сотты анықтау"
+      ru: "Районный (городской) суд по подсудности (конкретный суд уточнит юрист)"
+      kk: "Сотталуы бойынша аудандық (қалалық) сот (нақты сотты заңгер нақтылайды)"
     jurisdiction:
       rule:
         ru: "Как правило, по месту жительства ответчика; есть исключения — уточнит юрист."
@@ -33,8 +33,8 @@ forums:
     type: court
     instance: appeal
     name:
-      ru: "Суд апелляционной инстанции (областной суд) — TODO: уточнить"
-      kk: "Апелляциялық сатыдағы сот (облыстық сот) — TODO: нақтылау"
+      ru: "Суд апелляционной инстанции (областной суд) (уточнит юрист)"
+      kk: "Апелляциялық сатыдағы сот (облыстық сот) (заңгер нақтылайды)"
     accepts:
       - branches: [civil, family, labor, housing, inheritance, consumer, finance]
     document_types: [appeal]
@@ -67,8 +67,8 @@ forums:
     type: prosecutor
     instance: any
     name:
-      ru: "Органы прокуратуры по месту — TODO: уточнить"
-      kk: "Жергілікті прокуратура органдары — TODO: нақтылау"
+      ru: "Органы прокуратуры по месту (уточнит юрист)"
+      kk: "Жергілікті прокуратура органдары (заңгер нақтылайды)"
     accepts:
       - dispute_types: [criminal.police_inaction, administrative.state_body_inaction]
         applicant_roles: [victim, complainant]
@@ -104,8 +104,8 @@ forums:
     type: regulator
     instance: first
     name:
-      ru: "Уполномоченный орган в сфере защиты прав потребителей — TODO: уточнить наименование"
-      kk: "Тұтынушылар құқығын қорғау саласындағы уәкілетті орган — TODO: атауын нақтылау"
+      ru: "Уполномоченный орган в сфере защиты прав потребителей (наименование уточнит юрист)"
+      kk: "Тұтынушылар құқығын қорғау саласындағы уәкілетті орган (атауын заңгер нақтылайды)"
     accepts:
       - dispute_types: [consumer.poor_service, housing.utilities]
         applicant_roles: [consumer]
@@ -122,8 +122,8 @@ forums:
     type: local_authority
     instance: first
     name:
-      ru: "Местный орган по инспекции труда — TODO: уточнить наименование"
-      kk: "Еңбек инспекциясы жөніндегі жергілікті орган — TODO: атауын нақтылау"
+      ru: "Местный орган по инспекции труда (наименование уточнит юрист)"
+      kk: "Еңбек инспекциясы жөніндегі жергілікті орган (атауын заңгер нақтылайды)"
     accepts:
       - dispute_types: [labor.unpaid_wages, labor.dismissal]
         applicant_roles: [employee]

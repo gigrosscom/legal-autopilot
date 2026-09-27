@@ -51,6 +51,8 @@ class DisputeType(_Strict):
     sensitive: tuple[SENSITIVE, ...] = ()
     # Situations where the applicant may face criminal liability for a knowingly false report.
     false_report_warning: bool = False
+    # lang → substrings; used only as an offline fallback when the LLM is unavailable
+    keywords: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 
     @field_validator("id")
     @classmethod
@@ -73,6 +75,13 @@ class DisputeType(_Strict):
         bad = [k for k in v if k not in COUNTERPARTY_KINDS]
         if bad:
             raise ValueError(f"unknown counterparty kinds {bad}")
+        return v
+
+    @field_validator("id")
+    @classmethod
+    def _no_double_underscore(cls, v: str) -> str:
+        if "__" in v:
+            raise ValueError("dispute type id must not contain '__' (reserved for generic scenario ids)")
         return v
 
     @property
@@ -189,6 +198,8 @@ class Forum(_Strict):
     def _id(cls, v: str) -> str:
         if not _DOTTED.match(v):
             raise ValueError("forum id must look like 'cc.kind.name'")
+        if "__" in v:
+            raise ValueError("forum id must not contain '__' (reserved for generic scenario ids)")
         return v
 
     @field_validator("document_types")
