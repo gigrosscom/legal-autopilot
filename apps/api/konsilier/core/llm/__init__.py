@@ -10,6 +10,7 @@ def build_provider(settings) -> LLMProvider:
 
         return AnthropicProvider(
             model=settings.llm_model,
+            fast_model=settings.llm_fast_model or None,
             api_key=settings.anthropic_api_key,
             refusal_fallback=settings.llm_refusal_fallback or None,
         )

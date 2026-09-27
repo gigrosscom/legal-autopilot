@@ -66,9 +66,11 @@ export default function Landing() {
           <p className="text-base text-ink/70 sm:text-lg">{t("landing.sub")}</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/start" className="btn-primary px-6 py-3 text-base">{t("landing.startWeb")}</Link>
-            <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noreferrer" className="btn-ghost px-6 py-3 text-base">
-              {t("landing.startTelegram")}
-            </a>
+            {TELEGRAM_BOT && (
+              <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noreferrer" className="btn-ghost px-6 py-3 text-base">
+                {t("landing.startTelegram")}
+              </a>
+            )}
           </div>
           <p className="text-xs text-ink/50">{t("landing.disclaimer")}</p>
           <ul className="space-y-2 border-t border-ink/10 pt-4">

@@ -5,7 +5,7 @@ RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 COPY apps/web/ ./
 # NEXT_PUBLIC_* are inlined at build time
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ARG NEXT_PUBLIC_TELEGRAM_BOT=konsilier_bot
+ARG NEXT_PUBLIC_TELEGRAM_BOT=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL NEXT_PUBLIC_TELEGRAM_BOT=$NEXT_PUBLIC_TELEGRAM_BOT
 RUN npm run build
 

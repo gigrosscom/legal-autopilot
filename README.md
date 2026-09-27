@@ -37,7 +37,7 @@ docker compose up --build
 Админка: http://localhost:3000/admin, токен — `ADMIN_TOKEN` из `.env`.
 
 Чтобы включить реальную модель: `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...`,
-модель — `LLM_MODEL` (по умолчанию `claude-opus-5`).
+модели — `LLM_MODEL` (текст документа, по умолчанию `claude-sonnet-5`) и `LLM_FAST_MODEL` (классификация и извлечение данных, по умолчанию `claude-haiku-4-5`).
 Telegram: создайте бота у @BotFather, укажите `TELEGRAM_BOT_TOKEN` и
 `NEXT_PUBLIC_TELEGRAM_BOT` (username бота без `@`).
 

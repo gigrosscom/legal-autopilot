@@ -1,7 +1,8 @@
 "use client";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const TELEGRAM_BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT ?? "konsilier_bot";
+// Empty until the Telegram bot exists — then the "Open in Telegram" button appears.
+export const TELEGRAM_BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT ?? "";
 
 export type Question = {
   field: string;

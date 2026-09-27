@@ -44,13 +44,21 @@ main() {
         python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/health').status)" 2>&1 | tail -1)
       WEB=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T web \
         node -e "fetch('http://localhost:3000/').then(r=>console.log(r.status)).catch(e=>console.log(e.message))" 2>&1 | tail -1)
-      # Is Claude reachable with this key and model? (models.retrieve costs no tokens)
+      # Real structured-output call to each model the app uses (a few tokens, well under a cent).
       LLM=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
-import os
-if os.environ.get('LLM_PROVIDER') != 'anthropic': print('off'); raise SystemExit
-import anthropic
-try: print('ok:' + anthropic.Anthropic().models.retrieve(os.environ['LLM_MODEL']).id)
-except Exception as e: print('error:' + type(e).__name__)" 2>&1 | tail -1)
+from konsilier.config import get_settings
+from konsilier.core.llm import build_provider
+s = get_settings()
+if s.llm_provider != 'anthropic': print('off'); raise SystemExit
+p = build_provider(s)
+schema = {'type': 'object', 'properties': {'ok': {'type': 'boolean'}}, 'required': ['ok'], 'additionalProperties': False}
+out = []
+for task in ('narrative', 'classify_response'):
+    try:
+        p.complete_json(task=task, system='Answer ok=true.', user='{}', schema=schema); out.append(p.model_for(task) + ':ok')
+    except Exception as e:
+        out.append(p.model_for(task) + ':' + str(e)[:120].replace(' ', '_'))
+print(','.join(out))" 2>&1 | tail -1)
       set -a; . ./.env; set +a
       HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
         printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)

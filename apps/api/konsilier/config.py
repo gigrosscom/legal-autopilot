@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     s3_region: str | None = None  # provider region name, if the S3 endpoint requires one
 
     llm_provider: str = "mock"  # anthropic | mock
-    llm_model: str = "claude-opus-5"
+    # Main model writes the document text; the fast model does classification and extraction.
+    llm_model: str = "claude-sonnet-5"
+    llm_fast_model: str = "claude-haiku-4-5"
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
     # Images cannot be PII-redacted; send them to the LLM only if explicitly enabled.

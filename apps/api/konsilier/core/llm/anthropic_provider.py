@@ -12,15 +12,26 @@ from .base import Attachment, LLMError
 log = logging.getLogger(__name__)
 
 
+# Tasks that write text for the applicant's document get the main model; the rest (classification,
+# field extraction, reading a receipt) are short structured answers and go to the cheaper model.
+MAIN_MODEL_TASKS = frozenset({"narrative"})
+# Server-side refusal fallbacks are offered for these model families only.
+_FALLBACK_MODEL_PREFIXES = ("claude-opus-5", "claude-fable-5")
+
+
 class AnthropicProvider:
     """Claude via the official SDK, JSON guaranteed by structured outputs."""
 
     def __init__(self, model: str, api_key: str | None = None, refusal_fallback: str | None = "default",
-                 max_tokens: int = 16000):
+                 max_tokens: int = 16000, fast_model: str | None = None):
         self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
         self.model = model
+        self.fast_model = fast_model or model
         self.refusal_fallback = refusal_fallback
         self.max_tokens = max_tokens
+
+    def model_for(self, task: str) -> str:
+        return self.model if task in MAIN_MODEL_TASKS else self.fast_model
 
     def complete_json(self, *, task: str, system: str, user: str, schema: dict[str, Any],
                       attachments: tuple[Attachment, ...] = ()) -> dict[str, Any]:
@@ -35,12 +46,13 @@ class AnthropicProvider:
                                 "source": {"type": "base64", "media_type": att.content_type, "data": data}})
         content.append({"type": "text", "text": user})
 
+        model = self.model_for(task)
         extra: dict[str, Any] = {}
-        if self.refusal_fallback:
+        if self.refusal_fallback and model.startswith(_FALLBACK_MODEL_PREFIXES):
             # Server-side fallback: a policy decline is retried on a fallback model in the same call.
             extra = {"extra_headers": {"anthropic-beta": "server-side-fallback-2026-07-01"},
                      "extra_body": {"fallbacks": self.refusal_fallback}}
-        request = dict(model=self.model, max_tokens=self.max_tokens, system=system,
+        request = dict(model=model, max_tokens=self.max_tokens, system=system,
                        messages=[{"role": "user", "content": content}],
                        output_config={"format": {"type": "json_schema", "schema": schema}})
         try:

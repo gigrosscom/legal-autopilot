@@ -67,6 +67,18 @@ def test_anthropic_provider_request_shape():
     assert kw["extra_body"] == {"fallbacks": "default"}
 
 
+def test_anthropic_provider_routes_tasks_to_models():
+    resp = SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text="{}")])
+    fake = FakeMessages(resp)
+    p = AnthropicProvider(model="claude-sonnet-5", fast_model="claude-haiku-4-5", api_key="k")
+    p.client = SimpleNamespace(messages=fake)
+    p.complete_json(task="narrative", system="s", user="{}", schema={})
+    assert fake.kwargs["model"] == "claude-sonnet-5"
+    p.complete_json(task="classify_response", system="s", user="{}", schema={})
+    assert fake.kwargs["model"] == "claude-haiku-4-5"
+    assert "extra_body" not in fake.kwargs  # refusal fallbacks only for Opus 5 / Fable 5 families
+
+
 def test_anthropic_provider_refusal_raises():
     p, _ = provider_with(SimpleNamespace(stop_reason="refusal", content=[]))
     with pytest.raises(LLMError, match="refused"):
