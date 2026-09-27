@@ -8,6 +8,7 @@ const en: Dict = {
     skip: "Skip to content", main: "Main menu",
   },
   footer: {
+    contacts: "Contacts",
     lawyerCabinet: "Lawyer's cabinet",
     tagline: "Describe your problem — Konsilier prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
     product: "Product", lawyers: "For lawyers", designSystem: "Design system",

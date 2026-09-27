@@ -8,6 +8,7 @@ const tr: Dict = {
     skip: "İçeriğe geç", main: "Ana menü",
   },
   footer: {
+    contacts: "İletişim",
     lawyerCabinet: "Avukat paneli",
     tagline: "Sorununuzu anlatın — Konsilier ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
     product: "Ürün", lawyers: "Avukatlara", designSystem: "Tasarım sistemi",
