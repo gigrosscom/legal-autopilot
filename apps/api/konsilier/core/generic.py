@@ -131,6 +131,9 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
                 intake.append(fld)
                 seen.add(fld.name)
     intake.append(IntakeField(name="evidence", type="evidence", evidence_kinds=("other",), optional=True))
+    # a copy of the ID is attached to the document; personal data can also be typed in instead
+    intake.append(IntakeField(name="identity_document", type="evidence", evidence_kinds=("id_document",),
+                              optional=True))
     names = {f.name for f in intake}
 
     parties = {

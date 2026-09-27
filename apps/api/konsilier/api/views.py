@@ -91,7 +91,10 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
             view["facts"].append({"field": f.name, "label": ai.field_label(sc, pack, lang, f.name),
                                   "value": display(f, case.facts[f.name])})
         if case.pending_field:
-            view["question"] = asdict(engine.question_for(sc, pack, lang, case.pending_field))
+            q = asdict(engine.question_for(sc, pack, lang, case.pending_field))
+            kinds = {k["kind"] for k in q["evidence_kinds"]}
+            q["uploaded"] = sum(1 for e in case.evidence if e.kind in kinds) if kinds else 0
+            view["question"] = q
         deadlines = {d.action_id: d for d in session.scalars(select(Deadline).where(Deadline.case_id == case.id))}
         for a in case.actions:
             spec = sc.action(a.action_id)

@@ -10,6 +10,7 @@ export type Question = {
   type: string;
   optional: boolean;
   evidence_kinds: { kind: string; label: string }[];
+  uploaded?: number;
 };
 
 export type CaseAction = {

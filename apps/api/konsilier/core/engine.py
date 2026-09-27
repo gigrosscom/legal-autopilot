@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -51,6 +52,8 @@ from .state_machine import CaseStatus, assert_transition
 log = logging.getLogger(__name__)
 
 S = CaseStatus
+IDENTITY_KIND = "id_document"  # a copy of the applicant's ID: attached to documents, never read by the LLM
+_IIN = re.compile(r"(?<!\d)\d{12}(?!\d)")
 OUTCOME_RESULTS = ("won", "partial", "lost", "settled", "abandoned")
 
 
@@ -69,6 +72,7 @@ class Question:
     type: str
     optional: bool
     evidence_kinds: list[dict[str, str]] = field(default_factory=list)
+    uploaded: int = 0  # files already attached to this evidence question
 
 
 @dataclass
@@ -103,7 +107,7 @@ class EngineConfig:
     qualify_min_confidence: float = 0.6
     approval_required_first_n: int = 50
     self_service: bool = True
-    self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement")
+    self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement", "motion")
     extract_images_with_llm: bool = False
 
 
@@ -341,7 +345,14 @@ class CaseEngine:
         return Reply(message=message)
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
-        return [f.name for f in sc.intake if f.name not in case.facts and f.name not in (case.skipped_fields or [])]
+        """Fields still to ask, in interview order: what happened → evidence → identity document → personal data.
+        The order within each group is the scenario's."""
+        def stage(f: Any) -> int:
+            if f.type == "evidence":
+                return 2 if IDENTITY_KIND in f.evidence_kinds else 1
+            return 3 if f.pii else 0
+        missing = [f for f in sc.intake if f.name not in case.facts and f.name not in (case.skipped_fields or [])]
+        return [f.name for f in sorted(missing, key=stage)]
 
     def _apply_values(self, case: Case, sc: Scenario, pack: JurisdictionPack, values: dict[str, Any],
                       llm: RedactingLLM | None, strict: bool, overwrite: bool = False) -> dict[str, str]:
@@ -431,6 +442,10 @@ class CaseEngine:
         pending = case.pending_field
         if pending:
             f = sc.field(pending)
+            if f.type == "evidence" and (_is_skip(text, pack, lang) or _is_done(text, pack, lang)):
+                if any(e.kind in f.evidence_kinds for e in case.evidence):
+                    case.facts = {**case.facts, f.name: "provided"}  # files uploaded: this question is done
+                    return self._next_step(session, case, sc, pack)
             if _is_skip(text, pack, lang):
                 if not f.optional:
                     q = self.question_for(sc, pack, lang, pending)
@@ -466,6 +481,15 @@ class CaseEngine:
         ev.text = extract_text(content_type, data)
         session.add(ev)
         case.evidence.append(ev)
+        if kind == IDENTITY_KIND:
+            # an identity document is personal data: never sent to the LLM (not even with image extraction on)
+            if case.scenario_id and case.status == S.INTAKE.value:
+                sc = self.scenario_of(case)
+                m = _IIN.search(ev.text or "")
+                if m and any(f.name == "applicant_iin" for f in sc.intake):
+                    ev.extracted_facts = {"applicant_iin": m.group(0)}
+            self.audit(session, case, "user", "evidence_added", kind=kind)
+            return ev
         if case.scenario_id and case.status == S.INTAKE.value:
             sc, pack = self.scenario_of(case), self.pack_of(case)
             llm = self.llm_for(case)
@@ -496,13 +520,15 @@ class CaseEngine:
         evidence.confirmed = True
         self.audit(session, case, "user", "evidence_confirmed", evidence_id=str(evidence.id),
                    facts=list(chosen), errors=errors)
-        # an uploaded file satisfies the evidence question it belongs to
-        for f in sc.intake:
-            if f.type == "evidence" and evidence.kind in f.evidence_kinds and f.name not in case.facts:
-                case.facts = {**case.facts, f.name: "provided"}
         if case.status != S.INTAKE.value:
             return Reply(message="")
+        # the evidence question stays open: the user may add more files, then says "done"
         reply = self._next_step(session, case, sc, pack)
+        q = reply.question
+        kinds = {k["kind"] for k in q.evidence_kinds} if q and q.type == "evidence" else set()
+        if evidence.kind in kinds:
+            q.uploaded = sum(1 for e in case.evidence if e.kind in kinds)
+            reply.message = f"{pack.t(case.language, 'interview.evidence_added', n=str(q.uploaded))}\n{reply.message}"
         if errors:
             reply.error = ",".join(f"{k}:{v}" for k, v in errors.items())
         return reply
@@ -573,11 +599,17 @@ class CaseEngine:
         doc = cov.document_for(forum) if forum else None
         return doc.id if doc else None
 
+    def _to_court(self, case: Case, spec: ActionSpec) -> bool:
+        cov = self.pack_of(case).coverage
+        forum = cov.forums.get(spec.addressee.forum) if cov and spec.addressee and spec.addressee.forum else None
+        return forum is not None and forum.type == "court"
+
     def approval_required(self, session: Session, case: Case, spec: ActionSpec | None = None) -> bool:
         if self.config.self_service and not case.needs_review and case.hold_reason is None:
             if not is_generic(case.scenario_id):
                 return False  # signed / draft level-1 scenarios contain pre-trial documents only
-            if spec is not None and self.document_type(case, spec) in self.config.self_service_documents:
+            if spec is not None and self.document_type(case, spec) in self.config.self_service_documents \
+                    and not self._to_court(case, spec):
                 return False
             return True  # court documents (lawsuit, appeal) are filed only after a lawyer's check
         if case.needs_review or case.coverage_level == qualifier.LEVEL_UNIVERSAL or is_generic(case.scenario_id):
@@ -669,7 +701,9 @@ class CaseEngine:
             # the narrative needs no personal data: names/ids are printed in the header by the template
             facts = {fl.name: display(fl, case.facts[fl.name]) for fl in sc.intake
                      if fl.name in case.facts and fl.type != "evidence" and not fl.pii}
-            case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title)
+            attached = sorted({pack.t(lang, f"evidence.{e.kind}", default=e.kind) for e in case.evidence
+                               if e.kind not in ("response", IDENTITY_KIND)})
+            case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached)
             self._save_vault(case, llm)
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
             case.formal_demands = ai.write_demands(llm, pack, lang, str(case.facts["desired_outcome"]), title)
@@ -861,6 +895,11 @@ def _is_skip(text: str, pack: JurisdictionPack, lang: str) -> bool:
     words = pack.i18n.get(lang, {}).get("interview", {}).get("skip_words", []) or []
     t = text.strip().lower().strip(".!")
     return t in {w.lower() for w in words} or t in {"-", "—", "/skip"}
+
+
+def _is_done(text: str, pack: JurisdictionPack, lang: str) -> bool:
+    words = pack.i18n.get(lang, {}).get("interview", {}).get("done_words", []) or []
+    return text.strip().lower().strip(".!") in {w.lower() for w in words}
 
 
 def _safe_name(name: str) -> str:

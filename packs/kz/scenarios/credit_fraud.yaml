@@ -37,6 +37,7 @@ intake:
   - applicant_phone: {type: phone, pii: phone}
   - lender_email: {type: email, optional: true}
   - evidence: [credit_report, loan_notice, police_report, correspondence]
+  - identity_document: [id_document]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin}
   respondent: {kind: business, name_field: lender_name, id_field: lender_bin, email_field: lender_email}

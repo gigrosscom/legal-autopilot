@@ -29,7 +29,7 @@ const en: LawyerText = {
       income: "extra income per month, no commission on your fee",
       hoursUnit: "h",
       hours: "saved on initial review (≈1.5 h per case)",
-      note: "An illustrative estimate based on your inputs, not a promise of income.",
+      note: "An illustrative estimate based on your inputs.",
     },
     dossier: {
       chip: "New case · Consumer protection",

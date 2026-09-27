@@ -74,7 +74,8 @@ def run_intake(api: Api, case_id: str, answers: dict[str, str], first_question: 
     body = api.get(f"/v1/cases/{case_id}").json()
     q = body["question"]
     guard = 0
-    while q is not None and q["type"] != "evidence":
+    # evidence questions are answered only when the test says so ("пропустить" / "готово"), else we stop there
+    while q is not None and (q["type"] != "evidence" or q["field"] in answers):
         guard += 1
         assert guard < 30
         assert q["field"] in answers, f"unexpected question {q['field']}"
@@ -111,27 +112,34 @@ def test_consumer_refund_full_path(ctx):
     out = api.answer(cid, "пропустить")
     assert out["reply"]["error"] == "required"
     # validation error keeps the same question
+    # order: what happened → evidence → identity document → personal data
     body = run_intake(api, cid, {
         "seller_name": "ТОО «Техномир»",
         "seller_bin": "123456789012",
         "goods_description": "Смартфон Nova 9",
-        "applicant_name": "Иванов Иван Иванович",
-        "applicant_phone": "+7 701 123 45 67",
-        "applicant_iin": "900101300123",
         "seller_email": "пропустить",
     })
-    assert body["question"]["type"] == "evidence"
+    assert body["question"]["field"] == "evidence"
     assert body["status"] == "intake"
 
-    # evidence: extractor proposes facts, user confirms
+    # evidence: extractor proposes facts, user confirms; the question stays open for more files
     receipt = "ТОО Техномир\nКассовый чек от 12.08.2026\nСмартфон Nova 9\nИТОГО: 150000"
     up = api.post(f"/v1/cases/{cid}/evidence", expect=201, data={"kind": "receipt"},
                   files={"file": ("receipt.txt", receipt.encode(), "text/plain")})
     assert up["evidence"]["extracted_facts"] == {"purchase_date": "2026-08-12", "amount": "150000.00"}
     conf = api.post(f"/v1/cases/{cid}/evidence/{up['evidence']['id']}/confirm", json={})
-    assert conf["reply"]["intake_complete"] is True
-    assert conf["case"]["status"] == "qualified"
-    assert conf["case"]["proposal"]["type"] == "prepare_action"
+    assert conf["case"]["question"]["field"] == "evidence" and conf["case"]["question"]["uploaded"] == 1
+    assert conf["reply"]["message"].startswith("Файл добавлен (всего: 1)")
+    out = api.answer(cid, "готово")
+    assert out["case"]["question"]["field"] == "identity_document"
+    body = run_intake(api, cid, {
+        "identity_document": "пропустить",
+        "applicant_name": "Иванов Иван Иванович",
+        "applicant_phone": "+7 701 123 45 67",
+        "applicant_iin": "900101300123",
+    })
+    assert body["status"] == "qualified"
+    assert body["proposal"]["type"] == "prepare_action"
 
     # document #1 — first N cases need lawyer approval
     prep = api.post(f"/v1/cases/{cid}/actions/next")
@@ -237,7 +245,9 @@ def test_credit_fraud_via_telegram_full_path(ctx):
     assert case["scenario"]["id"] == "kz.money.credit_fraud"
     assert case["jurisdiction"] == "KZ"
 
-    run_intake(api, cid, {
+    body = run_intake(api, cid, {
+        "evidence": "пропустить",  # evidence is optional: user skips
+        "identity_document": "пропустить",
         "lender_name": "ТОО МФО «Быстрые деньги»",
         "lender_bin": "пропустить",
         "contract_number": "ZF-2026/001",
@@ -247,9 +257,7 @@ def test_credit_fraud_via_telegram_full_path(ctx):
         "applicant_phone": "+7 777 000 11 22",
         "lender_email": "support@fastmoney.example",
     })
-    # evidence is optional: user skips
-    out = api.answer(cid, "пропустить")
-    assert out["reply"]["intake_complete"] is True
+    assert body["status"] == "qualified"
 
     prep = api.post(f"/v1/cases/{cid}/actions/next")
     a1 = prep["case"]["actions"][0]
@@ -332,8 +340,8 @@ def test_approval_not_required_after_first_n(ctx):
         "country": "KZ"})["case"]["id"]
     run_intake(api, cid, {"seller_name": "ИП Мебель", "seller_bin": "пропустить", "goods_description": "Шкаф",
                           "applicant_name": "Петров Пётр", "applicant_phone": "+7 700 000 00 00",
-                          "applicant_iin": "пропустить", "seller_email": "пропустить"})
-    api.answer(cid, "пропустить")
+                          "applicant_iin": "пропустить", "seller_email": "пропустить",
+                          "evidence": "пропустить", "identity_document": "пропустить"})
     a = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
     assert a["approval_status"] == "not_required" and a["status"] == "ready"
     api.get(f"/v1/cases/{cid}/actions/{a['id']}/document?format=docx")

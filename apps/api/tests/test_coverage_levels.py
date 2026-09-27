@@ -61,11 +61,10 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
         "amount": "450000",
     }
     q = case["question"]
-    while q is not None and q["type"] != "evidence":
-        out = api.answer(cid, answers[q["field"]])
+    while q is not None:  # evidence and the identity document are skipped
+        out = api.answer(cid, "пропустить" if q["type"] == "evidence" else answers[q["field"]])
         assert out["reply"]["error"] is None, out["reply"]
         q = out["case"]["question"]
-    api.answer(cid, "пропустить")  # evidence
 
     out = api.post(f"/v1/cases/{cid}/actions/next")
     action = out["case"]["actions"][0]
@@ -212,11 +211,10 @@ _ANSWERS = {
 
 def _fill_and_prepare(api, cid, case):
     q = case["question"]
-    while q is not None and q["type"] != "evidence":
-        out = api.answer(cid, _ANSWERS[q["field"]])
+    while q is not None:  # evidence and the identity document are skipped
+        out = api.answer(cid, "пропустить" if q["type"] == "evidence" else _ANSWERS[q["field"]])
         assert out["reply"]["error"] is None, out["reply"]
         q = out["case"]["question"]
-    api.answer(cid, "пропустить")  # evidence
     return api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
 
 

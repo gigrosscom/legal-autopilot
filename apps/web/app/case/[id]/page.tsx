@@ -296,7 +296,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                     <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only"
                       onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
                   </label>
-                  {q.optional && (
+                  {q.type === "evidence" && (q.uploaded ?? 0) > 0 ? (
+                    <Button disabled={busy} icon="check" onClick={() => sendAnswer("готово")}>{t("case.doneUploading")}</Button>
+                  ) : q.optional && (
                     <Button variant="secondary" disabled={busy} onClick={() => sendAnswer("пропустить")}>{t("case.skip")}</Button>
                   )}
                   <span className="text-xs text-muted">{t("case.uploadHint")}</span>

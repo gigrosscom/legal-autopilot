@@ -30,7 +30,7 @@ def test_dummy_scenario_full_lifecycle(ctx):
     assert case["scenario"]["draft"] is False  # reviewed_at is set → no DRAFT disclaimer
     assert case["currency"] == "TST"
     assert created["reply"]["question"] == {"field": "counterparty", "text": "Who owes you?", "type": "text",
-                                            "optional": False, "evidence_kinds": []}
+                                            "optional": False, "evidence_kinds": [], "uploaded": 0}
     api.answer(cid, "Widget Corp")
     out = api.answer(cid, "1200")
     assert out["reply"]["intake_complete"] is True  # story was pre-filled from the first message
