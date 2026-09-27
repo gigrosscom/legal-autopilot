@@ -5,8 +5,8 @@ import { LangProvider } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Konsilier.AI — юридическая проблема до результата",
-  description: "Готовые документы, подача, контроль сроков и эскалация до результата.",
+  title: "Konsilier.AI — ваше дело от первого документа до результата",
+  description: "Готовые претензии и жалобы по законам Казахстана, подача, контроль сроков и проверенные юристы, которые доведут дело до результата.",
   // Browser auto-translation rewrites text nodes behind React's back and crashes live pages (chat, forms).
   other: { google: "notranslate" },
 };

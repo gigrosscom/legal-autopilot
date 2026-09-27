@@ -63,7 +63,7 @@ export default function Landing() {
       <section className="grid gap-8 pt-6 md:grid-cols-[1.4fr_1fr] md:items-center">
         <div className="space-y-5">
           <h1 className="text-3xl font-bold leading-tight tracking-tight md:text-4xl">{t("landing.promise")}</h1>
-          <p className="text-lg text-ink/70">{t("landing.sub")}</p>
+          <p className="text-base text-ink/70 sm:text-lg">{t("landing.sub")}</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/start" className="btn-primary px-6 py-3 text-base">{t("landing.startWeb")}</Link>
             <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noreferrer" className="btn-ghost px-6 py-3 text-base">
@@ -71,6 +71,14 @@ export default function Landing() {
             </a>
           </div>
           <p className="text-xs text-ink/50">{t("landing.disclaimer")}</p>
+          <ul className="space-y-2 border-t border-ink/10 pt-4">
+            {[["📄", "usp1"], ["⏰", "usp2"], ["👩‍⚖️", "usp3"]].map(([icon, k]) => (
+              <li key={k} className="flex gap-3 font-medium">
+                <span aria-hidden>{icon}</span>
+                <span>{t(`landing.${k}`)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="card space-y-3">
           <h2 className="font-semibold">{t("landing.howTitle")}</h2>

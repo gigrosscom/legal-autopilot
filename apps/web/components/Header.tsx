@@ -13,7 +13,7 @@ export default function Header() {
         <Link href="/" className="py-2 text-lg font-bold tracking-tight">
           Konsilier<span className="text-brand">.AI</span>
         </Link>
-        <nav className="order-last flex w-full flex-wrap items-center gap-x-4 gap-y-0 whitespace-nowrap text-sm min-[360px]:justify-between sm:order-none sm:w-auto sm:justify-start sm:gap-4">
+        <nav className="order-last flex w-full flex-wrap items-center gap-x-3 gap-y-0 whitespace-nowrap text-sm min-[360px]:justify-between sm:order-none sm:w-auto sm:justify-start sm:gap-4">
           <Link href="/start" className="py-2.5 hover:text-brand">{t("nav.start")}</Link>
           <Link href="/lawyers" className="py-2.5 hover:text-brand">{t("nav.lawyers")}</Link>
           <Link href="/for-lawyers" className="py-2.5 font-semibold text-brand hover:underline">{t("nav.forLawyers")}</Link>
