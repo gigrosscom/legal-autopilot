@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { publicApi } from "@/lib/api";
+import { publicApi, errorText } from "@/lib/api";
 
 // NOTE: commercial terms below are the proposed model (see docs/BUSINESS_MODEL.md) — edit in one place here.
 const PRO_PRICE = "15 000–25 000 ₸/мес";
@@ -60,11 +60,11 @@ function Calculator() {
       <h3 className="text-lg font-semibold">Посчитайте для себя</h3>
       <label className="block text-sm">
         Новых дел в месяц через платформу: <b>{cases}</b>
-        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="w-full accent-[#1f6f5c]" />
+        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="h-8 w-full accent-[#1f6f5c]" />
       </label>
       <label className="block text-sm">
         Средний гонорар за дело: <b>{check.toLocaleString("ru-RU")} ₸</b>
-        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="w-full accent-[#1f6f5c]" />
+        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-8 w-full accent-[#1f6f5c]" />
       </label>
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="rounded-xl bg-brand/10 p-3">
@@ -171,7 +171,7 @@ function ApplyForm() {
       });
       setDone(out);
     } catch (err) {
-      setError(String(err));
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
@@ -233,18 +233,18 @@ function ApplyForm() {
             type="button"
             key={k}
             onClick={() => setSpec(spec.includes(k) ? spec.filter((s) => s !== k) : [...spec, k])}
-            className={`chip px-3 py-1.5 ${spec.includes(k) ? "bg-brand text-white" : ""}`}
+            className={`chip min-h-10 px-3 py-2 text-sm ${spec.includes(k) ? "bg-brand text-white" : ""}`}
           >
             {label}
           </button>
         ))}
       </div>
       <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" className="mt-1" checked={wantsExpert} onChange={(e) => setWantsExpert(e.target.checked)} />
+        <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand" checked={wantsExpert} onChange={(e) => setWantsExpert(e.target.checked)} />
         <span>Хочу быть экспертом сценариев — проверять нормы, сроки и шаблоны по своей специализации (Pro 12 месяцев)</span>
       </label>
       <textarea className="input" rows={2} placeholder="Что для вас важно в платформе? (необязательно)" value={form.message} onChange={set("message")} />
-      <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? "…" : "Подать заявку"}</button>
+      <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? "Отправляем…" : "Подать заявку"}</button>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <p className="text-xs text-ink/50">Проверяем статус по реестрам. Данные используем только для проверки и связи с вами.</p>
     </form>

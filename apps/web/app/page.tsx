@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { publicApi, TELEGRAM_BOT } from "@/lib/api";
+import { publicApi, TELEGRAM_BOT, errorText } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import Trust from "@/components/Trust";
 
@@ -30,7 +30,7 @@ const COUNTRIES: { code: string; ru: string; kk: string }[] = [
 export default function Landing() {
   const t = useT();
   const { lang } = useLang();
-  const [packs, setPacks] = useState<Pack[]>([]);
+  const [packs, setPacks] = useState<Pack[] | null>(null);
   const [country, setCountry] = useState("KZ");
   const [contact, setContact] = useState("");
   const [problem, setProblem] = useState("");
@@ -41,8 +41,8 @@ export default function Landing() {
     publicApi<Pack[]>(`/v1/packs?lang=${lang}`).then(setPacks).catch(() => setPacks([]));
   }, [lang]);
 
-  const live = new Set(packs.map((p) => p.country));
-  const pack = packs.find((p) => p.country === country);
+  const live = new Set((packs ?? []).map((p) => p.country));
+  const pack = packs?.find((p) => p.country === country);
 
   async function joinWaitlist(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +54,7 @@ export default function Landing() {
       });
       setSent(true);
     } catch (err) {
-      setError(String(err));
+      setError(errorText(err));
     }
   }
 
@@ -88,9 +88,9 @@ export default function Landing() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-bold">{t("landing.scenariosTitle")}</h2>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex w-full flex-wrap items-center gap-2 text-sm sm:w-auto">
             {t("landing.countryTitle")}:
-            <select className="input w-auto" value={country} onChange={(e) => { setCountry(e.target.value); setSent(false); }}>
+            <select className="input sm:w-auto" value={country} onChange={(e) => { setCountry(e.target.value); setSent(false); }}>
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c[lang]} — {live.has(c.code) ? t("landing.countryLive") : t("landing.countrySoon")}
@@ -100,7 +100,9 @@ export default function Landing() {
           </label>
         </div>
 
-        {pack ? (
+        {packs === null ? (
+          <p className="text-ink/50">{t("common.loading")}</p>
+        ) : pack ? (
           <div className="grid gap-4 md:grid-cols-2">
             {pack.scenarios.map((s) => (
               <div key={s.id} className="card flex flex-col gap-3">
@@ -124,7 +126,7 @@ export default function Landing() {
                 <input className="input" required minLength={3} placeholder={t("landing.waitlistContact")} value={contact} onChange={(e) => setContact(e.target.value)} />
                 <textarea className="input" rows={3} placeholder={t("landing.waitlistProblem")} value={problem} onChange={(e) => setProblem(e.target.value)} />
                 <button className="btn-primary" type="submit">{t("landing.waitlistSend")}</button>
-                {error && <p className="text-sm text-red-600">{error}</p>}
+                {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
               </>
             )}
           </form>

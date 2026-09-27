@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { publicApi } from "@/lib/api";
+import { publicApi, errorText } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
 type Score = {
@@ -45,7 +45,7 @@ export default function LawyersPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    publicApi<Directory>(`/v1/lawyers?country=KZ&lang=${lang}`).then(setData).catch((e) => setError(String(e)));
+    publicApi<Directory>(`/v1/lawyers?country=KZ&lang=${lang}`).then(setData).catch((e) => setError(errorText(e)));
   }, [lang]);
 
   return (
@@ -58,7 +58,8 @@ export default function LawyersPage() {
       {data?.demo && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">⚠️ {data.disclaimer}</div>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {!data && !error && <p className="text-ink/50">{t("common.loading")}</p>}
+      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">

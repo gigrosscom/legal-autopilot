@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { adminApi, downloadFile, type CaseView } from "@/lib/api";
+import { adminApi, downloadFile, type CaseView, errorText } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 type Row = {
@@ -46,7 +46,7 @@ export default function AdminPage() {
     try {
       setRows(await adminApi<Row[]>(`/v1/admin/cases${qs}`, token));
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     }
   }, [token, filter]);
 

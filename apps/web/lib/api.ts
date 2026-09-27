@@ -105,10 +105,46 @@ export class ApiError extends Error {
   }
 }
 
+/** Thrown when there is no connection or the server did not answer in time. */
+export class NetworkError extends Error {}
+
+/** A message a person can understand, for any error from the API helpers. */
+export function errorText(e: unknown): string {
+  if (e instanceof NetworkError) return e.message;
+  if (e instanceof ApiError) {
+    if (e.status >= 500) return "Сервер временно не отвечает. Попробуйте ещё раз через минуту — введённый текст сохранён.";
+    if (e.status === 401 || e.status === 403) return "Нет доступа. Обновите страницу и попробуйте снова.";
+    if (e.status === 404) return "Не найдено. Проверьте ссылку или откройте раздел «Мои дела».";
+    if (e.status === 429) return "Слишком много запросов. Подождите минуту и попробуйте снова.";
+    const msg = e.message;
+    if (msg && !msg.startsWith("[") && !msg.startsWith("{") && !msg.startsWith("<") && msg !== "[object Object]") return msg;
+    return "Проверьте введённые данные и попробуйте ещё раз.";
+  }
+  return "Что-то пошло не так. Обновите страницу и попробуйте ещё раз.";
+}
+
+// Slow phones and mobile networks: never hang forever. Answers that involve the AI can take up to a minute.
+async function request(url: string, init: RequestInit = {}): Promise<Response> {
+  const timeoutMs = (init.method ?? "GET") === "GET" ? 30_000 : 120_000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch {
+    throw new NetworkError(
+      typeof navigator !== "undefined" && !navigator.onLine
+        ? "Нет интернета. Проверьте связь и попробуйте ещё раз — введённый текст сохранён."
+        : "Сервер не ответил вовремя — возможно, медленная связь. Попробуйте ещё раз.",
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function ensureToken(): Promise<string> {
   const saved = typeof window !== "undefined" ? localStorage.getItem("konsilier.token") : null;
   if (saved) return saved;
-  const r = await fetch(`${API_URL}/v1/users`, {
+  const r = await request(`${API_URL}/v1/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru" }),
@@ -135,13 +171,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
-  return handle<T>(await fetch(`${API_URL}${path}`, { ...init, headers }));
+  return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
 }
 
 export async function downloadFile(path: string, filename: string, extraHeaders?: Record<string, string>) {
   const headers = new Headers(extraHeaders);
   if (!extraHeaders) headers.set("Authorization", `Bearer ${await ensureToken()}`);
-  const r = await fetch(`${API_URL}${path}`, { headers });
+  const r = await request(`${API_URL}${path}`, { headers });
   if (!r.ok) throw new ApiError(r.status, await r.text());
   const url = URL.createObjectURL(await r.blob());
   const a = document.createElement("a");
@@ -154,12 +190,12 @@ export async function downloadFile(path: string, filename: string, extraHeaders?
 export async function publicApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body) headers.set("Content-Type", "application/json");
-  return handle<T>(await fetch(`${API_URL}${path}`, { ...init, headers }));
+  return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
 }
 
 export async function adminApi<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("X-Admin-Token", token);
   if (init.body) headers.set("Content-Type", "application/json");
-  return handle<T>(await fetch(`${API_URL}${path}`, { ...init, headers }));
+  return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, downloadFile, type CaseAction, type CaseView, type Proposal, type Reply } from "@/lib/api";
+import { api, downloadFile, type CaseAction, type CaseView, type Proposal, type Reply, errorText } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import RoadmapView from "@/components/Roadmap";
 
@@ -34,25 +34,27 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         else if (view.question) initial.push({ from: "bot", text: view.question.text });
         setLog(initial);
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => setError(errorText(e)));
   }, [id]);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), [log]);
+  useEffect(() => endRef.current?.scrollIntoView({ block: "nearest" }), [log, busy]);
 
-  const run = useCallback(async (fn: () => Promise<void>) => {
+  const run = useCallback(async (fn: () => Promise<void>): Promise<boolean> => {
     setBusy(true);
     setError(null);
     try {
       await fn();
+      return true;
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e));
+      setError(errorText(e));
+      return false;
     } finally {
       setBusy(false);
     }
   }, []);
 
   async function sendAnswer(text: string) {
-    await run(async () => {
+    const ok = await run(async () => {
       push({ from: "user", text });
       setAnswer("");
       const out = await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/messages`, {
@@ -62,6 +64,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       setCase(out.case);
       push({ from: "bot", text: out.reply.message });
     });
+    if (!ok) {
+      // Not delivered (bad connection): take the message back into the input so nothing is lost.
+      setLog((l) => (l.at(-1)?.from === "user" && l.at(-1)?.text === text ? l.slice(0, -1) : l));
+      setAnswer(text);
+    }
   }
 
   async function upload(file: File) {
@@ -104,7 +111,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   }
 
   if (error && !c) return <p className="text-red-600">{error}</p>;
-  if (!c) return <p className="text-ink/50">…</p>;
+  if (!c) return <p className="text-ink/50">{t("common.loading")}</p>;
 
   const last = c.actions.at(-1);
   const proposal = c.proposal;
@@ -136,6 +143,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                   </div>
                 </div>
               ))}
+              {busy && (
+                <div className="flex">
+                  <div className="rounded-2xl bg-ink/5 px-4 py-2 text-sm text-ink/60">⏳ {t("case.thinking")}</div>
+                </div>
+              )}
               <div ref={endRef} />
             </div>
 
@@ -180,7 +192,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               <div className="space-y-2">
                 {q.type !== "evidence" && (
                   <form
-                    className="flex gap-2"
+                    className="flex flex-col gap-2 sm:flex-row"
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (answer.trim()) sendAnswer(answer.trim());
@@ -189,12 +201,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                     <input
                       className="input"
                       autoFocus
-                      type={q.type === "date" ? "text" : "text"}
-                      placeholder={q.type === "date" ? "ДД.ММ.ГГГГ" : ""}
+                      type="text"
+                      inputMode={q.type === "date" ? "numeric" : undefined}
+                      placeholder={q.type === "date" ? "ДД.ММ.ГГГГ" : t("case.answerPlaceholder")}
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                     />
-                    <button className="btn-primary" disabled={busy}>{t("case.send")}</button>
+                    <button className="btn-primary shrink-0" disabled={busy}>{t("case.send")}</button>
                   </form>
                 )}
                 <div className="flex flex-wrap items-center gap-2">
@@ -335,7 +348,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               <div className="text-ink/50">{c.outcome.days_to_resolution} {t("case.days")}</div>
             </div>
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {busy && <p className="text-sm text-ink/60">⏳ {t("case.working")}</p>}
         </div>
       </div>
 
