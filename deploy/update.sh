@@ -38,7 +38,10 @@ if [ "$LOCAL" != "$REMOTE" ] || [ "$FORCE" = "--force" ]; then
       python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/health').status)" 2>&1 | tail -1)
     WEB=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T web \
       node -e "fetch('http://localhost:3000/').then(r=>console.log(r.status)).catch(e=>console.log(e.message))" 2>&1 | tail -1)
-    log "deployed ${REMOTE:0:7} api=$API web=$WEB"
+    set -a; . ./.env; set +a
+    HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
+      printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)
+    log "deployed ${REMOTE:0:7} api=$API web=$WEB $HTTPS"
     log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
   else
     log "deploy of ${REMOTE:0:7} FAILED"
