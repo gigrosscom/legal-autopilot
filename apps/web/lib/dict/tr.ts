@@ -487,9 +487,10 @@ const tr: Dict = {
     },
   },
   gov: {
+    ecpOnly: "E-imza gerekir",
     title: "egov.kz belgeleri",
     lead: "Bu belgeler dosyanızı güçlendirebilir. Onları egov.kz'den kendiniz alın — e-imzanızla veya eGov Mobile ile — ve buraya yükleyin: delillere eklenir.",
-    needsEcp: "E-imza veya eGov Mobile gerekir",
+    needsEcp: "egov.kz girişi: e-imza veya SMS kodu",
     open: "Girişsiz",
     get: "egov.kz'den al",
     upload: "Belgeyi yükle",

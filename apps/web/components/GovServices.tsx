@@ -5,7 +5,7 @@ import { Badge, Icon } from "@/components/ui";
 import { api, errorText } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
-type GovService = { id: string; title: string; url: string; provider: string; auth: "ecp_or_egov_mobile" | "none"; note: string | null };
+type GovService = { id: string; title: string; url: string; provider: string; auth: "ecp" | "ecp_or_egov_mobile" | "none"; note: string | null };
 
 /** Certificates the person gets themselves on egov.kz (with their own ЭЦП), then uploads here as evidence. */
 export function GovServices({ caseId }: { caseId: string }) {
@@ -43,9 +43,8 @@ export function GovServices({ caseId }: { caseId: string }) {
           <li key={g.id} className="space-y-2 rounded-xl border border-line p-3 text-sm">
             <div className="flex flex-wrap items-start gap-2">
               <span className="me-auto font-medium">{g.title}</span>
-              {g.auth === "ecp_or_egov_mobile"
-                ? <Badge icon="key">{t("gov.needsEcp")}</Badge>
-                : <Badge tone="brand">{t("gov.open")}</Badge>}
+              {g.auth === "none" ? <Badge tone="brand">{t("gov.open")}</Badge>
+                : <Badge icon="key">{t(g.auth === "ecp" ? "gov.ecpOnly" : "gov.needsEcp")}</Badge>}
             </div>
             <p className="text-xs text-muted">{g.provider}{g.note ? ` · ${g.note}` : ""}</p>
             <div className="flex flex-wrap items-center gap-2">

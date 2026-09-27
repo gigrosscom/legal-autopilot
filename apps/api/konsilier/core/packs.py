@@ -126,7 +126,7 @@ class GovService(BaseModel):
     title: dict[str, str]
     url: str
     provider: str
-    auth: Literal["ecp_or_egov_mobile", "none"]
+    auth: Literal["ecp", "ecp_or_egov_mobile", "none"]
     evidence_for: tuple[str, ...] = ()  # taxonomy branches where it helps; empty = any
     note: dict[str, str] = Field(default_factory=dict)
     verified_on: date | None = None  # when the link was last confirmed

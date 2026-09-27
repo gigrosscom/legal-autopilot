@@ -487,9 +487,10 @@ const en: Dict = {
     },
   },
   gov: {
+    ecpOnly: "Needs ЭЦП",
     title: "Certificates from egov.kz",
     lead: "These certificates can strengthen your case. Get them yourself on egov.kz — with your ЭЦП or eGov Mobile — and upload them here: they are added to the evidence.",
-    needsEcp: "Needs ЭЦП or eGov Mobile",
+    needsEcp: "egov.kz sign-in: ЭЦП or SMS code",
     open: "No sign-in",
     get: "Get on egov.kz",
     upload: "Upload certificate",
