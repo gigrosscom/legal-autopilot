@@ -55,6 +55,8 @@ class User(TimestampMixin, Base):
     display_name: Mapped[str | None] = mapped_column(String(200))
     email: Mapped[str | None] = mapped_column(String(200))
     phone: Mapped[str | None] = mapped_column(String(32))
+    # case status reports and next-step reminders by e-mail (only to a verified address)
+    notify_email: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     cases: Mapped[list["Case"]] = relationship(back_populates="owner", foreign_keys="Case.owner_id")
     identities: Mapped[list["Identity"]] = relationship(back_populates="user")
@@ -142,6 +144,10 @@ class Case(TimestampMixin, Base):
     route_reasons: Mapped[list[Any] | None] = mapped_column(JSON, default=list, nullable=True)
     formal_demands: Mapped[str | None] = mapped_column(Text)  # universal path: demands paragraph
     # Case is held for manual review (suspected abuse, false report risk) until an admin releases it.
+    # status reports: what the last report described, when it went out, reminders sent since without progress
+    report_state: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    reported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    report_nudges: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     lawyer_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     lawyer_application_id: Mapped[int | None] = mapped_column(ForeignKey("lawyer_applications.id"), nullable=True)
     hold_reason: Mapped[str | None] = mapped_column(String(64), index=True)

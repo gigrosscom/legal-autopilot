@@ -134,5 +134,6 @@ class Identities:
 
 def me_view(user: User) -> dict:
     return {"id": str(user.id), "display_name": user.display_name, "language": user.language,
+            "notify_email": user.notify_email,
             "identities": [{"kind": i.kind, "display": i.display, "verified_at": i.verified_at.isoformat()}
                            for i in sorted(user.identities, key=lambda i: i.verified_at)]}

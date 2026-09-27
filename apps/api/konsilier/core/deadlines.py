@@ -36,6 +36,8 @@ class DbDeadlineScheduler:
         self.packs = packs
         self.notifier = notifier
         self._apscheduler = None
+        # more periodic jobs sharing the tick and its session (e.g. case reports): fn(session, now) -> sent
+        self.extra_jobs: list = []
 
     # ---- API used by the engine -------------------------------------
     def schedule(self, session: Session, case: Case, action: Action, due: date, norm_ref: str | None,
@@ -88,6 +90,11 @@ class DbDeadlineScheduler:
                                 if other > before and f"d-{other}" not in sent_marks:
                                     sent_marks.append(f"d-{other}")
                 dl.reminders_sent = sent_marks
+            for job in self.extra_jobs:
+                try:
+                    sent += job(session, now)
+                except Exception:  # an extra job must never stop deadline reminders
+                    log.exception("scheduler job failed")
             session.commit()
         return sent
 

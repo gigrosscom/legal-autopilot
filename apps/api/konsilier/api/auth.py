@@ -62,6 +62,17 @@ def me(user: User = Depends(current_user)) -> dict[str, Any]:
     return me_view(user)
 
 
+class MeIn(BaseModel):
+    notify_email: bool | None = None
+
+
+@router.patch("/me")
+def update_me(body: MeIn, user: User = Depends(current_user)) -> dict[str, Any]:
+    if body.notify_email is not None:
+        user.notify_email = body.notify_email
+    return me_view(user)
+
+
 # ------------------------------------------------------------------ e-mail / phone codes
 class CodeStart(BaseModel):
     target: str = Field(max_length=200)

@@ -548,6 +548,14 @@ const en: Dict = {
     uploaded: "Uploaded",
     disclaimer: "We do not sign in to egov.kz on your behalf and cannot see your data there — you get the certificate yourself.",
   },
+  reports: {
+    title: "Case reports by e-mail",
+    lead: "When your case moves, we send a report: where it stands, what is done and the next step, with detailed instructions. If it stalls, we remind you every 3 days.",
+    toggle: "Send to {email}",
+    needEmail: "Confirm your e-mail below (“By e-mail”) to get reports.",
+    hint: "Get case reports and next-step reminders by e-mail.",
+    hintCta: "Confirm e-mail",
+  },
 };
 
 export default en;

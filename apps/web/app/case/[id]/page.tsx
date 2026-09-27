@@ -17,6 +17,7 @@ import {
   errorText,
   type CaseAction,
   type CaseLawyer,
+  type Me,
   type CaseView,
   type Emergency,
   type ForumOption,
@@ -316,6 +317,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         )}
 
         {c.roadmap && <RoadmapView roadmap={c.roadmap} />}
+
+        <ReportsHint />
 
         <LawyerBlock caseId={c.id} />
 
@@ -652,6 +655,22 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
         ))}
       </ul>
     </section>
+  );
+}
+
+function ReportsHint() {
+  const t = useT();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    api<Me>("/v1/me").then((m) => setShow(!m.identities.some((i) => i.kind === "email"))).catch(() => setShow(false));
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="card flex flex-wrap items-center gap-3 text-sm">
+      <Icon name="mail" className="text-brand" />
+      <span className="flex-1">{t("reports.hint")}</span>
+      <Link href="/account" className="btn-ghost">{t("reports.hintCta")}</Link>
+    </div>
   );
 }
 

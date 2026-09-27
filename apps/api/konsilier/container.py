@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -38,6 +39,7 @@ class Container:
     email_sender: Sender | None = None
     sms_sender: Sender | None = None
     signature_verifier: SignatureVerifier | None = None
+    reporter: Any = None
 
     def identity_methods(self) -> dict[str, bool]:
         ecp = self.signature_verifier is not None
@@ -73,8 +75,13 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                                          if d.strip()),
                             extract_images_with_llm=settings.extract_images_with_llm),
     )
-    return Container(settings, db, factory, packs, storage, scheduler, notifier, engine,
+    container = Container(settings, db, factory, packs, storage, scheduler, notifier, engine,
                      identities=Identities(settings.identity_secret),
                      email_sender=email_sender or build_email(settings),
                      sms_sender=sms_sender or build_sms(settings),
                      signature_verifier=signature_verifier or (NcaNode(settings.ncanode_url) if settings.ncanode_url else None))
+    from .reports import CaseReporter
+
+    container.reporter = CaseReporter(container)
+    scheduler.extra_jobs.append(container.reporter.tick)
+    return container

@@ -548,6 +548,14 @@ const tr: Dict = {
     uploaded: "Yüklendi",
     disclaimer: "egov.kz'ye sizin adınıza girmiyoruz ve oradaki verilerinizi göremiyoruz — belgeyi kendiniz alırsınız.",
   },
+  reports: {
+    title: "Dosya raporları e-postayla",
+    lead: "Dosyanız ilerlediğinde rapor göndeririz: nerede olduğu, ne yapıldığı ve ayrıntılı talimatlarla bir sonraki adım. Dosya durursa 3 günde bir hatırlatırız.",
+    toggle: "{email} adresine gönder",
+    needEmail: "Rapor almak için aşağıda e-postanızı doğrulayın («E-posta ile»).",
+    hint: "Dosya raporlarını ve sonraki adım hatırlatmalarını e-postayla alın.",
+    hintCta: "E-postayı doğrula",
+  },
 };
 
 export default tr;

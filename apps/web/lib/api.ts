@@ -158,7 +158,7 @@ export type CaseLawyer = {
 };
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
-export type Me = { id: string; display_name: string | null; language: string; identities: Identity[] };
+export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[] };
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean };
 export type SignedIn = { token: string; me: Me };
 
