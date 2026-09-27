@@ -1,7 +1,8 @@
 #cloud-config
 # First boot of the production server (Ubuntu 24.04). Installs Docker, clones the repo,
 # and installs timers: auto-deploy from GitHub every 2 minutes, database backup daily.
-# /opt/konsilier/.env must be filled (see deploy/env.example) — the stack starts once it exists.
+# .env comes from the VM metadata attribute `konsilier-env` (see deploy/update.sh) or is written by hand
+# at /opt/konsilier/.env (see deploy/env.example) — the stack starts once it exists.
 package_update: true
 packages: [git, ca-certificates, curl]
 runcmd:
@@ -10,3 +11,4 @@ runcmd:
   - cp /opt/konsilier/deploy/konsilier-*.service /opt/konsilier/deploy/konsilier-*.timer /etc/systemd/system/
   - systemctl daemon-reload
   - systemctl enable --now konsilier-update.timer konsilier-backup.timer
+  - /opt/konsilier/deploy/update.sh --force

@@ -1,6 +1,5 @@
 [Unit]
-Description=Konsilier: pull and redeploy when the branch changed
-ConditionPathExists=/opt/konsilier/.env
+Description=Konsilier: pull and redeploy when the branch or .env changed
 After=docker.service network-online.target
 
 [Service]

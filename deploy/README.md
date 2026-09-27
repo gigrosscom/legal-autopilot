@@ -9,7 +9,9 @@ Target: Yandex Cloud region `kz1` (or any Ubuntu 24.04 server in Kazakhstan).
 | Files | Object Storage bucket `konsilier-files` (`https://storage.yandexcloud.kz`) | documents, uploads, daily backups |
 
 1. Create the VM with `deploy/cloud-init.yaml` as user data.
-2. Put the filled `deploy/env.example` at `/opt/konsilier/.env` (chmod 600).
+2. Put the filled `deploy/env.example` into the VM metadata key `konsilier-env` (Yandex Cloud: VM → Edit → Metadata).
+   `update.sh` copies it to `/opt/konsilier/.env` (chmod 600) and redeploys whenever it changes — no SSH needed.
+   Without metadata, write `/opt/konsilier/.env` by hand.
 3. `sudo /opt/konsilier/deploy/update.sh --force` — first start; afterwards the timer redeploys on every push.
 4. DNS: `A @ → <IP>`, `A www → <IP>`, `A api → <IP>`. Caddy issues certificates automatically.
 5. Backups: `konsilier-backup.timer` daily at 03:30 → `backups/` in the bucket.
