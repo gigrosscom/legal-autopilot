@@ -6,6 +6,7 @@ import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
+import { Agreements } from "@/components/Agreements";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
 import {
@@ -13,6 +14,7 @@ import {
   downloadFile,
   errorText,
   type CaseAction,
+  type CaseLawyer,
   type CaseView,
   type Emergency,
   type ForumOption,
@@ -307,6 +309,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         {c.roadmap && <RoadmapView roadmap={c.roadmap} />}
 
+        <LawyerBlock caseId={c.id} />
+
         {c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}
 
         {/* next step */}
@@ -495,6 +499,27 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
   );
 }
 
+function LawyerBlock({ caseId }: { caseId: string }) {
+  const t = useT();
+  const [data, setData] = useState<CaseLawyer | null>(null);
+  useEffect(() => {
+    api<CaseLawyer>(`/v1/cases/${caseId}/lawyer`).then(setData).catch(() => setData(null));
+  }, [caseId]);
+  if (!data?.lawyer) return null;
+  return (
+    <section aria-labelledby="your-lawyer" className="space-y-3">
+      <div className="card flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name="lawyer" /></span>
+        <div>
+          <h2 id="your-lawyer" className="font-semibold">{t("agreements.yourLawyer")}: {data.lawyer.name}</h2>
+          <p className="text-sm text-muted">{t(`agreements.kind.${data.lawyer.kind}`)}{data.lawyer.organization ? ` · ${data.lawyer.organization}` : ""}</p>
+        </div>
+      </div>
+      <Agreements items={data.agreements} role="applicant" />
+    </section>
+  );
+}
+
 function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
   const t = useT();
   const { lang } = useLang();
@@ -519,7 +544,7 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
         </div>
       )}
       {a.downloadable && (
-        <SignDocument caseId={caseId} actionId={a.id} fileBase={a.action_id} initial={a.signatures ?? []} />
+        <SignDocument base={`/v1/cases/${caseId}/actions/${a.id}`} fileBase={a.action_id} initial={a.signatures ?? []} />
       )}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
