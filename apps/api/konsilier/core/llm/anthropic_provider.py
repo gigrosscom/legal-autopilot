@@ -40,15 +40,19 @@ class AnthropicProvider:
             # Server-side fallback: a policy decline is retried on a fallback model in the same call.
             extra = {"extra_headers": {"anthropic-beta": "server-side-fallback-2026-07-01"},
                      "extra_body": {"fallbacks": self.refusal_fallback}}
+        request = dict(model=self.model, max_tokens=self.max_tokens, system=system,
+                       messages=[{"role": "user", "content": content}],
+                       output_config={"format": {"type": "json_schema", "schema": schema}})
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": content}],
-                output_config={"format": {"type": "json_schema", "schema": schema}},
-                **extra,
-            )
+            try:
+                response = self.client.messages.create(**request, **extra)
+            except anthropic.BadRequestError as e:
+                if not extra:
+                    raise
+                # e.g. the model or account does not support server-side fallbacks: retry without them
+                log.warning("request with refusal fallback rejected (%s); retrying without it", e.message)
+                self.refusal_fallback = None
+                response = self.client.messages.create(**request)
         except anthropic.RateLimitError as e:
             raise LLMError(f"rate limited: {e}") from e
         except anthropic.APIStatusError as e:

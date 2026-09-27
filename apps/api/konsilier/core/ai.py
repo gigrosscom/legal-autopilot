@@ -52,7 +52,7 @@ def field_label(scenario: Scenario, pack: JurisdictionPack, lang: str, name: str
 def _nullable_values_schema(names: list[str]) -> dict[str, Any]:
     return {
         "type": "object",
-        "properties": {n: {"type": ["string", "null"]} for n in names},
+        "properties": {n: {"anyOf": [{"type": "string"}, {"type": "null"}]} for n in names},
         "required": names,
         "additionalProperties": False,
     }
@@ -79,7 +79,7 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
     schema = {
         "type": "object",
         "properties": {
-            "scenario_id": {"type": ["string", "null"], "enum": [*ids, None]},
+            "scenario_id": {"anyOf": [{"type": "string", "enum": ids}, {"type": "null"}]},
             "confidence": {"type": "number"},
             "reason": {"type": "string"},
         },

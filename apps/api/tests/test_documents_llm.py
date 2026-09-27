@@ -71,3 +71,35 @@ def test_anthropic_provider_refusal_raises():
     p, _ = provider_with(SimpleNamespace(stop_reason="refusal", content=[]))
     with pytest.raises(LLMError, match="refused"):
         p.complete_json(task="t", system="s", user="{}", schema={})
+
+
+def test_anthropic_provider_retries_without_fallback_on_400():
+    import anthropic
+    import httpx
+
+    resp = SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text='{"ok": true}')])
+    calls = []
+
+    class Flaky:
+        def create(self, **kw):
+            calls.append(kw)
+            if "extra_body" in kw:
+                req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+                raise anthropic.BadRequestError("fallbacks not supported", response=httpx.Response(400, request=req),
+                                                body=None)
+            return resp
+
+    p = AnthropicProvider(model="claude-opus-5", api_key="k")
+    p.client = SimpleNamespace(messages=Flaky())
+    assert p.complete_json(task="t", system="s", user="{}", schema={}) == {"ok": True}
+    assert len(calls) == 2 and "extra_body" not in calls[1]
+    assert p.refusal_fallback is None  # later calls go straight without it
+
+
+def test_ai_schemas_avoid_type_arrays():
+    import json
+
+    from konsilier.core import ai
+
+    schema = ai._nullable_values_schema(["a"])
+    assert '"type": [' not in json.dumps(schema)
