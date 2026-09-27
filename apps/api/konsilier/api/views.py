@@ -103,6 +103,9 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "channel": a.channel, "email_allowed": spec.channel != "user_submits",
                 "addressee": a.addressee, "instructions": a.instructions,
                 "has_docx": bool(a.docx_key), "has_pdf": bool(a.pdf_key),
+                "signatures": [{"id": str(g.id), "role": g.role, "signer_name": g.signer_name, "display": g.display,
+                                "method": g.method, "format": g.file_format, "signed_at": g.signed_at.isoformat()}
+                               for g in a.signatures],
                 "downloadable": a.status in ("ready", "submitted", "responded") or admin,
                 "submitted_at": a.submitted_at.isoformat() if a.submitted_at else None,
                 "submitted_via": a.submitted_via,

@@ -20,7 +20,7 @@ from ..identity import normalize as norm
 from ..identity.ncanode import SignatureError
 from ..identity.service import AuthError, EGOV_TTL, me_view
 from ..identity.senders import SendError
-from ..core.models import LoginChallenge, User
+from ..core.models import Action, LoginChallenge, User
 from .deps import current_user, get_container, get_session
 
 router = APIRouter(prefix="/v1")
@@ -192,7 +192,7 @@ def egov_start(user: User = Depends(current_user), session: Session = Depends(ge
 
 def _egov_challenge(session: Session, challenge_id: uuid.UUID) -> LoginChallenge:
     ch = session.get(LoginChallenge, challenge_id)
-    if ch is None or ch.kind != "egov" or _expired(ch):
+    if ch is None or ch.kind not in ("egov", "sign") or _expired(ch):
         raise HTTPException(404, "not found")
     return ch
 
@@ -209,7 +209,8 @@ def egov_service(challenge_id: uuid.UUID, session: Session = Depends(get_session
     ch = _egov_challenge(session, challenge_id)
     s = container.settings
     return {
-        "description": "Вход в Konsilier.AI / Konsilier.AI жүйесіне кіру",
+        "description": "Вход в Konsilier.AI / Konsilier.AI жүйесіне кіру" if ch.kind == "egov"
+        else "Подписание документа в Konsilier.AI / Konsilier.AI құжатына қол қою",
         "expiry_date": ch.expires_at.isoformat(),
         "organisation": {"nameRu": s.egov_org_name, "nameKz": s.egov_org_name, "nameEn": s.egov_org_name,
                          "bin": s.egov_org_bin},
@@ -219,9 +220,21 @@ def egov_service(challenge_id: uuid.UUID, session: Session = Depends(get_session
 
 
 @router.get("/auth/egov/mgov/{challenge_id}/document")
-def egov_document(challenge_id: uuid.UUID, session: Session = Depends(get_session)) -> dict:
-    """API №2: the data to sign — our one-time nonce."""
+def egov_document(challenge_id: uuid.UUID, session: Session = Depends(get_session),
+                  container: Container = Depends(get_container)) -> dict:
+    """API №2: the data to sign — our one-time nonce, or the prepared document itself."""
     ch = _egov_challenge(session, challenge_id)
+    if ch.kind == "sign":
+        from .signing import document_file
+
+        action = session.get(Action, uuid.UUID((ch.result or {})["action_id"]))
+        fmt, data = document_file(container, action)
+        name = f"{action.sequence:02d}-{action.action_id}.{fmt}"
+        return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [{
+            "id": 1, "nameRu": name, "nameKz": name, "nameEn": name,
+            "meta": [{"name": "SHA-256", "value": (ch.result or {}).get("sha256", "")}],
+            "documentCms": base64.b64encode(data).decode(),
+        }]}
     return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [{
         "id": 1, "nameRu": "Вход в Konsilier.AI", "nameKz": "Konsilier.AI жүйесіне кіру",
         "nameEn": "Sign in to Konsilier.AI",
@@ -241,6 +254,18 @@ def egov_signed(challenge_id: uuid.UUID, payload: dict = Body(...), session: Ses
     cms = docs[0].get("documentCms") if docs and isinstance(docs[0], dict) else None
     if not cms:
         raise HTTPException(400, {"code": "no_signature", "message": "no_signature"})
+    if ch.kind == "sign":
+        from .signing import complete_signature
+
+        try:
+            complete_signature(session, container, ch, cms, "egov")
+        except HTTPException as e:
+            # tell the waiting web page why, then answer eGov Mobile with the error
+            code = e.detail.get("code") if isinstance(e.detail, dict) else "failed"
+            ch.result = {**(ch.result or {}), "error": code}
+            session.commit()
+            raise
+        return []
     nonce_b64 = (ch.result or {}).get("nonce", "")
     signer = _check_signature(container, cms, nonce_b64)
     iin = norm.iin(signer.iin)
