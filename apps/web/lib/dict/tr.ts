@@ -8,9 +8,10 @@ const tr: Dict = {
   },
   footer: {
     tagline: "Şikâyetten sonuca giden yol: belge, başvuru, süreler ve doğrulanmış avukatlar.",
-    product: "Ürün", lawyers: "Avukatlara", religious: "Dini kurumlar", designSystem: "Tasarım sistemi",
+    product: "Ürün", lawyers: "Avukatlara", designSystem: "Tasarım sistemi",
   },
   level: {
+    pending: { label: "Yol belirleniyor", desc: "Durumu inceliyoruz. Ne olduğu netleşince uygun yolu ve ilk adımı göstereceğiz." },
     verified: { label: "Avukat onaylı", desc: "Hazır senaryo: mevzuat, süreler ve muhataplar avukat tarafından onaylandı. Tamamen otomatik süreç." },
     scenario_draft: { label: "Senaryo, onay bekliyor", desc: "Hazır senaryo çalışıyor, ancak avukat mevzuatı ve süreleri henüz onaylamadı: belgeler «Taslak» olarak işaretli." },
     universal: { label: "Genel yol", desc: "Hazır senaryo yok. Belgeyi genel şablonla hazırlıyoruz, muhatap kurum sicilinden seçiliyor, avukat belgeyi başvurudan önce kontrol ediyor." },
@@ -65,7 +66,6 @@ const tr: Dict = {
     business: { label: "Ticari uyuşmazlık", hint: "Karşı tarafın borcu, sözleşme ihlali.", placeholder: "Sözleşme kiminle, ne ihlal edildi, tutar ne" },
     inheritance: { label: "Miras", hint: "Mirasın kabulü, mirasçılar arası uyuşmazlık.", placeholder: "Kim ve ne zaman vefat etti, mirasçılar kim, sorun ne" },
     housing: { label: "Konut ve komşular", hint: "Kira, faturalar ve aidatlar, komşular.", placeholder: "Nasıl bir konut, uyuşmazlık kiminle, ne oldu" },
-    religious: { label: "Dini usulle uyuşmazlık çözümü", hint: "Hem dini hem devlet yolunu hukuki statüleriyle birlikte gösteririz.", placeholder: "Sorununuzu anlatın. Devlet yolunu her durumda göstereceğiz" },
   },
   board: {
     intake: "Başvuru", qualified: "Bilgiler toplandı", action_ready: "Belge hazır", submitted: "Sunuldu, cevap bekleniyor",
@@ -82,7 +82,7 @@ const tr: Dict = {
     chooseLead: "Muhatabı seçin. Liste yalnızca bu ülkenin kurum sicilinden; farklar aşağıda gösteriliyor.",
     type: { court: "Mahkeme", prosecutor: "Savcılık", police: "Polis", regulator: "Düzenleyici kurum", ministry: "Bakanlık",
       ombudsman: "Ombudsman", local_authority: "Yerel yönetim", arbitration: "Tahkim", mediation: "Arabuluculuk",
-      private_org: "Kuruluş", religious: "Dini kurum" },
+      private_org: "Kuruluş" },
     effect: { binding: "Karar bağlayıcı", advisory: "Tavsiye niteliğinde karar", none: "Hukuki etkisi yok" },
     verified: "Avukat onaylı", unverified: "Bilgileri avukat netleştirecek", deadlineByLawyer: "Süreyi avukat netleştirecek",
     channels: "Nasıl başvurulur", channel: { portal: "çevrimiçi portal", email: "e-posta", post: "posta", in_person: "şahsen" },
@@ -189,9 +189,6 @@ const tr: Dict = {
   },
   start: {
     eyebrow: "Yeni dosya",
-    religiousLabel: "Dini usulü de değerlendir",
-    religiousHint: "Yalnızca sizin tercihinizle. Devlet yolunu her durumda göstereceğiz.",
-    religiousMore: "Bu ne demek",
     country: "Ülke: Kazakistan.",
     otherCountry: "Başka ülke",
     busy: "Durumu inceliyoruz… Bu bir dakika sürebilir.",
@@ -289,27 +286,13 @@ const tr: Dict = {
     promiseTitle: "Ne vaat ediyoruz, ne yapmıyoruz",
     promiseLead: "Büyük vaatler yok: yalnızca bize bağlı olanlar.",
     promise: { title: "Vaat ediyoruz", 1: "Dosyanız için anlaşılır bir yol", 2: "Hazır belge ve başvuru talimatı", 3: "Süre takibi ve hatırlatmalar", 4: "Gerektiğinde doğrulanmış avukat" },
-    dont: { title: "Yapmıyoruz", 1: "Mahkemede sizi kendimiz temsil etmiyoruz; bunu platform avukatları yapar", 2: "Genel yol belgelerini avukat onayı olmadan sunmuyoruz", 3: "Ceza davalarında savunma belgesi yazmıyoruz", 4: "Kurum, mevzuat, süre ve harç uydurmuyoruz", 5: "Dini yolu dayatmıyoruz" },
+    dont: { title: "Yapmıyoruz", 1: "Mahkemede sizi kendimiz temsil etmiyoruz; bunu platform avukatları yapar", 2: "Genel yol belgelerini avukat onayı olmadan sunmuyoruz", 3: "Ceza davalarında savunma belgesi yazmıyoruz", 4: "Kurum, mevzuat, süre ve harç uydurmuyoruz" },
     safetyTitle: "Güvenlik",
     safety: {
       emergency: { title: "Acil durumlar", text: "Hayati tehlike, şiddet varsa veya bir çocuk tehlikedeyse önce ülkenin acil numaralarını gösteririz." },
       falseReport: { title: "Gerçeğe aykırı ihbar", text: "Suç ihbarlarında sorumluluk konusunda uyarır, yorum değil olguları anlatmanızı isteriz." },
       abuse: { title: "Kötüye kullanıma karşı koruma", text: "Tek bir kişiye yönelik toplu şikâyetler, taciz, şantaj ve iftira elle incelemeye gider." },
     },
-  },
-  religious: {
-    eyebrow: "Dini kurumlar",
-    title: "Dini usulle uyuşmazlık çözümü",
-    lead: "Bazı kişiler sorunu imam, müftülük, şer'i konsey veya diğer inançların kurumları aracılığıyla çözmek ister. Bu yolu yalnızca sizin tercihinizle, devlet yoluyla birlikte ve hukuki statüsünü açıkça belirterek gösteririz.",
-    status: {
-      binding: { title: "Devlet mahkemesi", text: "Bazı ülkelerde kişisel statü konularındaki dini mahkemeler yargı sisteminin parçasıdır, kararları bağlayıcıdır." },
-      advisory: { title: "İstişari kurum", text: "Tarafları uzlaştırmaya yardım eder veya görüş verir, ancak kararı bağlayıcı değildir." },
-      none: { title: "Hukuki etkisi yok", text: "Dini kurumun kararı, mahkeme ve kamu kurumlarının kararlarının yerini tutmaz." },
-    },
-    rules: { title: "Kurallarımız", 1: "Yalnızca bu yolu kendiniz seçtiyseniz gösteririz", 2: "Dininizi belirlemeyiz ve sebepsiz yere sormayız", 3: "Aynı konuda devlet yolu her zaman yanında", 4: "Dini hukuk kuralları yalnızca alanında uzman kişilerden, yapay zekâdan değil", 5: "Her inanç, ayrım yapmadan" },
-    family: { title: "Aile meseleleri: önemli", text: "Nafaka, çocuklar, mal, boşanma ve miras: dini usul yasal haklarınızı korumuyorsa açıkça uyarır ve devlet yolunu gösteririz." },
-    kz: { title: "Örneğin, Kazakistan", text: "Dini kuruluşlar devletten ayrıdır: dini idarenin kararı mahkeme kararının yerini tutmaz. Bu nedenle Kazakistan'da devlet yolunu gösteririz." },
-    cta: "Durumu anlat",
   },
   ds: {
     title: "Tasarım sistemi", lead: "Konsilier token'ları ve bileşenleri: telefonda ve bilgisayarda, beş dilde güven, açıklık ve erişilebilirlik.",

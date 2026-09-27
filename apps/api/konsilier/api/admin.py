@@ -66,7 +66,7 @@ def _card(container: Container, c: Case) -> dict[str, Any]:
         "confidence": c.qualification_confidence, "pending_approval_action_ids": pending,
         "status_label": pack.t(lang, f"statuses.{c.status}", default=c.status),
         "stage": board_column(c.status), "coverage_level": c.coverage_level,
-        "display_level": qualifier.display_level(c.coverage_level, draft), "hold_reason": c.hold_reason,
+        "display_level": qualifier.display_level(c.coverage_level, draft, bool(c.scenario_id)), "hold_reason": c.hold_reason,
         "title": title, "route_reasons": c.route_reasons or [],
         "tasks": [{"id": str(a.id), "action_id": a.action_id, "status": a.status,
                    "approval_status": a.approval_status} for a in c.actions],

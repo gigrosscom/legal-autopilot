@@ -68,7 +68,7 @@ export default function HowItWorks() {
           </div>
           <div className="card space-y-3">
             <h3 className="font-semibold">{t("how.dont.title")}</h3>
-            <List prefix="how.dont" n={5} icon="x" iconClass="text-danger" />
+            <List prefix="how.dont" n={4} icon="x" iconClass="text-danger" />
           </div>
         </div>
       </Section>
@@ -79,28 +79,6 @@ export default function HowItWorks() {
           <Alert tone="warning" title={t("how.safety.falseReport.title")}>{t("how.safety.falseReport.text")}</Alert>
           <Alert tone="info" icon="shield" title={t("how.safety.abuse.title")}>{t("how.safety.abuse.text")}</Alert>
         </div>
-      </Section>
-
-      <Section id="religious" eyebrow={t("religious.eyebrow")} title={t("religious.title")} lead={t("religious.lead")}>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {(["binding", "advisory", "none"] as const).map((k) => (
-            <div key={k} className="card space-y-2">
-              <h3 className="font-semibold">{t(`religious.status.${k}.title`)}</h3>
-              <p className="text-sm text-muted">{t(`religious.status.${k}.text`)}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="card space-y-3">
-            <h3 className="font-semibold">{t("religious.rules.title")}</h3>
-            <List prefix="religious.rules" n={5} icon="check" />
-          </div>
-          <div className="space-y-3">
-            <Alert tone="warning" title={t("religious.family.title")}>{t("religious.family.text")}</Alert>
-            <Alert tone="info" title={t("religious.kz.title")}>{t("religious.kz.text")}</Alert>
-          </div>
-        </div>
-        <Button href="/start?s=religious" variant="secondary" iconEnd="arrowRight">{t("religious.cta")}</Button>
       </Section>
     </div>
   );

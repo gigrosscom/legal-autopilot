@@ -33,7 +33,7 @@ COUNTERPARTY_KINDS = (
 SENSITIVE = Literal["health", "religion", "criminal_record", "children"]
 FORUM_TYPES = (
     "court", "prosecutor", "police", "regulator", "ministry", "ombudsman", "local_authority",
-    "arbitration", "mediation", "private_org", "religious",
+    "arbitration", "mediation", "private_org",
 )
 DOCUMENT_TYPES = ("complaint", "claim_letter", "statement", "lawsuit", "motion", "appeal", "appeal_request")
 
@@ -162,19 +162,11 @@ class ForumJurisdiction(_Strict):
     rule: Localized = Field(default_factory=dict)  # territorial competence in words
 
 
-class ReligiousInfo(_Strict):
-    confession: str  # free text from the pack — the core has no list of religions
-    state_status: Literal["state_court_binding", "advisory_or_conciliatory", "no_legal_effect"]
-    scope: Localized = Field(default_factory=dict)
-    family_rights_warning: Localized = Field(default_factory=dict)
-    verified_by_specialist: str | None = None
-
-
 class Forum(_Strict):
     id: str
     type: Literal[
         "court", "prosecutor", "police", "regulator", "ministry", "ombudsman", "local_authority",
-        "arbitration", "mediation", "private_org", "religious",
+        "arbitration", "mediation", "private_org",
     ]
     name: Localized
     jurisdiction: ForumJurisdiction = Field(default_factory=ForumJurisdiction)
@@ -188,7 +180,6 @@ class Forum(_Strict):
     appeals_to: tuple[str, ...] = ()
     instance: Literal["first", "appeal", "any"] = "any"  # "appeal" = reached only by escalation
     legal_effect: Literal["binding", "advisory", "none"]
-    religious: ReligiousInfo | None = None
     source: str
     verified_at: date | None = None
     verified_by: str | None = None
@@ -209,16 +200,6 @@ class Forum(_Strict):
         if bad or not v:
             raise ValueError(f"unknown document types {bad}; allowed: {', '.join(DOCUMENT_TYPES)}")
         return v
-
-    @model_validator(mode="after")
-    def _religious(self) -> "Forum":
-        if (self.type == "religious") != (self.religious is not None):
-            raise ValueError("'religious' block is required for type religious and forbidden otherwise")
-        if self.religious and self.religious.state_status == "state_court_binding" and self.legal_effect != "binding":
-            raise ValueError("a state religious court must have legal_effect: binding")
-        if self.religious and self.religious.state_status == "no_legal_effect" and self.legal_effect != "none":
-            raise ValueError("religious body without legal effect must have legal_effect: none")
-        return self
 
     @property
     def verified(self) -> bool:
@@ -298,6 +279,5 @@ class Routing(_Strict):
     upl_notice: Checked | None = None  # unauthorised practice of law rules for this country
     false_report_norm: Checked | None = None
     abuse: AbuseLimits = Field(default_factory=AbuseLimits)
-    state_alternative_notice: Localized = Field(default_factory=dict)  # shown next to religious forums
     # labels instead of facts ("вор", "мошенник"): in reports about crimes the user is asked once to describe facts
     evaluative_words: dict[str, tuple[str, ...]] = Field(default_factory=dict)

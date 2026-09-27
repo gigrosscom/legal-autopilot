@@ -4,9 +4,10 @@ import { Badge, type Tone } from "@/components/ui";
 import type { IconName } from "@/components/ui/Icon";
 import { useT } from "@/lib/i18n";
 
-export type Level = "verified" | "scenario_draft" | "universal" | "lawyer" | "soon";
+export type Level = "pending" | "verified" | "scenario_draft" | "universal" | "lawyer" | "soon";
 
 const LOOK: Record<Level, { tone: Tone; icon: IconName }> = {
+  pending: { tone: "neutral", icon: "hourglass" },
   verified: { tone: "brand", icon: "shieldCheck" },
   scenario_draft: { tone: "draft", icon: "document" },
   universal: { tone: "info", icon: "map" },

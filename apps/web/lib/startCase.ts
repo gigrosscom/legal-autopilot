@@ -15,7 +15,7 @@ export function useStartCase(lang: Lang) {
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
 
-  async function start(text: string, { country = "KZ", skipTriage = false, religiousPath = false } = {}) {
+  async function start(text: string, { country = "KZ", skipTriage = false } = {}) {
     setBusy(true);
     setError(null);
     try {
@@ -30,7 +30,7 @@ export function useStartCase(lang: Lang) {
       }
       const out = await api<{ case: CaseView; reply: Reply }>("/v1/cases", {
         method: "POST",
-        body: JSON.stringify({ text, language: lang, country, religious_path: religiousPath }),
+        body: JSON.stringify({ text, language: lang, country }),
       });
       try {
         sessionStorage.setItem(`konsilier.reply.${out.case.id}`, JSON.stringify(out.reply));

@@ -202,7 +202,6 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
         {c.scenario?.draft_disclaimer && <Alert tone="draft" title={t("case.draftTitle")}>{c.scenario.draft_disclaimer}</Alert>}
-        {cov.state_alternative_notice && <Alert tone="info">{cov.state_alternative_notice}</Alert>}
 
         {ack && (
           <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
@@ -460,7 +459,7 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
           <li key={f.id} className="card flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand">
-                <Icon name={f.type === "court" ? "landmark" : f.type === "religious" ? "community" : f.type === "mediation" ? "handshake" : "building"} />
+                <Icon name={f.type === "court" ? "landmark" : f.type === "mediation" ? "handshake" : "building"} />
               </span>
               <div className="min-w-0 space-y-1">
                 <p className="font-semibold leading-snug">{f.name}</p>
@@ -476,7 +475,6 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
               </Badge>
               {!f.deadline_known && <Badge>{t("forum.deadlineByLawyer")}</Badge>}
             </div>
-            {f.religious?.family_rights_warning && <Alert tone="warning">{f.religious.family_rights_warning}</Alert>}
             <p className="text-xs text-muted">{t("forum.channels")}: {f.channels.map((ch) => t(`forum.channel.${ch}`)).join(", ")}</p>
             <Button className="mt-auto" disabled={busy} onClick={() => onChoose(f)} iconEnd="arrowRight">{t("forum.choose")}</Button>
           </li>

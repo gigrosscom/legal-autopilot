@@ -115,7 +115,7 @@ def test_unclassified_story_asks_for_details(ctx):
     api = web_user(ctx)
     created = api.post("/v1/cases", expect=201, json={"text": "Здравствуйте, помогите пожалуйста", "country": "KZ"})
     assert created["case"]["status"] == "intake"
-    assert created["case"]["coverage"]["level"] == "verified"  # default until classified
+    assert created["case"]["coverage"]["level"] == "pending"  # never "verified" before classification
     assert "не хватает деталей" in created["reply"]["message"]
 
 
@@ -156,7 +156,7 @@ def test_forum_drafts_are_validated_and_not_live(ctx):
             "legal_effect": "advisory", "source": "TODO"}
     r = ctx.client.post("/v1/admin/forum-drafts", headers=ADMIN, json={"country": "KZ", "data": good})
     assert r.status_code == 201, r.text
-    bad = {**good, "type": "religious"}  # religious block missing
+    bad = {**good, "type": "religious"}  # not a forum type: only state and state-recognised bodies
     assert ctx.client.post("/v1/admin/forum-drafts", headers=ADMIN,
                            json={"country": "KZ", "data": bad}).status_code == 422
     other = {**good, "id": "uz.x.y"}
@@ -182,23 +182,14 @@ def test_planned_countries_are_soon_and_accept_no_cases(ctx):
         assert pack.scenarios == {} and not pack.coverage.has_registry  # no invented law
 
 
-def test_religious_forums_only_on_explicit_choice_and_with_state_route(ctx):
+def test_only_state_forums_are_offered(ctx):
     api = web_user(ctx)
-    plain = api.post("/v1/cases", expect=201, json={"text": "I want a divorce from my husband", "country": "XX",
-                                                     "language": "en"})
-    ids = {o["id"] for o in plain["case"]["coverage"]["options"]}
-    assert "xx.religious.council" not in ids  # never offered unless the user asked for it
-    assert plain["case"]["coverage"]["forum"]["id"] == "xx.court.civil"  # single state candidate chosen
-
-    chosen = api.post("/v1/cases", expect=201, json={"text": "I want a divorce from my husband", "country": "XX",
-                                                      "language": "en", "religious_path": True})
-    cov = chosen["case"]["coverage"]
-    opts = {o["id"]: o for o in cov["options"]}
-    assert set(opts) == {"xx.court.civil", "xx.religious.council"}  # state route always next to it
-    assert opts["xx.religious.council"]["legal_effect"] == "advisory"
-    assert opts["xx.religious.council"]["religious"]["family_rights_warning"]
-    assert cov["religious_requested"] is True
-    assert cov["state_alternative_notice"].startswith("The state route")
+    # an old client may still send religious_path: it is ignored, only state bodies exist in the registry
+    out = api.post("/v1/cases", expect=201, json={"text": "I want a divorce from my husband", "country": "XX",
+                                                   "language": "en", "religious_path": True})
+    cov = out["case"]["coverage"]
+    assert cov["forum"]["id"] == "xx.court.civil"  # single state candidate chosen
+    assert "religious_requested" not in cov and "religious" not in cov["forum"]
 
 
 def test_unsigned_level1_scenario_is_shown_as_draft():

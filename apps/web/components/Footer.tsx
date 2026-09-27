@@ -15,7 +15,6 @@ export default function Footer() {
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
           <Link href="/how-it-works" className="text-muted hover:text-ink">{t("nav.howItWorks")}</Link>
           <Link href="/coverage" className="text-muted hover:text-ink">{t("nav.coverage")}</Link>
-          <Link href="/how-it-works#religious" className="text-muted hover:text-ink">{t("footer.religious")}</Link>
         </nav>
         <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">
           <Link href="/lawyers" className="text-muted hover:text-ink">{t("nav.lawyers")}</Link>

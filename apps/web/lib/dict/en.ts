@@ -8,9 +8,10 @@ const en: Dict = {
   },
   footer: {
     tagline: "From complaint to resolution: document, filing, deadlines and verified lawyers.",
-    product: "Product", lawyers: "For lawyers", religious: "Religious bodies", designSystem: "Design system",
+    product: "Product", lawyers: "For lawyers", designSystem: "Design system",
   },
   level: {
+    pending: { label: "Finding your path", desc: "We are working out what happened. As soon as it is clear, we will show the right path and the first step." },
     verified: { label: "Lawyer-verified", desc: "Ready scenario: laws, deadlines and recipients signed off by a lawyer. Full autopilot." },
     scenario_draft: { label: "Scenario awaiting sign-off", desc: "The scenario works, but a lawyer has not yet signed off the laws and deadlines: documents are marked \"Draft\"." },
     universal: { label: "Universal path", desc: "No ready scenario. We prepare the document from a universal template, the recipient comes from the registry of authorities, and a lawyer reviews the document before filing." },
@@ -65,7 +66,6 @@ const en: Dict = {
     business: { label: "Business dispute", hint: "A counterparty's debt, breach of contract.", placeholder: "Who the contract is with, what was breached, what amount" },
     inheritance: { label: "Inheritance", hint: "Accepting an inheritance, disputes between heirs.", placeholder: "Who died and when, who the heirs are, what the issue is" },
     housing: { label: "Housing and neighbors", hint: "Rent, utilities, neighbors.", placeholder: "What kind of housing, who the dispute is with, what happened" },
-    religious: { label: "Religious dispute resolution", hint: "We will show both the religious and the state path, with their legal status.", placeholder: "Describe the issue. We will show the state path in any case" },
   },
   board: {
     intake: "Request", qualified: "Details collected", action_ready: "Document ready", submitted: "Filed, awaiting reply",
@@ -82,7 +82,7 @@ const en: Dict = {
     chooseLead: "Choose a recipient. The list comes only from this country's registry of authorities; the differences are shown below.",
     type: { court: "Court", prosecutor: "Prosecutor's office", police: "Police", regulator: "Regulator", ministry: "Ministry",
       ombudsman: "Ombudsman", local_authority: "Local authority", arbitration: "Arbitration", mediation: "Mediation",
-      private_org: "Organization", religious: "Religious body" },
+      private_org: "Organization" },
     effect: { binding: "Decision is binding", advisory: "Advisory decision", none: "No legal force" },
     verified: "Lawyer-verified", unverified: "A lawyer will confirm the details", deadlineByLawyer: "A lawyer will confirm the deadline",
     channels: "How to file", channel: { portal: "online portal", email: "email", post: "mail", in_person: "in person" },
@@ -189,9 +189,6 @@ const en: Dict = {
   },
   start: {
     eyebrow: "New case",
-    religiousLabel: "Also consider religious dispute resolution",
-    religiousHint: "Only if you choose it. We will show the state path in any case.",
-    religiousMore: "What this means",
     country: "Country: Kazakhstan.",
     otherCountry: "Another country",
     busy: "Analyzing your situation… This may take up to a minute.",
@@ -289,27 +286,13 @@ const en: Dict = {
     promiseTitle: "What we promise and what we don't do",
     promiseLead: "No big promises: only what depends on us.",
     promise: { title: "We promise", 1: "A clear path for your case", 2: "A ready document and filing instructions", 3: "Deadline tracking and reminders", 4: "A verified lawyer when you need one" },
-    dont: { title: "We don't", 1: "Represent you in court ourselves; platform lawyers do that", 2: "File universal-path documents without a lawyer's approval", 3: "Write defense documents in criminal cases", 4: "Make up authorities, laws, deadlines or fees", 5: "Push a religious path" },
+    dont: { title: "We don't", 1: "Represent you in court ourselves; platform lawyers do that", 2: "File universal-path documents without a lawyer's approval", 3: "Write defense documents in criminal cases", 4: "Make up authorities, laws, deadlines or fees" },
     safetyTitle: "Safety",
     safety: {
       emergency: { title: "Emergencies", text: "If there is a threat to life, violence or a child in danger, we first show the country's emergency numbers." },
       falseReport: { title: "False reports", text: "In crime reports we warn about liability and ask you to describe facts, not opinions." },
       abuse: { title: "Abuse protection", text: "Mass complaints against one person, harassment, blackmail and defamation go to manual review." },
     },
-  },
-  religious: {
-    eyebrow: "Religious bodies",
-    title: "Religious dispute resolution",
-    lead: "Some people want to resolve an issue through an imam, a muftiate, a sharia council or bodies of other faiths. We show this path only if you choose it, alongside the state path and with an honest legal status.",
-    status: {
-      binding: { title: "State court", text: "In some countries, religious courts for personal status matters are part of the court system, and their decisions are binding." },
-      advisory: { title: "Advisory body", text: "Helps reconcile the parties or gives an opinion, but the decision is not enforceable." },
-      none: { title: "No legal force", text: "A religious body's decision does not replace a decision of a court or government authority." },
-    },
-    rules: { title: "Our rules", 1: "We show it only if you chose this path yourself", 2: "We do not determine your religion or ask about it without reason", 3: "The state path for the same issue is always shown alongside", 4: "Religious law comes only from qualified specialists, not from AI", 5: "Any faith, with no preference" },
-    family: { title: "Family matters: important", text: "Child support, children, property, divorce and inheritance: if a religious procedure does not protect your legal rights, we will warn you clearly and show the state path." },
-    kz: { title: "For example, Kazakhstan", text: "Religious associations are separate from the state: a decision of a spiritual administration does not replace a court decision. That is why in Kazakhstan we show the state path." },
-    cta: "Describe your situation",
   },
   ds: {
     title: "Design system", lead: "Konsilier tokens and components: trust, clarity and accessibility on phone and desktop, in five languages.",

@@ -80,7 +80,7 @@ export default function DesignSystem() {
         <form className="card grid max-w-xl gap-3" onSubmit={(e) => e.preventDefault()}>
           <label className="text-sm">{t("home.describe")}<textarea className="input mt-1" rows={3} placeholder={t("start.placeholder")} /></label>
           <label className="text-sm">{t("case.answerPlaceholder")}<input className="input mt-1" /></label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-5 w-5 accent-brand" />{t("start.religiousLabel")}</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-5 w-5 accent-brand" />{t("ack.special_category.button")}</label>
         </form>
       </Section>
 
