@@ -111,3 +111,17 @@ def test_local_taxonomy_ids_need_country_prefix(tmp_path):
         "id": "labor.local_thing", "title": {"ru": "x"}, "applicant_roles": ["employee"]}]}))
     with pytest.raises(CoverageValidationError, match="must start with 'kz.'"):
         load_coverage(root / "kz", root, "KZ", ("ru", "kk"))
+
+
+def test_messenger_channels_need_an_official_link_and_its_source():
+    from konsilier.core.coverage.schema import SubmissionChannel
+    ok = SubmissionChannel.model_validate({"kind": "whatsapp", "url": "https://wa.me/77001234567",
+                                           "source": "https://www.gov.kz/memleket/entities/example"})
+    assert ok.kind == "whatsapp"
+    SubmissionChannel.model_validate({"kind": "telegram", "url": "https://t.me/official_body",
+                                      "source": "https://www.gov.kz/memleket/entities/example"})
+    for bad in ({"kind": "whatsapp", "url": "https://wa.me/77001234567"},  # no source
+                {"kind": "whatsapp", "url": "+7 700 123 45 67", "source": "x"},  # not a wa.me link
+                {"kind": "telegram", "url": "https://t.me/a", "source": "x"}):
+        with pytest.raises(ValueError):
+            SubmissionChannel.model_validate(bad)

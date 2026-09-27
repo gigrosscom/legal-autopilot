@@ -550,6 +550,47 @@ class CaseEngine:
                 return spec
         return None
 
+    def plan(self, session: Session, case: Case) -> dict[str, Any] | None:
+        """The proposed solution shown right after the story: which document, to whom, through which service,
+        what to attach, and whether a lawyer checks it first. Everything comes from scenario / pack data."""
+        if not case.scenario_id or case.status not in (S.INTAKE.value, S.QUALIFIED.value):
+            return None
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        spec = self.next_action_spec(case, sc)
+        if spec is None or spec.kind == "handoff":
+            return None
+        lang = case.language
+        addressee = self._addressee(case, sc, pack, spec)
+        channels: list[dict[str, Any]] = []
+        attachments: list[str] = []
+        cov = pack.coverage
+        forum = cov.forums.get(spec.addressee.forum) if cov and spec.addressee and spec.addressee.forum else None
+        if forum is None and is_generic(case.scenario_id) and cov:  # a claim to the other party itself
+            ref = GenericRef.parse(case.scenario_id or "")
+            forum = cov.forums.get(ref.forum_id) if ref else None
+        if forum is not None:
+            channels = [{"kind": ch.kind, "url": ch.url} for ch in forum.submission]
+            doc = cov.document_for(forum) if cov else None
+            if doc is not None:
+                attachments += list(doc.attachments.get(lang) or doc.attachments.get(pack.manifest.default_language) or ())
+        else:
+            if addressee.get("submit_url"):
+                channels.append({"kind": "portal", "url": addressee["submit_url"]})
+            if spec.channel == "email_or_user_submits":
+                channels += [{"kind": "in_person", "url": None}, {"kind": "post", "url": None},
+                             {"kind": "email", "url": None}]
+            elif not channels:
+                channels = [{"kind": "in_person", "url": None}, {"kind": "post", "url": None}]
+        for f in sc.intake:  # the evidence the interview asks for
+            if f.type == "evidence":
+                attachments += [pack.t(lang, f"evidence.{k}", default=k) for k in f.evidence_kinds if k != "other"]
+        seen: set[str] = set()
+        attachments = [a for a in attachments if not (a in seen or seen.add(a))]
+        return {"document": pack.localized(spec.title, lang),
+                "addressee": addressee.get("name") or None,
+                "channels": channels, "attachments": attachments,
+                "lawyer_check": self.approval_required(session, case, spec)}
+
     def proposal(self, case: Case) -> Proposal:
         if not case.scenario_id:
             return Proposal(type="none")

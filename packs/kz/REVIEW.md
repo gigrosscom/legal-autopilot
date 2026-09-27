@@ -84,6 +84,8 @@
 - [ ] `documents/*.yaml → attachments`: что прикладывать к каждому типу документа;
 - [ ] `forums/registry.yaml → kz.counterparty.claim`: для каких споров досудебная претензия обязательна и её срок;
 - [ ] точные наименования органов (сейчас родовые, с пометкой «уточнит юрист»).
+- [ ] официальные WhatsApp / Telegram органов для приёма обращений: в `forums/registry.yaml → submission` добавлять
+      `kind: whatsapp|telegram` только со ссылкой `https://wa.me/…` / `https://t.me/…` и `source:` — страницей органа, где канал опубликован.
 
 <!-- BEGIN generated: coverage review -->
 ## Реестр универсального пути: статус проверки

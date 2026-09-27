@@ -45,6 +45,14 @@ export type Proposal = {
   message: string;
 };
 
+export type Plan = {
+  document: string;
+  addressee: string | null;
+  channels: { kind: string; url: string | null }[];
+  attachments: string[];
+  lawyer_check: boolean;
+};
+
 export type CaseView = {
   id: string;
   status: string;
@@ -74,6 +82,7 @@ export type CaseView = {
   actions: CaseAction[];
   proposal: Proposal | null;
   roadmap: Roadmap | null;
+  plan: Plan | null;
   outcome: { result: string; amount_recovered: string | null; currency: string | null; days_to_resolution: number; resolved_at_step: string | null } | null;
   // admin only
   raw_facts?: Record<string, string>;
@@ -295,17 +304,61 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
 }
 
-export async function downloadFile(path: string, filename: string, extraHeaders?: Record<string, string>) {
+export async function fetchFile(path: string, extraHeaders?: Record<string, string>): Promise<Blob> {
   const headers = new Headers(extraHeaders);
   if (!extraHeaders) headers.set("Authorization", `Bearer ${await ensureToken()}`);
   const r = await request(`${API_URL}${path}`, { headers });
   if (!r.ok) throw new ApiError(r.status, await r.text());
-  const url = URL.createObjectURL(await r.blob());
+  return r.blob();
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function downloadFile(path: string, filename: string, extraHeaders?: Record<string, string>) {
+  saveBlob(await fetchFile(path, extraHeaders), filename);
+}
+
+/** Opens the browser's print dialog for a PDF (hidden frame; falls back to a new tab where frames can't print). */
+export async function printFile(path: string) {
+  const url = URL.createObjectURL(await fetchFile(path));
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  frame.src = url;
+  frame.onload = () => {
+    try {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    } catch {
+      window.open(url, "_blank");
+    }
+    setTimeout(() => { frame.remove(); URL.revokeObjectURL(url); }, 60_000);
+  };
+  document.body.appendChild(frame);
+}
+
+/** Share a document through the phone's share sheet (WhatsApp, Telegram, mail…); else just download it.
+ *  Returns true when the share sheet was opened. */
+export async function shareFile(path: string, filename: string, title: string): Promise<boolean> {
+  const blob = await fetchFile(path);
+  const file = new File([blob], filename, { type: blob.type || "application/pdf" });
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  if (nav.share && nav.canShare?.({ files: [file] })) {
+    try {
+      await nav.share({ files: [file], title });
+      return true;
+    } catch {
+      return false; // cancelled by the user
+    }
+  }
+  saveBlob(blob, filename);
+  return false;
 }
 
 export async function publicApi<T>(path: string, init: RequestInit = {}): Promise<T> {

@@ -70,6 +70,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "actions": [],
         "proposal": None,
         "roadmap": None,
+        "plan": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
         "safety": {"hold_reason": case.hold_reason,
@@ -121,6 +122,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "norm_refs": list(spec.norm_refs),
             })
         view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
+        view["plan"] = engine.plan(session, case)
         try:
             view["proposal"] = asdict(engine.proposal(case))
         except EngineError:

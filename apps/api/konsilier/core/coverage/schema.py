@@ -137,16 +137,28 @@ class AcceptRule(_Strict):
         return self
 
 
+_MESSENGER = {"whatsapp": re.compile(r"^https://wa\.me/\d{10,15}$"),
+              "telegram": re.compile(r"^https://t\.me/[A-Za-z0-9_]{5,32}$")}
+
+
 class SubmissionChannel(_Strict):
-    kind: Literal["portal", "email", "post", "in_person"]
+    # whatsapp / telegram: only a body's OFFICIAL channel, published on its own site (source is required)
+    kind: Literal["portal", "email", "post", "in_person", "whatsapp", "telegram"]
     url: str | None = None
     email: str | None = None
+    source: str | None = None  # where the official channel is published (URL of the body's page)
     note: Localized = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _target(self) -> "SubmissionChannel":
         if self.kind == "portal" and not self.url:
             raise ValueError("portal submission needs url")
+        if self.kind in _MESSENGER:
+            if not self.url or not _MESSENGER[self.kind].match(self.url):
+                raise ValueError(f"{self.kind} channel needs an official link like "
+                                 + ("https://wa.me/77001234567" if self.kind == "whatsapp" else "https://t.me/name"))
+            if not self.source:
+                raise ValueError(f"{self.kind} channel needs source: the body's page that publishes it")
         return self
 
 

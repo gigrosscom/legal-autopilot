@@ -21,6 +21,9 @@ import {
   type ForumOption,
   type Proposal,
   type Reply,
+  printFile,
+  shareFile,
+  type Plan,
 } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
@@ -225,6 +228,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         )}
 
         {choosingForum && <ForumChoice options={cov.options} busy={busy} onChoose={chooseForum} />}
+
+        {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
+          <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
+        )}
 
         {/* interview */}
         {c.status === "intake" && !choosingForum && !ack && (
@@ -468,6 +475,103 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   );
 }
 
+/** The proposed solution right after the story: document → addressee → how to file → what to attach. */
+function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUpload: (f: File) => void }) {
+  const t = useT();
+  const portalName = (url: string | null) => (url ? url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "");
+  return (
+    <section className="card space-y-4 border-brand/40" aria-labelledby="plan-title">
+      <h2 id="plan-title" className="flex items-center gap-2 text-lg font-semibold">
+        <Icon name="sparkle" className="text-brand" />{t("helper.planTitle")}
+      </h2>
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div className="rounded-xl bg-brand-50 p-3 sm:col-span-2">
+          <dt className="text-xs text-muted">{t("helper.planDoc")}</dt>
+          <dd className="flex items-center gap-2 font-semibold"><Icon name="document" size={18} className="text-brand" />{plan.document}</dd>
+        </div>
+        {plan.addressee && (
+          <div>
+            <dt className="text-xs text-muted">{t("helper.planTo")}</dt>
+            <dd className="flex items-center gap-1.5"><Icon name="building" size={16} className="text-brand" />{plan.addressee}</dd>
+          </div>
+        )}
+        {plan.channels.length > 0 && (
+          <div>
+            <dt className="text-xs text-muted">{t("helper.planVia")}</dt>
+            <dd className="flex flex-wrap gap-1.5">
+              {plan.channels.map((ch, i) => ch.url ? (
+                <a key={i} href={ch.url} target="_blank" rel="noreferrer" className="chip hover:text-brand">
+                  {ch.kind === "portal" ? portalName(ch.url) : t(`forum.channel.${ch.kind}`)}
+                </a>
+              ) : <span key={i} className="chip">{t(`forum.channel.${ch.kind}`)}</span>)}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {plan.attachments.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">{t("helper.planAttach")}</p>
+          <ul className="space-y-1.5 text-sm">
+            {plan.attachments.map((a) => (
+              <li key={a} className="flex gap-2"><Icon name="checkCircle" size={18} className="mt-0.5 text-brand" /><span>{a}</span></li>
+            ))}
+          </ul>
+          <label className="btn-ghost cursor-pointer">
+            <Icon name="upload" size={18} />{t("helper.planUpload")}
+            <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only" disabled={busy}
+              onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+          </label>
+        </div>
+      )}
+      <p className="flex items-center gap-2 text-sm text-muted">
+        <Icon name={plan.lawyer_check ? "lawyer" : "checkCircle"} size={18} className="text-brand" />
+        {plan.lawyer_check ? t("helper.planLawyer") : t("helper.planSelf")}
+      </p>
+    </section>
+  );
+}
+
+/** Download, print, save as Word, send (share sheet → WhatsApp / Telegram / mail) for a ready document. */
+function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
+  const t = useT();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const pdf = `/v1/cases/${caseId}/actions/${a.id}/document?format=pdf`;
+  const docx = `/v1/cases/${caseId}/actions/${a.id}/document?format=docx`;
+  async function act(key: string, fn: () => Promise<unknown>) {
+    setBusy(key);
+    setErr(null);
+    try {
+      await fn();
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+  const tools: { key: string; icon: "download" | "printer" | "save" | "share"; label: string; run: () => Promise<unknown>; show: boolean }[] = [
+    { key: "pdf", icon: "download", label: t("helper.pdf"), run: () => downloadFile(pdf, `${a.action_id}.pdf`), show: a.has_pdf },
+    { key: "print", icon: "printer", label: t("helper.print"), run: () => printFile(pdf), show: a.has_pdf },
+    { key: "save", icon: "save", label: t("helper.save"), run: () => downloadFile(docx, `${a.action_id}.docx`), show: true },
+    { key: "send", icon: "share", label: t("helper.send"),
+      run: () => a.has_pdf ? shareFile(pdf, `${a.action_id}.pdf`, a.title) : shareFile(docx, `${a.action_id}.docx`, a.title), show: true },
+  ];
+  return (
+    <div className="space-y-1">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="toolbar" aria-label={a.title}>
+        {tools.filter((x) => x.show).map((x) => (
+          <button key={x.key} type="button" disabled={busy !== null} onClick={() => act(x.key, x.run)}
+            title={x.key === "send" ? t("helper.sendHint") : undefined}
+            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-surface p-2 text-xs font-medium hover:border-brand hover:text-brand disabled:opacity-50">
+            <Icon name={busy === x.key ? "spinner" : x.icon} size={22} />{x.label}
+          </button>
+        ))}
+      </div>
+      {err && <p role="alert" className="text-xs text-danger">{err}</p>}
+    </div>
+  );
+}
+
 function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void }) {
   const t = useT();
   return (
@@ -538,16 +642,7 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
         {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
       </div>
       {a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
-      {a.downloadable && (
-        <div className="flex flex-wrap gap-2">
-          {a.has_pdf && (
-            <Button variant="secondary" icon="download"
-              onClick={() => downloadFile(`/v1/cases/${caseId}/actions/${a.id}/document?format=pdf`, `${a.action_id}.pdf`)}>PDF</Button>
-          )}
-          <Button variant="secondary" icon="download"
-            onClick={() => downloadFile(`/v1/cases/${caseId}/actions/${a.id}/document?format=docx`, `${a.action_id}.docx`)}>DOCX</Button>
-        </div>
-      )}
+      {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
       {a.downloadable && (
         <SignDocument base={`/v1/cases/${caseId}/actions/${a.id}`} fileBase={a.action_id} initial={a.signatures ?? []} />
       )}

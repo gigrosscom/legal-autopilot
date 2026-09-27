@@ -85,3 +85,25 @@ def test_motion_in_court_waits_for_a_lawyer(ctx):
         q = out["case"]["question"]
     a = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
     assert a["approval_status"] == "pending"  # court filings only after a lawyer's check
+
+
+def test_solution_is_proposed_right_after_the_story(ctx):
+    api = web_user(ctx)
+    case = api.post("/v1/cases", expect=201, json={"text": REFUND, "country": "KZ"})["case"]
+    plan = case["plan"]
+    assert plan["document"] == "Претензия продавцу о возврате денег"
+    assert {c["kind"] for c in plan["channels"]} >= {"in_person", "post"}
+    assert "Чек или квитанция об оплате" in plan["attachments"]  # asked for up front
+    assert "Копия удостоверения личности" in plan["attachments"]
+    assert plan["lawyer_check"] is False
+
+
+def test_universal_plan_names_the_portal_and_the_checklist(ctx):
+    api = web_user(ctx)
+    created = api.post("/v1/cases", expect=201, json={
+        "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге", "country": "KZ"})
+    case = api.post(f"/v1/cases/{created['case']['id']}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
+    plan = case["plan"]
+    assert plan["document"].startswith("Жалоба")
+    assert {"kind": "portal", "url": "https://eotinish.kz"} in plan["channels"]
+    assert any("претензия" in a.lower() for a in plan["attachments"])
