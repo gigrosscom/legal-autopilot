@@ -9,7 +9,7 @@ const tr: Dict = {
   },
   footer: {
     lawyerCabinet: "Avukat paneli",
-    tagline: "Şikâyetten sonuca giden yol: belge, başvuru, süreler ve doğrulanmış avukatlar.",
+    tagline: "Sorununuzu anlatın — Konsilier ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
     product: "Ürün", lawyers: "Avukatlara", designSystem: "Tasarım sistemi",
   },
   level: {
@@ -76,7 +76,7 @@ const tr: Dict = {
     lawyersLead: "Durumu anlatın — belgeleri hazırlarız, gerektiğinde bir avukatı dahil ederiz.",
   },
   home: {
-    eyebrow: "Belge · başvuru · süreler · avukat",
+    eyebrow: "Hukuki konularda yapay zekâ asistanı",
     title: "Her hukuki sorun: şikâyetten sonuca kadar",
     sub: "Ne olduğunu anlatın. Belgeyi hazırlarız, nereye başvuracağınızı söyleriz, süreleri takip ederiz. Avukat gerekirse doğrulanmış birini dahil ederiz.",
     promise1: "Ülkenizin yasalarına göre belge",
@@ -310,8 +310,8 @@ const tr: Dict = {
   },
   how: {
     eyebrow: "Nasıl çalışır",
-    title: "Yol, belge, süre takibi ve avukat",
-    lead: "Konsilier.AI dosyayı hazır belgeye, başvuruya ve sonraki adıma kadar götürür. Yapay zekâ metinde yardım eder; mevzuat, süreler ve muhataplar yalnızca doğrulanmış verilerden alınır.",
+    title: "Konsilier — hukuki konularda yapay zekâ asistanı",
+    lead: "Sorununuzu anlatın — Konsilier ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
     pathTitle: "Yol haritası",
     pathLead: "Belge → muhatap → süre → üst başvuru → avukat.",
     levelsTitle: "Üç kapsam seviyesi",
