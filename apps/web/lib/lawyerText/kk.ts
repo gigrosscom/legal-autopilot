@@ -54,6 +54,7 @@ const kk: LawyerText = {
       title: "Konsilier.AI серіктесі болу",
       invited: "Сізді әріптесіңіз шақырды · +3 ай Pro",
       name: "Аты-жөні",
+      kind: "Сіз кімсіз",
       kinds: [["advocate", "Адвокат"], ["legal_consultant", "Заң кеңесшісі"], ["human_rights", "Құқық қорғау ұйымы / ҮЕҰ"], ["other", "Басқа"]],
       org: "Алқа / палата / ұйым",
       license: "Лицензия / куәлік нөмірі",

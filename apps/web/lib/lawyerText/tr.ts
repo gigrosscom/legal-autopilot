@@ -55,6 +55,7 @@ const tr: LawyerText = {
       title: "Konsilier.AI ortağı olun",
       invited: "Sizi bir meslektaşınız davet etti · +3 ay Pro",
       name: "Ad soyad",
+      kind: "Mesleğiniz",
       kinds: [["advocate", "Avukat"], ["legal_consultant", "Hukuk danışmanı"], ["human_rights", "İnsan hakları kuruluşu / STK"], ["other", "Diğer"]],
       org: "Baro / oda / kuruluş",
       license: "Ruhsat / kimlik kartı numarası",

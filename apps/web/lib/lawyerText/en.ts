@@ -55,6 +55,7 @@ const en: LawyerText = {
       title: "Become a Konsilier.AI partner",
       invited: "Invited by a colleague · +3 months of Pro",
       name: "Full name",
+      kind: "Who you are",
       kinds: [["advocate", "Advocate"], ["legal_consultant", "Legal consultant"], ["human_rights", "Human rights organization / NGO"], ["other", "Other"]],
       org: "Bar association / chamber / organization",
       license: "License / ID card number",

@@ -55,6 +55,7 @@ const ar: LawyerText = {
       title: "كن شريكًا في Konsilier.AI",
       invited: "دعاك زميل · +3 أشهر Pro",
       name: "الاسم الكامل",
+      kind: "صفتك المهنية",
       kinds: [["advocate", "محامٍ"], ["legal_consultant", "مستشار قانوني"], ["human_rights", "منظمة حقوق إنسان / منظمة غير ربحية"], ["other", "أخرى"]],
       org: "النقابة / الغرفة / المؤسسة",
       license: "رقم الترخيص / البطاقة المهنية",

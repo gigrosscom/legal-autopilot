@@ -55,7 +55,7 @@ function DossierPreview() {
         <span className="chip bg-brand-50 text-brand-dark">{L.chip}</span>
         <span className="text-xs text-muted">{L.example}</span>
       </div>
-      <h3 className="text-base font-semibold">{L.title}</h3>
+      <p className="text-base font-semibold">{L.title}</p>
       <dl className="grid grid-cols-2 gap-2">
         {L.rows.map(([k, v]) => (
           <div key={k} className="rounded-lg bg-sand p-2">
@@ -163,15 +163,15 @@ function ApplyForm() {
     <form onSubmit={submit} className="card space-y-3">
       <h3 className="text-xl font-bold">{L.title}</h3>
       {ref && <p className="chip bg-brand-50 text-brand-dark">{L.invited}</p>}
-      <input className="input" required minLength={3} placeholder={L.name} value={form.full_name} onChange={set("full_name")} />
-      <select className="input" value={form.kind} onChange={set("kind")}>
+      <input className="input" required minLength={3} aria-label={L.name} placeholder={L.name} value={form.full_name} onChange={set("full_name")} />
+      <select className="input" aria-label={L.kind} value={form.kind} onChange={set("kind")}>
         {L.kinds.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
       </select>
       <div className="grid gap-3 sm:grid-cols-2">
-        <input className="input" placeholder={L.org} value={form.organization} onChange={set("organization")} />
-        <input className="input" placeholder={L.license} value={form.license_number} onChange={set("license_number")} />
-        <input className="input" placeholder={L.city} value={form.city} onChange={set("city")} />
-        <input className="input" required minLength={3} placeholder={L.contact} value={form.contact} onChange={set("contact")} />
+        <input className="input" aria-label={L.org} placeholder={L.org} value={form.organization} onChange={set("organization")} />
+        <input className="input" aria-label={L.license} placeholder={L.license} value={form.license_number} onChange={set("license_number")} />
+        <input className="input" aria-label={L.city} placeholder={L.city} value={form.city} onChange={set("city")} />
+        <input className="input" required minLength={3} aria-label={L.contact} placeholder={L.contact} value={form.contact} onChange={set("contact")} />
       </div>
       <div className="flex flex-wrap gap-2">
         {L.specs.map(([k, label]) => (
@@ -189,7 +189,7 @@ function ApplyForm() {
         <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand" checked={wantsExpert} onChange={(e) => setWantsExpert(e.target.checked)} />
         <span>{L.expert}</span>
       </label>
-      <textarea className="input" rows={2} placeholder={L.message} value={form.message} onChange={set("message")} />
+      <textarea className="input" rows={2} aria-label={L.message} placeholder={L.message} value={form.message} onChange={set("message")} />
       <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? L.busy : L.submit}</button>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-danger">{error}</p>}
       <p className="text-xs text-muted">{L.privacy}</p>

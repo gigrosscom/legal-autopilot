@@ -7,7 +7,8 @@ import { LangProvider } from "@/lib/i18n";
 import "./globals.css";
 
 // Inter with cyrillic-ext covers Kazakh letters (ә ғ қ ң ө ұ ү һ і); Arabic gets its own face.
-const inter = Inter({ subsets: ["latin", "cyrillic", "cyrillic-ext"], variable: "--font-inter", display: "swap" });
+// "optional": on slow networks the metric-matched fallback stays — no late re-layout of the hero text.
+const inter = Inter({ subsets: ["latin", "cyrillic", "cyrillic-ext"], variable: "--font-inter", display: "optional" });
 const arabic = Noto_Sans_Arabic({ subsets: ["arabic"], variable: "--font-arabic", display: "swap", preload: false });
 
 export const metadata: Metadata = {

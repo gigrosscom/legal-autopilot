@@ -58,10 +58,11 @@ export default function LawyersPage() {
       {data?.demo && (
         <div role="note" className="rounded-2xl border border-warning/30 bg-warning-50 p-3 text-sm text-warning">{data.disclaimer}</div>
       )}
-      {!data && !error && <p className="text-muted">{t("common.loading")}</p>}
+      {/* reserve the space the list will take, so nothing on screen jumps when it arrives */}
+      {!data && !error && <p aria-busy="true" className="min-h-[80vh] text-muted">{t("common.loading")}</p>}
       {error && <p role="alert" className="rounded-xl bg-danger-50 p-3 text-sm text-danger">{error}</p>}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      {data && <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">
           {data?.lawyers.map((l, i) => (
             <article key={l.id} className="card space-y-4">
@@ -138,7 +139,7 @@ export default function LawyersPage() {
           </ol>
           <p className="border-t border-ink/10 pt-2 text-xs text-muted">{t("lawyers.chooseSoon")}</p>
         </aside>
-      </div>
+      </div>}
     </div>
   );
 }
