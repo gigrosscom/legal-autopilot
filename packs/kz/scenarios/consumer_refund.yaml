@@ -42,6 +42,7 @@ intake:
   - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
   - seller_email: {type: email, optional: true}
   - evidence: [receipt, order_screenshot, correspondence]
+  - identity_document: [id_document]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin}
   respondent: {kind: business, name_field: seller_name, id_field: seller_bin, email_field: seller_email}

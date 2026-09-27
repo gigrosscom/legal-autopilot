@@ -210,6 +210,7 @@ def main() -> None:
         "generic/lawsuit.docx": lambda: generic("ИСКОВОЕ ЗАЯВЛЕНИЕ", "{{ title }}", "На основании изложенного прошу суд:"),
         "generic/appeal.docx": lambda: generic("АПЕЛЛЯЦИОННАЯ ЖАЛОБА", "{{ title }}", "Прошу:"),
         "generic/claim_letter.docx": claim_letter,
+        "generic/motion.docx": lambda: generic("ХОДАТАЙСТВО", "{{ title }}{% if f.case_number %} (дело № {{ f.case_number }}){% endif %}", "Прошу:"),
     }
     only = set(sys.argv[1:])  # e.g. generic/claim_letter.docx — rebuild just these
     for rel, build in out.items():

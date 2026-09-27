@@ -183,7 +183,7 @@ def extract_evidence(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPa
 
 
 def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,
-                    facts: dict[str, Any], action_title: str) -> str:
+                    facts: dict[str, Any], action_title: str, attachments: list[str] | None = None) -> str:
     specs = _field_specs(scenario, pack, lang, only=list(facts))
     schema = {
         "type": "object",
@@ -194,13 +194,17 @@ def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPac
     language_name = pack.t(lang, "language_name", default=lang)
     system = (
         f"{_COMMON_RULES}\nTask: write the 'statement of circumstances' section of the document "
-        f"'{action_title}' in {language_name}, formal written style, first person of the applicant, "
-        "3-6 sentences, chronological. Use only the provided facts. Do not cite laws, do not state "
-        "demands (they are added separately), do not add greetings or signatures."
+        f"'{action_title}' in {language_name}, in the formal style of a document a legal consultant would "
+        "file with a state body or a company: first person of the applicant, chronological, 4-8 sentences, "
+        "precise dates and amounts from the facts, no emotions or evaluative words. Where a fact is supported "
+        "by an attached document from 'attachments', say so (e.g. 'что подтверждается приложенным чеком'). "
+        "Use only the provided facts. Do not cite laws, do not state demands (they are added separately), "
+        "do not add greetings or signatures."
     )
     try:
         out = llm.complete_json(task="narrative", system=system, schema=schema,
-                                payload={"language": lang, "facts": facts, "fields": specs})
+                                payload={"language": lang, "facts": facts, "fields": specs,
+                                         "attachments": attachments or []})
         return (out.get("narrative") or "").strip()
     except LLMError as e:
         log.warning("narrative failed: %s", e)

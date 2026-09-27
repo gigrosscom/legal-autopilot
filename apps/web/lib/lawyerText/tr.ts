@@ -29,7 +29,7 @@ const tr: LawyerText = {
       income: "ayda ek gelir, ücretten komisyon olmadan",
       hoursUnit: "sa",
       hours: "ilk incelemede tasarruf (dosya başına ≈1,5 sa)",
-      note: "Girdiğiniz verilere göre örnek hesap, gelir vaadi değildir.",
+      note: "Girdiğiniz verilere göre örnek hesap.",
     },
     dossier: {
       chip: "Yeni dosya · Tüketici hakları",
