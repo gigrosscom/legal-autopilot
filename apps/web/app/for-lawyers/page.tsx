@@ -26,11 +26,11 @@ function Calculator() {
       <h3 className="text-lg font-semibold">{L.title}</h3>
       <label className="block text-sm">
         {L.cases}: <b>{cases}</b>
-        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="h-8 w-full accent-[#1f6f5c]" />
+        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="h-8 w-full accent-brand" />
       </label>
       <label className="block text-sm">
         {L.fee}: <b>{check.toLocaleString("ru-RU")} ₸</b>
-        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-8 w-full accent-[#1f6f5c]" />
+        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-8 w-full accent-brand" />
       </label>
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="rounded-xl bg-brand-50 p-3">
@@ -76,7 +76,7 @@ function DossierPreview() {
 function ShareCard({ name, demo }: { name: string; demo: boolean }) {
   const L = useText().card;
   return (
-    <div className="mx-auto w-full max-w-sm rounded-3xl bg-gradient-to-br from-[#1f6f5c] to-[#14213d] p-5 text-white shadow-lg">
+    <div className="mx-auto w-full max-w-sm rounded-3xl bg-gradient-to-br from-brand to-ink p-5 text-white shadow-lg">
       <div className="text-xs uppercase tracking-widest opacity-70">
         Konsilier.AI · {demo ? L.sample : L.partner}
       </div>

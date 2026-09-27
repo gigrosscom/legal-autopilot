@@ -20,7 +20,6 @@ export default function Footer() {
         <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">
           <Link href="/lawyers" className="text-muted hover:text-ink">{t("nav.lawyers")}</Link>
           <Link href="/for-lawyers" className="text-muted hover:text-ink">{t("nav.forLawyers")}</Link>
-          <Link href="/design-system" className="text-muted hover:text-ink">{t("footer.designSystem")}</Link>
         </nav>
       </div>
       <p className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted" dir="ltr">© Konsilier.AI · konsilier.com</p>
