@@ -421,6 +421,21 @@ const en: Dict = {
       no_iin: "The certificate has no IIN.",
     },
   },
+  sign: {
+    lead: "Sign the document with your ЭЦП — a signed document is harder to dispute. The signed file goes with the e-mail.",
+    ncalayer: "Sign with ЭЦП (NCALayer)",
+    egov: "Sign in eGov Mobile",
+    signedBy: "Signed with ЭЦП: {name} ({id})",
+    download: "Download the signed file (.cms)",
+    verifyHint: "The signature can be checked in ezSigner or on sigex.kz.",
+    errors: {
+      use_sign_key: "Choose your signing key (RSA or GOST), not the sign-in key (AUTH).",
+      signer_mismatch: "The applicant must sign: the IIN in the key differs from the IIN in the case.",
+      document_changed: "The document changed. Start signing again.",
+      wrong_data: "A different file was signed. Try again.",
+      awaiting_approval: "The document is still being reviewed by a lawyer.",
+    },
+  },
 };
 
 export default en;
