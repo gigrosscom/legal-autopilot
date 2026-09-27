@@ -20,7 +20,7 @@ from ..identity import normalize as norm
 from ..identity.ncanode import SignatureError
 from ..identity.service import AuthError, EGOV_TTL, me_view
 from ..identity.senders import SendError
-from ..core.models import Action, LoginChallenge, User
+from ..core.models import LoginChallenge, User
 from .deps import current_user, get_container, get_session
 
 router = APIRouter(prefix="/v1")
@@ -225,15 +225,13 @@ def egov_document(challenge_id: uuid.UUID, session: Session = Depends(get_sessio
     """API №2: the data to sign — our one-time nonce, or the prepared document itself."""
     ch = _egov_challenge(session, challenge_id)
     if ch.kind == "sign":
-        from .signing import document_file
+        from .signing import resolve_target
 
-        action = session.get(Action, uuid.UUID((ch.result or {})["action_id"]))
-        fmt, data = document_file(container, action)
-        name = f"{action.sequence:02d}-{action.action_id}.{fmt}"
+        target = resolve_target(session, container, ch.result or {})
         return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [{
-            "id": 1, "nameRu": name, "nameKz": name, "nameEn": name,
+            "id": 1, "nameRu": target.name, "nameKz": target.name, "nameEn": target.name,
             "meta": [{"name": "SHA-256", "value": (ch.result or {}).get("sha256", "")}],
-            "documentCms": base64.b64encode(data).decode(),
+            "documentCms": base64.b64encode(target.data).decode(),
         }]}
     return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [{
         "id": 1, "nameRu": "Вход в Konsilier.AI", "nameKz": "Konsilier.AI жүйесіне кіру",

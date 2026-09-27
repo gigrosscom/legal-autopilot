@@ -14,10 +14,10 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import (Action, AuditLog, Case, Evidence, LawyerApplication, Notification, User, WaitlistEntry,
+from ..core.models import (Action, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
 from ..core.scenario import RESPONSE_CLASSES
-from .deps import current_user, get_container, get_session, load_case, require_bot
+from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
 from .views import case_view
 
 router = APIRouter(prefix="/v1")
@@ -507,7 +507,8 @@ class LawyerApplicationIn(BaseModel):
 
 
 @router.post("/lawyer-applications", status_code=201)
-def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_session)) -> dict[str, Any]:
+def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_session),
+                    user: User | None = Depends(optional_user)) -> dict[str, Any]:
     import secrets
 
     code = secrets.token_urlsafe(5).replace("-", "x").replace("_", "y")[:7].upper()
@@ -516,11 +517,14 @@ def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_se
         ref = None  # unknown code is ignored, not an error
     app_row = LawyerApplication(**body.model_dump(exclude={"referred_by", "country"}), country=body.country.upper(),
                                 referral_code=code, referred_by=ref)
+    ident = session.scalar(select(Identity).where(Identity.user_id == user.id, Identity.kind == "iin")) if user else None
+    if ident is not None:  # applied signed in with ЭЦП: who they are, per the certificate
+        app_row.user_id, app_row.iin_hash, app_row.ecp_name = user.id, ident.subject_hash, user.display_name
     session.add(app_row)
     session.flush()
     invited = session.scalar(select(func.count()).select_from(LawyerApplication)
                              .where(LawyerApplication.referred_by == code))
-    return {"id": app_row.id, "referral_code": code, "invited": invited or 0}
+    return {"id": app_row.id, "referral_code": code, "invited": invited or 0, "ecp_verified": ident is not None}
 
 
 class ClientErrorIn(BaseModel):

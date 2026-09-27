@@ -101,10 +101,28 @@ class PackManifest(BaseModel):
         return v
 
 
+class AgreementTemplate(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    title: dict[str, str]
+    body: dict[str, tuple[str, ...]]
+
+
+class AgreementSet(BaseModel):
+    """Customer ↔ lawyer documents (agreements.yaml): data, reviewed by a lawyer like scenarios."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    reviewed_at: date | None = None
+    owner: str
+    lawyer_kinds: dict[str, dict[str, str]] = Field(default_factory=dict)
+    templates: dict[str, AgreementTemplate]
+    footer: dict[str, dict[str, str]] = Field(default_factory=dict)
+
+
 class JurisdictionPack:
     def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
                  i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None,
-                 coverage: Coverage | None = None):
+                 coverage: Coverage | None = None, agreements: AgreementSet | None = None):
+        self.agreements = agreements
         self.demo_lawyers = demo_lawyers or {}
         self.coverage = coverage
         self.root = root
@@ -216,7 +234,14 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
         raise PackValidationError("\n".join(errors))
     demo_path = root / "demo" / "lawyers.yaml"
     demo = yaml.safe_load(demo_path.read_text("utf-8")) if demo_path.is_file() else {}
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage)
+    agreements = None
+    agreements_path = root / "agreements.yaml"
+    if agreements_path.is_file():
+        try:
+            agreements = AgreementSet.model_validate(yaml.safe_load(agreements_path.read_text("utf-8")))
+        except (ValidationError, yaml.YAMLError) as e:
+            raise PackValidationError(f"{agreements_path}: {e}") from e
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements)
 
 
 class PackRegistry:

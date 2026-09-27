@@ -56,7 +56,7 @@ class User(TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(200))
     phone: Mapped[str | None] = mapped_column(String(32))
 
-    cases: Mapped[list["Case"]] = relationship(back_populates="owner")
+    cases: Mapped[list["Case"]] = relationship(back_populates="owner", foreign_keys="Case.owner_id")
     identities: Mapped[list["Identity"]] = relationship(back_populates="user")
 
 
@@ -142,9 +142,11 @@ class Case(TimestampMixin, Base):
     route_reasons: Mapped[list[Any] | None] = mapped_column(JSON, default=list, nullable=True)
     formal_demands: Mapped[str | None] = mapped_column(Text)  # universal path: demands paragraph
     # Case is held for manual review (suspected abuse, false report risk) until an admin releases it.
+    lawyer_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    lawyer_application_id: Mapped[int | None] = mapped_column(ForeignKey("lawyer_applications.id"), nullable=True)
     hold_reason: Mapped[str | None] = mapped_column(String(64), index=True)
 
-    owner: Mapped[User] = relationship(back_populates="cases")
+    owner: Mapped[User] = relationship(back_populates="cases", foreign_keys="Case.owner_id")
     parties: Mapped[list["Party"]] = relationship(back_populates="case", cascade="all, delete-orphan")
     evidence: Mapped[list["Evidence"]] = relationship(back_populates="case", cascade="all, delete-orphan",
                                                       order_by="Evidence.created_at")
@@ -237,7 +239,8 @@ class DocumentSignature(TimestampMixin, Base):
     __tablename__ = "document_signatures"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
     case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
-    action_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("actions.id"), index=True)
+    action_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("actions.id"), index=True, nullable=True)
+    agreement_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agreements.id"), index=True, nullable=True)
     signer_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     role: Mapped[str] = mapped_column(String(16), default="applicant")  # applicant | lawyer
     subject_hash: Mapped[str] = mapped_column(String(64))
@@ -249,7 +252,25 @@ class DocumentSignature(TimestampMixin, Base):
     cms_key: Mapped[str] = mapped_column(String(300))
     signed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-    action: Mapped[Action] = relationship(back_populates="signatures")
+    action: Mapped[Action | None] = relationship(back_populates="signatures")
+    agreement: Mapped["Agreement | None"] = relationship(back_populates="signatures")
+
+
+class Agreement(TimestampMixin, Base):
+    """Customer ↔ lawyer paper for a case (consent, engagement), signed by both with ЭЦП: customer first."""
+
+    __tablename__ = "agreements"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(32))  # consent | engagement
+    lawyer_application_id: Mapped[int] = mapped_column(ForeignKey("lawyer_applications.id"))
+    docx_key: Mapped[str] = mapped_column(String(300))
+    sha256: Mapped[str] = mapped_column(String(64))
+    template_reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(24), default="awaiting_customer")  # → awaiting_lawyer → signed
+
+    signatures: Mapped[list[DocumentSignature]] = relationship(back_populates="agreement",
+                                                               order_by="DocumentSignature.signed_at")
 
 
 class Deadline(TimestampMixin, Base):
@@ -341,6 +362,10 @@ class LawyerApplication(Base):
     wants_expert: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # scenario expert
     status: Mapped[str] = mapped_column(String(16), default="new")  # new | verified | rejected
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # set when the applicant was signed in with ЭЦП: who they are, per the certificate
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    iin_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ecp_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class DemandSignal(Base):
