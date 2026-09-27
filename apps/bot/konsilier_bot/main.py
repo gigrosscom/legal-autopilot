@@ -8,7 +8,8 @@ import os
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (BotCommand, BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup,
+                           Message)
 
 from .api import ApiError, KonsilierApi
 from .i18n import t
@@ -178,6 +179,18 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
     return dp
 
 
+BOT_COMMANDS = ("start", "new", "status")
+
+
+async def setup_profile(bot: Bot) -> None:
+    """Menu commands and profile texts from locales; kk for Kazakh-language clients, ru for everyone else."""
+    for lang, code in (("ru", None), ("kk", "kk")):
+        commands = [BotCommand(command=c, description=t(f"profile.commands.{c}", lang)) for c in BOT_COMMANDS]
+        await bot.set_my_commands(commands, language_code=code)
+        await bot.set_my_description(t("profile.description", lang).strip(), language_code=code)
+        await bot.set_my_short_description(t("profile.short", lang), language_code=code)
+
+
 async def run() -> None:
     logging.basicConfig(level=logging.INFO)
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -189,6 +202,10 @@ async def run() -> None:
                        os.environ.get("BOT_DEFAULT_COUNTRY") or None)
     bot = Bot(token)
     try:
+        try:
+            await setup_profile(bot)
+        except Exception:  # profile texts are cosmetic; never block the bot on them
+            log.exception("could not set bot commands/description")
         await build_dispatcher(api).start_polling(bot)
     finally:
         await api.close()
