@@ -79,6 +79,8 @@ const en: Dict = {
     doc_savedTo: "Saved",
   },
   cta: {
+    pickSituation: "Choose a situation",
+    draftDocument: "Draft a document",
     title: "Ready to start?",
     lead: "Describe the situation in your own words — we will show the path and prepare the first document.",
     start: "Describe your situation",
@@ -103,6 +105,8 @@ const en: Dict = {
     describe: "Describe what happened",
     cta: "Continue",
     privacy: "Names and document numbers are replaced with labels before AI processing. Documents are filed in your name.",
+    mySituation: "My situation",
+    mySituationText: "Not on the list? Describe it in your own words — we'll tell you what to do.",
     situationsEyebrow: "Life situations",
     situationsTitle: "What we help with",
     situationsLead: "You do not need to know which area of law it is. Pick a similar situation or just describe yours.",

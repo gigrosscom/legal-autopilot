@@ -1,7 +1,7 @@
 "use client";
 
 import { CtaBanner } from "@/components/CtaBanner";
-import { LevelBadge } from "@/components/LevelBadge";
+import { LevelAction, LevelBadge } from "@/components/LevelBadge";
 import { PathMap } from "@/components/PathMap";
 import { Alert, Button, Icon, Section, type IconName } from "@/components/ui";
 import { useT } from "@/lib/i18n";
@@ -42,10 +42,7 @@ export default function HowItWorks() {
               <h3 className="text-lg font-semibold">{t(`how.level.${lv}.title`)}</h3>
               <p className="text-sm text-muted">{t(`how.level.${lv}.when`)}</p>
               <List prefix={`how.level.${lv}.get`} n={3} icon="check" />
-              <Button className="mt-auto" variant="secondary" href={lv === "lawyer" ? "/lawyers" : "/start"}
-                icon={lv === "lawyer" ? "lawyer" : undefined} iconEnd={lv === "lawyer" ? undefined : "arrowRight"}>
-                {lv === "lawyer" ? t("cta.lawyer") : t("cta.start")}
-              </Button>
+              <LevelAction level={lv} />
             </article>
           ))}
         </div>

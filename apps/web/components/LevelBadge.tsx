@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, type Tone } from "@/components/ui";
+import { Badge, Button, type Tone } from "@/components/ui";
 import type { IconName } from "@/components/ui/Icon";
 import { useT } from "@/lib/i18n";
 
@@ -30,4 +30,12 @@ export function LevelExplainer({ level, stacked = false }: { level: Level; stack
       <p className="text-sm text-muted">{t(`level.${level}.desc`)}</p>
     </div>
   );
+}
+
+/** One action per coverage level: pick a ready situation / draft a document / find a lawyer. */
+export function LevelAction({ level }: { level: "verified" | "universal" | "lawyer" }) {
+  const t = useT();
+  if (level === "lawyer") return <Button className="mt-auto" variant="secondary" href="/lawyers" icon="lawyer">{t("cta.lawyer")}</Button>;
+  if (level === "verified") return <Button className="mt-auto" variant="secondary" href="/#situations" icon="checkCircle">{t("cta.pickSituation")}</Button>;
+  return <Button className="mt-auto" variant="secondary" href="/start" icon="document">{t("cta.draftDocument")}</Button>;
 }

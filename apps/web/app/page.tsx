@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CtaBanner } from "@/components/CtaBanner";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
-import { LevelExplainer } from "@/components/LevelBadge";
+import { LevelAction, LevelExplainer } from "@/components/LevelBadge";
 import { PathMap } from "@/components/PathMap";
 import Trust from "@/components/Trust";
 import { Alert, Button, Icon, Section } from "@/components/ui";
@@ -58,12 +58,12 @@ export default function Home() {
       </section>
 
       {/* LIFE SITUATIONS */}
-      <Section eyebrow={t("home.situationsEyebrow")} title={t("home.situationsTitle")} lead={t("home.situationsLead")}>
+      <Section id="situations" className="scroll-mt-24" eyebrow={t("home.situationsEyebrow")} title={t("home.situationsTitle")} lead={t("home.situationsLead")}>
         <ul className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {SITUATIONS.map((s) => (
             <li key={s.key}>
               <Link href={`/start?s=${s.key}`}
-                className="card flex h-full min-h-20 items-start gap-2.5 p-3 transition-shadow hover:shadow-[var(--shadow-raised)] sm:gap-3 sm:p-4">
+                className="card flex h-full min-h-20 flex-col items-start gap-2 p-3 transition-shadow hover:shadow-[var(--shadow-raised)] sm:flex-row sm:gap-3 sm:p-4">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand sm:h-10 sm:w-10">
                   <Icon name={s.icon} />
                 </span>
@@ -71,7 +71,22 @@ export default function Home() {
               </Link>
             </li>
           ))}
+          {/* not in the list — describe your own; spans two columns so the last row is always full */}
+          <li className="col-span-full min-[360px]:col-span-2">
+            <Link href="/start"
+              className="flex h-full min-h-20 items-center gap-3 rounded-2xl bg-brand p-3 text-white transition-shadow hover:bg-brand-dark hover:shadow-[var(--shadow-raised)] sm:p-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 sm:h-10 sm:w-10">
+                <Icon name="plus" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold leading-snug">{t("home.mySituation")}</span>
+                <span className="block text-sm text-white/80">{t("home.mySituationText")}</span>
+              </span>
+              <Icon name="arrowRight" className="shrink-0 rtl:-scale-x-100" />
+            </Link>
+          </li>
         </ul>
+        <Button href="/start" iconEnd="arrowRight">{t("cta.startCase")}</Button>
       </Section>
 
       {/* PATH MAP */}
@@ -86,10 +101,7 @@ export default function Home() {
           {(["verified", "universal", "lawyer"] as const).map((lv) => (
             <div key={lv} className="card flex flex-col items-start gap-3">
               <LevelExplainer level={lv} stacked />
-              <Button className="mt-auto" variant="secondary" href={lv === "lawyer" ? "/lawyers" : "/start"}
-                icon={lv === "lawyer" ? "lawyer" : undefined} iconEnd={lv === "lawyer" ? undefined : "arrowRight"}>
-                {lv === "lawyer" ? t("cta.lawyer") : t("cta.start")}
-              </Button>
+              <LevelAction level={lv} />
             </div>
           ))}
         </div>

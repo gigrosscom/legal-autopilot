@@ -79,6 +79,8 @@ const tr: Dict = {
     doc_savedTo: "Kaydedildi",
   },
   cta: {
+    pickSituation: "Durum seç",
+    draftDocument: "Belge hazırla",
     title: "Başlamaya hazır mısınız?",
     lead: "Durumu kendi sözlerinizle anlatın — yolu gösterip ilk belgeyi hazırlayalım.",
     start: "Durumu anlat",
@@ -103,6 +105,8 @@ const tr: Dict = {
     describe: "Ne olduğunu anlatın",
     cta: "Devam et",
     privacy: "İsimleri ve belge numaralarını yapay zekâ işlemeden önce etiketlerle değiştiriyoruz. Belgeler sizin adınıza sunulur.",
+    mySituation: "Benim durumum",
+    mySituationText: "Listede yok mu? Kendi sözlerinizle anlatın — ne yapmanız gerektiğini söyleyelim.",
     situationsEyebrow: "Hayattan durumlar",
     situationsTitle: "Neyde yardımcı oluyoruz",
     situationsLead: "Hangi hukuk dalı olduğunu bilmeniz gerekmez. Benzer bir durumu seçin ya da kendinizinkini anlatın.",
