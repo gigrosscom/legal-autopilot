@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { publicApi, errorText } from "@/lib/api";
+import { Icon, type IconName } from "@/components/ui";
 import { useLang } from "@/lib/i18n";
 
 // NOTE: commercial terms below are the proposed model (see docs/BUSINESS_MODEL.md) — edit them here, in both languages.
@@ -15,12 +16,12 @@ const TEXT = {
       ["Клиент пропал после первого этапа и не заплатил", "Оплата по этапам через резерв: клиент вносит сумму заранее, вы получаете её сразу после выполнения этапа."],
     ],
     benefits: [
-      ["📂", "Готовые дела", "Досье вместо первичной консультации — экономия 1–2 часов на каждом клиенте.", false],
-      ["💰", "0% с вашего гонорара", "Ваша цена — ваши деньги. Сервисный сбор платит клиент за безопасную сделку.", false],
-      ["🔒", "Гарантия оплаты", "Деньги клиента в резерве до выполнения этапа. Никаких «переведу завтра».", true],
-      ["🤖", "ИИ-помощник", "Черновики исков и жалоб, резюме дела, контроль процессуальных сроков с напоминаниями.", false],
-      ["🏆", "Репутация, которую нельзя купить", "Рейтинг по доказанным результатам: выигранные дела и возвращённые деньги, а не отзывы друзей.", false],
-      ["👥", "Ваши клиенты — ваши", "Ведите на платформе и своих клиентов: CRM, сроки, документы. Без комиссии для приведённых вами.", false],
+      ["briefcase", "Готовые дела", "Досье вместо первичной консультации — экономия 1–2 часов на каждом клиенте.", false],
+      ["coin", "0% с вашего гонорара", "Ваша цена — ваши деньги. Сервисный сбор платит клиент за безопасную сделку.", false],
+      ["lock", "Гарантия оплаты", "Деньги клиента в резерве до выполнения этапа. Никаких «переведу завтра».", true],
+      ["document", "ИИ-помощник", "Черновики исков и жалоб, резюме дела, контроль процессуальных сроков с напоминаниями.", false],
+      ["chart", "Репутация, которую нельзя купить", "Рейтинг по доказанным результатам: выигранные дела и возвращённые деньги, а не отзывы друзей.", false],
+      ["users", "Ваши клиенты — ваши", "Ведите на платформе и своих клиентов: CRM, сроки, документы. Без комиссии для приведённых вами.", false],
     ] as [string, string, string, boolean][],
     faq: [
       ["Сколько платформа берёт с юриста?", "С гонорара — 0%. Базовый тариф бесплатный. Pro (без лимита откликов, приоритет, ИИ-инструменты, CRM) — 15 000–25 000 ₸/мес. Партнёрам Konsilier.AI — Pro бесплатно 6 месяцев, экспертам сценариев — 12 месяцев."],
@@ -54,7 +55,7 @@ const TEXT = {
       cases: "дела",
       recovered: "возвращено",
       mln: "млн",
-      pending: "⭐ Партнёр Konsilier.AI. Рейтинг по доказанным результатам появится после первых завершённых дел.",
+      pending: "Партнёр Konsilier.AI. Рейтинг по доказанным результатам появится после первых завершённых дел.",
       footer: "konsilier.com · запись к юристу",
     },
     form: {
@@ -72,7 +73,7 @@ const TEXT = {
       busy: "Отправляем…",
       submit: "Подать заявку",
       privacy: "Проверяем статус по реестрам. Данные используем только для проверки и связи с вами.",
-      doneTitle: "Заявка принята 🎉",
+      doneTitle: "Заявка принята",
       doneText: "Мы проверим статус и свяжемся с вами. Пока — ваша личная ссылка. Каждый коллега, который присоединится по ней, даёт вам и ему +3 месяца Pro, а первые 10 приглашённых поднимают вас в ранней выдаче дел.",
       copy: "Копировать",
       share: "Присоединяюсь к Konsilier.AI — платформе, где юристы получают готовые дела с досье, 0% комиссии с гонорара и оплату по этапам. Программа «Партнёр Konsilier.AI»: Pro бесплатно 6 месяцев. ",
@@ -92,10 +93,10 @@ const TEXT = {
     reputation: "Карточка с рейтингом по доказанным результатам — ваша цифровая визитка. Делитесь ей в Instagram, Telegram и LinkedIn: клиенты записываются к вам напрямую, без комиссии.",
     growthTitle: "Растите вместе с платформой",
     growth: [
-      ["🤝", "Пригласите коллегу", "+3 месяца Pro вам и ему. 10 приглашённых — приоритет в выдаче дел."],
-      ["📣", "Кейс недели", "ИИ готовит обезличенный пост о вашем выигранном деле — публикуйте в один клик."],
-      ["🏅", "Топ месяца", "Лидеры по возвратам в каждой категории и городе — на главной и в наших соцсетях."],
-      ["🧾", "Свои клиенты — без комиссии", "Приглашайте своих клиентов по личной ссылке: CRM, сроки и документы бесплатно."],
+      ["handshake", "Пригласите коллегу", "+3 месяца Pro вам и ему. 10 приглашённых — приоритет в выдаче дел."],
+      ["send", "Кейс недели", "ИИ готовит обезличенный пост о вашем выигранном деле — публикуйте в один клик."],
+      ["chart", "Топ месяца", "Лидеры по возвратам в каждой категории и городе — на главной и в наших соцсетях."],
+      ["receipt", "Свои клиенты — без комиссии", "Приглашайте своих клиентов по личной ссылке: CRM, сроки и документы бесплатно."],
     ],
     partner: {
       title: "Программа «Партнёр Konsilier.AI»",
@@ -135,12 +136,12 @@ const TEXT = {
       ["Клиент бірінші кезеңнен кейін жоғалып, төлемеді", "Кезеңмен төлеу резерв арқылы: клиент ақшаны алдын ала салады, кезең орындалған соң бірден аласыз."],
     ],
     benefits: [
-      ["📂", "Дайын істер", "Алғашқы кеңес орнына досье — әр клиентте 1–2 сағат үнем.", false],
-      ["💰", "Гонорардан 0%", "Бағаңыз — өз ақшаңыз. Қауіпсіз мәміле үшін сервистік алымды клиент төлейді.", false],
-      ["🔒", "Төлем кепілдігі", "Клиенттің ақшасы кезең орындалғанша резервте. «Ертең аударамын» жоқ.", true],
-      ["🤖", "ЖИ-көмекші", "Талап пен шағым жобалары, іс түйіндемесі, іс жүргізу мерзімдерін еске салу.", false],
-      ["🏆", "Сатып алуға болмайтын бедел", "Дәлелденген нәтиже бойынша рейтинг: жеңген іс пен қайтарылған ақша, достардың пікірі емес.", false],
-      ["👥", "Өз клиенттеріңіз — сіздікі", "Өз клиенттеріңізді де платформада жүргізіңіз: CRM, мерзімдер, құжаттар. Өзіңіз әкелгенге комиссия жоқ.", false],
+      ["briefcase", "Дайын істер", "Алғашқы кеңес орнына досье — әр клиентте 1–2 сағат үнем.", false],
+      ["coin", "Гонорардан 0%", "Бағаңыз — өз ақшаңыз. Қауіпсіз мәміле үшін сервистік алымды клиент төлейді.", false],
+      ["lock", "Төлем кепілдігі", "Клиенттің ақшасы кезең орындалғанша резервте. «Ертең аударамын» жоқ.", true],
+      ["document", "ЖИ-көмекші", "Талап пен шағым жобалары, іс түйіндемесі, іс жүргізу мерзімдерін еске салу.", false],
+      ["chart", "Сатып алуға болмайтын бедел", "Дәлелденген нәтиже бойынша рейтинг: жеңген іс пен қайтарылған ақша, достардың пікірі емес.", false],
+      ["users", "Өз клиенттеріңіз — сіздікі", "Өз клиенттеріңізді де платформада жүргізіңіз: CRM, мерзімдер, құжаттар. Өзіңіз әкелгенге комиссия жоқ.", false],
     ] as [string, string, string, boolean][],
     faq: [
       ["Платформа заңгерден қанша алады?", "Гонорардан — 0%. Базалық тариф тегін. Pro (жауап лимитсіз, басымдық, ЖИ-құралдар, CRM) — 15 000–25 000 ₸/ай. Konsilier.AI серіктестеріне Pro 6 ай тегін, сценарий сарапшыларына — 12 ай."],
@@ -174,7 +175,7 @@ const TEXT = {
       cases: "іс",
       recovered: "қайтарылды",
       mln: "млн",
-      pending: "⭐ Konsilier.AI серіктесі. Рейтинг алғашқы істер аяқталған соң пайда болады.",
+      pending: "Konsilier.AI серіктесі. Рейтинг алғашқы істер аяқталған соң пайда болады.",
       footer: "konsilier.com · заңгерге жазылу",
     },
     form: {
@@ -192,7 +193,7 @@ const TEXT = {
       busy: "Жіберілуде…",
       submit: "Өтінім беру",
       privacy: "Мәртебені тізілімдер бойынша тексереміз. Деректерді тек тексеру және байланыс үшін қолданамыз.",
-      doneTitle: "Өтінім қабылданды 🎉",
+      doneTitle: "Өтінім қабылданды",
       doneText: "Мәртебеңізді тексеріп, хабарласамыз. Әзірге — жеке сілтемеңіз. Осы сілтеме арқылы қосылған әр әріптес сізге де, оған да +3 ай Pro береді, ал алғашқы 10 шақырылған сізді істер тізімінде жоғары көтереді.",
       copy: "Көшіру",
       share: "Konsilier.AI-ға қосылдым — заңгерлер досьесі бар дайын істер алатын, гонорардан 0% комиссия және кезеңмен төлем платформасы. «Konsilier.AI серіктесі» бағдарламасы: Pro 6 ай тегін. ",
@@ -212,10 +213,10 @@ const TEXT = {
     reputation: "Дәлелденген нәтиже бойынша рейтингі бар карточка — сандық визиткаңыз. Instagram, Telegram және LinkedIn-де бөлісіңіз: клиенттер сізге тікелей, комиссиясыз жазылады.",
     growthTitle: "Платформамен бірге өсіңіз",
     growth: [
-      ["🤝", "Әріптесті шақырыңыз", "Сізге де, оған да +3 ай Pro. 10 шақыру — істер тізімінде басымдық."],
-      ["📣", "Апта кейсі", "ЖИ жеңген ісіңіз туралы иесіз пост дайындайды — бір басумен жариялаңыз."],
-      ["🏅", "Ай үздігі", "Әр санат пен қаладағы қайтару көшбасшылары — басты бетте және әлеуметтік желілерімізде."],
-      ["🧾", "Өз клиенттеріңіз — комиссиясыз", "Өз клиенттеріңізді жеке сілтемемен шақырыңыз: CRM, мерзімдер, құжаттар тегін."],
+      ["handshake", "Әріптесті шақырыңыз", "Сізге де, оған да +3 ай Pro. 10 шақыру — істер тізімінде басымдық."],
+      ["send", "Апта кейсі", "ЖИ жеңген ісіңіз туралы иесіз пост дайындайды — бір басумен жариялаңыз."],
+      ["chart", "Ай үздігі", "Әр санат пен қаладағы қайтару көшбасшылары — басты бетте және әлеуметтік желілерімізде."],
+      ["receipt", "Өз клиенттеріңіз — комиссиясыз", "Өз клиенттеріңізді жеке сілтемемен шақырыңыз: CRM, мерзімдер, құжаттар тегін."],
     ],
     partner: {
       title: "«Konsilier.AI серіктесі» бағдарламасы",
@@ -253,7 +254,7 @@ type Text = (typeof TEXT)["ru"];
 
 function useText(): Text {
   const { lang } = useLang();
-  return TEXT[lang] as Text;
+  return ((TEXT as Record<string, Text>)[lang] ?? (TEXT as Record<string, Text>).en ?? TEXT.ru) as Text;
 }
 
 function Calculator() {
@@ -274,16 +275,16 @@ function Calculator() {
         <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-8 w-full accent-[#1f6f5c]" />
       </label>
       <div className="grid grid-cols-2 gap-3 text-center">
-        <div className="rounded-xl bg-brand/10 p-3">
+        <div className="rounded-xl bg-brand-50 p-3">
           <div className="text-xl font-bold text-brand sm:text-2xl">{income.toLocaleString("ru-RU")} ₸</div>
-          <div className="text-xs text-ink/60">{L.income}</div>
+          <div className="text-xs text-muted">{L.income}</div>
         </div>
-        <div className="rounded-xl bg-ink/5 p-3">
+        <div className="rounded-xl bg-sand p-3">
           <div className="text-xl font-bold sm:text-2xl">{hours.toLocaleString("ru-RU")} {L.hoursUnit}</div>
-          <div className="text-xs text-ink/60">{L.hours}</div>
+          <div className="text-xs text-muted">{L.hours}</div>
         </div>
       </div>
-      <p className="text-xs text-ink/50">{L.note}</p>
+      <p className="text-xs text-muted">{L.note}</p>
     </div>
   );
 }
@@ -293,19 +294,19 @@ function DossierPreview() {
   return (
     <div className="card space-y-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="chip bg-brand/10 text-brand">{L.chip}</span>
-        <span className="text-xs text-ink/50">{L.example}</span>
+        <span className="chip bg-brand-50 text-brand-dark">{L.chip}</span>
+        <span className="text-xs text-muted">{L.example}</span>
       </div>
       <h3 className="text-base font-semibold">{L.title}</h3>
       <dl className="grid grid-cols-2 gap-2">
         {L.rows.map(([k, v]) => (
-          <div key={k} className="rounded-lg bg-ink/5 p-2">
-            <dt className="text-xs text-ink/50">{k}</dt>
+          <div key={k} className="rounded-lg bg-sand p-2">
+            <dt className="text-xs text-muted">{k}</dt>
             <dd className="font-medium">{v}</dd>
           </div>
         ))}
       </dl>
-      <p className="text-xs text-ink/60">{L.hidden}</p>
+      <p className="text-xs text-muted">{L.hidden}</p>
       <div className="flex flex-wrap gap-2">
         <button className="btn-primary" disabled>{L.respond}</button>
         <button className="btn-ghost" disabled>{L.ask}</button>
@@ -329,7 +330,7 @@ function ShareCard({ name, demo }: { name: string; demo: boolean }) {
             <div className="text-4xl font-bold">84</div>
             <div className="text-xs opacity-70">{L.score}</div>
           </div>
-          <div className="text-right text-sm">
+          <div className="text-end text-sm">
             <div><b>134</b> {L.cases}</div>
             <div><b>71 {L.mln} ₸</b> {L.recovered}</div>
           </div>
@@ -382,7 +383,7 @@ function ApplyForm() {
     return (
       <div className="card space-y-4">
         <h3 className="text-xl font-bold">{L.doneTitle}</h3>
-        <p className="text-sm text-ink/70">{L.doneText}</p>
+        <p className="text-sm text-muted">{L.doneText}</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input className="input" readOnly value={link} onFocus={(e) => e.target.select()} />
           <button className="btn-ghost shrink-0" onClick={() => navigator.clipboard?.writeText(link)}>{L.copy}</button>
@@ -403,7 +404,7 @@ function ApplyForm() {
   return (
     <form onSubmit={submit} className="card space-y-3">
       <h3 className="text-xl font-bold">{L.title}</h3>
-      {ref && <p className="chip bg-brand/10 text-brand">{L.invited}</p>}
+      {ref && <p className="chip bg-brand-50 text-brand-dark">{L.invited}</p>}
       <input className="input" required minLength={3} placeholder={L.name} value={form.full_name} onChange={set("full_name")} />
       <select className="input" value={form.kind} onChange={set("kind")}>
         {L.kinds.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
@@ -432,8 +433,8 @@ function ApplyForm() {
       </label>
       <textarea className="input" rows={2} placeholder={L.message} value={form.message} onChange={set("message")} />
       <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? L.busy : L.submit}</button>
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <p className="text-xs text-ink/50">{L.privacy}</p>
+      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-danger">{error}</p>}
+      <p className="text-xs text-muted">{L.privacy}</p>
     </form>
   );
 }
@@ -445,14 +446,14 @@ export default function ForLawyers() {
       {/* HERO */}
       <section className="grid gap-8 pt-4 md:grid-cols-[1.3fr_1fr] md:items-center">
         <div className="space-y-5">
-          <span className="chip bg-brand/10 text-brand">{L.hero.chip}</span>
+          <span className="chip bg-brand-50 text-brand-dark">{L.hero.chip}</span>
           <h1 className="text-3xl font-bold leading-tight md:text-4xl">{L.hero.title}</h1>
-          <p className="text-lg text-ink/70">{L.hero.sub}</p>
+          <p className="text-lg text-muted">{L.hero.sub}</p>
           <div className="flex flex-wrap gap-3">
             <a href="#apply" className="btn-primary px-6 py-3 text-base">{L.hero.apply}</a>
             <a href="/lawyers" className="btn-ghost px-6 py-3 text-base">{L.hero.rating}</a>
           </div>
-          <p className="text-sm text-ink/60">{L.hero.perks}</p>
+          <p className="text-sm text-muted">{L.hero.perks}</p>
         </div>
         <DossierPreview />
       </section>
@@ -463,8 +464,8 @@ export default function ForLawyers() {
         <div className="grid gap-4 md:grid-cols-3">
           {L.pains.map(([pain, fix]) => (
             <div key={pain} className="card space-y-2">
-              <p className="text-sm text-red-700">✗ {pain}</p>
-              <p className="text-sm">✓ {fix}</p>
+              <p className="flex gap-2 text-sm text-danger"><Icon name="x" size={18} className="mt-0.5" />{pain}</p>
+              <p className="flex gap-2 text-sm"><Icon name="check" size={18} className="mt-0.5 text-brand" />{fix}</p>
             </div>
           ))}
         </div>
@@ -477,11 +478,11 @@ export default function ForLawyers() {
           {L.benefits.map(([icon, title, text, soon]) => (
             <div key={title} className="card space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-2xl">{icon}</span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name={icon as IconName} /></span>
                 <h3 className="font-semibold">{title}</h3>
-                {soon && <span className="chip bg-amber-100 text-amber-900">{L.soon}</span>}
+                {soon && <span className="chip bg-warning-50 text-warning">{L.soon}</span>}
               </div>
-              <p className="text-sm text-ink/70">{text}</p>
+              <p className="text-sm text-muted">{text}</p>
             </div>
           ))}
         </div>
@@ -492,7 +493,7 @@ export default function ForLawyers() {
         <Calculator />
         <div className="space-y-3">
           <h2 className="text-2xl font-bold">{L.reputationTitle}</h2>
-          <p className="text-ink/70">{L.reputation}</p>
+          <p className="text-muted">{L.reputation}</p>
           <ShareCard name="" demo />
         </div>
       </section>
@@ -503,9 +504,9 @@ export default function ForLawyers() {
         <div className="grid gap-4 md:grid-cols-4">
           {L.growth.map(([icon, title, text]) => (
             <div key={title} className="card space-y-1">
-              <div className="text-2xl">{icon}</div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name={icon as IconName} /></span>
               <h3 className="font-semibold">{title}</h3>
-              <p className="text-sm text-ink/70">{text}</p>
+              <p className="text-sm text-muted">{text}</p>
             </div>
           ))}
         </div>
@@ -514,22 +515,22 @@ export default function ForLawyers() {
       {/* PARTNER PROGRAMME */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">{L.partner.title}</h2>
-        <p className="text-ink/70">{L.partner.intro}</p>
+        <p className="text-muted">{L.partner.intro}</p>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.partner.doesTitle}</h3>
-            <ul className="list-inside list-disc space-y-1 text-sm text-ink/70">
+            <ul className="list-inside list-disc space-y-1 text-sm text-muted">
               {L.partner.does.map((x) => <li key={x}>{x}</li>)}
             </ul>
           </div>
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
             <h3 className="font-semibold">{L.partner.getsTitle}</h3>
-            <ul className="list-inside list-disc space-y-1 text-sm text-ink/70">
+            <ul className="list-inside list-disc space-y-1 text-sm text-muted">
               {L.partner.gets.map((x) => <li key={x}>{x}</li>)}
             </ul>
           </div>
         </div>
-        <p className="text-xs text-ink/50">{L.partner.lose}</p>
+        <p className="text-xs text-muted">{L.partner.lose}</p>
         <div className="space-y-3 rounded-2xl bg-ink p-5 text-white shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-semibold">{L.expert.title}</h3>
@@ -556,7 +557,7 @@ export default function ForLawyers() {
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.basic}</h3>
             <div className="text-2xl font-bold">0 ₸</div>
-            <p className="text-sm text-ink/70">{L.pricing.basicText}</p>
+            <p className="text-sm text-muted">{L.pricing.basicText}</p>
           </div>
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
             <div className="flex flex-wrap items-center gap-2">
@@ -564,12 +565,12 @@ export default function ForLawyers() {
               <span className="chip bg-brand text-white">{L.pricing.proChip}</span>
             </div>
             <div className="text-2xl font-bold">{L.proPrice}</div>
-            <p className="text-sm text-ink/70">{L.pricing.proText}</p>
+            <p className="text-sm text-muted">{L.pricing.proText}</p>
           </div>
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.ngo}</h3>
             <div className="text-2xl font-bold">{L.pricing.ngoPrice}</div>
-            <p className="text-sm text-ink/70">{L.pricing.ngoText}</p>
+            <p className="text-sm text-muted">{L.pricing.ngoText}</p>
           </div>
         </div>
       </section>
@@ -581,7 +582,7 @@ export default function ForLawyers() {
           {L.faq.map(([q, a]) => (
             <details key={q} className="card">
               <summary className="cursor-pointer font-semibold">{q}</summary>
-              <p className="mt-2 text-sm text-ink/70">{a}</p>
+              <p className="mt-2 text-sm text-muted">{a}</p>
             </details>
           ))}
         </div>

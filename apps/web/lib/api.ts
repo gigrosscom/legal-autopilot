@@ -47,6 +47,9 @@ export type CaseView = {
   id: string;
   status: string;
   status_label: string;
+  stage: string;
+  coverage: Coverage;
+  safety: { hold_reason: string | null; hold_message: string | null; pending_ack: "false_report" | "special_category" | null };
   needs_review: boolean;
   jurisdiction: string | null;
   language: string;
@@ -98,7 +101,39 @@ export type Roadmap = {
   open_ended_after_worst: boolean;
 };
 
-export type Reply = { message: string; question: Question | null; intake_complete: boolean; error: string | null };
+export type ForumOption = {
+  id: string;
+  name: string;
+  type: string;
+  legal_effect: "binding" | "advisory" | "none";
+  verified: boolean;
+  channels: string[];
+  deadline_known: boolean;
+  religious: { state_status: string; scope: string; family_rights_warning: string } | null;
+};
+
+export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };
+
+export type Reply = {
+  message: string;
+  question: Question | null;
+  intake_complete: boolean;
+  error: string | null;
+  options?: ForumOption[];
+  ack_required?: "false_report" | "special_category" | null;
+  emergency?: Emergency | null;
+};
+
+export type Coverage = {
+  level: "verified" | "universal" | "lawyer";
+  dispute: { id: string; title: string; branch: string } | null;
+  forum: ForumOption | null;
+  reasons: { code: string; label: string }[];
+  options: ForumOption[];
+  upl_notice: string | null;
+  religious_requested: boolean;
+  state_alternative_notice: string | null;
+};
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: unknown) {

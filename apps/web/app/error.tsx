@@ -10,8 +10,8 @@ export default function PageError({ error, reset }: { error: Error & { digest?: 
   return (
     <div className="card mx-auto max-w-lg space-y-3 text-center">
       <h1 className="text-xl font-bold">{t("errors.title")}</h1>
-      <p className="text-sm text-ink/70">{t("errors.saved")}</p>
-      <p className="text-xs text-ink/50">{t("errors.translate")}</p>
+      <p className="text-sm text-muted">{t("errors.saved")}</p>
+      <p className="text-xs text-muted">{t("errors.translate")}</p>
       <div className="flex justify-center gap-2">
         <button className="btn-primary" onClick={() => window.location.reload()}>{t("errors.reload")}</button>
         <button className="btn-ghost" onClick={() => reset()}>{t("errors.retry")}</button>
