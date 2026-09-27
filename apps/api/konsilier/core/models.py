@@ -224,6 +224,32 @@ class Action(TimestampMixin, Base):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     case: Mapped[Case] = relationship(back_populates="actions")
+    signatures: Mapped[list["DocumentSignature"]] = relationship(back_populates="action",
+                                                                 order_by="DocumentSignature.signed_at")
+
+
+class DocumentSignature(TimestampMixin, Base):
+    """An ЭЦП signature over a prepared document: CMS with the document inside, checked by the verifier.
+
+    The signer's identifier is kept only as an HMAC (`subject_hash`) and a masked `display`.
+    """
+
+    __tablename__ = "document_signatures"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    action_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("actions.id"), index=True)
+    signer_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(16), default="applicant")  # applicant | lawyer
+    subject_hash: Mapped[str] = mapped_column(String(64))
+    display: Mapped[str] = mapped_column(String(120))
+    signer_name: Mapped[str | None] = mapped_column(String(200))
+    method: Mapped[str] = mapped_column(String(16))  # ncalayer | egov
+    file_format: Mapped[str] = mapped_column(String(8))  # pdf | docx
+    doc_sha256: Mapped[str] = mapped_column(String(64))
+    cms_key: Mapped[str] = mapped_column(String(300))
+    signed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    action: Mapped[Action] = relationship(back_populates="signatures")
 
 
 class Deadline(TimestampMixin, Base):

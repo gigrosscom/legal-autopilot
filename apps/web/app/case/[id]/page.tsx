@@ -5,6 +5,7 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
+import { SignDocument } from "@/components/SignDocument";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
 import {
@@ -516,6 +517,9 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
           <Button variant="secondary" icon="download"
             onClick={() => downloadFile(`/v1/cases/${caseId}/actions/${a.id}/document?format=docx`, `${a.action_id}.docx`)}>DOCX</Button>
         </div>
+      )}
+      {a.downloadable && (
+        <SignDocument caseId={caseId} actionId={a.id} fileBase={a.action_id} initial={a.signatures ?? []} />
       )}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">

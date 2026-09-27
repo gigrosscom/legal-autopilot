@@ -421,6 +421,21 @@ const tr: Dict = {
       no_iin: "Sertifikada kimlik numarası yok.",
     },
   },
+  sign: {
+    lead: "Belgeyi e-imzanızla imzalayın — imzalı belgeye itiraz etmek daha zordur. İmzalı dosya e-postayla birlikte gider.",
+    ncalayer: "E-imza ile imzala (NCALayer)",
+    egov: "eGov Mobile'da imzala",
+    signedBy: "E-imzalı: {name} ({id})",
+    download: "İmzalı dosyayı indir (.cms)",
+    verifyHint: "İmza ezSigner'da veya sigex.kz'de doğrulanabilir.",
+    errors: {
+      use_sign_key: "Giriş anahtarını (AUTH) değil, imza anahtarını (RSA veya GOST) seçin.",
+      signer_mismatch: "Belgeyi başvuru sahibi imzalamalı: anahtardaki kimlik numarası dosyadakiyle eşleşmiyor.",
+      document_changed: "Belge değişti. İmzalamayı yeniden başlatın.",
+      wrong_data: "Başka bir dosya imzalandı. Tekrar deneyin.",
+      awaiting_approval: "Belge hâlâ avukat incelemesinde.",
+    },
+  },
 };
 
 export default tr;

@@ -12,7 +12,18 @@ export class NcaLayerError extends Error {
 const URL = "wss://127.0.0.1:13579/";
 
 /** Sign base64 `data` with an authentication key; returns the CMS (base64) with the data attached. */
-export function signForAuth(dataB64: string, locale: string, timeoutMs = 180_000): Promise<string> {
+export function signForAuth(dataB64: string, locale: string): Promise<string> {
+  // authentication certificates only (client auth EKU)
+  return signCms(dataB64, locale, { extKeyUsageOids: ["1.3.6.1.5.5.7.3.2"] });
+}
+
+/** Sign a document (base64) with a signing key; the server rejects anything but keyUsage SIGN. */
+export function signDocument(dataB64: string, locale: string): Promise<string> {
+  return signCms(dataB64, locale, {}, 600_000);
+}
+
+function signCms(dataB64: string, locale: string, signerParams: Record<string, unknown>,
+  timeoutMs = 180_000): Promise<string> {
   return new Promise((resolve, reject) => {
     let ws: WebSocket;
     try {
@@ -42,8 +53,7 @@ export function signForAuth(dataB64: string, locale: string, timeoutMs = 180_000
           format: "cms",
           data: dataB64,
           signingParams: { decode: true, encapsulate: true, digested: false, tsaProfile: {} },
-          // authentication certificates only (client auth EKU)
-          signerParams: { extKeyUsageOids: ["1.3.6.1.5.5.7.3.2"] },
+          signerParams,
           locale: ["kk", "ru", "en"].includes(locale) ? locale : "ru",
         },
       }));
