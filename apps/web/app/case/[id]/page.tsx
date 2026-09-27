@@ -192,6 +192,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         <div className="card space-y-3">
           <LevelExplainer level={cov.level} />
+          <Link href="/how-it-works" className="link inline-flex items-center gap-1 text-sm">
+            {t("cta.more")}<Icon name="arrowRight" size={14} className="rtl:-scale-x-100" />
+          </Link>
           {cov.reasons.length > 0 && (
             <ul className="flex flex-wrap gap-2">{cov.reasons.map((r) => <li key={r.code}><Badge tone="warning">{r.label}</Badge></li>)}</ul>
           )}
@@ -439,6 +442,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
         {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
+        {!(c.status === "handed_to_lawyer" && cov.level === "lawyer") && (
+          <div className="card space-y-2 text-sm">
+            <h2 className="flex items-center gap-2 font-semibold"><Icon name="lawyer" size={18} className="text-brand" />{t("cta.caseLawyerTitle")}</h2>
+            <p className="text-muted">{t("cta.caseLawyerText")}</p>
+            <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
+          </div>
+        )}
         <div className="rounded-2xl border border-line bg-surface p-4 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui";
 import { publicApi, errorText } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
@@ -138,6 +139,11 @@ export default function LawyersPage() {
             {["method1", "method2", "method3", "method4"].map((k) => <li key={k}>{t(`lawyers.${k}`)}</li>)}
           </ol>
           <p className="border-t border-ink/10 pt-2 text-xs text-muted">{t("lawyers.chooseSoon")}</p>
+          <div className="space-y-2 border-t border-ink/10 pt-3">
+            <p className="text-muted">{t("cta.lawyersLead")}</p>
+            <Button href="/start" className="w-full" iconEnd="arrowRight">{t("cta.startCase")}</Button>
+            <Button href="/for-lawyers" className="w-full" variant="secondary">{t("cta.join")}</Button>
+          </div>
         </aside>
       </div>}
     </div>

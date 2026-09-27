@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { CtaBanner } from "@/components/CtaBanner";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { LevelExplainer } from "@/components/LevelBadge";
 import { PathMap } from "@/components/PathMap";
@@ -76,14 +77,19 @@ export default function Home() {
       {/* PATH MAP */}
       <Section eyebrow={t("home.pathEyebrow")} title={t("home.pathTitle")} lead={t("home.pathLead")}>
         <PathMap />
+        <Button href="/start" iconEnd="arrowRight">{t("cta.startCase")}</Button>
       </Section>
 
       {/* THREE LEVELS */}
       <Section eyebrow={t("home.levelsEyebrow")} title={t("home.levelsTitle")} lead={t("home.levelsLead")}>
         <div className="grid gap-4 md:grid-cols-3">
           {(["verified", "universal", "lawyer"] as const).map((lv) => (
-            <div key={lv} className="card space-y-3">
+            <div key={lv} className="card flex flex-col items-start gap-3">
               <LevelExplainer level={lv} stacked />
+              <Button className="mt-auto" variant="secondary" href={lv === "lawyer" ? "/lawyers" : "/start"}
+                icon={lv === "lawyer" ? "lawyer" : undefined} iconEnd={lv === "lawyer" ? undefined : "arrowRight"}>
+                {lv === "lawyer" ? t("cta.lawyer") : t("cta.start")}
+              </Button>
             </div>
           ))}
         </div>
@@ -91,6 +97,8 @@ export default function Home() {
       </Section>
 
       <Trust />
+
+      <CtaBanner />
 
       {/* COVERAGE TEASER */}
       <section className="card flex flex-col items-start gap-4 bg-ink p-6 text-white md:flex-row md:items-center md:justify-between md:p-8">
