@@ -203,7 +203,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                       autoFocus
                       type="text"
                       inputMode={q.type === "date" ? "numeric" : undefined}
-                      placeholder={q.type === "date" ? "ДД.ММ.ГГГГ" : t("case.answerPlaceholder")}
+                      placeholder={q.type === "date" ? t("case.datePlaceholder") : t("case.answerPlaceholder")}
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                     />

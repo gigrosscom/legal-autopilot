@@ -63,7 +63,7 @@ export default function Trust() {
       </div>
       <div className="flex flex-wrap gap-2">
         <Link href="/lawyers" className="btn-ghost">{t("trust.cta")} →</Link>
-        <Link href="/for-lawyers" className="btn-primary">Вы юрист? Присоединяйтесь →</Link>
+        <Link href="/for-lawyers" className="btn-primary">{t("trust.joinLawyer")} →</Link>
       </div>
     </section>
   );

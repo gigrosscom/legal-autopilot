@@ -35,7 +35,7 @@ type Lawyer = {
 
 type Directory = { demo: boolean; disclaimer: string; currency: string; lawyers: Lawyer[] };
 
-const money = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)} млн` : v.toLocaleString("ru-RU"));
+const money = (v: number, mln: string) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)} ${mln}` : v.toLocaleString("ru-RU"));
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export default function LawyersPage() {
@@ -92,7 +92,7 @@ export default function LawyersPage() {
                 <Metric label={t("lawyers.cases")} value={String(l.score.verified_cases)} />
                 <Metric
                   label={t("lawyers.vsBaseline")}
-                  value={`${l.score.vs_baseline > 0 ? "+" : ""}${l.score.vs_baseline} п.п.`}
+                  value={`${l.score.vs_baseline > 0 ? "+" : ""}${l.score.vs_baseline} ${t("lawyers.pp")}`}
                   tone={l.score.vs_baseline >= 0 ? "good" : "bad"}
                 />
                 <Metric label={t("lawyers.onTime")} value={pct(l.score.reliability)} />
@@ -107,7 +107,7 @@ export default function LawyersPage() {
                       <span className="text-ink/60">
                         {t("lawyers.success")} {r.success_rate != null ? pct(r.success_rate) : "—"}
                         {r.baseline != null && ` · ${t("lawyers.platform")} ${pct(r.baseline)}`}
-                        {` · ${t("lawyers.recovered")} ${money(r.recovered)} ${data.currency}`}
+                        {` · ${t("lawyers.recovered")} ${money(r.recovered, t("lawyers.mln"))} ${data.currency}`}
                       </span>
                     </div>
                     <div className="relative mt-1 h-2 rounded-full bg-ink/5">

@@ -100,7 +100,9 @@ def list_lawyers(country: str, lang: str = "ru",
         cats = [CategoryStats(**c) for c in raw.get("categories", [])]
         s = score(LawyerStats(cats, raw.get("milestones_total", 0), raw.get("milestones_on_time", 0),
                               raw.get("reviews_count", 0), raw.get("reviews_avg", 0.0)), baseline)
-        profile = {k: v for k, v in raw.items() if k != "categories"}
+        # Text fields may be {lang: text} maps in the pack data.
+        profile = {k: pack.localized(v, lg) if isinstance(v, dict) and k in ("title", "organization", "city", "name") else v
+                   for k, v in raw.items() if k != "categories"}
         profile["specializations"] = [
             {"key": k, "label": pack.t(lg, f"categories.{k}", default=k)} for k in raw.get("specializations", [])]
         profile["results"] = [{

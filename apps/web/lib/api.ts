@@ -106,21 +106,49 @@ export class ApiError extends Error {
 }
 
 /** Thrown when there is no connection or the server did not answer in time. */
-export class NetworkError extends Error {}
+export class NetworkError extends Error {
+  constructor(public kind: "offline" | "timeout") {
+    super(kind);
+  }
+}
 
-/** A message a person can understand, for any error from the API helpers. */
+const ERRORS = {
+  ru: {
+    offline: "Нет интернета. Проверьте связь и попробуйте ещё раз — введённый текст сохранён.",
+    timeout: "Сервер не ответил вовремя — возможно, медленная связь. Попробуйте ещё раз.",
+    server: "Сервер временно не отвечает. Попробуйте ещё раз через минуту — введённый текст сохранён.",
+    denied: "Нет доступа. Обновите страницу и попробуйте снова.",
+    notFound: "Не найдено. Проверьте ссылку или откройте раздел «Мои дела».",
+    tooMany: "Слишком много запросов. Подождите минуту и попробуйте снова.",
+    invalid: "Проверьте введённые данные и попробуйте ещё раз.",
+    unknown: "Что-то пошло не так. Обновите страницу и попробуйте ещё раз.",
+  },
+  kk: {
+    offline: "Интернет жоқ. Байланысты тексеріп, қайта көріңіз — мәтін сақталды.",
+    timeout: "Сервер уақытында жауап бермеді — байланыс баяу болуы мүмкін. Қайта көріңіз.",
+    server: "Сервер уақытша жауап бермей тұр. Бір минуттан соң қайта көріңіз — мәтін сақталды.",
+    denied: "Рұқсат жоқ. Бетті жаңартып, қайта көріңіз.",
+    notFound: "Табылмады. Сілтемені тексеріңіз немесе «Істерім» бөлімін ашыңыз.",
+    tooMany: "Сұрау тым көп. Бір минут күтіп, қайта көріңіз.",
+    invalid: "Енгізген деректерді тексеріп, қайта көріңіз.",
+    unknown: "Бірдеңе дұрыс болмады. Бетті жаңартып, қайта көріңіз.",
+  },
+};
+
+/** A message a person can understand, for any error from the API helpers, in the page language. */
 export function errorText(e: unknown): string {
-  if (e instanceof NetworkError) return e.message;
+  const m = typeof document !== "undefined" && document.documentElement.lang === "kk" ? ERRORS.kk : ERRORS.ru;
+  if (e instanceof NetworkError) return m[e.kind];
   if (e instanceof ApiError) {
-    if (e.status >= 500) return "Сервер временно не отвечает. Попробуйте ещё раз через минуту — введённый текст сохранён.";
-    if (e.status === 401 || e.status === 403) return "Нет доступа. Обновите страницу и попробуйте снова.";
-    if (e.status === 404) return "Не найдено. Проверьте ссылку или откройте раздел «Мои дела».";
-    if (e.status === 429) return "Слишком много запросов. Подождите минуту и попробуйте снова.";
+    if (e.status >= 500) return m.server;
+    if (e.status === 401 || e.status === 403) return m.denied;
+    if (e.status === 404) return m.notFound;
+    if (e.status === 429) return m.tooMany;
     const msg = e.message;
     if (msg && !msg.startsWith("[") && !msg.startsWith("{") && !msg.startsWith("<") && msg !== "[object Object]") return msg;
-    return "Проверьте введённые данные и попробуйте ещё раз.";
+    return m.invalid;
   }
-  return "Что-то пошло не так. Обновите страницу и попробуйте ещё раз.";
+  return m.unknown;
 }
 
 // Slow phones and mobile networks: never hang forever. Answers that involve the AI can take up to a minute.
@@ -131,11 +159,7 @@ async function request(url: string, init: RequestInit = {}): Promise<Response> {
   try {
     return await fetch(url, { ...init, signal: ctrl.signal });
   } catch {
-    throw new NetworkError(
-      typeof navigator !== "undefined" && !navigator.onLine
-        ? "Нет интернета. Проверьте связь и попробуйте ещё раз — введённый текст сохранён."
-        : "Сервер не ответил вовремя — возможно, медленная связь. Попробуйте ещё раз.",
-    );
+    throw new NetworkError(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "timeout");
   } finally {
     clearTimeout(timer);
   }
