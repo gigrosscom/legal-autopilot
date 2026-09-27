@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..container import Container
 from ..core.documents import docx_text
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import Action, Case, WaitlistEntry
+from ..core.models import Action, Case, LawyerApplication, WaitlistEntry
 from .deps import get_container, get_session, require_admin
 from .routes import document_response, engine_error
 from .views import case_view
@@ -154,3 +154,17 @@ def waitlist(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
     rows = session.scalars(select(WaitlistEntry).order_by(WaitlistEntry.id.desc()).limit(500))
     return [{"country": w.country, "contact": w.contact, "problem": w.problem,
              "created_at": w.created_at.isoformat()} for w in rows]
+
+
+@router.get("/lawyer-applications")
+def lawyer_applications(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
+    rows = session.scalars(select(LawyerApplication).order_by(LawyerApplication.id.desc()).limit(500)).all()
+    counts: dict[str, int] = {}
+    for r in rows:
+        if r.referred_by:
+            counts[r.referred_by] = counts.get(r.referred_by, 0) + 1
+    return [{"id": r.id, "created_at": r.created_at.isoformat(), "full_name": r.full_name, "kind": r.kind,
+             "organization": r.organization, "license_number": r.license_number, "city": r.city,
+             "specializations": r.specializations, "contact": r.contact, "message": r.message,
+             "referral_code": r.referral_code, "referred_by": r.referred_by, "invited": counts.get(r.referral_code, 0),
+             "status": r.status} for r in rows]

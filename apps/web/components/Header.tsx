@@ -15,6 +15,7 @@ export default function Header() {
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/start" className="hover:text-brand">{t("nav.start")}</Link>
           <Link href="/lawyers" className="hover:text-brand">{t("nav.lawyers")}</Link>
+          <Link href="/for-lawyers" className="hidden font-semibold text-brand hover:underline sm:inline">{t("nav.forLawyers")}</Link>
           <Link href="/cases" className="hover:text-brand">{t("nav.cases")}</Link>
           <div className="flex overflow-hidden rounded-lg border border-ink/15 text-xs">
             {(["ru", "kk"] as const).map((l) => (

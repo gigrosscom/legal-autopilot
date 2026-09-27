@@ -8,12 +8,12 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import Action, Case, Evidence, Notification, User, WaitlistEntry
+from ..core.models import Action, Case, Evidence, LawyerApplication, Notification, User, WaitlistEntry
 from ..core.scenario import RESPONSE_CLASSES
 from .deps import current_user, get_container, get_session, load_case, require_bot
 from .views import case_view
@@ -341,6 +341,36 @@ def close_case(case_id: uuid.UUID, body: CloseIn, user: User = Depends(current_u
         raise engine_error(e) from e
     session.flush()
     return {"case": case_view(container.engine, session, case)}
+
+
+class LawyerApplicationIn(BaseModel):
+    country: str = Field(min_length=2, max_length=2)
+    full_name: str = Field(min_length=3, max_length=200)
+    kind: Literal["advocate", "legal_consultant", "human_rights", "other"]
+    organization: str | None = Field(default=None, max_length=300)
+    license_number: str | None = Field(default=None, max_length=100)
+    city: str | None = Field(default=None, max_length=100)
+    specializations: list[str] = Field(default_factory=list, max_length=10)
+    contact: str = Field(min_length=3, max_length=200)
+    message: str | None = Field(default=None, max_length=2000)
+    referred_by: str | None = Field(default=None, max_length=16)
+
+
+@router.post("/lawyer-applications", status_code=201)
+def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_session)) -> dict[str, Any]:
+    import secrets
+
+    code = secrets.token_urlsafe(5).replace("-", "x").replace("_", "y")[:7].upper()
+    ref = (body.referred_by or "").strip().upper() or None
+    if ref and not session.scalar(select(LawyerApplication.id).where(LawyerApplication.referral_code == ref)):
+        ref = None  # unknown code is ignored, not an error
+    app_row = LawyerApplication(**body.model_dump(exclude={"referred_by", "country"}), country=body.country.upper(),
+                                referral_code=code, referred_by=ref)
+    session.add(app_row)
+    session.flush()
+    invited = session.scalar(select(func.count()).select_from(LawyerApplication)
+                             .where(LawyerApplication.referred_by == code))
+    return {"id": app_row.id, "referral_code": code, "invited": invited or 0}
 
 
 class ClientErrorIn(BaseModel):

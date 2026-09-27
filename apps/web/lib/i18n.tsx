@@ -7,7 +7,7 @@ export type Lang = "ru" | "kk";
 type Dict = { [key: string]: string | Dict };
 
 const ru: Dict = {
-  nav: { start: "Начать", cases: "Мои дела", admin: "Админка", lawyers: "Юристы" },
+  nav: { start: "Начать", cases: "Мои дела", admin: "Админка", lawyers: "Юристы", forLawyers: "Для юристов" },
   roadmap: {
     title: "Дорожная карта дела",
     best: "Лучший вариант",

@@ -246,3 +246,23 @@ class WaitlistEntry(Base):
     problem: Mapped[str | None] = mapped_column(Text)
     language: Mapped[str | None] = mapped_column(String(8))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class LawyerApplication(Base):
+    """A lawyer / advocate / human-rights defender applying to join (founders programme)."""
+
+    __tablename__ = "lawyer_applications"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country: Mapped[str] = mapped_column(String(2), index=True)
+    full_name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(32))  # advocate | legal_consultant | human_rights | other
+    organization: Mapped[str | None] = mapped_column(String(300))
+    license_number: Mapped[str | None] = mapped_column(String(100))
+    city: Mapped[str | None] = mapped_column(String(100))
+    specializations: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    contact: Mapped[str] = mapped_column(String(200))
+    message: Mapped[str | None] = mapped_column(Text)
+    referral_code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    referred_by: Mapped[str | None] = mapped_column(String(16), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="new")  # new | verified | rejected
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -341,3 +341,22 @@ def test_packs_and_waitlist(ctx):
     rows = ctx.client.get("/v1/admin/waitlist", headers=ADMIN).json()
     assert rows[0]["country"] == "UZ"
     assert ctx.client.get("/v1/admin/waitlist").status_code == 403
+
+
+def test_lawyer_application_with_referral(ctx):
+    first = ctx.client.post("/v1/lawyer-applications", json={
+        "country": "kz", "full_name": "Адвокат Первый", "kind": "advocate", "contact": "+77010000000",
+        "specializations": ["consumer"]})
+    assert first.status_code == 201, first.text
+    code = first.json()["referral_code"]
+    second = ctx.client.post("/v1/lawyer-applications", json={
+        "country": "KZ", "full_name": "Коллега Второй", "kind": "legal_consultant", "contact": "@colleague",
+        "referred_by": code.lower()})
+    assert second.status_code == 201
+    rows = ctx.client.get("/v1/admin/lawyer-applications", headers=ADMIN).json()
+    by_name = {r["full_name"]: r for r in rows}
+    assert by_name["Коллега Второй"]["referred_by"] == code
+    assert by_name["Адвокат Первый"]["invited"] == 1
+    bad = ctx.client.post("/v1/lawyer-applications", json={"country": "KZ", "full_name": "X Y Z", "kind": "wizard",
+                                                            "contact": "abc"})
+    assert bad.status_code == 422
