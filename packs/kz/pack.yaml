@@ -51,3 +51,54 @@ compliance:
   service_disclaimer:
     ru: "Konsilier.AI помогает подготовить и подать документы и следит за сроками. Если нужно довести дело до результата — подключим профессионального юриста платформы. Документы подаются от вашего имени."
     kk: "Konsilier.AI құжаттарды дайындауға және беруге көмектеседі, мерзімдерді бақылайды. Істі нәтижеге жеткізу керек болса — платформаның кәсіби заңгерін қосамыз. Құжаттар сіздің атыңыздан беріледі."
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: adilet
+  name:
+    en: Legal Information System Adilet
+    ru: ИПС «Әділет»
+    kk: «Әділет» АҚЖ
+  url: https://adilet.zan.kz/rus
+  operator: RSE «Institute of Legislation and Legal Information of the Republic of Kazakhstan», Ministry of Justice
+  kind: legislation
+  languages:
+  - kk
+  - ru
+  - en
+  access: web
+  api: unknown
+  terms_url: https://adilet.zan.kz/rus/terms
+  reuse_note: 'Terms: non-commercial copying of individual items allowed with the source «Әділет» and http://adilet.zan.kz/
+    indicated; other use needs written consent.'
+  verified_on: 2026-09-27
+- id: ekb
+  name:
+    en: Reference Control Bank of Legal Acts (electronic)
+    ru: Эталонный контрольный банк НПА РК
+    kk: НҚА эталондық бақылау банкі
+  url: https://zan.gov.kz/client/
+  operator: RSE «Institute of Legislation and Legal Information of the Republic of Kazakhstan», Ministry of Justice
+  kind: registry
+  languages:
+  - kk
+  - ru
+  access: web
+  api: unknown
+  reuse_note: Official source of normative acts in control status; free access, updated daily.
+  verified_on: 2026-09-27
+- id: court_acts
+  name:
+    en: Court acts bank (Judicial Office)
+    ru: Банк судебных актов (Судебный кабинет)
+    kk: Сот актілерінің банкі
+  url: https://office.sud.kz/courtActs/index.xhtml
+  operator: Supreme Court of the Republic of Kazakhstan
+  kind: case_law
+  languages:
+  - kk
+  - ru
+  access: web
+  api: unknown
+  reuse_note: 'Contains personal data of parties: link only; any import needs legal review and depersonalization.'
+  verified_on: 2026-09-27

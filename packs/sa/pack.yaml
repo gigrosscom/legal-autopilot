@@ -29,3 +29,35 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: boe_laws
+  name:
+    en: Laws and Regulations, Bureau of Experts
+    ru: Законы и регламенты (Бюро экспертов)
+    ar: هيئة الخبراء بمجلس الوزراء - الأنظمة واللوائح
+  url: https://laws.boe.gov.sa/
+  operator: Bureau of Experts at the Council of Ministers
+  kind: legislation
+  languages:
+  - ar
+  - en
+  access: web
+  api: unknown
+  reuse_note: Arabic text is authoritative; English texts are official translations of the Bureau.
+  verified_on: 2026-09-27
+- id: sjp
+  name:
+    en: Scientific Judicial Portal
+    ru: Научный судебный портал
+    ar: البوابة القضائية العلمية
+  url: https://sjp.moj.gov.sa/
+  operator: Ministry of Justice of the Kingdom of Saudi Arabia
+  kind: case_law
+  languages:
+  - ar
+  access: web
+  api: unknown
+  reuse_note: 'Published final rulings; personal data: link only.'
+  verified_on: 2026-09-27

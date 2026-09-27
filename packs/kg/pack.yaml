@@ -30,3 +30,36 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: cbd
+  name:
+    en: Centralized Database of Legal Information
+    ru: Централизованный банк данных правовой информации КР
+    ky: Укуктук маалыматтын борборлоштурулган маалымат банкы
+  url: https://cbd.minjust.gov.kg/ru
+  operator: Ministry of Justice of the Kyrgyz Republic
+  kind: legislation
+  languages:
+  - ky
+  - ru
+  access: web
+  api: unknown
+  verified_on: 2026-09-27
+- id: act_sot
+  name:
+    en: Court acts and hearings (to 2022)
+    ru: Судебные акты и заседания (до 2022 г.)
+    ky: Сот актылары
+  url: https://act.sot.kg/
+  operator: Judicial Department / Supreme Court of the Kyrgyz Republic
+  kind: case_law
+  languages:
+  - ky
+  - ru
+  access: web
+  api: unknown
+  reuse_note: 'Archive until 2022; newer acts are published on the Digital Justice portal (portal.sot.kg). Personal
+    data: link only.'
+  verified_on: 2026-09-27

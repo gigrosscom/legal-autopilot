@@ -27,7 +27,15 @@ services:
       PACKS_DIR: /app/packs
       STORAGE_LOCAL_DIR: /data/files
       CORS_ORIGINS: https://${SITE_DOMAIN},https://www.${SITE_DOMAIN}
+      PUBLIC_API_URL: https://${API_DOMAIN}
+      NCANODE_URL: http://ncanode:14579
     volumes: [api_data:/data]
+
+  # ЭЦП verification (certificate chain to the national root CAs + OCSP). Internal only, no public port.
+  ncanode:
+    image: malikzh/ncanode:3.5.0
+    restart: unless-stopped
+    mem_limit: 1g
 
   web:
     build:
