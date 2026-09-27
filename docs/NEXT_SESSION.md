@@ -23,6 +23,13 @@ Context for the next Claude Code session. Everything below is already decided wi
 Network allowlist needed: `yandexcloud.kz`, `api.yandexcloud.kz`, `storage.yandexcloud.kz`, `storage.yandexcloud.net`.
 Never print these values.
 
+## Status of the 2026-09-27 attempt
+
+Blocked: the session's network policy denied `api.yandexcloud.kz`, `storage.yandexcloud.net`, `storage.yandexcloud.kz`,
+`yandexcloud.kz` (proxy 403), and `ANTHROPIC_API_KEY` was not set. Nothing was created in Yandex Cloud.
+Steps 1-8 are now scripted: once the hosts are allowed and the variables are set, run `deploy/yc-provision.sh`
+(idempotent; `USE_MANAGED_PG=0` for a database on the VM, `PG_PRESET=...` to change the class).
+
 ## Plan
 
 1. Install `yc` CLI; configure with the key, cloud, folder; set the KZ API endpoint (verify in Yandex docs for kz1).

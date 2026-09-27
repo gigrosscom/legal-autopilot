@@ -2,6 +2,7 @@
 # First boot of the production server (Ubuntu 24.04). Installs Docker, clones the repo,
 # and installs timers: auto-deploy from GitHub every 2 minutes, database backup daily.
 # /opt/konsilier/.env must be filled (see deploy/env.example) — the stack starts once it exists.
+# deploy/yc-provision.sh passes it once as the VM metadata key `konsilier-env` and deletes the key afterwards.
 package_update: true
 packages: [git, ca-certificates, curl]
 runcmd:
@@ -10,3 +11,12 @@ runcmd:
   - cp /opt/konsilier/deploy/konsilier-*.service /opt/konsilier/deploy/konsilier-*.timer /etc/systemd/system/
   - systemctl daemon-reload
   - systemctl enable --now konsilier-update.timer konsilier-backup.timer
+  - |
+    umask 077
+    if curl -sf -H 'Metadata-Flavor: Google' \
+        http://169.254.169.254/computeMetadata/v1/instance/attributes/konsilier-env -o /opt/konsilier/.env; then
+      echo KONSILIER_ENV_INSTALLED > /dev/console
+      /opt/konsilier/deploy/update.sh --force
+    else
+      rm -f /opt/konsilier/.env
+    fi

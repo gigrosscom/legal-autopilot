@@ -8,6 +8,8 @@ Target: Yandex Cloud region `kz1` (or any Ubuntu 24.04 server in Kazakhstan).
 | Database | Managed Service for PostgreSQL (if offered in kz1) | otherwise `COMPOSE_PROFILES=localdb` |
 | Files | Object Storage bucket `konsilier-files` (`https://storage.yandexcloud.kz`) | documents, uploads, daily backups |
 
+Yandex Cloud: `deploy/yc-provision.sh` does steps 1-4 (network, VM, PostgreSQL, bucket, `.env` via one-off metadata).
+
 1. Create the VM with `deploy/cloud-init.yaml` as user data.
 2. Put the filled `deploy/env.example` at `/opt/konsilier/.env` (chmod 600).
 3. `sudo /opt/konsilier/deploy/update.sh --force` — first start; afterwards the timer redeploys on every push.
