@@ -20,7 +20,9 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
     """Coverage level and what it means for this case (ADR 0001): shown to the user on every step."""
     cov = pack.coverage
     out: dict[str, Any] = {"level": case.coverage_level, "dispute": None, "forum": None, "reasons": [],
-                           "options": engine.forum_options(case), "upl_notice": None}
+                           "options": engine.forum_options(case), "upl_notice": None,
+                           "religious_requested": bool((case.taxonomy or {}).get("religious_path")),
+                           "state_alternative_notice": None}
     tax = case.taxonomy or {}
     if cov is not None:
         if tax.get("dispute_id") in cov.disputes:
@@ -30,6 +32,8 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
             out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
         if cov.routing.upl_notice:
             out["upl_notice"] = pack.localized(cov.routing.upl_notice.text, lang)
+        if out["religious_requested"] and cov.routing.state_alternative_notice:
+            out["state_alternative_notice"] = pack.localized(cov.routing.state_alternative_notice, lang)
     out["reasons"] = [{"code": r, "label": pack.t(lang, f"routing.reasons.{r}", default=r)}
                       for r in (case.route_reasons or [])]
     return out

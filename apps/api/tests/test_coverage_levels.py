@@ -179,3 +179,22 @@ def test_planned_countries_are_soon_and_accept_no_cases(ctx):
     for cc in ("AE", "UZ"):
         pack = ctx.container.packs.pack(cc)
         assert pack.scenarios == {} and not pack.coverage.has_registry  # no invented law
+
+
+def test_religious_forums_only_on_explicit_choice_and_with_state_route(ctx):
+    api = web_user(ctx)
+    plain = api.post("/v1/cases", expect=201, json={"text": "I want a divorce from my husband", "country": "XX",
+                                                     "language": "en"})
+    ids = {o["id"] for o in plain["case"]["coverage"]["options"]}
+    assert "xx.religious.council" not in ids  # never offered unless the user asked for it
+    assert plain["case"]["coverage"]["forum"]["id"] == "xx.court.civil"  # single state candidate chosen
+
+    chosen = api.post("/v1/cases", expect=201, json={"text": "I want a divorce from my husband", "country": "XX",
+                                                      "language": "en", "religious_path": True})
+    cov = chosen["case"]["coverage"]
+    opts = {o["id"]: o for o in cov["options"]}
+    assert set(opts) == {"xx.court.civil", "xx.religious.council"}  # state route always next to it
+    assert opts["xx.religious.council"]["legal_effect"] == "advisory"
+    assert opts["xx.religious.council"]["religious"]["family_rights_warning"]
+    assert cov["religious_requested"] is True
+    assert cov["state_alternative_notice"].startswith("The state route")
