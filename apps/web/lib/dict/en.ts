@@ -486,6 +486,16 @@ const en: Dict = {
       rejected: "Your application was rejected. Write to us if this is a mistake.",
     },
   },
+  gov: {
+    title: "Certificates from egov.kz",
+    lead: "These certificates can strengthen your case. Get them yourself on egov.kz — with your ЭЦП or eGov Mobile — and upload them here: they are added to the evidence.",
+    needsEcp: "Needs ЭЦП or eGov Mobile",
+    open: "No sign-in",
+    get: "Get on egov.kz",
+    upload: "Upload certificate",
+    uploaded: "Uploaded",
+    disclaimer: "We do not sign in to egov.kz on your behalf and cannot see your data there — you get the certificate yourself.",
+  },
 };
 
 export default en;

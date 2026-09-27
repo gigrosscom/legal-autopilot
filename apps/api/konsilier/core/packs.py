@@ -118,11 +118,39 @@ class AgreementSet(BaseModel):
     footer: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
+class GovService(BaseModel):
+    """A certificate the person gets themselves on an official portal (we only link; no integration)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    id: str
+    title: dict[str, str]
+    url: str
+    provider: str
+    auth: Literal["ecp_or_egov_mobile", "none"]
+    evidence_for: tuple[str, ...] = ()  # taxonomy branches where it helps; empty = any
+    note: dict[str, str] = Field(default_factory=dict)
+    verified_on: date | None = None  # when the link was last confirmed
+
+    @field_validator("url")
+    @classmethod
+    def _https(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            raise ValueError("gov service url must be https")
+        return v
+
+
+class GovServices(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    services: tuple[GovService, ...]
+
+
 class JurisdictionPack:
     def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
                  i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None,
-                 coverage: Coverage | None = None, agreements: AgreementSet | None = None):
+                 coverage: Coverage | None = None, agreements: AgreementSet | None = None,
+                 gov_services: GovServices | None = None):
         self.agreements = agreements
+        self.gov_services = gov_services
         self.demo_lawyers = demo_lawyers or {}
         self.coverage = coverage
         self.root = root
@@ -241,7 +269,14 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
             agreements = AgreementSet.model_validate(yaml.safe_load(agreements_path.read_text("utf-8")))
         except (ValidationError, yaml.YAMLError) as e:
             raise PackValidationError(f"{agreements_path}: {e}") from e
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements)
+    gov = None
+    gov_path = root / "gov_services.yaml"
+    if gov_path.is_file():
+        try:
+            gov = GovServices.model_validate(yaml.safe_load(gov_path.read_text("utf-8")))
+        except (ValidationError, yaml.YAMLError) as e:
+            raise PackValidationError(f"{gov_path}: {e}") from e
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements, gov)
 
 
 class PackRegistry:

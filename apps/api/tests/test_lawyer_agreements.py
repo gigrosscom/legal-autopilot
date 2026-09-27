@@ -133,3 +133,4 @@ def test_strangers_cannot_see_agreements(world):
     other = web_user(ctx)
     assert ctx.client.get(f"/v1/agreements/{ag}/document", headers=other.h).status_code == 404
     assert ctx.client.get(f"/v1/lawyer/cases/{cid}", headers=other.h).status_code == 403
+    assert lawyer.get(f"/v1/lawyer/cases/{cid}").json()["id"] == cid
