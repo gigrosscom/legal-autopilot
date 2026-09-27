@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 import yaml
+
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .coverage import Coverage, CoverageValidationError, load_coverage
@@ -52,7 +53,7 @@ class PackManifest(BaseModel):
     reminder_before_days: tuple[int, ...] = (2, 0)
     authorities: dict[str, AuthoritySpec] = Field(default_factory=dict)
     compliance: ComplianceSpec
-    status: str = "live"  # live | test
+    status: Literal["live", "test", "planned"] = "live"  # planned: skeleton, no cases accepted
 
     @field_validator("country")
     @classmethod

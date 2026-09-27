@@ -324,7 +324,7 @@ def coverage(lang: str = "ru", container: Container = Depends(get_container)) ->
                 cells[b.id] = "lawyer"
             else:
                 cells[b.id] = "soon"
-        countries.append({"country": pack.country, "name": pack.localized(pack.manifest.name, lg),
+        countries.append({"country": pack.country, "name": pack.manifest.name.get(lang) or pack.localized(pack.manifest.name, lg),
                           "status": pack.manifest.status, "languages": list(pack.manifest.languages),
                           "cells": cells})
     return {"branches": branches, "countries": countries}

@@ -164,3 +164,18 @@ def test_forum_drafts_are_validated_and_not_live(ctx):
     listing = ctx.client.get("/v1/admin/forums?country=KZ", headers=ADMIN).json()
     assert [d["forum_id"] for d in listing["drafts"]] == ["kz.ombudsman.children"]
     assert "kz.ombudsman.children" not in {f["id"] for f in listing["registry"]}  # drafts never go live directly
+
+
+def test_planned_countries_are_soon_and_accept_no_cases(ctx):
+    cov = ctx.client.get("/v1/coverage?lang=ar").json()
+    uae = next(c for c in cov["countries"] if c["country"] == "AE")
+    assert uae["status"] == "planned" and set(uae["cells"].values()) == {"soon"}
+    assert uae["name"] == "الإمارات العربية المتحدة"
+    assert {"UZ", "KG", "TR", "SA", "EG"} <= {c["country"] for c in cov["countries"]}
+    api = web_user(ctx)
+    r = api.c.post("/v1/cases", headers=api.h, json={"text": "Работодатель не платит зарплату", "country": "UZ"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "country_planned"
+    assert all(p["country"] == "KZ" for p in ctx.client.get("/v1/packs").json())  # only live packs listed
+    for cc in ("AE", "UZ"):
+        pack = ctx.container.packs.pack(cc)
+        assert pack.scenarios == {} and not pack.coverage.has_registry  # no invented law

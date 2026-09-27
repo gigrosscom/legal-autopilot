@@ -164,6 +164,8 @@ class CaseEngine:
         country = (country or user.country or "").upper() or None
         if country and country not in self.packs.packs:
             raise EngineError("country_not_supported")
+        if country and self.packs.pack(country).manifest.status == "planned":
+            raise EngineError("country_planned")  # skeleton pack: waitlist only, no cases yet
         case = Case(owner_id=user.id, language=lang, channel=channel or user.channel,
                     jurisdiction=country, initial_text=text, facts={}, skipped_fields=[], pii_map={})
         session.add(case)
