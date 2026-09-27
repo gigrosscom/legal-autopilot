@@ -31,6 +31,7 @@ def packs_dir(tmp_path: Path) -> Path:
     for line in ("To: {{ addressee.name }}", "{{ title }}", "{{ narrative }}", "I demand: {{ demands }}",
                  "Basis: {% for r in norm_refs %}{{ r }}{% endfor %}", "Date: {{ date }}"):
         doc.add_paragraph(line)
+    (root / "xx" / "templates").mkdir(exist_ok=True)
     doc.save(root / "xx" / "templates" / "letter.docx")
     return root
 

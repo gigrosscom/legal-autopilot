@@ -88,8 +88,16 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
     }
     system = (
         f"{_COMMON_RULES}\nTask: read the user's description of their problem and choose the single "
-        "scenario that fits it from the provided list, or null if none fits. Give confidence 0..1: "
-        "use >= 0.8 only when the situation clearly matches the scenario's summary."
+        "scenario that fits it from the provided list, or null if none fits.\n"
+        "People write the way they talk: slang, abbreviations, typos, no punctuation, mixed languages, "
+        "transliteration, brand and local store or marketplace names (a laptop brand, "
+        "a phone model, a chain store, a marketplace app). Work out what actually happened and what "
+        "the person wants; judge by meaning, not by exact wording or the keyword list. The examples "
+        "show typical phrasing.\n"
+        "Return null only when the problem is clearly about something none of the scenarios cover. "
+        "If a scenario plausibly fits but details are missing, choose it with a lower confidence — "
+        "missing details are asked later. Confidence 0..1: >= 0.8 when the situation clearly matches "
+        "the scenario's summary, 0.5-0.8 when it probably does."
     )
     try:
         out = llm.complete_json(task="qualify", system=system,

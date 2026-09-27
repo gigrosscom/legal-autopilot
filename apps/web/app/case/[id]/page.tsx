@@ -8,6 +8,20 @@ import RoadmapView from "@/components/Roadmap";
 
 type Msg = { from: "bot" | "user"; text: string };
 
+const replyKey = (id: string) => `konsilier.reply.${id}`;
+function readReply(id: string): string | null {
+  try {
+    return sessionStorage.getItem(replyKey(id));
+  } catch {
+    return null;
+  }
+}
+function saveReply(id: string, text: string) {
+  try {
+    sessionStorage.setItem(replyKey(id), text);
+  } catch {}
+}
+
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useT();
@@ -28,9 +42,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     api<CaseView>(`/v1/cases/${id}`)
       .then((view) => {
         setCase(view);
-        const first = sessionStorage.getItem(`konsilier.reply.${id}`);
+        const last = readReply(id);
         const initial: Msg[] = [];
-        if (first) initial.push({ from: "bot", text: first });
+        // The stored reply may be stale (e.g. "tell me more" before the case was qualified):
+        // show it only if it still leads to the question the case is waiting for.
+        if (last && (!view.question || last.includes(view.question.text))) initial.push({ from: "bot", text: last });
         else if (view.question) initial.push({ from: "bot", text: view.question.text });
         setLog(initial);
       })
@@ -63,6 +79,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       });
       setCase(out.case);
       push({ from: "bot", text: out.reply.message });
+      saveReply(id, out.reply.message);
     });
     if (!ok) {
       // Not delivered (bad connection): take the message back into the input so nothing is lost.
@@ -96,7 +113,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       });
       setPendingEvidence(null);
       setCase(out.case);
-      if (out.reply.message) push({ from: "bot", text: out.reply.message });
+      if (out.reply.message) {
+        push({ from: "bot", text: out.reply.message });
+        saveReply(id, out.reply.message);
+      }
     });
   }
 
@@ -169,36 +189,20 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
-            {c.status === "intake" && !q && !pendingEvidence && (
-              <form
-                className="space-y-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (answer.trim()) sendAnswer(answer.trim());
-                }}
-              >
-                <textarea
-                  className="input min-h-24"
-                  autoFocus
-                  placeholder={t("case.morePlaceholder")}
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                />
-                <button className="btn-primary" disabled={busy || !answer.trim()}>{t("case.more")}</button>
-              </form>
-            )}
-
-            {c.status === "intake" && q && !pendingEvidence && (
+            {c.status === "intake" && !pendingEvidence && (
               <div className="space-y-2">
-                {q.type !== "evidence" && (
-                  <form
-                    className="flex flex-col gap-2 sm:flex-row"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (answer.trim()) sendAnswer(answer.trim());
-                    }}
-                  >
+                {/* One form element for both "tell us more" and field answers: swapping whole forms
+                    under a focused input breaks pages when browser extensions have touched the DOM. */}
+                <form
+                  className={q?.type === "evidence" ? "hidden" : q ? "flex flex-col gap-2 sm:flex-row" : "space-y-2"}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (answer.trim()) sendAnswer(answer.trim());
+                  }}
+                >
+                  {q ? (
                     <input
+                      key="answer"
                       className="input"
                       autoFocus
                       type="text"
@@ -207,24 +211,37 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
                     />
-                    <button className="btn-primary shrink-0" disabled={busy}>{t("case.send")}</button>
-                  </form>
-                )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="btn-ghost cursor-pointer">
-                    📎 {t("case.upload")}
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf,text/plain"
-                      className="hidden"
-                      onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+                  ) : (
+                    <textarea
+                      key="more"
+                      className="input min-h-24"
+                      autoFocus
+                      placeholder={t("case.morePlaceholder")}
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
                     />
-                  </label>
-                  {q.optional && (
-                    <button className="btn-ghost" disabled={busy} onClick={() => sendAnswer("пропустить")}>{t("case.skip")}</button>
                   )}
-                  <span className="text-xs text-ink/50">{t("case.uploadHint")}</span>
-                </div>
+                  <button className={q ? "btn-primary shrink-0" : "btn-primary"} disabled={busy || !answer.trim()}>
+                    {q ? t("case.send") : t("case.more")}
+                  </button>
+                </form>
+                {q && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="btn-ghost cursor-pointer">
+                      📎 {t("case.upload")}
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf,text/plain"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+                      />
+                    </label>
+                    {q.optional && (
+                      <button className="btn-ghost" disabled={busy} onClick={() => sendAnswer("пропустить")}>{t("case.skip")}</button>
+                    )}
+                    <span className="text-xs text-ink/50">{t("case.uploadHint")}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
