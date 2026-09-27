@@ -27,6 +27,7 @@ export type CaseAction = {
   instructions: string[];
   has_docx: boolean;
   has_pdf: boolean;
+  signatures?: DocSignature[];
   downloadable: boolean;
   submitted_at: string | null;
   response_class: string | null;
@@ -131,6 +132,11 @@ export type Coverage = {
   reasons: { code: string; label: string }[];
   options: ForumOption[];
   upl_notice: string | null;
+};
+
+export type DocSignature = {
+  id: string; role: string; signer_name: string | null; display: string; method: "ncalayer" | "egov";
+  format: "pdf" | "docx"; signed_at: string;
 };
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };

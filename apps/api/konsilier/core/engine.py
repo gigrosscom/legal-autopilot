@@ -799,6 +799,10 @@ class CaseEngine:
                       "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
             if action.pdf_key:
                 files.append((f"{spec.id}.pdf", self.storage.get(action.pdf_key), "application/pdf"))
+            if action.signatures:  # the ЭЦП-signed file (CMS with the document inside)
+                sig = action.signatures[-1]
+                files.append((f"{spec.id}.{sig.file_format}.cms", self.storage.get(sig.cms_key),
+                              "application/pkcs7-mime"))
             user = session.get(User, case.owner_id)
             adapter.submit(to_email=(action.addressee or {}).get("email"), subject=pack.localized(spec.title, case.language),
                            body=pack.t(case.language, "email.body"), reply_to=user.email, attachments=files)
