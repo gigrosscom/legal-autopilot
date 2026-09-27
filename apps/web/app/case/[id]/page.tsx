@@ -7,6 +7,7 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { Agreements } from "@/components/Agreements";
+import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
@@ -299,11 +300,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                 </form>
                 {q && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <label className="btn-ghost cursor-pointer">
-                    <Icon name="upload" size={18} />{t("case.upload")}
-                    <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only"
-                      onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-                  </label>
+                  <FilePicker onFile={upload} disabled={busy} />
                   {q.type === "evidence" && (q.uploaded ?? 0) > 0 ? (
                     <Button disabled={busy} icon="check" onClick={() => sendAnswer("готово")}>{t("case.doneUploading")}</Button>
                   ) : q.optional && (
@@ -372,21 +369,15 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                         onClick={() => post(`/actions/${last.id}/response`, { text: responseText }).then(() => setShowResponse(false))}>
                         {t("case.responseSend")}
                       </Button>
-                      <label className="btn-ghost cursor-pointer">
-                        <Icon name="upload" size={18} />{t("case.responseFile")}
-                        <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (!f) return;
-                            run(async () => {
-                              const form = new FormData();
-                              form.append("file", f);
-                              const out = await api<{ case: CaseView }>(`/v1/cases/${id}/actions/${last.id}/response/file`, { method: "POST", body: form });
-                              setCase(out.case);
-                              setShowResponse(false);
-                            });
-                          }} />
-                      </label>
+                      <FilePicker attachLabel={t("case.responseFile")} disabled={busy} onFile={(f) => {
+                        run(async () => {
+                          const form = new FormData();
+                          form.append("file", f);
+                          const out = await api<{ case: CaseView }>(`/v1/cases/${id}/actions/${last.id}/response/file`, { method: "POST", body: form });
+                          setCase(out.case);
+                          setShowResponse(false);
+                        });
+                      }} />
                     </div>
                   </div>
                 )}
@@ -516,11 +507,7 @@ function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUploa
               <li key={a} className="flex gap-2"><Icon name="checkCircle" size={18} className="mt-0.5 text-brand" /><span>{a}</span></li>
             ))}
           </ul>
-          <label className="btn-ghost cursor-pointer">
-            <Icon name="upload" size={18} />{t("helper.planUpload")}
-            <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only" disabled={busy}
-              onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-          </label>
+          <div className="flex flex-wrap gap-2"><FilePicker onFile={onUpload} disabled={busy} /></div>
         </div>
       )}
       <p className="flex items-center gap-2 text-sm text-muted">

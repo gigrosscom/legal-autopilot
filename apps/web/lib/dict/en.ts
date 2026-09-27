@@ -33,6 +33,8 @@ const en: Dict = {
     sample: "If there is a threat to life or health right now, call emergency services.",
   },
   helper: {
+    photo: "Take a photo",
+    attach: "Attach a file",
     more: "More examples",
     examplesTitle: "Examples — tap to use",
     suggestTitle: "Is it like this?",

@@ -33,6 +33,8 @@ const tr: Dict = {
     sample: "Şu anda hayatınız veya sağlığınız tehlikedeyse acil servisleri arayın.",
   },
   helper: {
+    photo: "Fotoğraf çek",
+    attach: "Dosya ekle",
     more: "Daha fazla örnek",
     examplesTitle: "Örnekler — kullanmak için dokunun",
     suggestTitle: "Buna mı benziyor?",

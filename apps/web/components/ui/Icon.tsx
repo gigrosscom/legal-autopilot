@@ -36,6 +36,7 @@ const PATHS = {
   x: "M6 6l12 12M18 6 6 18",
   upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
   download: "M12 4v12M7 11l5 5 5-5M4 20h16",
+  camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
   printer: "M6 9V3h12v6M6 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-2M6 14h12v7H6z",
   save: "M5 3h11l3 3v15H5zM8 3v5h7V3M8 21v-7h8v7",
   share: "M4 12v8h16v-8M12 3v13M7 8l5-5 5 5",

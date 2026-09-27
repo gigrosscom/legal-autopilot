@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { FilePicker } from "@/components/FilePicker";
 import { Badge, Icon } from "@/components/ui";
 import { api, errorText } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -14,7 +15,6 @@ export function GovServices({ caseId }: { caseId: string }) {
   const [uploaded, setUploaded] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     api<GovService[]>(`/v1/cases/${caseId}/gov-services`).then(setItems).catch(() => setItems([]));
@@ -51,11 +51,8 @@ export function GovServices({ caseId }: { caseId: string }) {
               <a className="btn-ghost" href={g.url} target="_blank" rel="noopener noreferrer">
                 <Icon name="arrowRight" size={16} className="rtl:rotate-180" />{t("gov.get")}
               </a>
-              <input ref={(el) => { inputs.current[g.id] = el; }} type="file" accept=".pdf,image/*" className="sr-only"
-                aria-label={t("gov.upload")} onChange={(e) => e.target.files?.[0] && upload(g, e.target.files[0])} />
-              <button type="button" className="btn-ghost" disabled={busy === g.id} onClick={() => inputs.current[g.id]?.click()}>
-                <Icon name={busy === g.id ? "spinner" : "upload"} size={16} />{t("gov.upload")}
-              </button>
+              <FilePicker attachLabel={t("gov.upload")} disabled={busy === g.id} onFile={(f) => upload(g, f)} />
+              {busy === g.id && <Icon name="spinner" size={16} />}
               {uploaded[g.id] && <span className="flex items-center gap-1 text-brand"><Icon name="checkCircle" size={16} />{t("gov.uploaded")}</span>}
             </div>
           </li>
