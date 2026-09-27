@@ -59,7 +59,7 @@ export default function Home() {
 
       {/* LIFE SITUATIONS */}
       <Section eyebrow={t("home.situationsEyebrow")} title={t("home.situationsTitle")} lead={t("home.situationsLead")}>
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {SITUATIONS.map((s) => (
             <li key={s.key}>
               <Link href={`/start?s=${s.key}`}
@@ -67,7 +67,7 @@ export default function Home() {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand sm:h-10 sm:w-10">
                   <Icon name={s.icon} />
                 </span>
-                <span className="text-sm font-semibold leading-snug">{t(`situations.${s.key}.label`)}</span>
+                <span className="min-w-0 break-words text-sm font-semibold leading-snug">{t(`situations.${s.key}.label`)}</span>
               </Link>
             </li>
           ))}

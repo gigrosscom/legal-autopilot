@@ -111,10 +111,10 @@ export default function StartPage() {
           <div className="flex flex-wrap gap-2">
             {(allExamples ? examples : examples.slice(0, 6)).map((e) => (
               <button key={e} type="button" onClick={() => setText(e)}
-                className="rounded-full border border-line bg-surface px-3 py-1.5 text-start text-sm hover:border-brand hover:text-brand">{e}</button>
+                className="min-h-10 rounded-full border border-line bg-surface px-3 py-2 text-start text-sm hover:border-brand hover:text-brand">{e}</button>
             ))}
             {!allExamples && examples.length > 6 && (
-              <button type="button" onClick={() => setAllExamples(true)} className="link px-1 text-sm">{t("helper.more")}</button>
+              <button type="button" onClick={() => setAllExamples(true)} className="link inline-flex min-h-10 items-center px-2 text-sm">{t("helper.more")}</button>
             )}
           </div>
         </div>

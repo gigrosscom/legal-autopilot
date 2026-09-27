@@ -32,6 +32,13 @@ const en: Dict = {
     continue: "I am safe, continue",
     sample: "If there is a threat to life or health right now, call emergency services.",
   },
+  pwa: {
+    install: "Install the app",
+    iosSteps: "Tap Share (the square with an arrow) at the bottom of Safari, then “Add to Home Screen” — Konsilier appears among your apps.",
+    macSteps: "In Safari open File → Add to Dock — Konsilier opens in its own window.",
+    offlineTitle: "No internet connection",
+    offlineText: "Your cases are saved on the server. Reload the page once you're back online — everything will be there.",
+  },
   helper: {
     photo: "Take a photo",
     attach: "Attach a file",

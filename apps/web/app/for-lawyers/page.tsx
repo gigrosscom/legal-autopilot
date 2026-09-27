@@ -27,11 +27,11 @@ function Calculator() {
       <h3 className="text-lg font-semibold">{L.title}</h3>
       <label className="block text-sm">
         {L.cases}: <b>{cases}</b>
-        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="h-8 w-full accent-brand" />
+        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="h-10 w-full accent-brand" />
       </label>
       <label className="block text-sm">
         {L.fee}: <b>{check.toLocaleString("ru-RU")} ₸</b>
-        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-8 w-full accent-brand" />
+        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-10 w-full accent-brand" />
       </label>
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="rounded-xl bg-brand-50 p-3">
@@ -199,7 +199,7 @@ function ApplyForm() {
           </button>
         ))}
       </div>
-      <label className="flex items-start gap-2 text-sm">
+      <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm">
         <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand" checked={wantsExpert} onChange={(e) => setWantsExpert(e.target.checked)} />
         <span>{L.expert}</span>
       </label>

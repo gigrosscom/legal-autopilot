@@ -32,6 +32,13 @@ const tr: Dict = {
     continue: "Güvendeyim, devam et",
     sample: "Şu anda hayatınız veya sağlığınız tehlikedeyse acil servisleri arayın.",
   },
+  pwa: {
+    install: "Uygulamayı yükle",
+    iosSteps: "Safari'nin altındaki Paylaş (oklu kare) düğmesine, ardından «Ana Ekrana Ekle»ye dokunun — Konsilier uygulamalarınız arasında görünür.",
+    macSteps: "Safari'de Dosya → Dock'a Ekle menüsünü açın — Konsilier ayrı bir pencerede açılır.",
+    offlineTitle: "İnternet bağlantısı yok",
+    offlineText: "Dosyalarınız sunucuda kayıtlı. Bağlantı gelince sayfayı yenileyin — her şey yerinde olacak.",
+  },
   helper: {
     photo: "Fotoğraf çek",
     attach: "Dosya ekle",

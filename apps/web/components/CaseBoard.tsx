@@ -64,7 +64,7 @@ export function CaseBoard({ cards, onlyNonEmptyOnMobile = true, onOpen }: {
                       ))}
                     </ul>
                   )}
-                  {c.date && <p className="text-[11px] text-muted tabular-nums">{c.date}</p>}
+                  {c.date && <p className="text-xs text-muted tabular-nums">{c.date}</p>}
                 </>);
                 return onOpen
                   ? <button key={c.id} type="button" className={cls} onClick={() => onOpen(c.id)}>{body}</button>

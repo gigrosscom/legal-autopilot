@@ -112,3 +112,12 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Installed app (viewport-fit=cover): keep content clear of notches, rounded corners and the home indicator. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+footer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
