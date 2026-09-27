@@ -95,6 +95,16 @@ class Case(TimestampMixin, Base):
     # Stable label ↔ value map for PII redaction ({"[IIN_1]": "900101300123"}).
     pii_map: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Coverage level (ADR 0001): verified scenario | universal path | lawyer handoff
+    coverage_level: Mapped[str] = mapped_column(String(16), default="verified", server_default="verified",
+                                                index=True)
+    # nullable: rows created before migration 0004 have no value
+    taxonomy: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=dict, nullable=True)  # {dispute_id, role, …}
+    forum_id: Mapped[str | None] = mapped_column(String(128))
+    route_reasons: Mapped[list[Any] | None] = mapped_column(JSON, default=list, nullable=True)
+    formal_demands: Mapped[str | None] = mapped_column(Text)  # universal path: demands paragraph
+    # Case is held for manual review (suspected abuse, false report risk) until an admin releases it.
+    hold_reason: Mapped[str | None] = mapped_column(String(64), index=True)
 
     owner: Mapped[User] = relationship(back_populates="cases")
     parties: Mapped[list["Party"]] = relationship(back_populates="case", cascade="all, delete-orphan")
@@ -266,4 +276,41 @@ class LawyerApplication(Base):
     referred_by: Mapped[str | None] = mapped_column(String(16), index=True)
     wants_expert: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # scenario expert
     status: Mapped[str] = mapped_column(String(16), default="new")  # new | verified | rejected
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DemandSignal(Base):
+    """Anonymous demand analytics for the universal path: which scenarios to package next. No PII."""
+
+    __tablename__ = "demand_signals"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country: Mapped[str | None] = mapped_column(String(2), index=True)
+    branch: Mapped[str | None] = mapped_column(String(64), index=True)
+    dispute_type: Mapped[str | None] = mapped_column(String(128), index=True)
+    level: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Consent(Base):
+    """Explicit consent, e.g. to processing special categories of data (health, religion, criminal record)."""
+
+    __tablename__ = "consents"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(64))  # special_category:health | false_report_ack | religious_path
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ForumDraft(Base):
+    """An admin's proposed change to a pack's forum registry; exported to YAML for a reviewed PR."""
+
+    __tablename__ = "forum_drafts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country: Mapped[str] = mapped_column(String(2), index=True)
+    forum_id: Mapped[str] = mapped_column(String(128))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # full Forum record (validated)
+    note: Mapped[str | None] = mapped_column(Text)
+    author: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(16), default="draft")  # draft | exported | discarded
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

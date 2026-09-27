@@ -19,6 +19,8 @@ case_closed: "Дело закрыто. Спасибо, что были с нам
 draft: "⚠️ {text}"
 status: "Статус дела: {status}"
 buttons:
+  ack_false_report: "Понимаю и подтверждаю"
+  ack_special_category: "Даю согласие"
   confirm_facts: "✅ Верно"
   prepare: "📄 Подготовить документ"
   handoff: "👩‍⚖️ Передать юристу"

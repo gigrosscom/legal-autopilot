@@ -1,0 +1,197 @@
+# Global, country-neutral catalogue of branches of law and dispute types.
+# Countries extend or disable entries in packs/<cc>/taxonomy.yaml. No norms, deadlines or bodies here.
+version: 1.0.0
+branches:
+  - id: consumer
+    title: {ru: Защита прав потребителей, kk: Тұтынушы құқығы, en: Consumer protection, ar: "حماية المستهلك", tr: "Tüketici hakları"}
+    situation: {ru: Меня обманули при покупке, kk: Сатып алуда алдады, en: I was cheated as a buyer, ar: "تعرّضت للغش عند الشراء", tr: "Alışverişte aldatıldım"}
+    disputes:
+      - id: consumer.refund
+        title: {ru: Возврат денег за товар или услугу, kk: Тауар не қызмет үшін ақша қайтару, en: Refund for goods or services}
+        keywords: {ru: [вернуть деньги, возврат, магазин, продавец, товар, маркетплейс], kk: [ақшаны қайтар, дүкен, сатушы, тауар], en: [refund, shop, seller]}
+        applicant_roles: [consumer]
+        counterparty_kinds: [business]
+      - id: consumer.poor_service
+        title: {ru: Некачественная услуга или ремонт, kk: Сапасыз қызмет не жөндеу, en: Poor service or repair}
+        keywords: {ru: [ремонт, некачественн, услуг], kk: [жөндеу, сапасыз, қызмет], en: [repair, poor service]}
+        applicant_roles: [consumer]
+        counterparty_kinds: [business]
+  - id: finance
+    title: {ru: "Банки, кредиты и долги", kk: "Банктер, несиелер және қарыз", en: "Banks, loans and debts", ar: "البنوك والقروض والديون", tr: "Bankalar, krediler ve borçlar"}
+    situation: {ru: Проблема с банком или кредитом, kk: Банк не несиемен мәселе, en: A problem with a bank or loan, ar: "مشكلة مع بنك أو قرض", tr: "Banka veya krediyle ilgili sorun"}
+    disputes:
+      - id: finance.fraudulent_loan
+        title: {ru: "Кредит, оформленный мошенниками", kk: Алаяқтар рәсімдеген несие, en: Loan taken out by fraudsters}
+        keywords: {ru: [кредит на меня, мошенник оформил, не брал кредит, займ оформили], kk: [менің атыма несие, алаяқ], en: [loan in my name, fraud loan]}
+        applicant_roles: [borrower, victim]
+        counterparty_kinds: [bank]
+      - id: finance.bank_dispute
+        title: {ru: Спор с банком, kk: Банкпен дау, en: Dispute with a bank}
+        keywords: {ru: [банк, списали, карта], kk: [банк, карта], en: [bank, card]}
+        applicant_roles: [borrower, consumer]
+        counterparty_kinds: [bank]
+      - id: finance.debt_collectors
+        title: {ru: Коллекторы и взыскание долга, kk: Коллекторлар және қарызды өндіру, en: Debt collectors}
+        keywords: {ru: [коллектор], kk: [коллектор], en: [collector]}
+        applicant_roles: [borrower]
+        counterparty_kinds: [business, bank]
+  - id: labor
+    title: {ru: Трудовые споры, kk: Еңбек даулары, en: Employment, ar: "نزاعات العمل", tr: "İş uyuşmazlıkları"}
+    situation: {ru: Уволили или не платят, kk: Жұмыстан шығарды не төлемейді, en: Fired or not paid, ar: "فُصلت من العمل أو لم أتقاضَ أجري", tr: "İşten çıkarıldım veya maaş ödenmiyor"}
+    disputes:
+      - id: labor.dismissal
+        title: {ru: Незаконное увольнение, kk: Заңсыз жұмыстан шығару, en: Unfair dismissal}
+        keywords: {ru: [уволили, увольнение, сократили], kk: [жұмыстан шығар], en: [fired, dismissed]}
+        applicant_roles: [employee]
+        counterparty_kinds: [employer]
+      - id: labor.unpaid_wages
+        title: {ru: Невыплата зарплаты, kk: Жалақы төленбеуі, en: Unpaid wages}
+        keywords: {ru: [зарплат, не платят, задолженность по зарплате], kk: [жалақы, төлемейді], en: [wages, salary, not paid]}
+        applicant_roles: [employee]
+        counterparty_kinds: [employer]
+      - id: labor.discrimination
+        title: {ru: Дискриминация на работе, kk: Жұмыстағы кемсітушілік, en: Discrimination at work}
+        keywords: {ru: [дискриминац], kk: [кемсіту], en: [discriminat]}
+        applicant_roles: [employee]
+        counterparty_kinds: [employer]
+        sensitive: [health]
+  - id: family
+    title: {ru: Семейные дела, kk: Отбасы істері, en: Family, ar: "قضايا الأسرة", tr: "Aile davaları"}
+    situation: {ru: Развод и дети, kk: Ажырасу және балалар, en: Divorce and children, ar: "الطلاق والأطفال", tr: "Boşanma ve çocuklar"}
+    disputes:
+      - id: family.divorce
+        title: {ru: Развод, kk: Ажырасу, en: Divorce}
+        keywords: {ru: [развод, развестись], kk: [ажырас], en: [divorce]}
+        applicant_roles: [spouse]
+        counterparty_kinds: [person]
+      - id: family.alimony
+        title: {ru: Алименты, kk: Алимент, en: Child support}
+        keywords: {ru: [алимент], kk: [алимент], en: [child support, alimony]}
+        applicant_roles: [parent]
+        counterparty_kinds: [person]
+        sensitive: [children]
+      - id: family.child_residence
+        title: {ru: "С кем живёт ребёнок, порядок общения", kk: "Баланың тұратын жері, қарым-қатынас тәртібі", en: Child residence and contact}
+        keywords: {ru: [с кем будет жить ребенок, с кем будет жить ребёнок, видеться с ребенком, видеться с ребёнком], kk: [баламен кездес], en: [custody, contact with child]}
+        applicant_roles: [parent]
+        counterparty_kinds: [person]
+        sensitive: [children]
+      - id: family.property_division
+        title: {ru: Раздел имущества супругов, kk: Ерлі-зайыптылардың мүлкін бөлу, en: Division of marital property}
+        keywords: {ru: [раздел имущества, делить квартиру], kk: [мүлікті бөлу], en: [property division]}
+        applicant_roles: [spouse]
+        counterparty_kinds: [person]
+  - id: inheritance
+    title: {ru: Наследство, kk: Мұра, en: Inheritance, ar: "الميراث", tr: "Miras"}
+    situation: {ru: Наследство, kk: Мұра, en: Inheritance, ar: "الميراث", tr: "Miras"}
+    disputes:
+      - id: inheritance.acceptance
+        title: {ru: Принятие наследства, kk: Мұраны қабылдау, en: Accepting an inheritance}
+        keywords: {ru: [наследств, нотариус, завещан], kk: [мұра], en: [inheritance, will]}
+        applicant_roles: [heir]
+        counterparty_kinds: [state_body, person]
+      - id: inheritance.dispute
+        title: {ru: Спор о наследстве, kk: Мұра туралы дау, en: Inheritance dispute}
+        keywords: {ru: [оспорить завещание, спор о наследстве], kk: [мұра дауы], en: [contest the will]}
+        applicant_roles: [heir]
+        counterparty_kinds: [person]
+  - id: housing
+    title: {ru: Жильё, kk: Тұрғын үй, en: Housing, ar: "السكن", tr: "Konut"}
+    situation: {ru: Жильё и соседи, kk: Тұрғын үй және көршілер, en: Housing and neighbours, ar: "السكن والجيران", tr: "Konut ve komşular"}
+    disputes:
+      - id: housing.tenancy
+        title: {ru: Спор об аренде жилья, kk: Тұрғын үйді жалға алу дауы, en: Tenancy dispute}
+        keywords: {ru: [аренд, квартиросъём, хозяин квартиры, выселяют], kk: [жалға], en: [rent, landlord, evict]}
+        applicant_roles: [tenant, landlord]
+        counterparty_kinds: [person, landlord, business]
+      - id: housing.utilities
+        title: {ru: Коммунальные услуги, kk: Коммуналдық қызметтер, en: Utilities}
+        keywords: {ru: [коммунал, свет, отопление, вода], kk: [коммуналдық], en: [utilities]}
+        applicant_roles: [consumer]
+        counterparty_kinds: [business]
+  - id: administrative
+    title: {ru: Штрафы и госорганы, kk: Айыппұлдар және мемлекеттік органдар, en: Fines and public bodies, ar: "المخالفات والجهات الحكومية", tr: "Cezalar ve kamu kurumları"}
+    situation: {ru: Штраф или спор с госорганом, kk: Айыппұл не мемлекеттік органмен дау, en: A fine or a dispute with a public body, ar: "مخالفة أو نزاع مع جهة حكومية", tr: "Ceza veya kamu kurumuyla uyuşmazlık"}
+    disputes:
+      - id: administrative.fine_appeal
+        title: {ru: Обжалование штрафа, kk: Айыппұлға шағымдану, en: Appealing a fine}
+        keywords: {ru: [штраф], kk: [айыппұл], en: [fine, ticket]}
+        applicant_roles: [complainant]
+        counterparty_kinds: [state_body, police]
+      - id: administrative.state_body_inaction
+        title: {ru: Бездействие или отказ госоргана, kk: Мемлекеттік органның әрекетсіздігі не бас тартуы, en: Inaction or refusal by a public body}
+        keywords: {ru: [акимат, госорган, не отвечают на обращение, отказали в выдаче], kk: [әкімдік, мемлекеттік орган], en: [public body, municipality]}
+        applicant_roles: [complainant]
+        counterparty_kinds: [state_body]
+  - id: criminal
+    title: {ru: Преступления, kk: Қылмыстар, en: Crime, ar: "الجرائم", tr: "Suçlar"}
+    situation: {ru: Преступление против меня, kk: Маған қарсы қылмыс, en: A crime against me, ar: "جريمة ارتُكبت ضدي", tr: "Bana karşı işlenen suç"}
+    disputes:
+      - id: criminal.crime_report
+        title: {ru: Заявление о преступлении, kk: Қылмыс туралы арыз, en: Reporting a crime}
+        keywords: {ru: [украли, кража, ограбили, избили, мошенничество, преступлен], kk: [ұрла, тонады, алаяқтық, қылмыс], en: [stolen, theft, robbed, assault, crime]}
+        applicant_roles: [victim]
+        counterparty_kinds: [person, business, unknown]
+        false_report_warning: true
+      - id: criminal.police_inaction
+        title: {ru: Жалоба на бездействие полиции или следователя, kk: Полиция не тергеушінің әрекетсіздігіне шағым, en: Complaint about police inaction}
+        keywords: {ru: [полиция бездействует, полиция не принимает, следователь], kk: [полиция әрекетсіз, тергеуші], en: [police inaction, investigator]}
+        applicant_roles: [victim, complainant]
+        counterparty_kinds: [police]
+      - id: criminal.defence
+        title: {ru: Меня подозревают или обвиняют, kk: Мені күдіктеп не айыптап отыр, en: I am suspected or accused}
+        keywords: {ru: [меня подозревают, меня обвиняют, возбудили дело против меня, меня задержали], kk: [мені күдіктеп, мені айыптап], en: [i am accused, i am suspected, arrested]}
+        applicant_roles: [suspect, accused]
+        counterparty_kinds: [police, court]
+        sensitive: [criminal_record]
+  - id: civil
+    title: {ru: Гражданские споры, kk: Азаматтық даулар, en: Civil disputes, ar: "النزاعات المدنية", tr: "Hukuki uyuşmazlıklar"}
+    situation: {ru: Мне должны деньги или причинили ущерб, kk: Маған қарыз не зиян келтірді, en: I am owed money or suffered damage, ar: "لي دَين أو لحقني ضرر", tr: "Alacağım var veya zarar gördüm"}
+    disputes:
+      - id: civil.debt
+        title: {ru: Возврат долга от частного лица, kk: Жеке тұлғадан қарызды қайтару, en: Recovering a private debt}
+        keywords: {ru: [занял и не возвращает, долг, расписк], kk: [қарыз, қолхат], en: [owes me, debt, iou]}
+        applicant_roles: [claimant]
+        counterparty_kinds: [person]
+      - id: civil.damages
+        title: {ru: Возмещение ущерба, kk: Зиянды өтеу, en: Compensation for damage}
+        keywords: {ru: [ущерб, затопили, дтп, повредили], kk: [зиян, су басты], en: [damage, flooded]}
+        applicant_roles: [claimant, victim]
+        counterparty_kinds: [person, business, insurer]
+  - id: commercial
+    title: {ru: Бизнес-споры, kk: Бизнес даулары, en: Business disputes, ar: "النزاعات التجارية", tr: "Ticari uyuşmazlıklar"}
+    situation: {ru: Бизнес-спор, kk: Бизнес дауы, en: A business dispute, ar: "نزاع تجاري", tr: "Ticari uyuşmazlık"}
+    disputes:
+      - id: commercial.b2b_debt
+        title: {ru: Долг контрагента, kk: Контрагенттің қарызы, en: Unpaid invoice}
+        keywords: {ru: [контрагент не платит, дебиторк, счёт не оплачен], kk: [контрагент төлемейді], en: [unpaid invoice]}
+        applicant_roles: [business]
+        counterparty_kinds: [business]
+      - id: commercial.contract_breach
+        title: {ru: Нарушение договора, kk: Шартты бұзу, en: Breach of contract}
+        keywords: {ru: [нарушил договор поставки, поставщик], kk: [жеткізуші], en: [supplier breach]}
+        applicant_roles: [business]
+        counterparty_kinds: [business]
+  - id: tax
+    title: {ru: Налоги, kk: Салықтар, en: Tax, ar: "الضرائب", tr: "Vergiler"}
+    situation: {ru: Спор с налоговой, kk: Салық органымен дау, en: A dispute with the tax office, ar: "نزاع مع مصلحة الضرائب", tr: "Vergi dairesiyle uyuşmazlık"}
+    disputes:
+      - id: tax.assessment_dispute
+        title: {ru: Обжалование налогового начисления, kk: Салық есептеуіне шағымдану, en: Appealing a tax assessment}
+        keywords: {ru: [налогов, доначисл], kk: [салық], en: [tax assessment]}
+        applicant_roles: [taxpayer, business]
+        counterparty_kinds: [state_body]
+  - id: migration
+    title: {ru: Миграция, kk: Көші-қон, en: Migration, ar: "الهجرة والإقامة", tr: "Göç ve oturum"}
+    situation: {ru: Документы и пребывание, kk: Құжаттар және болу, en: Residence and documents, ar: "الإقامة والوثائق", tr: "Oturum ve belgeler"}
+    disputes:
+      - id: migration.residence
+        title: {ru: Разрешение на пребывание или проживание, kk: Болуға не тұруға рұқсат, en: Residence permit}
+        keywords: {ru: [вид на жительство, рвп, регистрация иностранца], kk: [тұруға рұқсат], en: [residence permit]}
+        applicant_roles: [migrant]
+        counterparty_kinds: [state_body]
+      - id: migration.removal
+        title: {ru: Выдворение или депортация, kk: Шығарып жіберу не депортация, en: Removal or deportation}
+        keywords: {ru: [депортац, выдвор], kk: [депортац], en: [deport, removal]}
+        applicant_roles: [migrant]
+        counterparty_kinds: [state_body, court]

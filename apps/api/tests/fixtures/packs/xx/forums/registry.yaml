@@ -1,0 +1,26 @@
+# Test-only registry: a state court and a religious council (advisory) for the religious-path tests.
+forums:
+  - id: xx.court.civil
+    type: court
+    instance: first
+    name: {en: Testland Civil Court}
+    accepts: [{branches: [family, civil]}]
+    document_types: [lawsuit]
+    submission: [{kind: portal, url: "https://court.example"}]
+    languages: [en]
+    legal_effect: binding
+    source: test fixture
+  - id: xx.religious.council
+    type: religious
+    instance: first
+    name: {en: Testland Community Council}
+    accepts: [{branches: [family]}]
+    document_types: [statement]
+    submission: [{kind: in_person}]
+    languages: [en]
+    legal_effect: advisory
+    religious:
+      confession: test confession
+      state_status: advisory_or_conciliatory
+      family_rights_warning: {en: "The council's opinion does not replace a court decision on support, children or property."}
+    source: test fixture

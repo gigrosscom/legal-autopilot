@@ -47,6 +47,9 @@ export type CaseView = {
   id: string;
   status: string;
   status_label: string;
+  stage: string;
+  coverage: Coverage;
+  safety: { hold_reason: string | null; hold_message: string | null; pending_ack: "false_report" | "special_category" | null };
   needs_review: boolean;
   jurisdiction: string | null;
   language: string;
@@ -98,7 +101,39 @@ export type Roadmap = {
   open_ended_after_worst: boolean;
 };
 
-export type Reply = { message: string; question: Question | null; intake_complete: boolean; error: string | null };
+export type ForumOption = {
+  id: string;
+  name: string;
+  type: string;
+  legal_effect: "binding" | "advisory" | "none";
+  verified: boolean;
+  channels: string[];
+  deadline_known: boolean;
+  religious: { state_status: string; scope: string; family_rights_warning: string } | null;
+};
+
+export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };
+
+export type Reply = {
+  message: string;
+  question: Question | null;
+  intake_complete: boolean;
+  error: string | null;
+  options?: ForumOption[];
+  ack_required?: "false_report" | "special_category" | null;
+  emergency?: Emergency | null;
+};
+
+export type Coverage = {
+  level: "verified" | "universal" | "lawyer";
+  dispute: { id: string; title: string; branch: string } | null;
+  forum: ForumOption | null;
+  reasons: { code: string; label: string }[];
+  options: ForumOption[];
+  upl_notice: string | null;
+  religious_requested: boolean;
+  state_alternative_notice: string | null;
+};
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: unknown) {
@@ -134,11 +169,42 @@ const ERRORS = {
     invalid: "Енгізген деректерді тексеріп, қайта көріңіз.",
     unknown: "Бірдеңе дұрыс болмады. Бетті жаңартып, қайта көріңіз.",
   },
+  en: {
+    offline: "No internet. Check your connection and try again — your text is saved.",
+    timeout: "The server did not answer in time — the connection may be slow. Try again.",
+    server: "The server is temporarily unavailable. Try again in a minute — your text is saved.",
+    denied: "Access denied. Refresh the page and try again.",
+    notFound: "Not found. Check the link or open “My cases”.",
+    tooMany: "Too many requests. Wait a minute and try again.",
+    invalid: "Check what you entered and try again.",
+    unknown: "Something went wrong. Refresh the page and try again.",
+  },
+  ar: {
+    offline: "لا يوجد اتصال بالإنترنت. تحقّق من الاتصال وحاول مرة أخرى — تم حفظ النص.",
+    timeout: "لم يستجب الخادم في الوقت المحدد — قد يكون الاتصال بطيئًا. حاول مرة أخرى.",
+    server: "الخادم غير متاح مؤقتًا. حاول بعد دقيقة — تم حفظ النص.",
+    denied: "لا توجد صلاحية. حدّث الصفحة وحاول مرة أخرى.",
+    notFound: "غير موجود. تحقّق من الرابط أو افتح «قضاياي».",
+    tooMany: "طلبات كثيرة جدًا. انتظر دقيقة وحاول مرة أخرى.",
+    invalid: "تحقّق من البيانات المدخلة وحاول مرة أخرى.",
+    unknown: "حدث خطأ ما. حدّث الصفحة وحاول مرة أخرى.",
+  },
+  tr: {
+    offline: "İnternet yok. Bağlantınızı kontrol edip tekrar deneyin — metniniz kaydedildi.",
+    timeout: "Sunucu zamanında yanıt vermedi — bağlantı yavaş olabilir. Tekrar deneyin.",
+    server: "Sunucu geçici olarak yanıt vermiyor. Bir dakika sonra tekrar deneyin — metniniz kaydedildi.",
+    denied: "Erişim yok. Sayfayı yenileyip tekrar deneyin.",
+    notFound: "Bulunamadı. Bağlantıyı kontrol edin veya “Dosyalarım” bölümünü açın.",
+    tooMany: "Çok fazla istek. Bir dakika bekleyip tekrar deneyin.",
+    invalid: "Girdiğiniz bilgileri kontrol edip tekrar deneyin.",
+    unknown: "Bir şeyler ters gitti. Sayfayı yenileyip tekrar deneyin.",
+  },
 };
 
 /** A message a person can understand, for any error from the API helpers, in the page language. */
 export function errorText(e: unknown): string {
-  const m = typeof document !== "undefined" && document.documentElement.lang === "kk" ? ERRORS.kk : ERRORS.ru;
+  const lang = typeof document !== "undefined" ? document.documentElement.lang : "ru";
+  const m = ERRORS[lang as keyof typeof ERRORS] ?? ERRORS.ru;
   if (e instanceof NetworkError) return m[e.kind];
   if (e instanceof ApiError) {
     if (e.status >= 500) return m.server;

@@ -143,12 +143,45 @@ def complaint_arrf() -> Document:
     return doc
 
 
+GENERIC_NORMS = ("{% for r in norm_refs %}{{ '[норма: уточнит юрист]' if 'TODO' in r else r }}"
+                 "{% if not loop.last %}; {% endif %}{% endfor %}")
+
+
+def generic(title: str, subtitle: str, demand_intro: str) -> Document:
+    """Universal document (coverage level 2): norms/deadlines only from pack data, else a placeholder."""
+    doc = _doc()
+    _header(doc, extra_applicant="Адрес: {{ f.applicant_address }}")
+    _center(doc, title)
+    _center(doc, subtitle, bold=False)
+    _para(doc, "Ответчик / лицо, на действия которого подается обращение: {{ f.respondent_name }}.")
+    _para(doc, "{% if f.event_date %}Дата события: {{ f.event_date }}.{% endif %}"
+               "{% if f.amount %} Сумма требований: {{ f.amount }} {{ currency }}.{% endif %}")
+    _para(doc, "{{ narrative }}")
+    _previous(doc)
+    _para(doc, demand_intro, bold=True)
+    _para(doc, "{{ demands }}")
+    _para(doc, "Правовое основание: " + GENERIC_NORMS)
+    doc.add_paragraph("{%p if evidence %}")
+    _para(doc, "Приложения:", bold=True)
+    doc.add_paragraph("{%p for e in evidence %}")
+    doc.add_paragraph("{{ loop.index }}. {{ e }}")
+    doc.add_paragraph("{%p endfor %}")
+    doc.add_paragraph("{%p endif %}")
+    doc.add_paragraph("")
+    doc.add_paragraph("Дата: {{ date }}                    Подпись: ______________ / {{ applicant.name }}")
+    return doc
+
+
 def main() -> None:
     out = {
         "consumer/claim_seller.docx": claim_seller,
         "consumer/complaint_authority.docx": complaint_authority,
         "money/statement_lender.docx": statement_lender,
         "money/complaint_arrf.docx": complaint_arrf,
+        "generic/complaint.docx": lambda: generic("ЖАЛОБА", "{{ title }}", "Прошу:"),
+        "generic/statement.docx": lambda: generic("ЗАЯВЛЕНИЕ", "{{ title }}", "Прошу:"),
+        "generic/lawsuit.docx": lambda: generic("ИСКОВОЕ ЗАЯВЛЕНИЕ", "{{ title }}", "На основании изложенного прошу суд:"),
+        "generic/appeal.docx": lambda: generic("АПЕЛЛЯЦИОННАЯ ЖАЛОБА", "{{ title }}", "Прошу:"),
     }
     for rel, build in out.items():
         path = ROOT / rel

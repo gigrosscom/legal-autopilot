@@ -6,13 +6,16 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
+from ..core import qualifier
 from ..core.documents import docx_text
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import Action, Case, LawyerApplication, WaitlistEntry
+from ..core.coverage.schema import Forum
+from ..core.models import Action, Case, DemandSignal, ForumDraft, LawyerApplication, WaitlistEntry
+from ..core.state_machine import BOARD_COLUMNS, board_column
 from .deps import get_container, get_session, require_admin
 from .routes import document_response, engine_error
 from .views import case_view
@@ -22,9 +25,14 @@ router = APIRouter(prefix="/v1/admin", dependencies=[Depends(require_admin)])
 
 @router.get("/cases")
 def list_cases(needs_review: bool | None = None, status: str | None = None, pending_approval: bool = False,
-               scenario_id: str | None = None, limit: int = 100, session: Session = Depends(get_session),
+               scenario_id: str | None = None, coverage_level: str | None = None, on_hold: bool | None = None,
+               limit: int = 100, session: Session = Depends(get_session),
                container: Container = Depends(get_container)) -> list[dict[str, Any]]:
     q = select(Case).order_by(Case.created_at.desc()).limit(min(limit, 500))
+    if coverage_level:
+        q = q.where(Case.coverage_level == coverage_level)
+    if on_hold is not None:
+        q = q.where(Case.hold_reason.is_not(None) if on_hold else Case.hold_reason.is_(None))
     if needs_review is not None:
         q = q.where(Case.needs_review == needs_review)
     if status:
@@ -33,19 +41,126 @@ def list_cases(needs_review: bool | None = None, status: str | None = None, pend
         q = q.where(Case.scenario_id == scenario_id)
     if pending_approval:
         q = q.where(Case.id.in_(select(Action.case_id).where(Action.approval_status == "pending")))
-    out = []
+    return [_card(container, c) for c in session.scalars(q)]
+
+
+def _card(container: Container, c: Case) -> dict[str, Any]:
+    pack = container.engine.pack_of(c)
+    lang = pack.lang(c.language)
+    pending = [str(a.id) for a in c.actions if a.approval_status == "pending"]
+    title = None
+    draft = False
+    if c.scenario_id:
+        try:
+            sc = container.packs.scenario(c.scenario_id)
+            title, draft = pack.localized(sc.title, lang), sc.is_draft
+        except KeyError:
+            title = c.scenario_id
+    elif c.taxonomy and pack.coverage and c.taxonomy.get("dispute_id") in pack.coverage.disputes:
+        title = pack.localized(pack.coverage.dispute(c.taxonomy["dispute_id"]).title, lang)
+    return {
+        "id": str(c.id), "status": c.status, "needs_review": c.needs_review, "scenario_id": c.scenario_id,
+        "jurisdiction": c.jurisdiction, "channel": c.channel, "amount_at_stake":
+            str(c.amount_at_stake) if c.amount_at_stake is not None else None,
+        "currency": c.currency, "created_at": c.created_at.isoformat(),
+        "confidence": c.qualification_confidence, "pending_approval_action_ids": pending,
+        "status_label": pack.t(lang, f"statuses.{c.status}", default=c.status),
+        "stage": board_column(c.status), "coverage_level": c.coverage_level,
+        "display_level": qualifier.display_level(c.coverage_level, draft), "hold_reason": c.hold_reason,
+        "title": title, "route_reasons": c.route_reasons or [],
+        "tasks": [{"id": str(a.id), "action_id": a.action_id, "status": a.status,
+                   "approval_status": a.approval_status} for a in c.actions],
+    }
+
+
+@router.get("/board")
+def board(coverage_level: str | None = None, limit: int = 500, session: Session = Depends(get_session),
+          container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Kanban: every case in exactly one lifecycle column; resolved cases stay visible."""
+    q = select(Case).order_by(Case.updated_at.desc()).limit(min(limit, 2000))
+    if coverage_level:
+        q = q.where(Case.coverage_level == coverage_level)
+    columns: dict[str, list[dict[str, Any]]] = {col: [] for col, _ in BOARD_COLUMNS}
     for c in session.scalars(q):
-        pack = container.engine.pack_of(c)
-        pending = [str(a.id) for a in c.actions if a.approval_status == "pending"]
-        out.append({
-            "id": str(c.id), "status": c.status, "needs_review": c.needs_review, "scenario_id": c.scenario_id,
-            "jurisdiction": c.jurisdiction, "channel": c.channel, "amount_at_stake":
-                str(c.amount_at_stake) if c.amount_at_stake is not None else None,
-            "currency": c.currency, "created_at": c.created_at.isoformat(),
-            "confidence": c.qualification_confidence, "pending_approval_action_ids": pending,
-            "status_label": pack.t(pack.lang(c.language), f"statuses.{c.status}", default=c.status),
-        })
-    return out
+        card = _card(container, c)
+        columns[card["stage"]].append(card)
+    return {"columns": [{"id": col, "cards": columns[col]} for col, _ in BOARD_COLUMNS]}
+
+
+@router.post("/cases/{case_id}/release")
+def release_hold(case_id: uuid.UUID, session: Session = Depends(get_session),
+                 container: Container = Depends(get_container)) -> dict[str, Any]:
+    """An admin reviewed a held case (suspected abuse / false report risk) and lets it continue."""
+    case = _case(case_id, session)
+    if case.hold_reason is None:
+        raise HTTPException(409, "case is not on hold")
+    container.engine.audit(session, case, "admin", "hold_released", reason=case.hold_reason)
+    case.hold_reason = None
+    session.flush()
+    return case_view(container.engine, session, case, admin=True)
+
+
+@router.get("/demand")
+def demand(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
+    """Universal-path demand: which dispute types to package as verified scenarios next."""
+    rows = session.execute(select(DemandSignal.country, DemandSignal.branch, DemandSignal.dispute_type,
+                                  DemandSignal.level, func.count()).group_by(
+        DemandSignal.country, DemandSignal.branch, DemandSignal.dispute_type, DemandSignal.level)
+        .order_by(func.count().desc()))
+    return [{"country": c, "branch": b, "dispute_type": d, "level": lv, "count": n} for c, b, d, lv, n in rows]
+
+
+@router.get("/forums")
+def forums(country: str, session: Session = Depends(get_session),
+           container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Registry as in the pack (source of truth in git) plus pending drafts from this admin."""
+    try:
+        pack = container.packs.pack(country)
+    except KeyError as e:
+        raise HTTPException(404, "unknown country") from e
+    registry = [f.model_dump(mode="json") for f in (pack.coverage.forums.values() if pack.coverage else [])]
+    drafts = [{"id": d.id, "forum_id": d.forum_id, "data": d.data, "note": d.note, "author": d.author,
+               "status": d.status, "created_at": d.created_at.isoformat()}
+              for d in session.scalars(select(ForumDraft).where(ForumDraft.country == pack.country)
+                                       .order_by(ForumDraft.id.desc()))]
+    return {"registry": registry, "drafts": drafts}
+
+
+class ForumDraftIn(BaseModel):
+    country: str
+    data: dict[str, Any]
+    note: str | None = None
+    author: str | None = None
+
+
+@router.post("/forum-drafts", status_code=201)
+def create_forum_draft(body: ForumDraftIn, session: Session = Depends(get_session),
+                       container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Validated proposal; becomes part of the pack only via `cli forums-export` → reviewed PR."""
+    try:
+        pack = container.packs.pack(body.country)
+    except KeyError as e:
+        raise HTTPException(404, "unknown country") from e
+    try:
+        forum = Forum.model_validate(body.data)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    if not forum.id.startswith(pack.country.lower() + "."):
+        raise HTTPException(422, f"forum id must start with {pack.country.lower()}.")
+    draft = ForumDraft(country=pack.country, forum_id=forum.id, data=forum.model_dump(mode="json"),
+                       note=body.note, author=body.author)
+    session.add(draft)
+    session.flush()
+    return {"id": draft.id, "forum_id": draft.forum_id, "status": draft.status}
+
+
+@router.post("/forum-drafts/{draft_id}/discard")
+def discard_forum_draft(draft_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+    draft = session.get(ForumDraft, draft_id)
+    if draft is None:
+        raise HTTPException(404, "draft not found")
+    draft.status = "discarded"
+    return {"id": draft.id, "status": draft.status}
 
 
 def _case(case_id: uuid.UUID, session: Session) -> Case:

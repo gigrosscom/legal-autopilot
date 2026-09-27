@@ -8,21 +8,56 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core import ai
+from ..core import ai, qualifier
 from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
 from ..core.models import AuditLog, Case, Deadline
 from ..core.roadmap import build_roadmap
+from ..core.state_machine import board_column
+
+
+def _scenario_is_draft(engine: CaseEngine, case: Case) -> bool:
+    if not case.scenario_id:
+        return False
+    try:
+        return engine.packs.scenario(case.scenario_id).is_draft
+    except KeyError:
+        return False
+
+
+def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[str, Any]:
+    """Coverage level and what it means for this case (ADR 0001): shown to the user on every step."""
+    cov = pack.coverage
+    out: dict[str, Any] = {"level": qualifier.display_level(case.coverage_level, _scenario_is_draft(engine, case)), "dispute": None, "forum": None, "reasons": [],
+                           "options": engine.forum_options(case), "upl_notice": None,
+                           "religious_requested": bool((case.taxonomy or {}).get("religious_path")),
+                           "state_alternative_notice": None}
+    tax = case.taxonomy or {}
+    if cov is not None:
+        if tax.get("dispute_id") in cov.disputes:
+            d = cov.dispute(tax["dispute_id"])
+            out["dispute"] = {"id": d.id, "title": pack.localized(d.title, lang), "branch": d.branch}
+        if case.forum_id in cov.forums:
+            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
+        if cov.routing.upl_notice:
+            out["upl_notice"] = pack.localized(cov.routing.upl_notice.text, lang)
+        if out["religious_requested"] and cov.routing.state_alternative_notice:
+            out["state_alternative_notice"] = pack.localized(cov.routing.state_alternative_notice, lang)
+    out["reasons"] = [{"code": r, "label": pack.t(lang, f"routing.reasons.{r}", default=r)}
+                      for r in (case.route_reasons or [])]
+    return out
 
 
 def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool = False) -> dict[str, Any]:
     pack = engine.pack_of(case)
     lang = pack.lang(case.language)
     compliance = pack.manifest.compliance
+    ack = engine.ack_reply(session, case) if case.status == "intake" else None
     view: dict[str, Any] = {
         "id": str(case.id),
         "status": case.status,
         "status_label": pack.t(lang, f"statuses.{case.status}", default=case.status),
+        "stage": board_column(case.status),
         "needs_review": case.needs_review,
         "jurisdiction": case.jurisdiction,
         "language": lang,
@@ -39,6 +74,10 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "proposal": None,
         "roadmap": None,
         "outcome": None,
+        "coverage": coverage_view(engine, case, pack, lang),
+        "safety": {"hold_reason": case.hold_reason,
+                   "hold_message": pack.t(lang, "safety.hold") if case.hold_reason else None,
+                   "pending_ack": ack.ack_required if ack else None},
     }
     if case.scenario_id:
         sc = engine.scenario_of(case)

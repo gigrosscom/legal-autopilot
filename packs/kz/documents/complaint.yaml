@@ -1,0 +1,14 @@
+# Универсальный тип документа (уровень 2). Реквизиты и шаблон не проверены юристом — TODO(lawyer).
+id: complaint
+title: {ru: "Жалоба", kk: "Шағым"}
+template: kz/templates/generic/complaint.docx
+forum_types: [prosecutor,regulator,local_authority,ombudsman,ministry]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: applicant_iin, optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - {name: applicant_address, pii: address}
+  - {name: applicant_phone, type: phone, pii: phone}
+  - {name: respondent_name}
+  - {name: event_date, type: date, optional: true}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}

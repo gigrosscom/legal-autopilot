@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 import yaml
+
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from .coverage import Coverage, CoverageValidationError, load_coverage
+from .generic import GenericRef, build_generic_scenario
 from .scenario import Scenario, ScenarioValidationError, load_scenario_file
 
 log = logging.getLogger(__name__)
@@ -50,7 +53,7 @@ class PackManifest(BaseModel):
     reminder_before_days: tuple[int, ...] = (2, 0)
     authorities: dict[str, AuthoritySpec] = Field(default_factory=dict)
     compliance: ComplianceSpec
-    status: str = "live"  # live | test
+    status: Literal["live", "test", "planned"] = "live"  # planned: skeleton, no cases accepted
 
     @field_validator("country")
     @classmethod
@@ -68,8 +71,10 @@ class PackManifest(BaseModel):
 
 class JurisdictionPack:
     def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
-                 i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None):
+                 i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None,
+                 coverage: Coverage | None = None):
         self.demo_lawyers = demo_lawyers or {}
+        self.coverage = coverage
         self.root = root
         self.packs_root = packs_root
         self.manifest = manifest
@@ -166,11 +171,20 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
         if sc.id in scenarios:
             errors.append(f"{path}: duplicate scenario id {sc.id}")
         scenarios[sc.id] = sc
+    coverage = None
+    try:
+        coverage = load_coverage(root, packs_root, manifest.country, manifest.languages)
+    except CoverageValidationError as e:
+        errors += e.errors
+    if coverage is not None:
+        for sc in scenarios.values():
+            if sc.taxonomy and sc.taxonomy not in coverage.disputes:
+                errors.append(f"scenario {sc.id}: taxonomy {sc.taxonomy!r} is not a known dispute type")
     if errors:
         raise PackValidationError("\n".join(errors))
     demo_path = root / "demo" / "lawyers.yaml"
     demo = yaml.safe_load(demo_path.read_text("utf-8")) if demo_path.is_file() else {}
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo)
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage)
 
 
 class PackRegistry:
@@ -178,6 +192,7 @@ class PackRegistry:
 
     def __init__(self, packs: dict[str, JurisdictionPack]):
         self.packs = packs
+        self._generic: dict[str, Scenario] = {}
 
     @classmethod
     def load(cls, packs_root: Path) -> "PackRegistry":
@@ -192,12 +207,20 @@ class PackRegistry:
         return self.packs[country.upper()]
 
     def pack_for_scenario(self, scenario_id: str) -> JurisdictionPack:
+        ref = GenericRef.parse(scenario_id)
+        if ref is not None:
+            return self.pack(ref.country)
         for pack in self.packs.values():
             if scenario_id in pack.scenarios:
                 return pack
         raise KeyError(scenario_id)
 
     def scenario(self, scenario_id: str) -> Scenario:
+        ref = GenericRef.parse(scenario_id)
+        if ref is not None:  # universal path: rebuilt from registry data, cached per id
+            if scenario_id not in self._generic:
+                self._generic[scenario_id] = build_generic_scenario(self.pack(ref.country), ref)
+            return self._generic[scenario_id]
         return self.pack_for_scenario(scenario_id).scenarios[scenario_id]
 
     def published(self, country: str | None = None) -> list[Scenario]:

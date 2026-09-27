@@ -4,7 +4,10 @@ LLM responsibilities (per product rules):
   * qualify: pick one of the *published* scenarios (+ confidence);
   * extract_fields / extract_evidence: pull intake values out of text/files;
   * narrative: write the "statement of circumstances" paragraph;
-  * classify_response: classify a counterparty reply into generic response classes.
+  * classify_response: classify a counterparty reply into generic response classes;
+  * classify_taxonomy: universal path — pick a branch/dispute type and applicant role from fixed lists,
+    plus risk flags (emergency, possible abuse); it never names a body, a norm or a deadline;
+  * generic_demands: word the applicant's own stated goal as a formal demands paragraph.
 Norms, amounts, deadlines and addressees are never produced by the LLM.
 """
 
@@ -222,3 +225,76 @@ def classify_response(llm: RedactingLLM, pack: JurisdictionPack, lang: str, text
         return "unclear", ""
     cls = out.get("response_class")
     return (cls if cls in RESPONSE_CLASSES else "unclear"), out.get("summary", "")
+
+
+RISK_FLAGS = ("emergency", "harassment", "blackmail", "defamation", "knowingly_false")
+
+
+def classify_taxonomy(llm: RedactingLLM, disputes: list[dict[str, Any]], roles: list[str], text: str,
+                      lang: str) -> dict[str, Any]:
+    """Universal path: map the story onto the taxonomy. Choices are constrained to enums."""
+    ids = [d["id"] for d in disputes]
+    schema = {
+        "type": "object",
+        "properties": {
+            "dispute_id": {"anyOf": [{"type": "string", "enum": ids}, {"type": "null"}]},
+            "role": {"anyOf": [{"type": "string", "enum": roles}, {"type": "null"}]},
+            "confidence": {"type": "number"},
+            "flags": {"type": "array", "items": {"type": "string", "enum": list(RISK_FLAGS)}},
+            "reason": {"type": "string"},
+        },
+        "required": ["dispute_id", "role", "confidence", "flags", "reason"],
+        "additionalProperties": False,
+    }
+    system = (
+        f"{_COMMON_RULES}\nTask: read the user's description and choose the single dispute type from the list "
+        "and the user's own role in it (use the role list of that dispute type), or null if nothing fits. "
+        "Confidence 0..1; use >= 0.8 only for a clear match. Flags: 'emergency' if someone's life, health or a "
+        "child is in immediate danger; 'harassment', 'blackmail', 'defamation', 'knowingly_false' only if the "
+        "text itself shows that intent. Never infer the user's religion, ethnicity or health."
+    )
+    try:
+        out = llm.complete_json(task="classify_taxonomy", system=system, schema=schema,
+                                payload={"text": text, "language": lang, "disputes": disputes})
+    except LLMError as e:
+        log.warning("classify_taxonomy failed, falling back to keywords: %s", e)
+        return _keyword_taxonomy(disputes, text)
+    if out.get("dispute_id") not in ids:
+        out["dispute_id"] = None
+    out["flags"] = [f for f in out.get("flags") or [] if f in RISK_FLAGS]
+    out["confidence"] = max(0.0, min(1.0, float(out.get("confidence") or 0)))
+    return out
+
+
+def _keyword_taxonomy(disputes: list[dict[str, Any]], text: str) -> dict[str, Any]:
+    low = text.lower()
+    best, hits_best = None, 0
+    for d in disputes:
+        hits = sum(1 for kw in d.get("keywords", []) if kw.lower() in low)
+        if hits > hits_best:
+            best, hits_best = d, hits
+    if best is None:
+        return {"dispute_id": None, "role": None, "confidence": 0.0, "flags": [], "reason": "llm_error"}
+    # keyword matching is weaker than the model: capped below the usual threshold → reviewed by a lawyer
+    return {"dispute_id": best["id"], "role": best["applicant_roles"][0], "confidence": min(0.55, 0.3 + 0.1 * hits_best),
+            "flags": [], "reason": f"llm_error; {hits_best} keyword(s)"}
+
+
+def write_demands(llm: RedactingLLM, pack: JurisdictionPack, lang: str, desired_outcome: str,
+                  action_title: str) -> str:
+    """Formal wording of what the applicant asks for. No laws, amounts or deadlines are added."""
+    schema = {"type": "object", "properties": {"demands": {"type": "string"}}, "required": ["demands"],
+              "additionalProperties": False}
+    language_name = pack.t(lang, "language_name", default=lang)
+    system = (
+        f"{_COMMON_RULES}\nTask: rewrite the applicant's goal as the demands paragraph of the document "
+        f"'{action_title}' in {language_name}, formal style, 1-3 short numbered demands. Keep only what the "
+        "applicant asked for; do not add legal grounds, article numbers, amounts or deadlines that are not in the text."
+    )
+    try:
+        out = llm.complete_json(task="generic_demands", system=system, schema=schema,
+                                payload={"language": lang, "goal": desired_outcome})
+        return (out.get("demands") or "").strip() or desired_outcome
+    except LLMError as e:
+        log.warning("write_demands failed: %s", e)
+        return desired_outcome

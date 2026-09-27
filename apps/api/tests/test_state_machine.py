@@ -8,7 +8,9 @@ S = CaseStatus
 
 ALLOWED = {
     (S.INTAKE, S.QUALIFIED),
+    (S.INTAKE, S.HANDED_TO_LAWYER),  # coverage level 3 (ADR 0001)
     (S.QUALIFIED, S.ACTION_READY),
+    (S.QUALIFIED, S.HANDED_TO_LAWYER),  # coverage level 3 (ADR 0001)
     (S.ACTION_READY, S.SUBMITTED),
     (S.SUBMITTED, S.AWAITING_RESPONSE),
     (S.AWAITING_RESPONSE, S.RESOLVED),
@@ -41,7 +43,7 @@ def test_resolved_is_terminal():
 
 
 def test_forbidden_examples_raise_with_allowed_list():
-    with pytest.raises(InvalidTransition, match="allowed from intake: qualified"):
+    with pytest.raises(InvalidTransition, match="allowed from intake: handed_to_lawyer, qualified"):
         assert_transition("intake", "submitted")
     with pytest.raises(InvalidTransition):
         assert_transition(S.RESOLVED, S.INTAKE)
