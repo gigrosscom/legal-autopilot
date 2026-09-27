@@ -206,6 +206,29 @@ async def upload_evidence(case_id: uuid.UUID, file: UploadFile = File(...), kind
             "case": case_view(container.engine, session, case)}
 
 
+@router.get("/cases/{case_id}/gov-services")
+def case_gov_services(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
+                      container: Container = Depends(get_container)) -> list[dict[str, Any]]:
+    """Certificates the person can get themselves on official portals, relevant to this case's branch of law."""
+    case = load_case(case_id, session, user)
+    pack = container.engine.pack_of(case)
+    if pack.gov_services is None:
+        return []
+    lang = pack.lang(case.language)
+    branch = None
+    dispute_id = (case.taxonomy or {}).get("dispute_id")
+    if not dispute_id and case.scenario_id:
+        try:
+            dispute_id = container.packs.scenario(case.scenario_id).taxonomy
+        except KeyError:
+            dispute_id = None
+    if dispute_id and pack.coverage and dispute_id in pack.coverage.disputes:
+        branch = pack.coverage.dispute(dispute_id).branch
+    return [{"id": g.id, "title": pack.localized(g.title, lang), "url": g.url, "provider": g.provider, "auth": g.auth,
+             "note": pack.localized(g.note, lang) if g.note else None}
+            for g in pack.gov_services.services if not g.evidence_for or branch is None or branch in g.evidence_for]
+
+
 class ConfirmIn(BaseModel):
     facts: dict[str, Any] | None = None  # None → accept extracted facts as-is
 

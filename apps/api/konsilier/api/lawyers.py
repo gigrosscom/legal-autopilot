@@ -147,6 +147,21 @@ def lawyer_case(case_id: uuid.UUID, user: User = Depends(current_user), session:
     return {**case_view(container.engine, session, case), **_lawyer_block(session, container, case)}
 
 
+@router.get("/lawyer/cases/{case_id}/actions/{action_id}/document")
+def lawyer_document(case_id: uuid.UUID, action_id: uuid.UUID, format: Literal["docx", "pdf"] = "pdf",
+                    user: User = Depends(current_user), session: Session = Depends(get_session),
+                    container: Container = Depends(get_container)):
+    from ..core.models import Action
+    from .routes import document_response
+
+    _verified_application(session, user)
+    case = session.get(Case, case_id)
+    action = session.get(Action, action_id)
+    if case is None or case.lawyer_user_id != user.id or action is None or action.case_id != case.id:
+        raise HTTPException(404, "not found")
+    return document_response(container, action, format)
+
+
 # ------------------------------------------------------------------ admin
 class AppStatusIn(BaseModel):
     status: Literal["new", "verified", "rejected"]

@@ -7,6 +7,7 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { Agreements } from "@/components/Agreements";
+import { GovServices } from "@/components/GovServices";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
 import {
@@ -312,6 +313,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         {c.roadmap && <RoadmapView roadmap={c.roadmap} />}
 
         <LawyerBlock caseId={c.id} />
+
+        {c.status !== "intake" && <GovServices caseId={c.id} />}
 
         {c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}
 
