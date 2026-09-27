@@ -14,17 +14,18 @@
   --color-sand-deep: #efe9dd;
   --color-surface: #ffffff;
 
-  --color-brand: #1f6f5c;
-  --color-brand-dark: #16503f;
-  --color-brand-50: #eaf4f0;
-  --color-brand-100: #d3e8e0;
+  /* dark blue brand; white on brand 10.4:1, brand on sand 9.5:1 */
+  --color-brand: #1d3a8a;
+  --color-brand-dark: #152a66;
+  --color-brand-50: #eef2fb;
+  --color-brand-100: #d9e2f5;
 
   --color-danger: #b42318;
   --color-danger-50: #fef3f2;
   --color-warning: #8a4b08;
   --color-warning-50: #fff7e8;
-  --color-info: #1f3f8f;
-  --color-info-50: #eef3ff;
+  --color-info: #0b5f7a;
+  --color-info-50: #e8f5f9;
   --color-draft: #6b3fa0;
   --color-draft-50: #f5f0fb;
 
