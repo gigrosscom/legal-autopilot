@@ -28,6 +28,7 @@ services:
       STORAGE_LOCAL_DIR: /data/files
       CORS_ORIGINS: https://${SITE_DOMAIN},https://www.${SITE_DOMAIN}
       PUBLIC_API_URL: https://${API_DOMAIN}
+      PUBLIC_SITE_URL: https://${SITE_DOMAIN}
       NCANODE_URL: http://ncanode:14579
     volumes: [api_data:/data]
 

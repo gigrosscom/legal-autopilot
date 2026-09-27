@@ -52,7 +52,10 @@ class Settings(BaseSettings):
 
     # Sign-in and identity (see konsilier/core/identity). Keep IDENTITY_SECRET stable: it keys the hashes.
     identity_secret: str = "change-me-identity"
-    public_api_url: str = "http://localhost:8000"  # eGov Mobile fetches the document to sign from here
+    public_api_url: str = "http://localhost:8000"
+    public_site_url: str = "http://localhost:3000"  # links in e-mails
+    report_every_days: int = 3  # next-step reminder when a case has not moved
+    report_max_nudges: int = 5  # then stop reminding until something changes  # eGov Mobile fetches the document to sign from here
     resend_api_key: str | None = None  # e-mail codes via Resend; otherwise SMTP_HOST; otherwise disabled
     email_from: str = "Konsilier.AI <no-reply@konsilier.com>"
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)

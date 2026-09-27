@@ -72,6 +72,8 @@ export default function AccountPage() {
         </section>
       )}
 
+      {me && <ReportsToggle me={me} onChange={setMe} />}
+
       <section aria-labelledby="ways" className="space-y-3">
         <h2 id="ways" className="text-lg font-semibold">{t("account.waysTitle")}</h2>
         {METHODS.map((m) => {
@@ -103,6 +105,31 @@ export default function AccountPage() {
 
       <p className="text-xs text-muted">{t("account.privacy")}</p>
     </div>
+  );
+}
+
+function ReportsToggle({ me, onChange }: { me: Me; onChange: (m: Me) => void }) {
+  const t = useT();
+  const email = me.identities.find((i) => i.kind === "email");
+  const [busy, setBusy] = useState(false);
+  const toggle = async (on: boolean) => {
+    setBusy(true);
+    try {
+      onChange(await api<Me>("/v1/me", { method: "PATCH", body: JSON.stringify({ notify_email: on }) }));
+    } finally { setBusy(false); }
+  };
+  return (
+    <section aria-labelledby="reports" className="card space-y-2 text-sm">
+      <h2 id="reports" className="font-semibold">{t("reports.title")}</h2>
+      <p className="text-muted">{t("reports.lead")}</p>
+      {email ? (
+        <label className="flex items-center gap-2">
+          <input type="checkbox" className="h-5 w-5 accent-brand" checked={me.notify_email} disabled={busy}
+            onChange={(e) => toggle(e.target.checked)} />
+          <span>{t("reports.toggle", { email: email.display })}</span>
+        </label>
+      ) : <p className="text-info">{t("reports.needEmail")}</p>}
+    </section>
   );
 }
 
