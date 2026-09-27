@@ -55,6 +55,9 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                      "email": EmailSubmission(settings.smtp_host, settings.smtp_port, settings.smtp_from)},
         config=EngineConfig(qualify_min_confidence=settings.qualify_min_confidence,
                             approval_required_first_n=settings.approval_required_first_n,
+                            self_service=settings.self_service,
+                            self_service_documents=tuple(d.strip() for d in settings.self_service_documents.split(",")
+                                                         if d.strip()),
                             extract_images_with_llm=settings.extract_images_with_llm),
     )
     return Container(settings, db, factory, packs, storage, scheduler, notifier, engine)

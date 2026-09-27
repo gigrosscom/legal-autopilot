@@ -14,7 +14,7 @@ const tr: Dict = {
     pending: { label: "Yol belirleniyor", desc: "Durumu inceliyoruz. Ne olduğu netleşince uygun yolu ve ilk adımı göstereceğiz." },
     verified: { label: "Avukat onaylı", desc: "Hazır senaryo: mevzuat, süreler ve muhataplar avukat tarafından onaylandı. Tamamen otomatik süreç." },
     scenario_draft: { label: "Senaryo, onay bekliyor", desc: "Hazır senaryo çalışıyor, ancak avukat mevzuatı ve süreleri henüz onaylamadı: belgeler «Taslak» olarak işaretli." },
-    universal: { label: "Genel yol", desc: "Hazır senaryo yok. Belgeyi genel şablonla hazırlıyoruz, muhatap kurum sicilinden seçiliyor, avukat belgeyi başvurudan önce kontrol ediyor." },
+    universal: { label: "Genel yol", desc: "Hazır senaryo yok. Belgeyi genel şablonla hazırlıyoruz, muhatap kurum sicilinden seçiliyor, ihtarname, şikâyet veya dilekçeyi adım adım talimatla kendiniz sunarsınız; dava dilekçesini avukat önceden kontrol eder." },
     lawyer: { label: "Avukat gerekli", desc: "Karmaşık veya riskli durum: dosyayı hazırlayıp doğrulanmış bir avukata iletiyoruz." },
     soon: { label: "Yakında", desc: "Şimdilik dosya kabul etmiyoruz. İletişim bilgilerinizi bırakın, açıldığımızda yazalım." },
   },
@@ -283,7 +283,7 @@ const tr: Dict = {
     levelsLead: "Seviye otomatik belirlenir ve dosyada her zaman gösterilir.",
     level: {
       verified: { title: "Doğrulanmış senaryo", when: "Avukatın mevzuatı, süreleri ve muhatapları onayladığı sık durumlar için.", get: { 1: "Doğrulanmış şablona göre belge", 2: "Yasadan cevap süreleri ve hatırlatmalar", 3: "Önceden bilinen zincire göre sonraki adım" } },
-      universal: { title: "Genel yol", when: "Hazır senaryo yoksa, ama hukuk dalı belliyse ve sicilde uygun bir kurum varsa.", get: { 1: "«Taslak» işaretli genel şablonlu belge", 2: "Başvurudan önce avukat kontrolü: her zaman", 3: "Mevzuat ve süreler yalnızca verilerden; yoksa «avukat netleştirecek»" } },
+      universal: { title: "Genel yol", when: "Hazır senaryo yoksa, ama hukuk dalı belliyse ve sicilde uygun bir kurum varsa.", get: { 1: "«Taslak» işaretli genel şablonlu belge", 2: "Adım adım başvuru: nereye, nasıl ve ne eklenecek; dava dilekçesi avukat kontrolünden sonra", 3: "Mevzuat ve süreler yalnızca verilerden; yoksa «avukat netleştirecek»" } },
       lawyer: { title: "Avukata devir", when: "Ceza davasında savunma tarafı, çocuklar, yüksek tutarlar, dolmak üzere olan süreler, belirsiz durum.", get: { 1: "Anlatımınıza göre dosya özeti", 2: "Sonuçlara dayalı puanı olan doğrulanmış avukat", 3: "Savunma belgelerini yalnızca avukat yazar" } },
     },
     rolesTitle: "Kim ne yapar",
@@ -295,12 +295,12 @@ const tr: Dict = {
     },
     lawyer: {
       title: "Avukat",
-      does: { 1: "Senaryoları onaylar: mevzuat, süreler, muhataplar", 2: "Genel yoldaki her belgeyi başvurudan önce kontrol eder", 3: "Karmaşık dosyaları yürütür ve sizi temsil eder", 4: "Kurum sicilinin hukuki doğruluğundan sorumludur" },
+      does: { 1: "Senaryoları onaylar: mevzuat, süreler, muhataplar", 2: "Dava dilekçelerini ve istinaf başvurularını sunulmadan önce kontrol eder", 3: "Karmaşık dosyaları yürütür ve sizi temsil eder", 4: "Kurum sicilinin hukuki doğruluğundan sorumludur" },
     },
     promiseTitle: "Ne vaat ediyoruz, ne yapmıyoruz",
     promiseLead: "Büyük vaatler yok: yalnızca bize bağlı olanlar.",
     promise: { title: "Vaat ediyoruz", 1: "Dosyanız için anlaşılır bir yol", 2: "Hazır belge ve başvuru talimatı", 3: "Süre takibi ve hatırlatmalar", 4: "Gerektiğinde doğrulanmış avukat" },
-    dont: { title: "Yapmıyoruz", 1: "Mahkemede sizi kendimiz temsil etmiyoruz; bunu platform avukatları yapar", 2: "Genel yol belgelerini avukat onayı olmadan sunmuyoruz", 3: "Ceza davalarında savunma belgesi yazmıyoruz", 4: "Kurum, mevzuat, süre ve harç uydurmuyoruz" },
+    dont: { title: "Yapmıyoruz", 1: "Mahkemede sizi kendimiz temsil etmiyoruz; bunu platform avukatları yapar", 2: "Avukat kontrolü olmadan mahkemeye dava açmıyoruz", 3: "Ceza davalarında savunma belgesi yazmıyoruz", 4: "Kurum, mevzuat, süre ve harç uydurmuyoruz" },
     safetyTitle: "Güvenlik",
     safety: {
       emergency: { title: "Acil durumlar", text: "Hayati tehlike, şiddet varsa veya bir çocuk tehlikedeyse önce ülkenin acil numaralarını gösteririz." },

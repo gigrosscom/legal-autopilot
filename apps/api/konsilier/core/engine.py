@@ -102,6 +102,8 @@ class Proposal:
 class EngineConfig:
     qualify_min_confidence: float = 0.6
     approval_required_first_n: int = 50
+    self_service: bool = True
+    self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement")
     extract_images_with_llm: bool = False
 
 
@@ -276,7 +278,8 @@ class CaseEngine:
             case.hold_reason = "abuse_suspected"
             self.audit(session, case, "system", "hold", reason=case.hold_reason, flags=route.flags)
         case.coverage_level = qualifier.LEVEL_UNIVERSAL
-        case.needs_review = True  # universal documents always need a lawyer's approval
+        # low confidence already routes to a lawyer (level 3); what is left is a clear case
+        case.needs_review = not self.config.self_service
         if len(route.forums) == 1:
             return self.choose_forum(session, case, route.forums[0].id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
@@ -556,7 +559,27 @@ class CaseEngine:
         return Proposal(type="prepare_action", action_id=spec.id, title=title, response_class=rc,
                         message=pack.t(lang, "proposal.escalate", action=title))
 
-    def approval_required(self, session: Session, case: Case) -> bool:
+    def document_type(self, case: Case, spec: ActionSpec) -> str | None:
+        """Document type of a universal-path action (from the forum registry); None for signed scenarios."""
+        pack = self.pack_of(case)
+        cov = pack.coverage
+        if cov is None or not is_generic(case.scenario_id):
+            return None
+        if spec.addressee and spec.addressee.forum:
+            forum = cov.forums.get(spec.addressee.forum)
+        else:  # a claim to the other party itself
+            ref = GenericRef.parse(case.scenario_id or "")
+            forum = cov.forums.get(ref.forum_id) if ref else None
+        doc = cov.document_for(forum) if forum else None
+        return doc.id if doc else None
+
+    def approval_required(self, session: Session, case: Case, spec: ActionSpec | None = None) -> bool:
+        if self.config.self_service and not case.needs_review and case.hold_reason is None:
+            if not is_generic(case.scenario_id):
+                return False  # signed / draft level-1 scenarios contain pre-trial documents only
+            if spec is not None and self.document_type(case, spec) in self.config.self_service_documents:
+                return False
+            return True  # court documents (lawsuit, appeal) are filed only after a lawyer's check
         if case.needs_review or case.coverage_level == qualifier.LEVEL_UNIVERSAL or is_generic(case.scenario_id):
             return True
         rank = session.scalar(select(func.count()).select_from(Case).where(
@@ -666,7 +689,7 @@ class CaseEngine:
             s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
                                                       spec.instructions.get(pack.manifest.default_language) or ())
         ]
-        if self.approval_required(session, case):
+        if self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"
         else:
             action.approval_status, action.status = "not_required", "ready"

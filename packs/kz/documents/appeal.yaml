@@ -12,3 +12,10 @@ required_fields:
   - {name: event_date, type: date, optional: true}
   - {name: problem_description, type: longtext}
   - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Копия обжалуемого решения суда"
+    - "Квитанция об оплате госпошлины (размер уточнит юрист)"
+  kk:
+    - "Шағымданатын сот шешімінің көшірмесі"
+    - "Мемлекеттік баж төленгені туралы түбіртек (мөлшерін заңгер нақтылайды)"

@@ -90,6 +90,7 @@ def tick_at(ctx, day: date) -> int:
 
 # ======================================================================
 def test_consumer_refund_full_path(ctx):
+    ctx.container.engine.config.self_service = False  # the lawyer-review policy (SELF_SERVICE=false)
     api = web_user(ctx)
     story = ("Купил смартфон в интернет-магазине 12.08.2026 за 150 000 тенге, через неделю он сломался, "
              "продавец отказывается вернуть деньги")
@@ -227,6 +228,7 @@ def test_consumer_refund_full_path(ctx):
 
 
 def test_credit_fraud_via_telegram_full_path(ctx):
+    ctx.container.engine.config.self_service = False  # the lawyer-review policy (SELF_SERVICE=false)
     api = telegram_user(ctx)
     story = "Мне пришло SMS, что на меня оформлен займ в МФО на 300000 тенге 01.09.2026, я его не брал, это мошенники"
     created = api.post("/v1/cases", expect=201, json={"text": story})  # country inferred from scenario

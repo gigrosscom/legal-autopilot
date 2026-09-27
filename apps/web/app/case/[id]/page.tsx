@@ -518,9 +518,16 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
         </div>
       )}
       {a.downloadable && a.instructions.length > 0 && (
-        <div>
+        <div className="space-y-2">
           <p className="text-sm font-semibold">{t("case.instructions")}</p>
-          <ol className="list-inside list-decimal space-y-1 text-sm">{a.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol>
+          <ol className="space-y-2 text-sm">
+            {a.instructions.map((s, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand">{i + 1}</span>
+                <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
       {a.deadline && (
@@ -532,5 +539,17 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
       )}
       {a.response_summary && <p className="text-sm text-muted">«{a.response_summary}»</p>}
     </div>
+  );
+}
+
+/** Plain text with http(s) links made clickable (filing portals in the instructions). */
+function Linkified({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s),;]+)/g);
+  return (
+    <>
+      {parts.map((p, i) => (/^https?:\/\//.test(p)
+        ? <a key={i} href={p} target="_blank" rel="noreferrer" className="link">{p.replace(/^https?:\/\//, "")}</a>
+        : <span key={i}>{p}</span>))}
+    </>
   );
 }

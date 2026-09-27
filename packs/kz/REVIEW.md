@@ -64,6 +64,16 @@
 | 24 | `i18n/kk.yaml`, `kk:` в сценариях | Перевод на казахский выполнен (интерфейс, вопросы, инструкции); нужна проверка юридической терминологии юристом — носителем языка. Документы (претензии, жалобы) остаются на русском. |
 | 25 | Первые 50 дел каждого сценария | Проходят обязательное одобрение юристом в админке (`APPROVAL_REQUIRED_FIRST_N`). |
 
+## Самостоятельная подача (SELF_SERVICE)
+
+Претензия, жалоба и заявление выдаются пользователю сразу, без одобрения юристом; иск и апелляция — только после
+проверки. Поэтому в первую очередь сверить:
+
+- [ ] `i18n/*.yaml → generic.portals`: шаги подачи на eotinish.kz и office.sud.kz (названия кнопок и разделов);
+- [ ] `documents/*.yaml → attachments`: что прикладывать к каждому типу документа;
+- [ ] `forums/registry.yaml → kz.counterparty.claim`: для каких споров досудебная претензия обязательна и её срок;
+- [ ] точные наименования органов (сейчас родовые, с пометкой «уточнит юрист»).
+
 <!-- BEGIN generated: coverage review -->
 ## Реестр универсального пути: статус проверки
 
@@ -71,6 +81,7 @@
 
 | Вид | Запись | Статус | Кем подписано |
 |---|---|---|---|
+| forum | `kz.counterparty.claim` | TODO | — |
 | forum | `kz.court.district` | TODO | — |
 | forum | `kz.court.appeal` | TODO | — |
 | forum | `kz.police` | TODO | — |
@@ -81,6 +92,7 @@
 | forum | `kz.ombudsman` | TODO | — |
 | forum | `kz.mediation` | TODO | — |
 | document | `appeal` | TODO | — |
+| document | `claim_letter` | TODO | — |
 | document | `complaint` | TODO | — |
 | document | `lawsuit` | TODO | — |
 | document | `statement` | TODO | — |

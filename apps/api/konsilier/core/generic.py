@@ -13,7 +13,8 @@ Generic scenario ids encode their inputs so they can be rebuilt deterministicall
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from .coverage.schema import DisputeType, Forum
 from .scenario.schema import (
@@ -61,6 +62,50 @@ def _loc(pack: "JurisdictionPack", key: str, **kw: str) -> dict[str, str]:
     return {lang: pack.t(lang, key, **kw) for lang in pack.manifest.languages}
 
 
+class _Safe(dict):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
+
+
+def _raw(pack: "JurisdictionPack", lang: str, *path: str) -> Any:
+    """A raw i18n node (list or dict) for ``lang``, falling back to the pack's default language."""
+    for candidate in (lang, pack.manifest.default_language):
+        node: Any = pack.i18n.get(candidate, {})
+        for part in path:
+            node = node.get(part) if isinstance(node, dict) else None
+        if node is not None:
+            return node
+    return None
+
+
+def filing_steps(pack: "JurisdictionPack", lang: str, forum: Forum, doc: Any) -> tuple[str, ...]:
+    """Step-by-step filing instructions for one document: prepare → what to attach → the main channel in detail
+    (per portal when the pack describes it) → other channels → mark as submitted. All text comes from pack data."""
+    t = lambda key, **kw: pack.t(lang, f"generic.instructions.{key}", **kw)  # noqa: E731
+    party = forum.type == "private_org"  # a claim to the other party itself, not to a body
+    addressee = "{addressee}" if party else pack.localized(forum.name, lang)
+    doc_title = pack.localized(doc.title, lang)
+    steps: list[str] = [t("prepare", document=doc_title)]
+    items = (doc.attachments.get(lang) or doc.attachments.get(pack.manifest.default_language) or ()) \
+        if getattr(doc, "attachments", None) else ()
+    if items:
+        steps.append(t("attach", items="; ".join(items)))
+    for i, ch in enumerate(forum.submission):
+        kw = {"url": ch.url or "", "email": ch.email or "", "addressee": addressee, "document": doc_title}
+        detailed = None
+        if ch.kind == "portal" and ch.url:
+            host = (urlparse(ch.url).hostname or "").removeprefix("www.")
+            detailed = _raw(pack, lang, "generic", "portals", host)
+        if i == 0 and isinstance(detailed, list):
+            steps += [str(x).format_map(_Safe(kw)) for x in detailed]
+            continue
+        key = f"{ch.kind}_party" if party and ch.kind in ("email", "in_person") else ch.kind
+        line = t(key, **kw)
+        steps.append(line if i == 0 else t("alternative", step=line))
+    steps.append(t("mark_submitted"))
+    return tuple(steps)
+
+
 def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenario:
     cov = pack.coverage
     if cov is None:
@@ -98,22 +143,18 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
 
     actions: list[ActionSpec] = []
     for i, (forum, doc) in enumerate(steps, 1):
-        instructions = {
-            lang: tuple(
-                pack.t(lang, f"generic.instructions.{ch.kind}", url=ch.url or "", email=ch.email or "",
-                       addressee=pack.localized(forum.name, lang))
-                for ch in forum.submission
-            ) + (pack.t(lang, "generic.instructions.mark_submitted"),)
-            for lang in pack.manifest.languages
-        }
+        instructions = {lang: filing_steps(pack, lang, forum, doc) for lang in pack.manifest.languages}
         deadline = forum.response_deadline
         actions.append(ActionSpec(
             id=f"step_{i}",
-            title={lang: pack.t(lang, "generic.action_title", document=pack.localized(doc.title, lang),
-                                forum=pack.localized(forum.name, lang))
+            # a claim to the other party is titled by the document alone: the addressee is the respondent
+            title={lang: pack.localized(doc.title, lang) if forum.type == "private_org" else
+                   pack.t(lang, "generic.action_title", document=pack.localized(doc.title, lang),
+                          forum=pack.localized(forum.name, lang))
                    for lang in pack.manifest.languages},
             template=doc.template,
-            addressee=AddresseeSpec(forum=forum.id),
+            # a pre-trial claim goes to the other party itself; everything else to the body from the registry
+            addressee=AddresseeSpec(party="respondent") if forum.type == "private_org" else AddresseeSpec(forum=forum.id),
             deadline=deadline,
             norm_refs=(deadline.norm_ref,) if deadline else ("TODO",),
             when=None if i == 1 else f"step_{i - 1}.response in [none, refusal, partial]",

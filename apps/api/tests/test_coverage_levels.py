@@ -38,6 +38,7 @@ def test_level1_verified_scenarios_unchanged(ctx):
 
 
 def test_level2_universal_path_needs_lawyer_approval(ctx):
+    ctx.container.engine.config.self_service = False  # the lawyer-review policy (SELF_SERVICE=false)
     api = web_user(ctx)
     cid, _ = _universal_case(api)
 
@@ -199,3 +200,57 @@ def test_unsigned_level1_scenario_is_shown_as_draft():
     assert display_level("verified", False) == "verified"
     assert display_level("universal", True) == "universal"
     assert display_level("lawyer", True) == "lawyer"
+
+
+_ANSWERS = {
+    "applicant_name": "Иванов Иван Иванович", "applicant_iin": "пропустить", "applicant_address": "Алматы, ул. Абая 1",
+    "applicant_phone": "+7 701 123 45 67", "respondent_name": "ТОО «Ромашка»", "event_date": "пропустить",
+    "problem_description": "Не платят зарплату с июня", "desired_outcome": "Выплатить долг по зарплате",
+    "amount": "450000",
+}
+
+
+def _fill_and_prepare(api, cid, case):
+    q = case["question"]
+    while q is not None and q["type"] != "evidence":
+        out = api.answer(cid, _ANSWERS[q["field"]])
+        assert out["reply"]["error"] is None, out["reply"]
+        q = out["case"]["question"]
+    api.answer(cid, "пропустить")  # evidence
+    return api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
+
+
+def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
+    api = web_user(ctx)
+    cid, _ = _universal_case(api)
+    case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
+    action = _fill_and_prepare(api, cid, case)
+    assert action["approval_status"] == "not_required" and action["downloadable"] is True
+    steps = action["instructions"]
+    assert steps[0].startswith("Скачайте «Жалоба»")
+    assert any("eotinish.kz" in s and "ЭЦП" in s for s in steps)  # portal walk-through, not one line
+    assert any("Местный орган по инспекции труда" in s for s in steps)  # the chosen body is named
+    assert any(s.startswith("Что приложить:") for s in steps)
+    assert steps[-1].startswith("После подачи нажмите")
+
+
+def test_pre_trial_claim_goes_to_the_other_party(ctx):
+    api = web_user(ctx)
+    cid, options = _universal_case(api)
+    assert "kz.counterparty.claim" in options  # a pre-trial claim is offered next to the bodies
+    case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.counterparty.claim"})["case"]
+    action = _fill_and_prepare(api, cid, case)
+    assert action["approval_status"] == "not_required"
+    assert action["addressee"]["name"] == "ТОО «Ромашка»"  # the claim is addressed to the employer itself
+    with ctx.container.session_factory() as s:
+        text = docx_text(ctx.container.storage.get(s.get(Action, uuid.UUID(action["id"])).docx_key))
+    assert "ПРЕТЕНЗИЯ" in text and "Выплатить долг по зарплате" in text
+    assert any("ТОО «Ромашка»" in s for s in action["instructions"])
+
+
+def test_court_documents_still_wait_for_a_lawyer(ctx):
+    api = web_user(ctx)
+    cid, _ = _universal_case(api)
+    case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.district"})["case"]
+    action = _fill_and_prepare(api, cid, case)
+    assert action["approval_status"] == "pending" and action["downloadable"] is False

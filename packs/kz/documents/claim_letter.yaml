@@ -1,0 +1,24 @@
+# Досудебная претензия (уровень 2): адресат — сама сторона спора. Реквизиты и шаблон не проверены юристом — TODO(lawyer).
+id: claim_letter
+title: {ru: "Досудебная претензия", kk: "Сотқа дейінгі талап-арыз"}
+template: kz/templates/generic/claim_letter.docx
+forum_types: [private_org]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: applicant_iin, optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - {name: applicant_address, pii: address}
+  - {name: applicant_phone, type: phone, pii: phone}
+  - {name: respondent_name}
+  - {name: event_date, type: date, optional: true}
+  - {name: amount, type: money, optional: true}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Копия договора, чека, квитанции или выписки об оплате (если есть)"
+    - "Переписка с организацией или человеком: письма, скриншоты чатов"
+    - "Фото или акт, подтверждающие проблему (если есть)"
+  kk:
+    - "Шарттың, чектің, түбіртектің немесе төлем үзінді көшірмесінің көшірмесі (болса)"
+    - "Ұйыммен немесе адаммен хат алмасу: хаттар, чат скриншоттары"
+    - "Мәселені растайтын фото немесе акт (болса)"

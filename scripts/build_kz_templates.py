@@ -12,6 +12,7 @@ Available context (see core/engine.py::document_context):
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from docx import Document
@@ -172,6 +173,32 @@ def generic(title: str, subtitle: str, demand_intro: str) -> Document:
     return doc
 
 
+def claim_letter() -> Document:
+    """Universal pre-trial claim to the other party itself (seller, bank, employer, landlord, debtor)."""
+    doc = _doc()
+    _header(doc, extra_applicant="Адрес: {{ f.applicant_address }}")
+    _center(doc, "ПРЕТЕНЗИЯ")
+    _center(doc, "(досудебная)", bold=False)
+    _para(doc, "{% if f.event_date %}Дата события: {{ f.event_date }}.{% endif %}"
+               "{% if f.amount %} Сумма требований: {{ f.amount }} {{ currency }}.{% endif %}")
+    _para(doc, "{{ narrative }}")
+    _previous(doc)
+    _para(doc, "На основании изложенного требую:", bold=True)
+    _para(doc, "{{ demands }}")
+    _para(doc, "Правовое основание: " + GENERIC_NORMS)
+    _para(doc, "Прошу дать письменный ответ на претензию. Если требования не будут удовлетворены, я буду вынужден(а) "
+               "обратиться в уполномоченный государственный орган и (или) в суд для защиты своих прав.")
+    doc.add_paragraph("{%p if evidence %}")
+    _para(doc, "Приложения:", bold=True)
+    doc.add_paragraph("{%p for e in evidence %}")
+    doc.add_paragraph("{{ loop.index }}. {{ e }}")
+    doc.add_paragraph("{%p endfor %}")
+    doc.add_paragraph("{%p endif %}")
+    doc.add_paragraph("")
+    doc.add_paragraph("Дата: {{ date }}                    Подпись: ______________ / {{ applicant.name }}")
+    return doc
+
+
 def main() -> None:
     out = {
         "consumer/claim_seller.docx": claim_seller,
@@ -182,8 +209,12 @@ def main() -> None:
         "generic/statement.docx": lambda: generic("ЗАЯВЛЕНИЕ", "{{ title }}", "Прошу:"),
         "generic/lawsuit.docx": lambda: generic("ИСКОВОЕ ЗАЯВЛЕНИЕ", "{{ title }}", "На основании изложенного прошу суд:"),
         "generic/appeal.docx": lambda: generic("АПЕЛЛЯЦИОННАЯ ЖАЛОБА", "{{ title }}", "Прошу:"),
+        "generic/claim_letter.docx": claim_letter,
     }
+    only = set(sys.argv[1:])  # e.g. generic/claim_letter.docx — rebuild just these
     for rel, build in out.items():
+        if only and rel not in only:
+            continue
         path = ROOT / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         build().save(path)

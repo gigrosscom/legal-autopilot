@@ -36,6 +36,7 @@ def test_roadmap_during_intake_projects_full_path(ctx):
 
 
 def test_roadmap_follows_real_events(ctx):
+    ctx.container.engine.config.self_service = False  # the lawyer-review policy (SELF_SERVICE=false)
     api, cid = new_refund_case(ctx)
     run_intake(api, cid, ANSWERS)
     api.answer(cid, "пропустить")

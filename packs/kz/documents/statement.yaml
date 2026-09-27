@@ -12,3 +12,12 @@ required_fields:
   - {name: event_date, type: date, optional: true}
   - {name: problem_description, type: longtext}
   - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Удостоверение личности (при подаче лично)"
+    - "Документы и фото, подтверждающие то, о чём вы пишете"
+    - "Контакты свидетелей, если они есть"
+  kk:
+    - "Жеке куәлік (өзіңіз бергенде)"
+    - "Жазғаныңызды растайтын құжаттар мен фото"
+    - "Куәгерлердің байланыс деректері, болса"

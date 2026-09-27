@@ -34,6 +34,11 @@ class Settings(BaseSettings):
 
     qualify_min_confidence: float = 0.6
     approval_required_first_n: int = 50
+    # Self-service: documents a person can file without a lawyer (pre-trial claim, complaint, statement) are
+    # released at once; court documents and flagged cases still wait for a lawyer. False → the old rule
+    # (every universal document and the first N cases of each scenario are approved by a lawyer).
+    self_service: bool = True
+    self_service_documents: str = "claim_letter,complaint,statement"
 
     admin_token: str = "change-me-admin"
     bot_api_secret: str = "change-me-bot"

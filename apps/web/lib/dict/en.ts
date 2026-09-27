@@ -14,7 +14,7 @@ const en: Dict = {
     pending: { label: "Finding your path", desc: "We are working out what happened. As soon as it is clear, we will show the right path and the first step." },
     verified: { label: "Lawyer-verified", desc: "Ready scenario: laws, deadlines and recipients signed off by a lawyer. Full autopilot." },
     scenario_draft: { label: "Scenario awaiting sign-off", desc: "The scenario works, but a lawyer has not yet signed off the laws and deadlines: documents are marked \"Draft\"." },
-    universal: { label: "Universal path", desc: "No ready scenario. We prepare the document from a universal template, the recipient comes from the registry of authorities, and a lawyer reviews the document before filing." },
+    universal: { label: "Universal path", desc: "No ready scenario. We prepare the document from a universal template, the recipient comes from the registry of authorities, you file a claim, complaint or application yourself following step-by-step instructions; a lawyer reviews court filings first." },
     lawyer: { label: "Lawyer needed", desc: "A complex or risky case: we build a case file and pass it to a verified lawyer." },
     soon: { label: "Coming soon", desc: "Not accepting cases yet. Leave your contact and we will let you know at launch." },
   },
@@ -283,7 +283,7 @@ const en: Dict = {
     levelsLead: "The level is set automatically and always shown in your case.",
     level: {
       verified: { title: "Verified scenario", when: "For common situations where a lawyer has signed off the laws, deadlines and recipients.", get: { 1: "A document from a verified template", 2: "Legal response deadlines and reminders", 3: "The next step from a known sequence" } },
-      universal: { title: "Universal path", when: "When there is no ready scenario, but the area of law is clear and a suitable authority is in the registry.", get: { 1: "A document from a universal template marked \"Draft\"", 2: "Lawyer review before filing, always", 3: "Laws and deadlines only from data; otherwise \"a lawyer will confirm\"" } },
+      universal: { title: "Universal path", when: "When there is no ready scenario, but the area of law is clear and a suitable authority is in the registry.", get: { 1: "A document from a universal template marked \"Draft\"", 2: "Step-by-step filing: where, how and what to attach; court filings after a lawyer's review", 3: "Laws and deadlines only from data; otherwise \"a lawyer will confirm\"" } },
       lawyer: { title: "Handover to a lawyer", when: "Criminal defense, children, large amounts, deadlines about to expire, unclear situations.", get: { 1: "A case file based on your description", 2: "A verified lawyer rated by results", 3: "Defense documents are written only by an advocate" } },
     },
     rolesTitle: "Who does what",
@@ -295,12 +295,12 @@ const en: Dict = {
     },
     lawyer: {
       title: "Lawyer",
-      does: { 1: "Signs off scenarios: laws, deadlines, recipients", 2: "Reviews every universal-path document before filing", 3: "Handles complex cases and represents you", 4: "Is responsible for the legal accuracy of the registry of authorities" },
+      does: { 1: "Signs off scenarios: laws, deadlines, recipients", 2: "Reviews lawsuits and court appeals before filing", 3: "Handles complex cases and represents you", 4: "Is responsible for the legal accuracy of the registry of authorities" },
     },
     promiseTitle: "What we promise and what we don't do",
     promiseLead: "No big promises: only what depends on us.",
     promise: { title: "We promise", 1: "A clear path for your case", 2: "A ready document and filing instructions", 3: "Deadline tracking and reminders", 4: "A verified lawyer when you need one" },
-    dont: { title: "We don't", 1: "Represent you in court ourselves; platform lawyers do that", 2: "File universal-path documents without a lawyer's approval", 3: "Write defense documents in criminal cases", 4: "Make up authorities, laws, deadlines or fees" },
+    dont: { title: "We don't", 1: "Represent you in court ourselves; platform lawyers do that", 2: "File in court without a lawyer's review", 3: "Write defense documents in criminal cases", 4: "Make up authorities, laws, deadlines or fees" },
     safetyTitle: "Safety",
     safety: {
       emergency: { title: "Emergencies", text: "If there is a threat to life, violence or a child in danger, we first show the country's emergency numbers." },

@@ -4,6 +4,28 @@
 # Наименования — родовые категории органов; точные наименования, подсудность, пошлины и сроки — TODO(lawyer).
 # Религиозные форумы в пакет KZ не добавляются (решение основателя, ADR 0001, раздел 6).
 forums:
+  # Досудебная претензия — самой организации или человеку, с которым спор (продавец, банк, работодатель,
+  # арендодатель, должник). Не орган: решения не выносит, но это обязательный или полезный первый шаг.
+  - id: kz.counterparty.claim
+    type: private_org
+    instance: first
+    name:
+      ru: "Организация или человек, с которым спор (досудебная претензия)"
+      kk: "Дау туындаған ұйым немесе адам (сотқа дейінгі талап-арыз)"
+    accepts:
+      - branches: [consumer, finance, housing, labor, civil]
+        applicant_roles: [consumer, borrower, tenant, landlord, employee, claimant]
+    document_types: [claim_letter]
+    submission:
+      - kind: in_person
+        note: {ru: "Вручите лично и попросите отметку о принятии на втором экземпляре", kk: "Өзіңіз тапсырып, екінші данаға қабылдау белгісін сұраңыз"}
+      - kind: post
+      - kind: email
+    languages: [ru, kk]
+    appeals_to: [kz.regulator.consumer, kz.regulator.financial, kz.labor_inspection, kz.court.district]
+    legal_effect: none
+    source: "Досудебное урегулирование: ГК РК, Закон о защите прав потребителей, ТК РК — ссылки проставит юрист"
+
   - id: kz.court.district
     type: court
     instance: first

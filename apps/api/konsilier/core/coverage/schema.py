@@ -224,6 +224,8 @@ class DocumentType(_Strict):
     required_fields: tuple[IntakeField, ...]
     template: str  # path relative to packs dir
     forum_types: tuple[str, ...]
+    # what the applicant attaches, per language — shown as a checklist in the filing instructions
+    attachments: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     verified_at: date | None = None
     verified_by: str | None = None
 
