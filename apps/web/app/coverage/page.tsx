@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LevelBadge, type Level } from "@/components/LevelBadge";
+import { CtaBanner } from "@/components/CtaBanner";
 import { Alert, Button, Section } from "@/components/ui";
 import { errorText, publicApi } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -61,6 +62,10 @@ export default function CoveragePage() {
               </li>
             ))}
           </ul>
+          <div className="flex flex-wrap gap-2">
+            <Button href="/start" iconEnd="arrowRight">{t("cta.startCase")}</Button>
+            <Button href="/how-it-works" variant="secondary">{t("cta.more")}</Button>
+          </div>
         </Section>
       ))}
 
@@ -94,6 +99,8 @@ export default function CoveragePage() {
           </div>
         </Section>
       )}
+
+      <CtaBanner />
     </div>
   );
 }

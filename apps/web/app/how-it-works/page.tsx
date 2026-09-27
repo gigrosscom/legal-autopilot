@@ -1,5 +1,6 @@
 "use client";
 
+import { CtaBanner } from "@/components/CtaBanner";
 import { LevelBadge } from "@/components/LevelBadge";
 import { PathMap } from "@/components/PathMap";
 import { Alert, Button, Icon, Section, type IconName } from "@/components/ui";
@@ -30,16 +31,21 @@ export default function HowItWorks() {
 
       <Section title={t("how.pathTitle")} lead={t("how.pathLead")}>
         <PathMap />
+        <Button href="/start" iconEnd="arrowRight">{t("cta.startCase")}</Button>
       </Section>
 
       <Section title={t("how.levelsTitle")} lead={t("how.levelsLead")}>
         <div className="grid gap-4 lg:grid-cols-3">
           {LEVELS.map((lv) => (
-            <article key={lv} className="card space-y-3">
+            <article key={lv} className="card flex flex-col items-start gap-3">
               <LevelBadge level={lv} />
               <h3 className="text-lg font-semibold">{t(`how.level.${lv}.title`)}</h3>
               <p className="text-sm text-muted">{t(`how.level.${lv}.when`)}</p>
               <List prefix={`how.level.${lv}.get`} n={3} icon="check" />
+              <Button className="mt-auto" variant="secondary" href={lv === "lawyer" ? "/lawyers" : "/start"}
+                icon={lv === "lawyer" ? "lawyer" : undefined} iconEnd={lv === "lawyer" ? undefined : "arrowRight"}>
+                {lv === "lawyer" ? t("cta.lawyer") : t("cta.start")}
+              </Button>
             </article>
           ))}
         </div>
@@ -56,6 +62,10 @@ export default function HowItWorks() {
           <div className="card space-y-3">
             <h3 className="flex items-center gap-2 font-semibold"><Icon name="lawyer" className="text-brand" />{t("how.lawyer.title")}</h3>
             <List prefix="how.lawyer.does" n={4} icon="check" />
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button href="/lawyers" icon="lawyer">{t("cta.lawyer")}</Button>
+              <Button href="/for-lawyers" variant="secondary">{t("cta.join")}</Button>
+            </div>
           </div>
         </div>
       </Section>
@@ -68,7 +78,7 @@ export default function HowItWorks() {
           </div>
           <div className="card space-y-3">
             <h3 className="font-semibold">{t("how.dont.title")}</h3>
-            <List prefix="how.dont" n={5} icon="x" iconClass="text-danger" />
+            <List prefix="how.dont" n={4} icon="x" iconClass="text-danger" />
           </div>
         </div>
       </Section>
@@ -81,27 +91,7 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      <Section id="religious" eyebrow={t("religious.eyebrow")} title={t("religious.title")} lead={t("religious.lead")}>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {(["binding", "advisory", "none"] as const).map((k) => (
-            <div key={k} className="card space-y-2">
-              <h3 className="font-semibold">{t(`religious.status.${k}.title`)}</h3>
-              <p className="text-sm text-muted">{t(`religious.status.${k}.text`)}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="card space-y-3">
-            <h3 className="font-semibold">{t("religious.rules.title")}</h3>
-            <List prefix="religious.rules" n={5} icon="check" />
-          </div>
-          <div className="space-y-3">
-            <Alert tone="warning" title={t("religious.family.title")}>{t("religious.family.text")}</Alert>
-            <Alert tone="info" title={t("religious.kz.title")}>{t("religious.kz.text")}</Alert>
-          </div>
-        </div>
-        <Button href="/start?s=religious" variant="secondary" iconEnd="arrowRight">{t("religious.cta")}</Button>
-      </Section>
+      <CtaBanner />
     </div>
   );
 }

@@ -336,7 +336,7 @@ class Consent(Base):
     __tablename__ = "consents"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(64))  # special_category:health | false_report_ack | religious_path
+    kind: Mapped[str] = mapped_column(String(64))  # special_category:health | false_report_ack
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

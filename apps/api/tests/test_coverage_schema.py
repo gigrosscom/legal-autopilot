@@ -38,7 +38,6 @@ def test_kz_registry_loads_and_nothing_is_marked_verified():
     cov = PackRegistry.load(REPO / "packs").pack("KZ").coverage
     assert cov.has_registry
     assert all(not f.verified for f in cov.forums.values())  # no lawyer sign-off yet
-    assert all(f.type != "religious" for f in cov.forums.values())  # founder's decision for KZ
     assert all(status == "TODO" for kind, _, status, _ in cov.review_rows() if kind in ("forum", "document"))
 
 
@@ -60,18 +59,9 @@ def test_defence_is_always_lawyer_only():
     assert cov.candidate_forums(defence, "suspect") == []
 
 
-def test_religious_forum_invariants():
-    with pytest.raises(ValueError, match="religious"):
+def test_religious_bodies_are_not_a_forum_type():
+    with pytest.raises(ValueError):
         Forum.model_validate(_forum(type="religious"))
-    with pytest.raises(ValueError, match="religious"):
-        Forum.model_validate(_forum(religious={"confession": "x", "state_status": "no_legal_effect"}))
-    with pytest.raises(ValueError, match="legal_effect: none"):
-        Forum.model_validate(_forum(type="religious", legal_effect="advisory",
-                                    religious={"confession": "x", "state_status": "no_legal_effect"}))
-    ok = Forum.model_validate(_forum(id="xx.religious.council", type="religious", legal_effect="none",
-                                     religious={"confession": "x", "state_status": "no_legal_effect"}))
-    assert ok.religious.state_status == "no_legal_effect"
-
 
 def _pack_with(tmp_path: Path, forums: list[dict], routing: dict | None = None) -> Path:
     root = tmp_path / "packs"

@@ -1,7 +1,7 @@
 import type { IconName } from "@/components/ui";
 
 /** Life situations shown instead of branches of law. Each opens the same intake with a hint. */
-export const SITUATIONS: { key: string; icon: IconName; branch: string; religious?: boolean }[] = [
+export const SITUATIONS: { key: string; icon: IconName; branch: string }[] = [
   { key: "cheated", icon: "cart", branch: "consumer" },
   { key: "fired", icon: "briefcase", branch: "labor" },
   { key: "family", icon: "family", branch: "family" },
@@ -12,5 +12,4 @@ export const SITUATIONS: { key: string; icon: IconName; branch: string; religiou
   { key: "business", icon: "handshake", branch: "commercial" },
   { key: "inheritance", icon: "scroll", branch: "inheritance" },
   { key: "housing", icon: "home", branch: "housing" },
-  { key: "religious", icon: "community", branch: "family", religious: true },
 ];

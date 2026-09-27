@@ -109,7 +109,6 @@ export type ForumOption = {
   verified: boolean;
   channels: string[];
   deadline_known: boolean;
-  religious: { state_status: string; scope: string; family_rights_warning: string } | null;
 };
 
 export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };
@@ -131,8 +130,6 @@ export type Coverage = {
   reasons: { code: string; label: string }[];
   options: ForumOption[];
   upl_notice: string | null;
-  religious_requested: boolean;
-  state_alternative_notice: string | null;
 };
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };

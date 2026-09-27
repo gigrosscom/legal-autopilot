@@ -315,6 +315,7 @@ def test_colloquial_follow_up_qualifies_and_explains_next_steps(ctx):
     created = api.post("/v1/cases", expect=201, json={"text": "Всё плохо, помогите", "country": "KZ"})
     cid = created["case"]["id"]
     assert created["case"]["scenario"] is None
+    assert created["case"]["coverage"]["level"] == "pending"  # never "verified" before classification
     out = api.answer(cid, "купил макбук в технодоме, не понравилось, хочу вернуть - как это сделать?")
     assert out["case"]["scenario"]["id"] == "kz.consumer.refund"
     assert "Претензия продавцу о возврате денег" in out["reply"]["message"]  # what happens next

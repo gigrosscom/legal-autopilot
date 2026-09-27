@@ -13,7 +13,6 @@ export default function StartPage() {
   const { lang } = useLang();
   const [text, setText] = useState("");
   const [situation, setSituation] = useState<(typeof SITUATIONS)[number] | null>(null);
-  const [religious, setReligious] = useState(false);
   const { start, busy, error, emergency, dismissEmergency } = useStartCase(lang);
 
   // ?s=<situation> from the home page tiles: a hint, not a choice of law — the text is still free.
@@ -21,12 +20,11 @@ export default function StartPage() {
     const key = new URLSearchParams(window.location.search).get("s");
     const s = SITUATIONS.find((x) => x.key === key) ?? null;
     setSituation(s);
-    if (s?.religious) setReligious(true);
   }, []);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    start(text.trim(), { religiousPath: religious });
+    start(text.trim());
   }
 
   return (
@@ -46,17 +44,8 @@ export default function StartPage() {
         placeholder={situation ? t(`situations.${situation.key}.placeholder`) : t("start.placeholder")}
         onChange={(e) => setText(e.target.value)} />
 
-      <label className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-sm">
-        <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand" checked={religious}
-          onChange={(e) => setReligious(e.target.checked)} />
-        <span>
-          <span className="font-semibold">{t("start.religiousLabel")}</span>
-          <span className="block text-muted">{t("start.religiousHint")} <Link href="/how-it-works#religious" className="link">{t("start.religiousMore")}</Link></span>
-        </span>
-      </label>
-
       {emergency && <EmergencyPanel info={emergency}
-        onContinue={() => { dismissEmergency(); start(text.trim(), { skipTriage: true, religiousPath: religious }); }} />}
+        onContinue={() => { dismissEmergency(); start(text.trim(), { skipTriage: true }); }} />}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
       <Button size="lg" className="w-full sm:w-auto" disabled={busy || text.trim().length < 10}
         icon={busy ? "spinner" : undefined} iconEnd={busy ? undefined : "arrowRight"}>

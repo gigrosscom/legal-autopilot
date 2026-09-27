@@ -1,7 +1,7 @@
 id: lawsuit
 title: {en: "lawsuit"}
 template: xx/templates/letter.docx
-forum_types: [court, religious]
+forum_types: [court]
 required_fields:
   - {name: applicant_name, pii: person}
   - {name: respondent_name}

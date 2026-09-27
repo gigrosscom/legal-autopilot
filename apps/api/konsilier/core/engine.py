@@ -159,8 +159,7 @@ class CaseEngine:
 
     # ================================================================ intake
     def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
-                   channel: str | None = None, country: str | None = None,
-                   religious_path: bool = False) -> tuple[Case, Reply]:
+                   channel: str | None = None, country: str | None = None) -> tuple[Case, Reply]:
         lang = language or user.language or "ru"
         country = (country or user.country or "").upper() or None
         if country and country not in self.packs.packs:
@@ -172,9 +171,6 @@ class CaseEngine:
         session.add(case)
         session.flush()
         self.audit(session, case, f"user:{user.id}", "case_created", None, case.status, channel=case.channel)
-        if religious_path:  # explicit user choice, recorded as consent to process this special category
-            case.taxonomy = {"religious_path": True}
-            session.add(Consent(case_id=case.id, kind="religious_path"))
         pack = self.pack_of(case)
         keyword_emergency = safety.detect_emergency(pack.coverage, text)
         reply = self._qualify_and_continue(session, case, text)
@@ -262,10 +258,9 @@ class CaseEngine:
                                       sorted({r for d in cov.disputes.values() for r in d.applicant_roles}),
                                       text, lang)
         self._save_vault(case, llm)
-        religious = bool((case.taxonomy or {}).get("religious_path"))
-        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake, include_religious=religious)
+        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake)
         case.jurisdiction = case.jurisdiction or pack.country
-        case.taxonomy = {**route.to_taxonomy(), "religious_path": religious}
+        case.taxonomy = route.to_taxonomy()
         case.route_reasons = route.reasons
         case.qualification_confidence = route.confidence
         branch = cov.dispute(route.dispute_id).branch if route.dispute_id else None
@@ -292,13 +287,7 @@ class CaseEngine:
         out = {"id": forum.id, "name": pack.localized(forum.name, lang), "type": forum.type,
                "legal_effect": forum.legal_effect, "verified": forum.verified,
                "channels": [ch.kind for ch in forum.submission],
-               "deadline_known": forum.response_deadline is not None, "religious": None}
-        if forum.religious:
-            r = forum.religious
-            out["religious"] = {"state_status": r.state_status,
-                                "scope": pack.localized(r.scope, lang) if r.scope else "",
-                                "family_rights_warning": pack.localized(r.family_rights_warning, lang)
-                                if r.family_rights_warning else ""}
+               "deadline_known": forum.response_deadline is not None}
         return out
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
@@ -311,8 +300,7 @@ class CaseEngine:
             return []
         dispute = cov.dispute(case.taxonomy["dispute_id"])
         return [self.forum_option(pack, f, case.language)
-                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0],
-                                              include_religious=bool(case.taxonomy.get("religious_path")))]
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])]
 
     def choose_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
         if case.status != S.INTAKE.value or case.scenario_id:

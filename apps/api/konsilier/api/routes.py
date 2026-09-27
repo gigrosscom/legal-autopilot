@@ -139,8 +139,6 @@ class NewCase(BaseModel):
     text: str = Field(min_length=3, max_length=8000)
     language: str | None = None
     country: str | None = None
-    # the user explicitly chose to see religious bodies too (never inferred by the platform)
-    religious_path: bool = False
 
 
 @router.post("/cases", status_code=201)
@@ -148,7 +146,7 @@ def create_case(body: NewCase, user: User = Depends(current_user), session: Sess
                 container: Container = Depends(get_container)) -> dict[str, Any]:
     try:
         case, reply = container.engine.start_case(session, user, body.text, language=body.language,
-                                                  country=body.country, religious_path=body.religious_path)
+                                                  country=body.country)
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()

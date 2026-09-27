@@ -192,6 +192,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         <div className="card space-y-3">
           <LevelExplainer level={cov.level} />
+          <Link href="/how-it-works" className="link inline-flex items-center gap-1 text-sm">
+            {t("cta.more")}<Icon name="arrowRight" size={14} className="rtl:-scale-x-100" />
+          </Link>
           {cov.reasons.length > 0 && (
             <ul className="flex flex-wrap gap-2">{cov.reasons.map((r) => <li key={r.code}><Badge tone="warning">{r.label}</Badge></li>)}</ul>
           )}
@@ -202,7 +205,6 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
         {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
         {c.scenario?.draft_disclaimer && <Alert tone="draft" title={t("case.draftTitle")}>{c.scenario.draft_disclaimer}</Alert>}
-        {cov.state_alternative_notice && <Alert tone="info">{cov.state_alternative_notice}</Alert>}
 
         {ack && (
           <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
@@ -440,6 +442,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
         {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
+        {!(c.status === "handed_to_lawyer" && cov.level === "lawyer") && (
+          <div className="card space-y-2 text-sm">
+            <h2 className="flex items-center gap-2 font-semibold"><Icon name="lawyer" size={18} className="text-brand" />{t("cta.caseLawyerTitle")}</h2>
+            <p className="text-muted">{t("cta.caseLawyerText")}</p>
+            <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
+          </div>
+        )}
         <div className="rounded-2xl border border-line bg-surface p-4 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>
@@ -460,7 +469,7 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
           <li key={f.id} className="card flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand">
-                <Icon name={f.type === "court" ? "landmark" : f.type === "religious" ? "community" : f.type === "mediation" ? "handshake" : "building"} />
+                <Icon name={f.type === "court" ? "landmark" : f.type === "mediation" ? "handshake" : "building"} />
               </span>
               <div className="min-w-0 space-y-1">
                 <p className="font-semibold leading-snug">{f.name}</p>
@@ -476,7 +485,6 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
               </Badge>
               {!f.deadline_known && <Badge>{t("forum.deadlineByLawyer")}</Badge>}
             </div>
-            {f.religious?.family_rights_warning && <Alert tone="warning">{f.religious.family_rights_warning}</Alert>}
             <p className="text-xs text-muted">{t("forum.channels")}: {f.channels.map((ch) => t(`forum.channel.${ch}`)).join(", ")}</p>
             <Button className="mt-auto" disabled={busy} onClick={() => onChoose(f)} iconEnd="arrowRight">{t("forum.choose")}</Button>
           </li>
