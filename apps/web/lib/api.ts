@@ -343,6 +343,35 @@ export async function printFile(path: string) {
   document.body.appendChild(frame);
 }
 
+/** Save a document where the person chooses: the "Save as" dialog on a computer, the share sheet on a phone
+ *  ("Save to Files"), a plain download elsewhere. */
+export async function saveFileAs(path: string, filename: string): Promise<void> {
+  const blob = await fetchFile(path);
+  const w = window as Window & { showSaveFilePicker?: (o: unknown) => Promise<FileSystemFileHandle> };
+  if (w.showSaveFilePicker) {
+    try {
+      const handle = await w.showSaveFilePicker({ suggestedName: filename });
+      const writable = await (handle as FileSystemFileHandle & { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return; // closed by the user
+    }
+  }
+  const file = new File([blob], filename, { type: blob.type });
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  if (nav.share && nav.canShare?.({ files: [file] }) && matchMedia("(pointer: coarse)").matches) {
+    try {
+      await nav.share({ files: [file] });
+      return;
+    } catch {
+      return;
+    }
+  }
+  saveBlob(blob, filename);
+}
+
 /** Share a document through the phone's share sheet (WhatsApp, Telegram, mail…); else just download it.
  *  Returns true when the share sheet was opened. */
 export async function shareFile(path: string, filename: string, title: string): Promise<boolean> {

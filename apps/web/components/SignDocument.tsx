@@ -9,11 +9,13 @@ import { NcaLayerError, signDocument } from "@/lib/ncalayer";
 type EgovStart = { session_id: string; qr: string; links: { egov_mobile: string; egov_business: string } };
 
 /** Sign a prepared document with ЭЦП: NCALayer on a computer or eGov Mobile by QR; shows existing signatures. */
-export function SignDocument({ base, fileBase, initial, canSign, lead, onSigned }: {
+export function SignDocument({ base, fileBase, initial, canSign, lead, onSigned, unavailable }: {
   /** API path of the thing being signed: /v1/cases/{id}/actions/{id} or /v1/agreements/{id} */
   base: string; fileBase: string; initial: DocSignature[];
   /** show the sign buttons (default: only while nothing is signed) */
   canSign?: boolean; lead?: string; onSigned?: (s: DocSignature) => void;
+  /** shown instead of nothing when no signing method is available on this server */
+  unavailable?: string;
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -24,7 +26,8 @@ export function SignDocument({ base, fileBase, initial, canSign, lead, onSigned 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<AuthMethods>("/v1/auth/methods").then(setMethods).catch(() => setMethods(null));
+    api<AuthMethods>("/v1/auth/methods").then(setMethods)
+      .catch(() => setMethods({ ecp: false, egov: false } as AuthMethods)); // unreachable → treat as unavailable
   }, []);
 
   const explain = (e: unknown) => {
@@ -84,7 +87,10 @@ export function SignDocument({ base, fileBase, initial, canSign, lead, onSigned 
   const canNca = methods?.ecp ?? false;
   const canEgov = methods?.egov ?? false;
   const showButtons = (canSign ?? !signatures.length) && (canNca || canEgov);
-  if (!signatures.length && !showButtons) return null;
+  if (!signatures.length && !showButtons) {
+    return unavailable && methods !== null
+      ? <p className="rounded-xl border border-line p-3 text-sm text-muted">{unavailable}</p> : null;
+  }
 
   return (
     <div className="space-y-2 rounded-xl border border-line p-3 text-sm">

@@ -10,7 +10,7 @@ import { Agreements } from "@/components/Agreements";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { StageProgress } from "@/components/StageProgress";
-import { Alert, Badge, Button, Icon } from "@/components/ui";
+import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
   api,
   downloadFile,
@@ -25,6 +25,7 @@ import {
   printFile,
   shareFile,
   type Plan,
+  saveFileAs,
 } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
@@ -518,43 +519,102 @@ function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUploa
   );
 }
 
-/** Download, print, save as Word, send (share sheet → WhatsApp / Telegram / mail) for a ready document. */
+type MenuItem = { key: string; label: string; icon?: IconName; run: () => Promise<unknown> };
+
+/** Ready document: download (PDF / Word), print, save (PDF / Word, where you choose), send (WhatsApp, Telegram,
+ *  e-mail, another app) and sign with ЭЦП. */
 function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
   const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [signOpen, setSignOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const pdf = `/v1/cases/${caseId}/actions/${a.id}/document?format=pdf`;
   const docx = `/v1/cases/${caseId}/actions/${a.id}/document?format=docx`;
+  const main = a.has_pdf ? { path: pdf, name: `${a.action_id}.pdf` } : { path: docx, name: `${a.action_id}.docx` };
+  const signed = (a.signatures ?? []).length > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(null); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+
   async function act(key: string, fn: () => Promise<unknown>) {
-    setBusy(key);
-    setErr(null);
-    try {
-      await fn();
-    } catch (e) {
-      setErr(errorText(e));
-    } finally {
-      setBusy(null);
-    }
+    setOpen(null); setBusy(key); setErr(null); setNote(null);
+    try { await fn(); } catch (e) { setErr(errorText(e)); } finally { setBusy(null); }
   }
-  const tools: { key: string; icon: "download" | "printer" | "save" | "share"; label: string; run: () => Promise<unknown>; show: boolean }[] = [
-    { key: "pdf", icon: "download", label: t("helper.pdf"), run: () => downloadFile(pdf, `${a.action_id}.pdf`), show: a.has_pdf },
-    { key: "print", icon: "printer", label: t("helper.print"), run: () => printFile(pdf), show: a.has_pdf },
-    { key: "save", icon: "save", label: t("helper.save"), run: () => downloadFile(docx, `${a.action_id}.docx`), show: true },
-    { key: "send", icon: "share", label: t("helper.send"),
-      run: () => a.has_pdf ? shareFile(pdf, `${a.action_id}.pdf`, a.title) : shareFile(docx, `${a.action_id}.docx`, a.title), show: true },
+
+  // A file cannot be attached through a link: on phones the share sheet carries it to the chosen app;
+  // elsewhere the file is downloaded and the app opens with a prepared message to attach it to.
+  const sendTo = (app: "whatsapp" | "telegram" | "mail") => async () => {
+    const text = `${a.title}${a.addressee?.name ? ` — ${a.addressee.name}` : ""}`;
+    const coarse = matchMedia("(pointer: coarse)").matches;
+    if (coarse && await shareFile(main.path, main.name, text)) return;
+    if (!coarse) await downloadFile(main.path, main.name);
+    const url = app === "whatsapp" ? `https://wa.me/?text=${encodeURIComponent(text)}`
+      : app === "telegram" ? `https://t.me/share/url?url=${encodeURIComponent("https://konsilier.com")}&text=${encodeURIComponent(text)}`
+      : `mailto:${a.addressee?.email ?? ""}?subject=${encodeURIComponent(a.title)}&body=${encodeURIComponent(text)}`;
+    window.open(url, "_blank", "noopener");
+    setNote(t("helper.doc_fileReady"));
+  };
+
+  const formats = (run: (path: string, name: string) => Promise<unknown>): MenuItem[] => [
+    ...(a.has_pdf ? [{ key: "pdf", label: t("helper.doc_fmtPdf"), icon: "document" as IconName, run: () => run(pdf, `${a.action_id}.pdf`) }] : []),
+    { key: "docx", label: t("helper.doc_fmtWord"), icon: "document", run: () => run(docx, `${a.action_id}.docx`) },
   ];
+  const tools: { key: string; icon: IconName; label: string; menu?: MenuItem[]; run?: () => Promise<unknown>; active?: boolean }[] = [
+    { key: "download", icon: "download", label: t("helper.doc_download"), menu: formats(downloadFile) },
+    ...(a.has_pdf ? [{ key: "print", icon: "printer" as IconName, label: t("helper.doc_print"), run: () => printFile(pdf) }] : []),
+    { key: "save", icon: "save", label: t("helper.doc_save"), menu: formats(saveFileAs) },
+    { key: "send", icon: "share", label: t("helper.doc_send"), menu: [
+      { key: "whatsapp", label: t("helper.doc_toWhatsapp"), icon: "send", run: sendTo("whatsapp") },
+      { key: "telegram", label: t("helper.doc_toTelegram"), icon: "send", run: sendTo("telegram") },
+      { key: "mail", label: t("helper.doc_toMail"), icon: "mail", run: sendTo("mail") },
+      { key: "other", label: t("helper.doc_toOther"), icon: "share", run: () => shareFile(main.path, main.name, a.title) },
+    ] },
+    { key: "sign", icon: signed ? "shieldCheck" : "key", label: signed ? t("helper.doc_signed") : t("helper.doc_sign"),
+      run: async () => setSignOpen((x) => !x), active: signOpen || signed },
+  ];
+
   return (
-    <div className="space-y-1">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="toolbar" aria-label={a.title}>
-        {tools.filter((x) => x.show).map((x) => (
-          <button key={x.key} type="button" disabled={busy !== null} onClick={() => act(x.key, x.run)}
-            title={x.key === "send" ? t("helper.sendHint") : undefined}
-            className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-surface p-2 text-xs font-medium hover:border-brand hover:text-brand disabled:opacity-50">
-            <Icon name={busy === x.key ? "spinner" : x.icon} size={22} />{x.label}
-          </button>
+    <div className="space-y-2" ref={ref}>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" role="toolbar" aria-label={a.title}>
+        {tools.map((x) => (
+          <div key={x.key} className="relative">
+            <button type="button" disabled={busy !== null} aria-haspopup={x.menu ? "menu" : undefined}
+              aria-expanded={x.menu ? open === x.key : undefined}
+              onClick={() => (x.menu ? setOpen(open === x.key ? null : x.key) : act(x.key, x.run!))}
+              className={`flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-xs font-medium hover:border-brand hover:text-brand disabled:opacity-50 ${x.active ? "border-brand bg-brand-50 text-brand" : "border-line bg-surface"}`}>
+              <Icon name={busy === x.key ? "spinner" : x.icon} size={22} />
+              <span className="flex items-center gap-0.5">{x.label}{x.menu && <Icon name="chevronDown" size={12} />}</span>
+            </button>
+            {x.menu && open === x.key && (
+              <ul role="menu" className="absolute start-0 top-full z-20 mt-1 min-w-52 space-y-0.5 rounded-2xl border border-line bg-surface p-1 shadow-[var(--shadow-raised)]">
+                {x.menu.map((m) => (
+                  <li key={m.key} role="none">
+                    <button type="button" role="menuitem" onClick={() => act(x.key, m.run)}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-brand-50 hover:text-brand">
+                      {m.icon && <Icon name={m.icon} size={16} />}{m.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ))}
       </div>
+      {note && <p className="text-xs text-muted" aria-live="polite">{note}</p>}
       {err && <p role="alert" className="text-xs text-danger">{err}</p>}
+      {(signOpen || signed) && (
+        <SignDocument base={`/v1/cases/${caseId}/actions/${a.id}`} fileBase={a.action_id} initial={a.signatures ?? []}
+          unavailable={t("helper.doc_signUnavailable")} />
+      )}
     </div>
   );
 }
@@ -630,9 +690,6 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
       </div>
       {a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
       {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
-      {a.downloadable && (
-        <SignDocument base={`/v1/cases/${caseId}/actions/${a.id}`} fileBase={a.action_id} initial={a.signatures ?? []} />
-      )}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold">{t("case.instructions")}</p>
