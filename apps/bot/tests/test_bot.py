@@ -81,9 +81,15 @@ def test_client_drives_a_case(api_app):
         cid = out["case"]["id"]
         assert out["case"]["scenario"]["id"] == "kz.money.credit_fraud"
         assert (await api.active_case("42"))["id"] == cid
-        for answer in ("МФО Ромашка", "пропустить", "пропустить", "пропустить", "Иванов Иван",
-                       "900101300123", "+77010000000", "пропустить", "пропустить"):
-            out = await api.message("42", cid, answer)
+        # answer by field, not by position: the interview order is scenario data and may change
+        answers = {"lender_name": "МФО Ромашка", "applicant_name": "Иванов Иван", "applicant_iin": "900101300123",
+                   "applicant_phone": "+77010000000"}
+        question = out["reply"]["question"]
+        for _ in range(20):
+            if question is None:
+                break
+            out = await api.message("42", cid, answers.get(question["field"], "пропустить"))
+            question = out["reply"]["question"]
         assert out["case"]["status"] == "qualified"
         out = await api.prepare_next("42", cid)
         action = out["case"]["actions"][0]

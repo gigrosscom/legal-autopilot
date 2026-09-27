@@ -9,7 +9,7 @@ const en: Dict = {
   },
   footer: {
     lawyerCabinet: "Lawyer's cabinet",
-    tagline: "From complaint to resolution: document, filing, deadlines and verified lawyers.",
+    tagline: "Describe your problem — Konsilier prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
     product: "Product", lawyers: "For lawyers", designSystem: "Design system",
   },
   level: {
@@ -74,7 +74,7 @@ const en: Dict = {
     lawyersLead: "Describe the situation — we prepare the documents and bring in a lawyer when you need one.",
   },
   home: {
-    eyebrow: "Document · filing · deadlines · lawyer",
+    eyebrow: "Your AI assistant for legal matters",
     title: "Any legal problem, from complaint to resolution",
     sub: "Describe what happened. We will prepare the document, tell you where to file it and keep track of deadlines. If you need a lawyer, we will connect a verified one.",
     promise1: "A document under the laws of your country",
@@ -308,8 +308,8 @@ const en: Dict = {
   },
   how: {
     eyebrow: "How it works",
-    title: "Path, document, deadline tracking and a lawyer",
-    lead: "Konsilier.AI takes your case to a ready document, filing and the next step. AI helps with the text, while laws, deadlines and recipients come only from verified data.",
+    title: "Konsilier — your AI assistant for legal matters",
+    lead: "Describe your problem — Konsilier prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
     pathTitle: "Path map",
     pathLead: "Document → recipient → deadline → escalation → lawyer.",
     levelsTitle: "Three coverage levels",

@@ -12,8 +12,8 @@ const inter = Inter({ subsets: ["latin", "cyrillic", "cyrillic-ext"], variable: 
 const arabic = Noto_Sans_Arabic({ subsets: ["arabic"], variable: "--font-arabic", display: "swap", preload: false });
 
 export const metadata: Metadata = {
-  title: "Konsilier.AI — любая юридическая проблема: от жалобы до решения",
-  description: "Готовим документы, подсказываем, куда подать, следим за сроками и подключаем проверенного юриста.",
+  title: "Konsilier.AI — ИИ-помощник в юридических вопросах",
+  description: "Опишите проблему — Konsilier подготовит документ по законам вашей страны, подскажет, куда подать, проследит за сроками, а когда нужно — подключит проверенного юриста.",
   // Browser auto-translation rewrites text nodes behind React's back and crashes live pages (chat, forms).
   other: { google: "notranslate" },
 };
