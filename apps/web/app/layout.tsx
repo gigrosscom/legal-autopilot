@@ -5,7 +5,7 @@ import { LangProvider } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Konsilier — юридическая проблема до результата",
+  title: "Konsilier.AI — юридическая проблема до результата",
   description: "Готовые документы, подача, контроль сроков и эскалация до результата.",
 };
 
@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Header />
           <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
           <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs text-ink/50">
-            © Konsilier · konsilier.com · konsilier.ai
+            © Konsilier.AI · konsilier.com · konsilier.ai
           </footer>
         </LangProvider>
       </body>

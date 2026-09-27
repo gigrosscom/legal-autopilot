@@ -68,7 +68,8 @@ class PackManifest(BaseModel):
 
 class JurisdictionPack:
     def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
-                 i18n: dict[str, dict], scenarios: dict[str, Scenario]):
+                 i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None):
+        self.demo_lawyers = demo_lawyers or {}
         self.root = root
         self.packs_root = packs_root
         self.manifest = manifest
@@ -167,7 +168,9 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
         scenarios[sc.id] = sc
     if errors:
         raise PackValidationError("\n".join(errors))
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios)
+    demo_path = root / "demo" / "lawyers.yaml"
+    demo = yaml.safe_load(demo_path.read_text("utf-8")) if demo_path.is_file() else {}
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo)
 
 
 class PackRegistry:

@@ -12,6 +12,7 @@ from ..core import ai
 from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
 from ..core.models import AuditLog, Case, Deadline
+from ..core.roadmap import build_roadmap
 
 
 def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool = False) -> dict[str, Any]:
@@ -36,6 +37,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "evidence": [],
         "actions": [],
         "proposal": None,
+        "roadmap": None,
         "outcome": None,
     }
     if case.scenario_id:
@@ -76,6 +78,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                              "norm_ref": dl.norm_ref} if dl else None,
                 "norm_refs": list(spec.norm_refs),
             })
+        view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
         try:
             view["proposal"] = asdict(engine.proposal(case))
         except EngineError:

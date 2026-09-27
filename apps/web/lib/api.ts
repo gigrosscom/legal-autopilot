@@ -67,12 +67,34 @@ export type CaseView = {
   evidence: { id: string; kind: string; filename: string; confirmed: boolean; extracted_facts: Record<string, string> }[];
   actions: CaseAction[];
   proposal: Proposal | null;
+  roadmap: Roadmap | null;
   outcome: { result: string; amount_recovered: string | null; currency: string | null; days_to_resolution: number; resolved_at_step: string | null } | null;
   // admin only
   raw_facts?: Record<string, string>;
   audit?: { at: string; actor: string; event: string; from: string | null; to: string | null; data: Record<string, unknown> }[];
   initial_text?: string;
   qualification_confidence?: number | null;
+};
+
+export type RoadmapStep = {
+  key: string;
+  kind: "intake" | "document" | "handoff" | "resolution";
+  title: string;
+  status: "done" | "current" | "upcoming" | "skipped";
+  conditional: boolean;
+  started_on: string | null;
+  finished_on: string | null;
+  due_on: string | null;
+  estimated_on: string | null;
+  detail: string;
+  norm_ref: string | null;
+};
+
+export type Roadmap = {
+  steps: RoadmapStep[];
+  best_case_on: string | null;
+  worst_case_on: string | null;
+  open_ended_after_worst: boolean;
 };
 
 export type Reply = { message: string; question: Question | null; intake_complete: boolean; error: string | null };

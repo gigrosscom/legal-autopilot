@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, downloadFile, type CaseAction, type CaseView, type Proposal, type Reply } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import RoadmapView from "@/components/Roadmap";
 
 type Msg = { from: "bot" | "user"; text: string };
 
@@ -197,13 +198,15 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
 
+        {c.roadmap && <RoadmapView roadmap={c.roadmap} />}
+
         {/* documents & steps */}
         {c.actions.map((a) => (
           <ActionCard key={a.id} caseId={c.id} a={a} />
         ))}
 
         {/* next step */}
-        <div className="card space-y-3">
+        <div className={`card space-y-3 ${c.status === "intake" && !error ? "hidden" : ""}`}>
           {c.status === "qualified" && (
             <button className="btn-primary" disabled={busy} onClick={() => post("/actions/next")}>📄 {t("case.prepare")}</button>
           )}

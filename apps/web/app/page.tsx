@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { publicApi, TELEGRAM_BOT } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
+import Trust from "@/components/Trust";
 
 type Pack = {
   country: string;
@@ -129,6 +130,8 @@ export default function Landing() {
           </form>
         )}
       </section>
+
+      <Trust />
     </div>
   );
 }

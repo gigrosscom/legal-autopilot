@@ -82,6 +82,40 @@ def list_packs(lang: str = "ru", container: Container = Depends(get_container)) 
     return out
 
 
+@router.get("/lawyers")
+def list_lawyers(country: str, lang: str = "ru",
+                 container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Lawyer directory ranked by proven results. v0.1 serves the pack's demo profiles only."""
+    from ..core.rating import CategoryStats, LawyerStats, score
+
+    try:
+        pack = container.packs.pack(country)
+    except KeyError as e:
+        raise HTTPException(404, "unknown country") from e
+    demo = pack.demo_lawyers
+    lg = pack.lang(lang)
+    baseline = demo.get("baseline", {})
+    out = []
+    for raw in demo.get("lawyers", []):
+        cats = [CategoryStats(**c) for c in raw.get("categories", [])]
+        s = score(LawyerStats(cats, raw.get("milestones_total", 0), raw.get("milestones_on_time", 0),
+                              raw.get("reviews_count", 0), raw.get("reviews_avg", 0.0)), baseline)
+        profile = {k: v for k, v in raw.items() if k != "categories"}
+        profile["specializations"] = [
+            {"key": k, "label": pack.t(lg, f"categories.{k}", default=k)} for k in raw.get("specializations", [])]
+        profile["results"] = [{
+            "category": c.category, "label": pack.t(lg, f"categories.{c.category}", default=c.category),
+            "cases": c.cases, "won": c.won, "partial": c.partial,
+            "success_rate": round((c.won + 0.5 * c.partial) / c.cases, 3) if c.cases else None,
+            "baseline": baseline.get(c.category), "recovered": c.recovered, "claimed": c.claimed,
+        } for c in cats]
+        profile["score"] = s.to_dict()
+        out.append(profile)
+    out.sort(key=lambda p: p["score"]["total"], reverse=True)
+    return {"demo": True, "disclaimer": pack.localized(demo.get("disclaimer", {}), lg) if demo else "",
+            "currency": pack.currency, "lawyers": out}
+
+
 class WaitlistIn(BaseModel):
     country: str = Field(min_length=2, max_length=2)
     contact: str = Field(min_length=3, max_length=200)
