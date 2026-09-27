@@ -44,11 +44,18 @@ main() {
         python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/health').status)" 2>&1 | tail -1)
       WEB=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T web \
         node -e "fetch('http://localhost:3000/').then(r=>console.log(r.status)).catch(e=>console.log(e.message))" 2>&1 | tail -1)
+      # Is Claude reachable with this key and model? (models.retrieve costs no tokens)
+      LLM=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+import os
+if os.environ.get('LLM_PROVIDER') != 'anthropic': print('off'); raise SystemExit
+import anthropic
+try: print('ok:' + anthropic.Anthropic().models.retrieve(os.environ['LLM_MODEL']).id)
+except Exception as e: print('error:' + type(e).__name__)" 2>&1 | tail -1)
       set -a; . ./.env; set +a
       HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
         printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)
       CACHE=$(curl -sI --max-time 20 "https://$SITE_DOMAIN/" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2-)
-      log "deployed ${REMOTE:0:7} api=$API web=$WEB $HTTPS cache=[$CACHE]"
+      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
       log "deploy of ${REMOTE:0:7} FAILED"
