@@ -36,7 +36,7 @@ def test_easy_categories_do_not_inflate_score():
 
 def test_lawyers_endpoint_ranks_demo_profiles(ctx):
     r = ctx.client.get("/v1/lawyers?country=KZ").json()
-    assert r["demo"] is True and "вымышлены" in r["disclaimer"]
+    assert r["demo"] is True and "демо-профили" in r["disclaimer"]  # never presented as real lawyers
     totals = [p["score"]["total"] for p in r["lawyers"]]
     assert totals == sorted(totals, reverse=True) and len(totals) == 5
     assert all("(демо)" in p["name"] for p in r["lawyers"])
