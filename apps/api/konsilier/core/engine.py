@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, qualifier
+from . import ai, qualifier, safety
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -33,6 +33,7 @@ from .models import (
     AuditLog,
     Case,
     Claim,
+    Consent,
     DemandSignal,
     Evidence,
     Organization,
@@ -78,6 +79,10 @@ class Reply:
     error: str | None = None
     # universal path: forums to choose from ({id, name, type, legal_effect, verified, …})
     options: list[dict[str, Any]] = field(default_factory=list)
+    # acknowledgement the user must give before intake continues (false_report | special_category)
+    ack_required: str | None = None
+    # emergency screen data: {"numbers": [...]} when the story mentions immediate danger
+    emergency: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -164,8 +169,47 @@ class CaseEngine:
         session.add(case)
         session.flush()
         self.audit(session, case, f"user:{user.id}", "case_created", None, case.status, channel=case.channel)
+        pack = self.pack_of(case)
+        keyword_emergency = safety.detect_emergency(pack.coverage, text)
         reply = self._qualify_and_continue(session, case, text)
+        if keyword_emergency or "emergency" in ((case.taxonomy or {}).get("flags") or []):
+            reply.emergency = self.emergency_info(case)
+            self.audit(session, case, "system", "emergency_detected", by="keywords" if keyword_emergency else "llm")
         return case, reply
+
+    def emergency_info(self, case: Case) -> dict[str, Any]:
+        pack = self.pack_of(case)
+        lang = pack.lang(case.language)
+        return {"numbers": safety.emergency_numbers(pack.coverage, lang, pack.manifest.default_language),
+                "message": pack.t(lang, "safety.emergency")}
+
+    # ================================================================ acknowledgements
+    def ack_reply(self, session: Session, case: Case) -> Reply | None:
+        pack = self.pack_of(case)
+        kind = safety.pending_ack(session, pack.coverage, case)
+        if kind is None:
+            return None
+        lang = pack.lang(case.language)
+        if kind == safety.ACK_FALSE_REPORT and pack.coverage and pack.coverage.routing.false_report_norm:
+            text = pack.localized(pack.coverage.routing.false_report_norm.text, lang)
+        else:
+            text = pack.t(lang, f"safety.ack.{kind}")
+        return Reply(message=text, ack_required=kind)
+
+    def acknowledge(self, session: Session, case: Case, kind: str, actor: str) -> Reply:
+        pack = self.pack_of(case)
+        if kind not in safety.required_acks(pack.coverage, case):
+            raise EngineError("ack_not_required")
+        if kind not in safety.given_acks(session, case):
+            session.add(Consent(case_id=case.id, kind=kind))
+            session.flush()
+            self.audit(session, case, actor, "acknowledged", kind=kind)
+        pending = self.ack_reply(session, case)
+        if pending is not None:
+            return pending
+        if case.scenario_id and case.status == S.INTAKE.value:
+            return self._next_step(session, case, self.scenario_of(case), pack)
+        return Reply(message="")
 
     def _qualify_and_continue(self, session: Session, case: Case, text: str) -> Reply:
         llm = self.llm_for(case)
@@ -225,6 +269,9 @@ class CaseEngine:
             return Reply(message=pack.t(lang, "interview.no_scenario"))
         if route.level == qualifier.LEVEL_LAWYER:
             return self._handoff_level3(session, case, pack)
+        if set(route.flags) & safety.ABUSE_FLAGS:
+            case.hold_reason = "abuse_suspected"
+            self.audit(session, case, "system", "hold", reason=case.hold_reason, flags=route.flags)
         case.coverage_level = qualifier.LEVEL_UNIVERSAL
         case.needs_review = True  # universal documents always need a lawyer's approval
         if len(route.forums) == 1:
@@ -272,7 +319,7 @@ class CaseEngine:
         self._save_vault(case, llm)
         forum_name = pack.localized(pack.coverage.forums[forum_id].name, case.language)
         intro = pack.t(case.language, "routing.universal_intro", forum=forum_name)
-        reply = self._next_step(session, case, sc, pack)
+        reply = self.ack_reply(session, case) or self._next_step(session, case, sc, pack)
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply
 
@@ -324,6 +371,15 @@ class CaseEngine:
 
     def _next_step(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack) -> Reply:
         lang = case.language
+        for f in sc.intake:  # crime reports: labels instead of facts → ask once to describe facts
+            if f.type == "longtext" and f.name in case.facts and \
+                    safety.labels_instead_of_facts(pack.coverage, case, str(case.facts[f.name])):
+                case.taxonomy = {**(case.taxonomy or {}), "labels_warned": True}
+                case.facts = {k: v for k, v in case.facts.items() if k != f.name}
+                case.pending_field = f.name
+                q = self.question_for(sc, pack, lang, f.name)
+                return Reply(message=f"{pack.t(lang, 'safety.facts_not_labels')}\n{q.text}", question=q,
+                             error="facts_not_labels")
         missing = self.missing_fields(case, sc)
         if missing:
             case.pending_field = missing[0]
@@ -359,6 +415,9 @@ class CaseEngine:
             combined = f"{case.initial_text or ''}\n{text}".strip()
             case.initial_text = combined
             return self._qualify_and_continue(session, case, combined)
+        ack = self.ack_reply(session, case)
+        if ack is not None:
+            return ack
         sc, pack = self.scenario_of(case), self.pack_of(case)
         lang = case.language
         llm = self.llm_for(case)
@@ -501,7 +560,16 @@ class CaseEngine:
         return (rank or 0) <= self.config.approval_required_first_n
 
     def prepare_next_action(self, session: Session, case: Case, actor: str) -> Action:
+        if not case.scenario_id:
+            raise EngineError("no_document_path")
         sc, pack = self.scenario_of(case), self.pack_of(case)
+        if case.hold_reason is None and not case.actions:
+            reason = safety.abuse_reason(session, pack.coverage, case)
+            if reason:
+                case.hold_reason = reason
+                self.audit(session, case, "system", "hold", reason=reason)
+        if case.hold_reason is not None:
+            raise EngineError("on_hold")
         status = CaseStatus(case.status)
         if status == S.INTAKE:
             reply = self._next_step(session, case, sc, pack)

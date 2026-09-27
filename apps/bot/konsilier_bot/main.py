@@ -77,6 +77,10 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
         if case is None:
             NEW_CASE.discard(tg)
             out = await api.create_case(tg, message.text, lang)
+            emergency = out["reply"].get("emergency")
+            if emergency:  # danger first: numbers before anything else
+                lines = [emergency["message"], *(f"{n['label']}: {n['number']}" for n in emergency["numbers"])]
+                await bot.send_message(message.chat.id, "\n".join(lines))
             await show(bot, api, message.chat.id, out["case"], out["reply"]["message"])
             return
         if tg in AWAITING_REPLY and case["status"] == "awaiting_response":
@@ -134,6 +138,15 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
         case = await api.call(tg, "GET", f"/v1/cases/{cid}")
         action = last_action(case)
         out: dict | None = None
+        if cmd == "forum":
+            option = case["coverage"]["options"][int(parts[2])]
+            out = await api.call(tg, "POST", f"/v1/cases/{cid}/forum", json={"forum_id": option["id"]})
+            await show(bot, api, query.message.chat.id, out["case"], out["reply"]["message"])
+            return
+        if cmd == "ack":
+            out = await api.call(tg, "POST", f"/v1/cases/{cid}/acknowledge", json={"kind": parts[2]})
+            await show(bot, api, query.message.chat.id, out["case"], out["reply"]["message"] or None)
+            return
         if cmd == "skip":
             out = await api.message(tg, cid, "пропустить")
             await show(bot, api, query.message.chat.id, out["case"], out["reply"]["message"])

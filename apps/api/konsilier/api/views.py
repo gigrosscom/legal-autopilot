@@ -39,6 +39,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
     pack = engine.pack_of(case)
     lang = pack.lang(case.language)
     compliance = pack.manifest.compliance
+    ack = engine.ack_reply(session, case) if case.status == "intake" else None
     view: dict[str, Any] = {
         "id": str(case.id),
         "status": case.status,
@@ -61,6 +62,9 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "roadmap": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
+        "safety": {"hold_reason": case.hold_reason,
+                   "hold_message": pack.t(lang, "safety.hold") if case.hold_reason else None,
+                   "pending_ack": ack.ack_required if ack else None},
     }
     if case.scenario_id:
         sc = engine.scenario_of(case)

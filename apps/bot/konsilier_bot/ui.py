@@ -32,7 +32,16 @@ def case_screen(case: dict[str, Any], message: str | None = None) -> Screen:
     proposal = case.get("proposal") or {}
     action = last_action(case)
 
-    if status == "intake":
+    coverage = case.get("coverage") or {}
+    safety = case.get("safety") or {}
+    if status == "intake" and coverage.get("options") and not case.get("scenario"):
+        # universal path: the user chooses where to file (index keeps callback data short)
+        for i, opt in enumerate(coverage["options"]):
+            buttons.append([(opt["name"][:60], f"forum:{cid}:{i}")])
+    elif status == "intake" and safety.get("pending_ack"):
+        kind = safety["pending_ack"]
+        buttons.append([(t(f"buttons.ack_{kind}", lang), f"ack:{cid}:{kind}")])
+    elif status == "intake":
         q = case.get("question")
         if q and not message:
             parts.append(q["text"])

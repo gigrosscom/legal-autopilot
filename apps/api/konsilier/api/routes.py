@@ -224,6 +224,58 @@ def confirm_evidence(case_id: uuid.UUID, evidence_id: uuid.UUID, body: ConfirmIn
     return {"reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
 
 
+class AckIn(BaseModel):
+    kind: Literal["false_report", "special_category"]
+
+
+@router.post("/cases/{case_id}/acknowledge")
+def acknowledge(case_id: uuid.UUID, body: AckIn, user: User = Depends(current_user),
+                session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """The user confirms a required notice (false report liability / special-category data consent)."""
+    case = load_case(case_id, session, user)
+    try:
+        reply = container.engine.acknowledge(session, case, body.kind, actor=f"user:{user.id}")
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    return {"reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
+
+
+class TriageIn(BaseModel):
+    text: str = Field(min_length=1, max_length=8000)
+    country: str
+    language: str = "ru"
+
+
+@router.post("/triage")
+def triage(body: TriageIn, container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Pre-intake emergency check (keywords from the pack, no LLM, nothing stored)."""
+    from ..core import safety
+
+    try:
+        pack = container.packs.pack(body.country)
+    except KeyError:
+        return {"emergency": False, "numbers": []}
+    lang = pack.lang(body.language)
+    hit = safety.detect_emergency(pack.coverage, body.text)
+    return {"emergency": hit, "message": pack.t(lang, "safety.emergency") if hit else "",
+            "numbers": safety.emergency_numbers(pack.coverage, lang, pack.manifest.default_language) if hit else []}
+
+
+@router.get("/emergency")
+def emergency(country: str, lang: str = "ru", container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Emergency numbers of a country (always available, e.g. for the site footer)."""
+    from ..core import safety
+
+    try:
+        pack = container.packs.pack(country)
+    except KeyError as e:
+        raise HTTPException(404, "unknown country") from e
+    lg = pack.lang(lang)
+    return {"numbers": safety.emergency_numbers(pack.coverage, lg, pack.manifest.default_language),
+            "message": pack.t(lg, "safety.emergency")}
+
+
 class ForumIn(BaseModel):
     forum_id: str
 

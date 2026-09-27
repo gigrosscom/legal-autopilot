@@ -299,3 +299,5 @@ class Routing(_Strict):
     false_report_norm: Checked | None = None
     abuse: AbuseLimits = Field(default_factory=AbuseLimits)
     state_alternative_notice: Localized = Field(default_factory=dict)  # shown next to religious forums
+    # labels instead of facts ("вор", "мошенник"): in reports about crimes the user is asked once to describe facts
+    evaluative_words: dict[str, tuple[str, ...]] = Field(default_factory=dict)
