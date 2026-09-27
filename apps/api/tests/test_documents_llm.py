@@ -103,3 +103,19 @@ def test_ai_schemas_avoid_type_arrays():
 
     schema = ai._nullable_values_schema(["a"])
     assert '"type": [' not in json.dumps(schema)
+
+
+def test_qualify_falls_back_to_keywords_when_llm_fails(ctx):
+    from konsilier.core.llm.base import LLMError
+
+    def broken(**_):
+        raise LLMError("LLM API error 401")
+
+    ctx.llm.complete_json = broken
+    r = ctx.client.post("/v1/users", json={}).json()
+    out = ctx.client.post("/v1/cases", headers={"Authorization": f"Bearer {r['token']}"},
+                          json={"text": "Заказал диван на маркетплейсе, не привезли, хочу вернуть деньги",
+                                "country": "KZ"}).json()
+    assert out["case"]["scenario"]["id"] == "kz.consumer.refund"
+    assert out["case"]["needs_review"] is True  # keyword fallback always goes to a lawyer's review
+    assert out["reply"]["question"] is not None

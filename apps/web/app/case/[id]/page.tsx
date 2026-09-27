@@ -157,6 +157,25 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
+            {c.status === "intake" && !q && !pendingEvidence && (
+              <form
+                className="space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (answer.trim()) sendAnswer(answer.trim());
+                }}
+              >
+                <textarea
+                  className="input min-h-24"
+                  autoFocus
+                  placeholder={t("case.morePlaceholder")}
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                />
+                <button className="btn-primary" disabled={busy || !answer.trim()}>{t("case.more")}</button>
+              </form>
+            )}
+
             {c.status === "intake" && q && !pendingEvidence && (
               <div className="space-y-2">
                 {q.type !== "evidence" && (
