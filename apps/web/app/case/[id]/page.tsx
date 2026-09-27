@@ -22,6 +22,12 @@ import { useLang, useT } from "@/lib/i18n";
 
 type Msg = { from: "bot" | "user"; text: string };
 
+function saveReply(id: string, reply: Reply) {
+  try {
+    sessionStorage.setItem(`konsilier.reply.${id}`, JSON.stringify(reply));
+  } catch {}
+}
+
 function readStoredReply(id: string): Partial<Reply> | null {
   try {
     const raw = sessionStorage.getItem(`konsilier.reply.${id}`);
@@ -55,7 +61,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         setCase(view);
         const first = readStoredReply(id);
         const initial: Msg[] = [];
-        if (first?.message) initial.push({ from: "bot", text: first.message });
+        // The stored reply may be stale (e.g. "tell me more" before the case was qualified):
+        // show it only if it still leads to the question the case is waiting for.
+        if (first?.message && (!view.question || first.message.includes(view.question.text)))
+          initial.push({ from: "bot", text: first.message });
         else if (view.question) initial.push({ from: "bot", text: view.question.text });
         if (first?.emergency) setEmergency(first.emergency);
         setLog(initial);
@@ -81,7 +90,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   function applyReply(out: { case: CaseView; reply: Reply }) {
     setCase(out.case);
-    if (out.reply.message) push({ from: "bot", text: out.reply.message });
+    if (out.reply.message) {
+      push({ from: "bot", text: out.reply.message });
+      saveReply(id, out.reply);
+    }
   }
 
   async function sendAnswer(text: string) {
@@ -247,28 +259,32 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
-            {!q && !pendingEvidence && (
-              <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (answer.trim()) sendAnswer(answer.trim()); }}>
-                <label htmlFor="more" className="sr-only">{t("case.more")}</label>
-                <textarea id="more" className="input min-h-24" autoFocus placeholder={t("case.morePlaceholder")}
-                  value={answer} onChange={(e) => setAnswer(e.target.value)} />
-                <Button disabled={busy || !answer.trim()} icon="send">{t("case.more")}</Button>
-              </form>
-            )}
-
-            {q && !pendingEvidence && (
+            {!pendingEvidence && (
               <div className="space-y-2">
-                {q.type !== "evidence" && (
-                  <form className="flex flex-col gap-2 sm:flex-row"
-                    onSubmit={(e) => { e.preventDefault(); if (answer.trim()) sendAnswer(answer.trim()); }}>
-                    <label htmlFor="answer" className="sr-only">{q.text}</label>
-                    <input id="answer" className="input" autoFocus type="text" value={answer}
-                      inputMode={q.type === "date" ? "numeric" : undefined}
-                      placeholder={q.type === "date" ? t("case.datePlaceholder") : t("case.answerPlaceholder")}
-                      onChange={(e) => setAnswer(e.target.value)} />
-                    <Button className="shrink-0" disabled={busy} icon="send">{t("case.send")}</Button>
-                  </form>
-                )}
+                {/* One form element for both "tell us more" and field answers: swapping whole forms
+                    under a focused input breaks pages when browser extensions have touched the DOM. */}
+                <form className={q?.type === "evidence" ? "hidden" : q ? "flex flex-col gap-2 sm:flex-row" : "space-y-2"}
+                  onSubmit={(e) => { e.preventDefault(); if (answer.trim()) sendAnswer(answer.trim()); }}>
+                  {q ? (
+                    <>
+                      <label htmlFor="answer" className="sr-only">{q.text}</label>
+                      <input id="answer" key="answer" className="input" autoFocus type="text" value={answer}
+                        inputMode={q.type === "date" ? "numeric" : undefined}
+                        placeholder={q.type === "date" ? t("case.datePlaceholder") : t("case.answerPlaceholder")}
+                        onChange={(e) => setAnswer(e.target.value)} />
+                    </>
+                  ) : (
+                    <>
+                      <label htmlFor="more" className="sr-only">{t("case.more")}</label>
+                      <textarea id="more" key="more" className="input min-h-24" autoFocus placeholder={t("case.morePlaceholder")}
+                        value={answer} onChange={(e) => setAnswer(e.target.value)} />
+                    </>
+                  )}
+                  <Button className={q ? "shrink-0" : undefined} disabled={busy || !answer.trim()} icon="send">
+                    {q ? t("case.send") : t("case.more")}
+                  </Button>
+                </form>
+                {q && (
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="btn-ghost cursor-pointer">
                     <Icon name="upload" size={18} />{t("case.upload")}
@@ -280,6 +296,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
                   )}
                   <span className="text-xs text-muted">{t("case.uploadHint")}</span>
                 </div>
+                )}
               </div>
             )}
           </div>

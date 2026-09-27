@@ -307,7 +307,18 @@ def test_unknown_problem_is_not_qualified(ctx):
     created = api.post("/v1/cases", expect=201, json={"text": "Сосед шумит по ночам", "country": "KZ"})
     assert created["case"]["scenario"] is None
     assert created["case"]["needs_review"] is True
-    assert "Опишите ситуацию подробнее" in created["reply"]["message"]
+    assert "не хватает деталей" in created["reply"]["message"]
+
+
+def test_colloquial_follow_up_qualifies_and_explains_next_steps(ctx):
+    api = web_user(ctx)
+    created = api.post("/v1/cases", expect=201, json={"text": "Всё плохо, помогите", "country": "KZ"})
+    cid = created["case"]["id"]
+    assert created["case"]["scenario"] is None
+    out = api.answer(cid, "купил макбук в технодоме, не понравилось, хочу вернуть - как это сделать?")
+    assert out["case"]["scenario"]["id"] == "kz.consumer.refund"
+    assert "Претензия продавцу о возврате денег" in out["reply"]["message"]  # what happens next
+    assert out["case"]["question"] is not None
 
 
 def test_approval_not_required_after_first_n(ctx):
@@ -361,3 +372,12 @@ def test_lawyer_application_with_referral(ctx):
     bad = ctx.client.post("/v1/lawyer-applications", json={"country": "KZ", "full_name": "X Y Z", "kind": "wizard",
                                                             "contact": "abc"})
     assert bad.status_code == 422
+
+
+def test_client_errors_are_stored_for_admin(ctx):
+    r = ctx.client.post("/v1/client-errors", json={"message": "NotFoundError: removeChild", "stack": "at x",
+                                                   "url": "/case/1", "translated": False})
+    assert r.status_code == 204
+    rows = ctx.client.get("/v1/admin/client-errors", headers=ADMIN).json()
+    assert rows[0]["message"] == "NotFoundError: removeChild" and rows[0]["url"] == "/case/1"
+    assert ctx.client.get("/v1/admin/client-errors").status_code in (401, 403)

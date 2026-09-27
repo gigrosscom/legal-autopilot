@@ -332,7 +332,7 @@ const tr: Dict = {
   },
   admin: {
     title: "Yönetim",
-    tabs: { queue: "İnceleme kuyruğu", board: "Pano", holds: "İncelemede", forums: "Kurum sicili", demand: "Talep" },
+    tabs: { queue: "İnceleme kuyruğu", board: "Pano", holds: "İncelemede", forums: "Kurum sicili", demand: "Talep", errors: "Tarayıcı hataları" },
     forum: "Muhatap", hold: "Bekletildi", release: "İncelemeden çıkar",
     forums: {
       registry: "Sicil (paketten)", registryLead: "Doğruluk kaynağı depodaki YAML'dır. Değişiklikler canlıya yalnızca avukat kontrollü PR ile girer.",

@@ -14,7 +14,7 @@ type Card = {
   pending_approval_action_ids: string[]; route_reasons: string[];
   tasks: { id: string; action_id: string; status: string; approval_status: string }[];
 };
-type Tab = "board" | "queue" | "holds" | "forums" | "demand";
+type Tab = "board" | "queue" | "holds" | "forums" | "demand" | "errors";
 
 export default function AdminPage() {
   const t = useT();
@@ -136,7 +136,7 @@ export default function AdminPage() {
         </Button>
       </div>
       <div role="tablist" className="flex flex-wrap gap-1">
-        {(["queue", "board", "holds", "forums", "demand"] as Tab[]).map((x) => (
+        {(["queue", "board", "holds", "forums", "demand", "errors"] as Tab[]).map((x) => (
           <button key={x} role="tab" aria-selected={tab === x} onClick={() => setTab(x)}
             className={`min-h-10 rounded-xl px-3 text-sm font-medium ${tab === x ? "bg-ink text-white" : "bg-surface"}`}>
             {t(`admin.tabs.${x}`)}{x === "queue" && queue.length ? ` · ${queue.length}` : ""}{x === "holds" && holds.length ? ` · ${holds.length}` : ""}
@@ -155,8 +155,9 @@ export default function AdminPage() {
         {tab === "holds" && list(holds)}
         {tab === "forums" && <ForumsTab token={token} />}
         {tab === "demand" && <DemandTab token={token} />}
+        {tab === "errors" && <ErrorsTab token={token} />}
 
-        {selected && tab !== "forums" && tab !== "demand" && (
+        {selected && tab !== "forums" && tab !== "demand" && tab !== "errors" && (
           <div id="case" className="space-y-4">
             <div className="card space-y-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -362,6 +363,33 @@ function DemandTab({ token }: { token: string }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+type ClientError = { at: string; message: string; stack?: string | null; url?: string | null; user_agent?: string | null; translated?: boolean | null };
+
+/** Browser crash reports sent by the web app (lib/report.ts), newest first. */
+function ErrorsTab({ token }: { token: string }) {
+  const t = useT();
+  const [rows, setRows] = useState<ClientError[] | null>(null);
+  useEffect(() => { adminApi<ClientError[]>("/v1/admin/client-errors", token).then(setRows).catch(() => setRows([])); }, [token]);
+  return (
+    <div className="card space-y-3">
+      <h2 className="text-lg font-semibold">{t("admin.tabs.errors")}</h2>
+      {rows?.length === 0 && <p className="text-sm text-muted">—</p>}
+      <ul className="space-y-3 text-xs">
+        {rows?.map((c, i) => (
+          <li key={i} className="space-y-1 border-t border-line pt-2">
+            <p className="text-muted">
+              {new Date(c.at).toLocaleString("ru-RU")} · {c.url}{c.translated ? " · translated" : ""}
+            </p>
+            <p className="font-medium">{c.message}</p>
+            {c.stack && <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[10px] text-muted">{c.stack}</pre>}
+            <p className="text-[10px] text-muted">{c.user_agent}</p>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -14,7 +14,7 @@ from ..core import qualifier
 from ..core.documents import docx_text
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.coverage.schema import Forum
-from ..core.models import Action, Case, DemandSignal, ForumDraft, LawyerApplication, WaitlistEntry
+from ..core.models import Action, AuditLog, Case, DemandSignal, ForumDraft, LawyerApplication, WaitlistEntry
 from ..core.state_machine import BOARD_COLUMNS, board_column
 from .deps import get_container, get_session, require_admin
 from .routes import document_response, engine_error
@@ -262,6 +262,14 @@ def close(case_id: uuid.UUID, body: CloseIn, session: Session = Depends(get_sess
 @router.post("/scheduler/tick")
 def tick(container: Container = Depends(get_container)) -> dict[str, Any]:
     return {"sent": container.scheduler.tick()}
+
+
+@router.get("/client-errors")
+def client_errors(limit: int = 100, session: Session = Depends(get_session)) -> list[dict[str, Any]]:
+    """Browser crash reports sent by the web app (newest first)."""
+    rows = session.scalars(select(AuditLog).where(AuditLog.event == "client_error")
+                           .order_by(AuditLog.id.desc()).limit(min(limit, 500)))
+    return [{"at": r.created_at.isoformat(), **(r.data or {})} for r in rows]
 
 
 @router.get("/waitlist")

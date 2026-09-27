@@ -116,7 +116,7 @@ def test_unclassified_story_asks_for_details(ctx):
     created = api.post("/v1/cases", expect=201, json={"text": "Здравствуйте, помогите пожалуйста", "country": "KZ"})
     assert created["case"]["status"] == "intake"
     assert created["case"]["coverage"]["level"] == "verified"  # default until classified
-    assert "Опишите ситуацию подробнее" in created["reply"]["message"]
+    assert "не хватает деталей" in created["reply"]["message"]
 
 
 def test_coverage_and_forums_endpoints(ctx):

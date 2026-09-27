@@ -91,22 +91,31 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
     }
     system = (
         f"{_COMMON_RULES}\nTask: read the user's description of their problem and choose the single "
-        "scenario that fits it from the provided list, or null if none fits. Give confidence 0..1: "
-        "use >= 0.8 only when the situation clearly matches the scenario's summary."
+        "scenario that fits it from the provided list, or null if none fits.\n"
+        "People write the way they talk: slang, abbreviations, typos, no punctuation, mixed languages, "
+        "transliteration, brand and local store or marketplace names (a laptop brand, "
+        "a phone model, a chain store, a marketplace app). Work out what actually happened and what "
+        "the person wants; judge by meaning, not by exact wording or the keyword list. The examples "
+        "show typical phrasing.\n"
+        "Return null only when the problem is clearly about something none of the scenarios cover. "
+        "If a scenario plausibly fits but details are missing, choose it with a lower confidence — "
+        "missing details are asked later. Confidence 0..1: >= 0.8 when the situation clearly matches "
+        "the scenario's summary, 0.5-0.8 when it probably does."
     )
     try:
         out = llm.complete_json(task="qualify", system=system,
                                 payload={"text": text, "language": lang, "scenarios": options}, schema=schema)
     except LLMError as e:
         log.warning("qualify failed, falling back to scenario keywords: %s", e)
-        return _keyword_qualify(options, text)
+        return _keyword_qualify(options, text, f"llm_error: {str(e)[:300]}")
     sid = out.get("scenario_id")
     if sid not in ids:
         return None, 0.0, out.get("reason", "")
     return sid, max(0.0, min(1.0, float(out.get("confidence", 0)))), out.get("reason", "")
 
 
-def _keyword_qualify(options: list[dict[str, Any]], text: str) -> tuple[str | None, float, str]:
+def _keyword_qualify(options: list[dict[str, Any]], text: str,
+                     why: str = "llm_error") -> tuple[str | None, float, str]:
     """Deterministic fallback when the LLM is unavailable: match the scenario's own keywords."""
     low = text.lower()
     best_id, best_hits = None, 0
@@ -115,9 +124,9 @@ def _keyword_qualify(options: list[dict[str, Any]], text: str) -> tuple[str | No
         if hits > best_hits:
             best_id, best_hits = o["id"], hits
     if best_id is None:
-        return None, 0.0, "llm_error"
+        return None, 0.0, why
     # keyword matching is weaker than the model: cap confidence so the case is reviewed
-    return best_id, min(0.55, 0.2 + 0.1 * best_hits), f"llm_error; {best_hits} keyword(s)"
+    return best_id, min(0.55, 0.2 + 0.1 * best_hits), f"{why}; {best_hits} keyword(s)"
 
 
 def extract_fields(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,

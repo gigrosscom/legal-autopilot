@@ -246,7 +246,8 @@ class CaseEngine:
         values = ai.extract_fields(llm, sc, pack, case.language, text, None, missing)
         self._apply_values(case, sc, pack, values, llm, strict=False)
         self._save_vault(case, llm)
-        intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language))
+        intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language),
+                       first_action=pack.localized(sc.actions[0].title, case.language))
         reply = self._next_step(session, case, sc, pack)
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply

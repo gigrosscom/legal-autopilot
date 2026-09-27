@@ -332,7 +332,7 @@ const en: Dict = {
   },
   admin: {
     title: "Admin",
-    tabs: { queue: "Review queue", board: "Board", holds: "Under review", forums: "Registry of authorities", demand: "Demand" },
+    tabs: { queue: "Review queue", board: "Board", holds: "Under review", forums: "Registry of authorities", demand: "Demand", errors: "Browser errors" },
     forum: "Recipient", hold: "On hold", release: "Release from review",
     forums: {
       registry: "Registry (from package)", registryLead: "The source of truth is YAML in the repository. Changes reach production only through a PR reviewed by a lawyer.",
