@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { publicApi, errorText } from "@/lib/api";
+import { api, errorText } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { Icon, type IconName } from "@/components/ui";
 import { useLang } from "@/lib/i18n";
 import { lawyerText, type LawyerText } from "@/lib/lawyerText";
@@ -112,6 +113,11 @@ function ApplyForm() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ referral_code: string } | null>(null);
   const [ref, setRef] = useState<string | null>(null);
+  const [hasEcp, setHasEcp] = useState<boolean | null>(null);
+  const t = useT();
+  useEffect(() => {
+    api<{ has_ecp: boolean }>("/v1/lawyer/me").then((m) => setHasEcp(m.has_ecp)).catch(() => setHasEcp(false));
+  }, []);
   // Read ?ref= after mount (no Suspense needed, so the page prerenders fully and shows instantly).
   useEffect(() => setRef(new URLSearchParams(window.location.search).get("ref")), []);
 
@@ -125,7 +131,8 @@ function ApplyForm() {
     setBusy(true);
     setError(null);
     try {
-      const out = await publicApi<{ referral_code: string }>("/v1/lawyer-applications", {
+      // sent with the session token: if the lawyer signed in with ЭЦП, the application carries who they are
+      const out = await api<{ referral_code: string }>("/v1/lawyer-applications", {
         method: "POST",
         body: JSON.stringify({ ...form, country: "KZ", specializations: spec, referred_by: ref, wants_expert: wantsExpert }),
       });
@@ -142,6 +149,7 @@ function ApplyForm() {
       <div className="card space-y-4">
         <h3 className="text-xl font-bold">{L.doneTitle}</h3>
         <p className="text-sm text-muted">{L.doneText}</p>
+        <a className="link text-sm" href="/lawyer">{t("lawyer.cabinetLink")}</a>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input className="input" readOnly value={link} onFocus={(e) => e.target.select()} />
           <button className="btn-ghost shrink-0" onClick={() => navigator.clipboard?.writeText(link)}>{L.copy}</button>
@@ -163,6 +171,12 @@ function ApplyForm() {
     <form onSubmit={submit} className="card space-y-3">
       <h3 className="text-xl font-bold">{L.title}</h3>
       {ref && <p className="chip bg-brand-50 text-brand-dark">{L.invited}</p>}
+      {hasEcp === true && <p className="chip bg-brand-50 text-brand-dark">{t("lawyer.ecpOk")}</p>}
+      {hasEcp === false && (
+        <p className="rounded-xl bg-info-50 p-3 text-sm text-info">
+          {t("lawyer.ecpNeeded")} <a className="link font-semibold" href="/account">{t("lawyer.ecpSignIn")}</a>
+        </p>
+      )}
       <input className="input" required minLength={3} aria-label={L.name} placeholder={L.name} value={form.full_name} onChange={set("full_name")} />
       <select className="input" aria-label={L.kind} value={form.kind} onChange={set("kind")}>
         {L.kinds.map(([k, label]) => <option key={k} value={k}>{label}</option>)}

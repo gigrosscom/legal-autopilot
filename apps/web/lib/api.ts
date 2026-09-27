@@ -139,6 +139,15 @@ export type DocSignature = {
   format: "pdf" | "docx"; signed_at: string;
 };
 
+export type AgreementView = {
+  id: string; kind: string; title: string; status: "awaiting_customer" | "awaiting_lawyer" | "signed";
+  template_reviewed: boolean; signatures: DocSignature[];
+};
+export type CaseLawyer = {
+  lawyer: { name: string; kind: string; organization: string | null } | null;
+  agreements: AgreementView[];
+};
+
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
 export type Me = { id: string; display_name: string | null; language: string; identities: Identity[] };
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean };

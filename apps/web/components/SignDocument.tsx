@@ -9,8 +9,11 @@ import { NcaLayerError, signDocument } from "@/lib/ncalayer";
 type EgovStart = { session_id: string; qr: string; links: { egov_mobile: string; egov_business: string } };
 
 /** Sign a prepared document with ЭЦП: NCALayer on a computer or eGov Mobile by QR; shows existing signatures. */
-export function SignDocument({ caseId, actionId, fileBase, initial }: {
-  caseId: string; actionId: string; fileBase: string; initial: DocSignature[];
+export function SignDocument({ base, fileBase, initial, canSign, lead, onSigned }: {
+  /** API path of the thing being signed: /v1/cases/{id}/actions/{id} or /v1/agreements/{id} */
+  base: string; fileBase: string; initial: DocSignature[];
+  /** show the sign buttons (default: only while nothing is signed) */
+  canSign?: boolean; lead?: string; onSigned?: (s: DocSignature) => void;
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -19,7 +22,6 @@ export function SignDocument({ caseId, actionId, fileBase, initial }: {
   const [busy, setBusy] = useState(false);
   const [egov, setEgov] = useState<{ start: EgovStart; svg: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const base = `/v1/cases/${caseId}/actions/${actionId}`;
 
   useEffect(() => {
     api<AuthMethods>("/v1/auth/methods").then(setMethods).catch(() => setMethods(null));
@@ -45,6 +47,7 @@ export function SignDocument({ caseId, actionId, fileBase, initial }: {
       const r = await api<{ signature: DocSignature }>(`${base}/sign`, {
         method: "POST", body: JSON.stringify({ session_id: s.session_id, cms }) });
       setSignatures((x) => [...x, r.signature]);
+      onSigned?.(r.signature);
     } catch (e) { setError(explain(e)); } finally { setBusy(false); }
   };
 
@@ -62,7 +65,11 @@ export function SignDocument({ caseId, actionId, fileBase, initial }: {
     const id = setInterval(async () => {
       try {
         const r = await api<{ status: string; signature?: DocSignature; code?: string }>(`${base}/sign/status/${egov.start.session_id}`);
-        if (r.status === "done" && r.signature) { setSignatures((x) => [...x, r.signature!]); setEgov(null); }
+        if (r.status === "done" && r.signature) {
+          setSignatures((x) => [...x, r.signature!]);
+          onSigned?.(r.signature);
+          setEgov(null);
+        }
         else if (r.status === "failed") {
           const key = `sign.errors.${r.code}`;
           setError(t(key) !== key ? t(key) : t("account.errors.invalid_signature"));
@@ -72,18 +79,19 @@ export function SignDocument({ caseId, actionId, fileBase, initial }: {
       } catch { /* slow network: keep polling */ }
     }, 2500);
     return () => clearInterval(id);
-  }, [egov, base, t]);
+  }, [egov, base, t, onSigned]);
 
   const canNca = methods?.ecp ?? false;
   const canEgov = methods?.egov ?? false;
-  if (!signatures.length && !canNca && !canEgov) return null;
+  const showButtons = (canSign ?? !signatures.length) && (canNca || canEgov);
+  if (!signatures.length && !showButtons) return null;
 
   return (
     <div className="space-y-2 rounded-xl border border-line p-3 text-sm">
       {signatures.map((s) => (
         <div key={s.id} className="flex flex-wrap items-center gap-2">
           <Icon name="shieldCheck" size={18} className="text-brand" />
-          <span>{t("sign.signedBy", { name: s.signer_name ?? "", id: s.display })}</span>
+          <span>{t(s.role === "lawyer" ? "sign.signedByLawyer" : "sign.signedBy", { name: s.signer_name ?? "", id: s.display })}</span>
           <span className="text-muted">{new Date(s.signed_at).toLocaleString(lang === "ar" ? "ar" : "ru-RU")}</span>
           <button type="button" className="link" onClick={() => downloadFile(`${base}/signatures/${s.id}.cms`, `${fileBase}.${s.format}.cms`)}>
             {t("sign.download")}
@@ -91,9 +99,9 @@ export function SignDocument({ caseId, actionId, fileBase, initial }: {
         </div>
       ))}
       {signatures.length > 0 && <p className="text-xs text-muted">{t("sign.verifyHint")}</p>}
-      {(canNca || canEgov) && !egov && !signatures.length && (
+      {showButtons && !egov && (
         <div className="space-y-2">
-          <p className="text-muted">{t("sign.lead")}</p>
+          <p className="text-muted">{lead ?? t("sign.lead")}</p>
           <div className="flex flex-wrap gap-2">
             {canNca && <Button variant="secondary" icon={busy ? "spinner" : "key"} disabled={busy} onClick={withNcaLayer}>
               {busy ? t("account.ecp.waiting") : t("sign.ncalayer")}</Button>}

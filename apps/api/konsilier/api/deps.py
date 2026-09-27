@@ -39,6 +39,13 @@ def current_user(authorization: str | None = Header(default=None),
     return user
 
 
+def optional_user(authorization: str | None = Header(default=None),
+                  session: Session = Depends(get_session)) -> User | None:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    return session.scalar(select(User).where(User.api_token == authorization.split(" ", 1)[1].strip()))
+
+
 def require_admin(x_admin_token: str | None = Header(default=None),
                   container: Container = Depends(get_container)) -> str:
     if not x_admin_token or not hmac.compare_digest(x_admin_token, container.settings.admin_token):

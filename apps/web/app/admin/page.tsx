@@ -14,7 +14,7 @@ type Card = {
   pending_approval_action_ids: string[]; route_reasons: string[];
   tasks: { id: string; action_id: string; status: string; approval_status: string }[];
 };
-type Tab = "board" | "queue" | "holds" | "forums" | "demand" | "errors";
+type Tab = "board" | "queue" | "holds" | "forums" | "demand" | "errors" | "lawyers";
 
 export default function AdminPage() {
   const t = useT();
@@ -136,7 +136,7 @@ export default function AdminPage() {
         </Button>
       </div>
       <div role="tablist" className="flex flex-wrap gap-1">
-        {(["queue", "board", "holds", "forums", "demand", "errors"] as Tab[]).map((x) => (
+        {(["queue", "board", "holds", "lawyers", "forums", "demand", "errors"] as Tab[]).map((x) => (
           <button key={x} role="tab" aria-selected={tab === x} onClick={() => setTab(x)}
             className={`min-h-10 rounded-xl px-3 text-sm font-medium ${tab === x ? "bg-ink text-white" : "bg-surface"}`}>
             {t(`admin.tabs.${x}`)}{x === "queue" && queue.length ? ` · ${queue.length}` : ""}{x === "holds" && holds.length ? ` · ${holds.length}` : ""}
@@ -156,8 +156,9 @@ export default function AdminPage() {
         {tab === "forums" && <ForumsTab token={token} />}
         {tab === "demand" && <DemandTab token={token} />}
         {tab === "errors" && <ErrorsTab token={token} />}
+        {tab === "lawyers" && <LawyersTab token={token} />}
 
-        {selected && tab !== "forums" && tab !== "demand" && tab !== "errors" && (
+        {selected && tab !== "forums" && tab !== "demand" && tab !== "errors" && tab !== "lawyers" && (
           <div id="case" className="space-y-4">
             <div className="card space-y-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -210,6 +211,8 @@ export default function AdminPage() {
               </div>
             ))}
 
+            <AssignLawyer token={token} caseId={selected.id} />
+
             {selected.status === "handed_to_lawyer" && (
               <div className="card flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-semibold">{t("admin.closeCase")}:</span>
@@ -240,6 +243,83 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type LawyerApp = { id: number; full_name: string; kind: string; organization: string | null; license_number: string | null;
+  city: string | null; contact: string; status: string; ecp_verified: boolean; ecp_name: string | null; created_at: string };
+
+function LawyersTab({ token }: { token: string }) {
+  const t = useT();
+  const [rows, setRows] = useState<LawyerApp[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    adminApi<LawyerApp[]>("/v1/admin/lawyer-applications", token).then(setRows).catch((e) => setError(errorText(e)));
+  }, [token]);
+  useEffect(() => { load(); }, [load]);
+  const setStatus = async (id: number, status: string) => {
+    setError(null);
+    try {
+      await adminApi(`/v1/admin/lawyer-applications/${id}/status`, token, { method: "POST", body: JSON.stringify({ status }) });
+      load();
+    } catch (e) { setError(errorText(e)); }
+  };
+  return (
+    <div className="space-y-3 lg:col-span-2">
+      <p className="text-sm text-muted">{t("admin.lawyers.lead")}</p>
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {rows.map((r) => (
+        <div key={r.id} className="card space-y-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="me-auto font-semibold">{r.ecp_name ?? r.full_name}</span>
+            {r.ecp_verified ? <Badge tone="brand" icon="shieldCheck">{t("admin.lawyers.ecp")}</Badge>
+              : <Badge tone="warning">{t("admin.lawyers.noEcp")}</Badge>}
+            <Badge>{r.status}</Badge>
+          </div>
+          <p className="text-muted">{r.kind} · {r.organization ?? "—"} · {t("admin.lawyers.license")}: {r.license_number ?? "—"} · {r.city ?? "—"} · {r.contact}</p>
+          {r.ecp_name && r.ecp_name.toLowerCase() !== r.full_name.toLowerCase() && (
+            <p className="text-warning">{t("admin.lawyers.nameDiffers", { name: r.full_name })}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button icon="check" disabled={!r.ecp_verified || r.status === "verified"} onClick={() => setStatus(r.id, "verified")}>{t("admin.lawyers.verify")}</Button>
+            <Button variant="secondary" disabled={r.status === "rejected"} onClick={() => setStatus(r.id, "rejected")}>{t("admin.reject")}</Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssignLawyer({ token, caseId }: { token: string; caseId: string }) {
+  const t = useT();
+  const [apps, setApps] = useState<LawyerApp[]>([]);
+  const [pick, setPick] = useState<string>("");
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    adminApi<LawyerApp[]>("/v1/admin/lawyer-applications", token)
+      .then((r) => setApps(r.filter((a) => a.status === "verified" && a.ecp_verified))).catch(() => setApps([]));
+  }, [token]);
+  if (!apps.length) return null;
+  const assign = async () => {
+    setMsg(null);
+    try {
+      const r = await adminApi<{ lawyer: { name: string } }>(`/v1/admin/cases/${caseId}/assign`, token,
+        { method: "POST", body: JSON.stringify({ application_id: Number(pick) }) });
+      setMsg(t("admin.lawyers.assigned", { name: r.lawyer.name }));
+    } catch (e) { setMsg(errorText(e)); }
+  };
+  return (
+    <div className="card flex flex-wrap items-center gap-2 text-sm">
+      <label className="flex flex-1 flex-wrap items-center gap-2">
+        <span className="font-semibold">{t("admin.lawyers.assign")}:</span>
+        <select className="input max-w-xs" value={pick} onChange={(e) => setPick(e.target.value)}>
+          <option value="">—</option>
+          {apps.map((a) => <option key={a.id} value={a.id}>{a.ecp_name ?? a.full_name}</option>)}
+        </select>
+      </label>
+      <Button disabled={!pick} onClick={assign}>{t("admin.lawyers.assignButton")}</Button>
+      {msg && <p className="w-full text-muted" role="status">{msg}</p>}
     </div>
   );
 }
