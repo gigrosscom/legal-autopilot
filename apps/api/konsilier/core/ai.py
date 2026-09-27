@@ -104,14 +104,15 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
                                 payload={"text": text, "language": lang, "scenarios": options}, schema=schema)
     except LLMError as e:
         log.warning("qualify failed, falling back to scenario keywords: %s", e)
-        return _keyword_qualify(options, text)
+        return _keyword_qualify(options, text, f"llm_error: {str(e)[:300]}")
     sid = out.get("scenario_id")
     if sid not in ids:
         return None, 0.0, out.get("reason", "")
     return sid, max(0.0, min(1.0, float(out.get("confidence", 0)))), out.get("reason", "")
 
 
-def _keyword_qualify(options: list[dict[str, Any]], text: str) -> tuple[str | None, float, str]:
+def _keyword_qualify(options: list[dict[str, Any]], text: str,
+                     why: str = "llm_error") -> tuple[str | None, float, str]:
     """Deterministic fallback when the LLM is unavailable: match the scenario's own keywords."""
     low = text.lower()
     best_id, best_hits = None, 0
@@ -120,9 +121,9 @@ def _keyword_qualify(options: list[dict[str, Any]], text: str) -> tuple[str | No
         if hits > best_hits:
             best_id, best_hits = o["id"], hits
     if best_id is None:
-        return None, 0.0, "llm_error"
+        return None, 0.0, why
     # keyword matching is weaker than the model: cap confidence so the case is reviewed
-    return best_id, min(0.55, 0.2 + 0.1 * best_hits), f"llm_error; {best_hits} keyword(s)"
+    return best_id, min(0.55, 0.2 + 0.1 * best_hits), f"{why}; {best_hits} keyword(s)"
 
 
 def extract_fields(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,

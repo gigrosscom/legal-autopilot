@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import asdict
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -13,7 +14,8 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import Action, Case, Evidence, LawyerApplication, Notification, User, WaitlistEntry
+from ..core.models import (Action, AuditLog, Case, Evidence, LawyerApplication, Notification, User, WaitlistEntry,
+                           utcnow)
 from ..core.scenario import RESPONSE_CLASSES
 from .deps import current_user, get_container, get_session, load_case, require_bot
 from .views import case_view
@@ -386,13 +388,20 @@ class ClientErrorIn(BaseModel):
 
 
 @router.post("/client-errors", status_code=204)
-def client_error(body: ClientErrorIn) -> None:
-    """Browser crash reports → server logs (no personal data: message, stack, path only)."""
+def client_error(body: ClientErrorIn, session: Session = Depends(get_session)) -> None:
+    """Browser crash reports → server log and audit_log (no personal data: message, stack, path only).
+
+    Stored so they can be read in the admin (GET /v1/admin/client-errors) without server access.
+    """
     import logging
 
     logging.getLogger("konsilier.client").warning(
         "client error at %s: %s | translated=%s | ua=%s | stack=%s",
         body.url, body.message, body.translated, body.user_agent, (body.stack or "").replace("\n", " ⏎ ")[:1500])
+    recent = session.scalar(select(func.count()).select_from(AuditLog).where(
+        AuditLog.event == "client_error", AuditLog.created_at > utcnow() - timedelta(minutes=1)))
+    if (recent or 0) < 30:  # an open endpoint: cap the flood a broken or hostile client can write
+        session.add(AuditLog(case_id=None, actor="browser", event="client_error", data=body.model_dump()))
 
 
 @router.get("/notifications")

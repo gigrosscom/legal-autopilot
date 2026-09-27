@@ -372,3 +372,12 @@ def test_lawyer_application_with_referral(ctx):
     bad = ctx.client.post("/v1/lawyer-applications", json={"country": "KZ", "full_name": "X Y Z", "kind": "wizard",
                                                             "contact": "abc"})
     assert bad.status_code == 422
+
+
+def test_client_errors_are_stored_for_admin(ctx):
+    r = ctx.client.post("/v1/client-errors", json={"message": "NotFoundError: removeChild", "stack": "at x",
+                                                   "url": "/case/1", "translated": False})
+    assert r.status_code == 204
+    rows = ctx.client.get("/v1/admin/client-errors", headers=ADMIN).json()
+    assert rows[0]["message"] == "NotFoundError: removeChild" and rows[0]["url"] == "/case/1"
+    assert ctx.client.get("/v1/admin/client-errors").status_code in (401, 403)

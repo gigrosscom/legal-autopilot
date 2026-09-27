@@ -20,6 +20,8 @@ type Row = {
 
 type Filter = "all" | "needs_review" | "pending";
 
+type ClientError = { at: string; message: string; stack?: string | null; url?: string | null; user_agent?: string | null; translated?: boolean | null };
+
 export default function AdminPage() {
   const t = useT();
   const [token, setToken] = useState("");
@@ -31,6 +33,7 @@ export default function AdminPage() {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [crashes, setCrashes] = useState<ClientError[] | null>(null);
 
   useEffect(() => {
     try {
@@ -119,6 +122,29 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+        <details
+          className="card text-xs"
+          onToggle={(e) => {
+            if ((e.target as HTMLDetailsElement).open && !crashes)
+              adminApi<ClientError[]>("/v1/admin/client-errors", token).then(setCrashes).catch((err) => setError(errorText(err)));
+          }}
+        >
+          <summary className="cursor-pointer font-semibold">Ошибки в браузере{crashes ? ` (${crashes.length})` : ""}</summary>
+          <ul className="mt-2 max-h-96 space-y-2 overflow-auto">
+            {crashes?.map((c, i) => (
+              <li key={i} className="border-t border-ink/5 pt-1">
+                <div className="text-ink/50">
+                  {new Date(c.at).toLocaleString("ru-RU")} · {c.url}
+                  {c.translated ? " · переведено браузером" : ""}
+                </div>
+                <div className="font-medium">{c.message}</div>
+                {c.stack && <pre className="whitespace-pre-wrap font-mono text-[10px] text-ink/60">{c.stack}</pre>}
+                <div className="text-[10px] text-ink/40">{c.user_agent}</div>
+              </li>
+            ))}
+            {crashes?.length === 0 && <li className="text-ink/50">Нет</li>}
+          </ul>
+        </details>
         {info && <p className="text-xs text-ink/60">{info}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="space-y-2">
