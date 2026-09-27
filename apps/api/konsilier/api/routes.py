@@ -343,6 +343,25 @@ def close_case(case_id: uuid.UUID, body: CloseIn, user: User = Depends(current_u
     return {"case": case_view(container.engine, session, case)}
 
 
+class ClientErrorIn(BaseModel):
+    message: str = Field(max_length=1000)
+    stack: str | None = Field(default=None, max_length=4000)
+    digest: str | None = Field(default=None, max_length=100)
+    url: str | None = Field(default=None, max_length=300)
+    user_agent: str | None = Field(default=None, max_length=300)
+    translated: bool | None = None
+
+
+@router.post("/client-errors", status_code=204)
+def client_error(body: ClientErrorIn) -> None:
+    """Browser crash reports → server logs (no personal data: message, stack, path only)."""
+    import logging
+
+    logging.getLogger("konsilier.client").warning(
+        "client error at %s: %s | translated=%s | ua=%s | stack=%s",
+        body.url, body.message, body.translated, body.user_agent, (body.stack or "").replace("\n", " ⏎ ")[:1500])
+
+
 @router.get("/notifications")
 def notifications(user: User = Depends(current_user), session: Session = Depends(get_session)):
     rows = session.scalars(select(Notification).where(Notification.user_id == user.id)

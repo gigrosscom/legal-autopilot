@@ -7,11 +7,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Konsilier.AI — юридическая проблема до результата",
   description: "Готовые документы, подача, контроль сроков и эскалация до результата.",
+  // Browser auto-translation rewrites text nodes behind React's back and crashes live pages (chat, forms).
+  other: { google: "notranslate" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="ru" translate="no" className="notranslate">
       <body className="min-h-screen antialiased">
         <LangProvider>
           <Header />
