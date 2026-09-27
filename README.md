@@ -1,4 +1,4 @@
-# Konsilier
+# Konsilier.AI
 
 Глобальная AI-платформа, которая превращает бытовую или деловую юридическую
 проблему в готовый документ, подачу, контроль сроков и эскалацию до результата.
@@ -40,6 +40,14 @@ docker compose up --build
 модель — `LLM_MODEL` (по умолчанию `claude-opus-5`).
 Telegram: создайте бота у @BotFather, укажите `TELEGRAM_BOT_TOKEN` и
 `NEXT_PUBLIC_TELEGRAM_BOT` (username бота без `@`).
+
+### Продакшен (Railway)
+
+Проект `konsilier` в Railway: сервисы `Postgres`, `api` (том `/data` для документов) и `web`.
+Оба сервиса собираются из этой ветки по Dockerfile (`RAILWAY_DOCKERFILE_PATH`) и
+пересобираются на каждый пуш. Домены: `konsilier.com`, `www.konsilier.com` → `web`,
+`api.konsilier.com` → `api` (CNAME на адреса, которые показывает Railway в Settings → Domains).
+Секреты (`ANTHROPIC_API_KEY`, `ADMIN_TOKEN`, …) — только в Variables сервиса.
 
 ### Без Docker
 
