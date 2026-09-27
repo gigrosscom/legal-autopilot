@@ -95,6 +95,8 @@ def build_email(settings) -> Sender | None:
         return ResendEmail(settings.resend_api_key, settings.email_from)
     if settings.smtp_host:
         return SmtpEmail(settings.smtp_host, settings.smtp_port, settings.email_from)
+    if settings.dev_show_codes:
+        return LogSender("email")
     return None
 
 

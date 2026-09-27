@@ -41,6 +41,10 @@ const PATHS = {
   hourglass: "M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9",
   coin: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15 9.5A2.5 2.5 0 0 0 12.5 8h-1a2 2 0 0 0 0 4h1a2 2 0 0 1 0 4h-1A2.5 2.5 0 0 1 9 14.5M12 6v2M12 16v2",
   spinner: "M12 3a9 9 0 1 0 9 9",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+  key: "M15 7a4 4 0 1 1-3.5 6L4 20.5V17h3v-3h3l1.5-1.5A4 4 0 0 1 15 7zM16 9h.01",
+  smartphone: "M7 2h10v20H7zM11 18h2",
+  qr: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -48,6 +48,10 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-2">
           <LangSelect />
+          <Link href="/account" aria-label={t("nav.account")} title={t("nav.account")}
+            className={`flex min-h-10 items-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 text-sm font-medium ${active("/account")}`}>
+            <Icon name="user" size={18} /><span className="hidden md:inline">{t("nav.account")}</span>
+          </Link>
           <Link href="/start" className="btn-primary hidden sm:inline-flex">{t("nav.start")}</Link>
           <details className="relative lg:hidden">
             <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-xl border border-line bg-surface px-3 [&::-webkit-details-marker]:hidden">

@@ -135,7 +135,24 @@ export type Coverage = {
   state_alternative_notice: string | null;
 };
 
+export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
+export type Me = { id: string; display_name: string | null; language: string; identities: Identity[] };
+export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean };
+export type SignedIn = { token: string; me: Me };
+
+/** After a verified sign-in the account may be a different one (the identifier was already known). */
+export function applySignIn(r: SignedIn): Me {
+  localStorage.setItem("konsilier.token", r.token);
+  return r.me;
+}
+
 export class ApiError extends Error {
+  /** Machine-readable reason from the API ({detail: {code}}), if any. */
+  get code(): string | null {
+    return typeof this.detail === "object" && this.detail && "code" in this.detail
+      ? String((this.detail as { code: string }).code) : null;
+  }
+
   constructor(public status: number, public detail: unknown) {
     super(typeof detail === "object" && detail && "message" in detail ? String((detail as { message: string }).message) : String(detail));
   }
