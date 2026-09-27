@@ -354,6 +354,7 @@ class LawyerApplicationIn(BaseModel):
     contact: str = Field(min_length=3, max_length=200)
     message: str | None = Field(default=None, max_length=2000)
     referred_by: str | None = Field(default=None, max_length=16)
+    wants_expert: bool = False
 
 
 @router.post("/lawyer-applications", status_code=201)

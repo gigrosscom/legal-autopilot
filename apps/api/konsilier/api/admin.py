@@ -166,5 +166,5 @@ def lawyer_applications(session: Session = Depends(get_session)) -> list[dict[st
     return [{"id": r.id, "created_at": r.created_at.isoformat(), "full_name": r.full_name, "kind": r.kind,
              "organization": r.organization, "license_number": r.license_number, "city": r.city,
              "specializations": r.specializations, "contact": r.contact, "message": r.message,
-             "referral_code": r.referral_code, "referred_by": r.referred_by, "invited": counts.get(r.referral_code, 0),
+             "referral_code": r.referral_code, "referred_by": r.referred_by, "wants_expert": r.wants_expert, "invited": counts.get(r.referral_code, 0),
              "status": r.status} for r in rows]

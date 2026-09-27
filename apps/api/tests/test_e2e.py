@@ -351,12 +351,13 @@ def test_lawyer_application_with_referral(ctx):
     code = first.json()["referral_code"]
     second = ctx.client.post("/v1/lawyer-applications", json={
         "country": "KZ", "full_name": "Коллега Второй", "kind": "legal_consultant", "contact": "@colleague",
-        "referred_by": code.lower()})
+        "referred_by": code.lower(), "wants_expert": True})
     assert second.status_code == 201
     rows = ctx.client.get("/v1/admin/lawyer-applications", headers=ADMIN).json()
     by_name = {r["full_name"]: r for r in rows}
     assert by_name["Коллега Второй"]["referred_by"] == code
     assert by_name["Адвокат Первый"]["invited"] == 1
+    assert by_name["Коллега Второй"]["wants_expert"] is True and by_name["Адвокат Первый"]["wants_expert"] is False
     bad = ctx.client.post("/v1/lawyer-applications", json={"country": "KZ", "full_name": "X Y Z", "kind": "wizard",
                                                             "contact": "abc"})
     assert bad.status_code == 422

@@ -34,7 +34,7 @@ const BENEFITS = [
 const FAQ = [
   {
     q: "Сколько платформа берёт с юриста?",
-    a: "С гонорара — 0%. Базовый тариф бесплатный. Pro (без лимита откликов, приоритет, ИИ-инструменты, CRM) — " + PRO_PRICE + ". Для участников программы «Партнёр Konsilier.AI» Pro бесплатно 12 месяцев.",
+    a: "С гонорара — 0%. Базовый тариф бесплатный. Pro (без лимита откликов, приоритет, ИИ-инструменты, CRM) — " + PRO_PRICE + ". Партнёрам Konsilier.AI — Pro бесплатно 6 месяцев, экспертам сценариев — 12 месяцев.",
   },
   {
     q: "Кто может присоединиться?",
@@ -147,6 +147,7 @@ function ApplyForm() {
   const [form, setForm] = useState({
     full_name: "", kind: "advocate", organization: "", license_number: "", city: "", contact: "", message: "",
   });
+  const [wantsExpert, setWantsExpert] = useState(false);
   const [spec, setSpec] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +158,7 @@ function ApplyForm() {
     () => (done && typeof window !== "undefined" ? `${window.location.origin}/for-lawyers?ref=${done.referral_code}` : ""),
     [done],
   );
-  const shareText = `Присоединяюсь к Konsilier.AI — платформе, где юристы получают готовые дела с досье, 0% комиссии с гонорара и оплату по этапам. Программа «Партнёр Konsilier.AI»: Pro бесплатно 12 месяцев. `;
+  const shareText = `Присоединяюсь к Konsilier.AI — платформе, где юристы получают готовые дела с досье, 0% комиссии с гонорара и оплату по этапам. Программа «Партнёр Konsilier.AI»: Pro бесплатно 6 месяцев. `;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -166,7 +167,7 @@ function ApplyForm() {
     try {
       const out = await publicApi<{ referral_code: string }>("/v1/lawyer-applications", {
         method: "POST",
-        body: JSON.stringify({ ...form, country: "KZ", specializations: spec, referred_by: ref }),
+        body: JSON.stringify({ ...form, country: "KZ", specializations: spec, referred_by: ref, wants_expert: wantsExpert }),
       });
       setDone(out);
     } catch (err) {
@@ -238,6 +239,10 @@ function ApplyForm() {
           </button>
         ))}
       </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={wantsExpert} onChange={(e) => setWantsExpert(e.target.checked)} />
+        <span>Хочу быть экспертом сценариев — проверять нормы, сроки и шаблоны по своей специализации (Pro 12 месяцев)</span>
+      </label>
       <textarea className="input" rows={2} placeholder="Что для вас важно в платформе? (необязательно)" value={form.message} onChange={set("message")} />
       <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? "…" : "Подать заявку"}</button>
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -264,7 +269,7 @@ export default function ForLawyers() {
             <a href="#apply" className="btn-primary px-6 py-3 text-base">Стать партнёром — бесплатно</a>
             <a href="/lawyers" className="btn-ghost px-6 py-3 text-base">Как выглядит рейтинг</a>
           </div>
-          <p className="text-sm text-ink/60">Первые 100 юристов — Pro бесплатно на 12 месяцев и статус «Партнёр» — при участии в пилоте.</p>
+          <p className="text-sm text-ink/60">Партнёрам — Pro бесплатно 6 месяцев, экспертам сценариев — 12 месяцев.</p>
         </div>
         <DossierPreview />
       </section>
@@ -343,7 +348,7 @@ export default function ForLawyers() {
             <h3 className="font-semibold">Что делает партнёр</h3>
             <ul className="list-inside list-disc space-y-1 text-sm text-ink/70">
               <li>Проходит проверку статуса и личности.</li>
-              <li>Берёт в работу дела с платформы в пилотный период (первые 3 месяца).</li>
+              <li>Берёт в работу 3–5 дел с платформы в месяц.</li>
               <li>Соблюдает стандарты: прозрачная цена до начала работы, сроки этапов, отметки о ходе дела в карточке.</li>
               <li>Раз в месяц даёт обратную связь по документам и сценариям — что исправить, чего не хватает.</li>
             </ul>
@@ -351,7 +356,7 @@ export default function ForLawyers() {
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
             <h3 className="font-semibold">Что получает партнёр</h3>
             <ul className="list-inside list-disc space-y-1 text-sm text-ink/70">
-              <li>Pro бесплатно на 12 месяцев.</li>
+              <li>Pro бесплатно на 6 месяцев.</li>
               <li>Статус «Партнёр» в профиле и карточке.</li>
               <li>Приоритет в выдаче дел в пилотный период.</li>
               <li>Влияние на продукт: сценарии и шаблоны строятся с учётом практики партнёров.</li>
@@ -359,6 +364,32 @@ export default function ForLawyers() {
           </div>
         </div>
         <p className="text-xs text-ink/50">Если условия участия не выполняются, статус снимается, аккаунт остаётся на базовом тарифе.</p>
+        <div className="space-y-3 rounded-2xl bg-ink p-5 text-white shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold">Эксперт сценариев</h3>
+            <span className="chip bg-white/15 text-white">Pro бесплатно 12 месяцев</span>
+          </div>
+          <p className="text-sm text-white/80">
+            Юристы, которые отвечают за правовую точность платформы. Каждый сценарий (например, «возврат денег за товар»)
+            — это готовая последовательность документов, сроков и адресатов. Эксперт проверяет его и подписывает своим именем.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <ul className="list-inside list-disc space-y-1 text-sm text-white/80">
+              <li className="list-none font-semibold text-white">Что делает эксперт</li>
+              <li>Проверяет нормы, сроки и адресатов в сценарии своей специализации.</li>
+              <li>Проверяет шаблоны документов (претензии, жалобы, заявления).</li>
+              <li>Обновляет сценарий при изменении законодательства.</li>
+              <li>Разбирает спорные случаи по методологии.</li>
+            </ul>
+            <ul className="list-inside list-disc space-y-1 text-sm text-white/80">
+              <li className="list-none font-semibold text-white">Что получает эксперт</li>
+              <li>Pro бесплатно на 12 месяцев.</li>
+              <li>Статус «Эксперт» и имя в каждом проверенном сценарии: «Сценарий проверен: …».</li>
+              <li>Первым получает дела по своим сценариям.</li>
+              <li>Упоминание в материалах и соцсетях Konsilier.AI.</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       {/* PRICING */}
@@ -373,7 +404,7 @@ export default function ForLawyers() {
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">Pro</h3>
-              <span className="chip bg-brand text-white">Партнёрам 12 мес. бесплатно</span>
+              <span className="chip bg-brand text-white">Партнёрам 6 мес., экспертам 12 мес. бесплатно</span>
             </div>
             <div className="text-2xl font-bold">{PRO_PRICE}</div>
             <p className="text-sm text-ink/70">Без лимита откликов, приоритет в выдаче, ИИ-черновики, контроль сроков, CRM своих клиентов.</p>

@@ -264,5 +264,6 @@ class LawyerApplication(Base):
     message: Mapped[str | None] = mapped_column(Text)
     referral_code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     referred_by: Mapped[str | None] = mapped_column(String(16), index=True)
+    wants_expert: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # scenario expert
     status: Mapped[str] = mapped_column(String(16), default="new")  # new | verified | rejected
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
