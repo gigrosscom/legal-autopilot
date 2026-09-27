@@ -1,0 +1,90 @@
+[
+ {
+  "page": "/cases",
+  "performance": 96,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "0.8 s",
+  "LCP": "2.8 s",
+  "TBT": "40 ms",
+  "CLS": "0.012"
+ },
+ {
+  "page": "/coverage",
+  "performance": 97,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "0.8 s",
+  "LCP": "2.5 s",
+  "TBT": "60 ms",
+  "CLS": "0"
+ },
+ {
+  "page": "/design-system",
+  "performance": 87,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "2.3 s",
+  "LCP": "3.6 s",
+  "TBT": "110 ms",
+  "CLS": "0"
+ },
+ {
+  "page": "/for-lawyers",
+  "performance": 89,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "1.5 s",
+  "LCP": "3.6 s",
+  "TBT": "70 ms",
+  "CLS": "0"
+ },
+ {
+  "page": "/",
+  "performance": 95,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "0.8 s",
+  "LCP": "2.8 s",
+  "TBT": "70 ms",
+  "CLS": "0"
+ },
+ {
+  "page": "/how-it-works",
+  "performance": 97,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "1.1 s",
+  "LCP": "2.4 s",
+  "TBT": "100 ms",
+  "CLS": "0"
+ },
+ {
+  "page": "/lawyers",
+  "performance": 92,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "0.8 s",
+  "LCP": "3.2 s",
+  "TBT": "100 ms",
+  "CLS": "0"
+ },
+ {
+  "page": "/start",
+  "performance": 96,
+  "accessibility": 100,
+  "best-practices": 100,
+  "seo": 100,
+  "FCP": "0.8 s",
+  "LCP": "2.8 s",
+  "TBT": "30 ms",
+  "CLS": "0"
+ }
+]

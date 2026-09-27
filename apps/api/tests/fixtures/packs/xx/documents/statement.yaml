@@ -1,0 +1,9 @@
+id: statement
+title: {en: "statement"}
+template: xx/templates/letter.docx
+forum_types: [court, religious]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: respondent_name}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}

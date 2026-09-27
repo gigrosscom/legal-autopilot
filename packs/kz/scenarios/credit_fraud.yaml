@@ -1,6 +1,7 @@
 id: kz.money.credit_fraud
 version: 0.1.0
 ontology: MONEY.CREDIT.FRAUD
+taxonomy: finance.fraudulent_loan
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01

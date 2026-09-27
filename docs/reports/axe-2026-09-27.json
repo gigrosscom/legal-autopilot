@@ -1,0 +1,542 @@
+[
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 360,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "ru",
+  "width": 1280,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 360,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "kk",
+  "width": 1280,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 360,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "en",
+  "width": 1280,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 360,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "ar",
+  "width": 1280,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 360,
+  "page": "/admin",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/start",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/coverage",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/how-it-works",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/cases",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/lawyers",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/for-lawyers",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/design-system",
+  "violations": []
+ },
+ {
+  "lang": "tr",
+  "width": 1280,
+  "page": "/admin",
+  "violations": []
+ }
+]

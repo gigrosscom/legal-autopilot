@@ -1,0 +1,4 @@
+# Локальные расширения глобального каталога отраслей (apps/api/konsilier/core/coverage/global_taxonomy.yaml).
+extends: global
+add: []
+disable: []

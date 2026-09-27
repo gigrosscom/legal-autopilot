@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 # Tasks that write text for the applicant's document get the main model; the rest (classification,
 # field extraction, reading a receipt) are short structured answers and go to the cheaper model.
-MAIN_MODEL_TASKS = frozenset({"narrative"})
+MAIN_MODEL_TASKS = frozenset({"narrative", "generic_demands"})
 # Server-side refusal fallbacks are offered for these model families only.
 _FALLBACK_MODEL_PREFIXES = ("claude-opus-5", "claude-fable-5")
 

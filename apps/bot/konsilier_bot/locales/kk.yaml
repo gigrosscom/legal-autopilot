@@ -1,6 +1,8 @@
 # TODO(i18n): full Kazakh translation. Missing keys fall back to ru.yaml.
 new_case: "Жарайды, жаңа іс бастаймыз. Не болғанын сипаттаңыз."
 buttons:
+  ack_false_report: "Түсіндім және растаймын"
+  ack_special_category: "Келісім беремін"
   skip: "⏭ Өткізу"
 profile:
   short: "Құқықтық мәселе → дайын құжат, қайда беру керектігі және мерзімдерді бақылау. Қазақстан."

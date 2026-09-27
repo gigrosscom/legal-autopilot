@@ -99,6 +99,19 @@ def test_client_drives_a_case(api_app):
     asyncio.run(scenario())
 
 
+def test_universal_case_shows_forum_choice_then_acknowledgement():
+    from konsilier_bot.ui import case_screen
+
+    base = {"id": "c1", "language": "ru", "status": "intake", "scenario": None, "actions": [], "proposal": None,
+            "question": None}
+    choose = case_screen({**base, "coverage": {"options": [{"id": "kz.police", "name": "Полиция"},
+                                                           {"id": "kz.prosecutor", "name": "Прокуратура"}]}})
+    assert [row[0][1] for row in choose.buttons] == ["forum:c1:0", "forum:c1:1"]
+    ack = case_screen({**base, "scenario": {"id": "x"}, "coverage": {"options": []},
+                       "safety": {"pending_ack": "false_report"}})
+    assert ack.buttons == [[("Понимаю и подтверждаю", "ack:c1:false_report")]]
+
+
 def test_profile_texts_fit_telegram_limits():
     from konsilier_bot.i18n import t
     from konsilier_bot.main import BOT_COMMANDS

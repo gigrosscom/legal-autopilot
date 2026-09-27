@@ -1,149 +1,105 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { publicApi, TELEGRAM_BOT, errorText } from "@/lib/api";
-import { useLang, useT } from "@/lib/i18n";
+import { useState } from "react";
+import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { LevelExplainer } from "@/components/LevelBadge";
+import { PathMap } from "@/components/PathMap";
 import Trust from "@/components/Trust";
+import { Alert, Button, Icon, Section } from "@/components/ui";
+import { useLang, useT } from "@/lib/i18n";
+import { SITUATIONS } from "@/lib/situations";
+import { useStartCase } from "@/lib/startCase";
 
-type Pack = {
-  country: string;
-  name: string;
-  scenarios: { id: string; title: string; summary: string; price: { amount: number; currency: string } }[];
-};
-
-// Countries shown in the selector. Only the ones with a jurisdiction pack are "live";
-// the rest collect a waitlist. (UI list only — legal data lives in packs/.)
-const COUNTRIES: { code: string; ru: string; kk: string }[] = [
-  { code: "KZ", ru: "Казахстан", kk: "Қазақстан" },
-  { code: "UZ", ru: "Узбекистан", kk: "Өзбекстан" },
-  { code: "KG", ru: "Кыргызстан", kk: "Қырғызстан" },
-  { code: "AZ", ru: "Азербайджан", kk: "Әзірбайжан" },
-  { code: "GE", ru: "Грузия", kk: "Грузия" },
-  { code: "AM", ru: "Армения", kk: "Армения" },
-  { code: "TR", ru: "Турция", kk: "Түркия" },
-  { code: "AE", ru: "ОАЭ", kk: "БАӘ" },
-  { code: "RS", ru: "Сербия", kk: "Сербия" },
-  { code: "OTHER", ru: "Другая страна", kk: "Басқа ел" },
-];
-
-export default function Landing() {
+export default function Home() {
   const t = useT();
   const { lang } = useLang();
-  const [packs, setPacks] = useState<Pack[] | null>(null);
-  const [country, setCountry] = useState("KZ");
-  const [contact, setContact] = useState("");
-  const [problem, setProblem] = useState("");
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const { start, busy, error, emergency, dismissEmergency } = useStartCase(lang);
 
-  useEffect(() => {
-    publicApi<Pack[]>(`/v1/packs?lang=${lang}`).then(setPacks).catch(() => setPacks([]));
-  }, [lang]);
-
-  const live = new Set((packs ?? []).map((p) => p.country));
-  const pack = packs?.find((p) => p.country === country);
-
-  async function joinWaitlist(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    try {
-      await publicApi("/v1/waitlist", {
-        method: "POST",
-        body: JSON.stringify({ country: country === "OTHER" ? "ZZ" : country, contact, problem: problem || null, language: lang }),
-      });
-      setSent(true);
-    } catch (err) {
-      setError(errorText(err));
-    }
+    if (text.trim().length >= 10) start(text.trim());
   }
 
   return (
-    <div className="space-y-14">
-      <section className="grid gap-8 pt-6 md:grid-cols-[1.4fr_1fr] md:items-center">
-        <div className="space-y-5">
-          <h1 className="text-3xl font-bold leading-tight tracking-tight md:text-4xl">{t("landing.promise")}</h1>
-          <p className="text-base text-ink/70 sm:text-lg">{t("landing.sub")}</p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/start" className="btn-primary px-6 py-3 text-base">{t("landing.startWeb")}</Link>
-            {TELEGRAM_BOT && (
-              <a href={`https://t.me/${TELEGRAM_BOT}`} target="_blank" rel="noreferrer" className="btn-ghost px-6 py-3 text-base">
-                {t("landing.startTelegram")}
-              </a>
-            )}
-          </div>
-          <p className="text-xs text-ink/50">{t("landing.disclaimer")}</p>
-          <ul className="space-y-2 border-t border-ink/10 pt-4">
-            {[["📄", "usp1"], ["⏰", "usp2"], ["👩‍⚖️", "usp3"]].map(([icon, k]) => (
-              <li key={k} className="flex gap-3 font-medium">
-                <span aria-hidden>{icon}</span>
-                <span>{t(`landing.${k}`)}</span>
+    <div className="space-y-20">
+      {/* HERO: the main action is a free text field, not a menu */}
+      {/* phones: heading → form → promises; desktop: heading + promises | form */}
+      <section className="grid gap-6 lg:grid-cols-[1.15fr_1fr] lg:gap-x-10 lg:gap-y-6">
+        <div className="space-y-5 lg:self-end">
+          <p className="eyebrow">{t("home.eyebrow")}</p>
+          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-balance md:text-5xl">{t("home.title")}</h1>
+          <p className="max-w-xl text-lg text-muted text-pretty">{t("home.sub")}</p>
+        </div>
+        <ul className="order-3 grid gap-2 self-start text-sm sm:grid-cols-2 lg:order-none lg:col-start-1 lg:row-start-2">
+            {(["promise1", "promise2", "promise3", "promise4"] as const).map((k) => (
+              <li key={k} className="flex items-start gap-2">
+                <Icon name="checkCircle" size={18} className="mt-0.5 text-brand" />
+                <span>{t(`home.${k}`)}</span>
               </li>
             ))}
-          </ul>
-        </div>
-        <div className="card space-y-3">
-          <h2 className="font-semibold">{t("landing.howTitle")}</h2>
-          <ol className="space-y-2 text-sm">
-            {["how1", "how2", "how3", "how4"].map((k, i) => (
-              <li key={k} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">{i + 1}</span>
-                <span>{t(`landing.${k}`)}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
+        </ul>
+
+        <form onSubmit={submit} aria-labelledby="describe"
+          className="card space-y-4 p-5 shadow-[var(--shadow-raised)] md:p-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+          <label id="describe" htmlFor="story" className="block text-lg font-semibold">{t("home.describe")}</label>
+          <textarea id="story" className="input min-h-44 resize-y" required minLength={10} value={text}
+            onChange={(e) => setText(e.target.value)} placeholder={t("start.placeholder")} />
+          {emergency && <EmergencyPanel info={emergency} onContinue={() => { dismissEmergency(); start(text.trim(), { skipTriage: true }); }} />}
+          {error && <Alert tone="danger" role="alert">{error}</Alert>}
+          <Button size="lg" className="w-full" disabled={busy || text.trim().length < 10} iconEnd={busy ? undefined : "arrowRight"}
+            icon={busy ? "spinner" : undefined}>
+            {busy ? t("start.busy") : t("home.cta")}
+          </Button>
+          <p className="text-xs text-muted">{t("home.privacy")}</p>
+        </form>
       </section>
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-bold">{t("landing.scenariosTitle")}</h2>
-          <label className="flex w-full flex-wrap items-center gap-2 text-sm sm:w-auto">
-            {t("landing.countryTitle")}:
-            <select className="input sm:w-auto" value={country} onChange={(e) => { setCountry(e.target.value); setSent(false); }}>
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c[lang]} — {live.has(c.code) ? t("landing.countryLive") : t("landing.countrySoon")}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+      {/* LIFE SITUATIONS */}
+      <Section eyebrow={t("home.situationsEyebrow")} title={t("home.situationsTitle")} lead={t("home.situationsLead")}>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {SITUATIONS.map((s) => (
+            <li key={s.key}>
+              <Link href={`/start?s=${s.key}`}
+                className="card flex h-full min-h-20 items-start gap-2.5 p-3 transition-shadow hover:shadow-[var(--shadow-raised)] sm:gap-3 sm:p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand sm:h-10 sm:w-10">
+                  <Icon name={s.icon} />
+                </span>
+                <span className="text-sm font-semibold leading-snug">{t(`situations.${s.key}.label`)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-        {packs === null ? (
-          <p className="text-ink/50">{t("common.loading")}</p>
-        ) : pack ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {pack.scenarios.map((s) => (
-              <div key={s.id} className="card flex flex-col gap-3">
-                <h3 className="text-lg font-semibold">{s.title}</h3>
-                <p className="flex-1 text-sm text-ink/70">{s.summary}</p>
-                <div className="flex items-center justify-between">
-                  <span className="chip">{t("landing.price")}: {s.price.amount.toLocaleString("ru-RU")} {s.price.currency}</span>
-                  <Link href={`/start?country=${pack.country}`} className="btn-primary">{t("nav.start")}</Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <form onSubmit={joinWaitlist} className="card max-w-xl space-y-3">
-            <h3 className="font-semibold">{t("landing.waitlistTitle")}</h3>
-            <p className="text-sm text-ink/70">{t("landing.waitlistText")}</p>
-            {sent ? (
-              <p className="text-sm font-medium text-brand">{t("landing.waitlistDone")}</p>
-            ) : (
-              <>
-                <input className="input" required minLength={3} placeholder={t("landing.waitlistContact")} value={contact} onChange={(e) => setContact(e.target.value)} />
-                <textarea className="input" rows={3} placeholder={t("landing.waitlistProblem")} value={problem} onChange={(e) => setProblem(e.target.value)} />
-                <button className="btn-primary" type="submit">{t("landing.waitlistSend")}</button>
-                {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-              </>
-            )}
-          </form>
-        )}
-      </section>
+      {/* PATH MAP */}
+      <Section eyebrow={t("home.pathEyebrow")} title={t("home.pathTitle")} lead={t("home.pathLead")}>
+        <PathMap />
+      </Section>
+
+      {/* THREE LEVELS */}
+      <Section eyebrow={t("home.levelsEyebrow")} title={t("home.levelsTitle")} lead={t("home.levelsLead")}>
+        <div className="grid gap-4 md:grid-cols-3">
+          {(["verified", "universal", "lawyer"] as const).map((lv) => (
+            <div key={lv} className="card space-y-3">
+              <LevelExplainer level={lv} stacked />
+            </div>
+          ))}
+        </div>
+        <Button href="/how-it-works" variant="secondary" iconEnd="arrowRight">{t("home.howLink")}</Button>
+      </Section>
 
       <Trust />
+
+      {/* COVERAGE TEASER */}
+      <section className="card flex flex-col items-start gap-4 bg-ink p-6 text-white md:flex-row md:items-center md:justify-between md:p-8">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold">{t("home.coverageTitle")}</h2>
+          <p className="text-white/80">{t("home.coverageLead")}</p>
+        </div>
+        <Link href="/coverage" className="btn bg-white text-ink hover:bg-sand">{t("home.coverageCta")}</Link>
+      </section>
     </div>
   );
 }

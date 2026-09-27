@@ -111,6 +111,24 @@ class HeuristicMockProvider:
                 break
         return {"facts": facts, "summary": text[:200]}
 
+    def _classify_taxonomy(self, p: dict[str, Any]) -> dict[str, Any]:
+        text = p["text"].lower()
+        best, best_hits = None, 0
+        for d in p["disputes"]:
+            hits = sum(1 for kw in d.get("keywords", []) if kw.lower() in text)
+            if hits > best_hits:
+                best, best_hits = d, hits
+        flags = [f for f, words in (("emergency", ("убьёт", "убьет", "угрожает убить")),
+                                    ("harassment", ("затравить", "буду жаловаться каждый день")))
+                 if any(w in text for w in words)]
+        if best is None:
+            return {"dispute_id": None, "role": None, "confidence": 0.0, "flags": flags, "reason": "no keywords"}
+        return {"dispute_id": best["id"], "role": best["applicant_roles"][0],
+                "confidence": min(0.95, 0.5 + 0.2 * best_hits), "flags": flags, "reason": f"{best_hits} keyword(s)"}
+
+    def _generic_demands(self, p: dict[str, Any]) -> dict[str, Any]:
+        return {"demands": f"1. {p['goal'].strip()}"}
+
     def _narrative(self, p: dict[str, Any]) -> dict[str, Any]:
         facts = p["facts"]
         texts = [str(facts[f["name"]]).strip() for f in p["fields"]
