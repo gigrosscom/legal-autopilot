@@ -32,7 +32,8 @@ def test_level1_verified_scenarios_unchanged(ctx):
     created = api.post("/v1/cases", expect=201, json={
         "text": "Купил телефон в магазине, сломался, продавец не возвращает деньги", "country": "KZ"})
     assert created["case"]["scenario"]["id"] == "kz.consumer.refund"
-    assert created["case"]["coverage"]["level"] == "verified"
+    # unsigned (reviewed_at: null) → shown as a draft, never as "verified"
+    assert created["case"]["coverage"]["level"] == "scenario_draft"
     assert created["case"]["stage"] == "intake"
 
 
@@ -198,3 +199,12 @@ def test_religious_forums_only_on_explicit_choice_and_with_state_route(ctx):
     assert opts["xx.religious.council"]["religious"]["family_rights_warning"]
     assert cov["religious_requested"] is True
     assert cov["state_alternative_notice"].startswith("The state route")
+
+
+def test_unsigned_level1_scenario_is_shown_as_draft():
+    from konsilier.core.qualifier import display_level
+
+    assert display_level("verified", True) == "scenario_draft"
+    assert display_level("verified", False) == "verified"
+    assert display_level("universal", True) == "universal"
+    assert display_level("lawyer", True) == "lawyer"

@@ -17,6 +17,13 @@ from .coverage import DEFENCE_ROLES, Coverage, Forum
 LEVEL_VERIFIED = "verified"
 LEVEL_UNIVERSAL = "universal"
 LEVEL_LAWYER = "lawyer"
+# Display-only: a level-1 scenario that no lawyer has signed yet. Stored level stays "verified".
+LEVEL_SCENARIO_DRAFT = "scenario_draft"
+
+
+def display_level(stored: str, scenario_is_draft: bool) -> str:
+    """The level shown to people: never "verified" for a scenario without a lawyer's sign-off."""
+    return LEVEL_SCENARIO_DRAFT if stored == LEVEL_VERIFIED and scenario_is_draft else stored
 
 
 @dataclass

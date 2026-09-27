@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n";
 
 type Card = {
   id: string; status: string; status_label: string; stage: string; needs_review: boolean; scenario_id: string | null;
-  title: string | null; coverage_level: string; hold_reason: string | null; channel: string;
+  title: string | null; coverage_level: string; display_level?: string; hold_reason: string | null; channel: string;
   amount_at_stake: string | null; currency: string | null; created_at: string; confidence: number | null;
   pending_approval_action_ids: string[]; route_reasons: string[];
   tasks: { id: string; action_id: string; status: string; approval_status: string }[];
@@ -107,7 +107,7 @@ export default function AdminPage() {
           <button onClick={() => open(r.id)}
             className={`card block w-full space-y-1 text-start text-sm hover:border-brand ${selected?.id === r.id ? "border-brand" : ""}`}>
             <div className="flex flex-wrap items-center gap-1.5">
-              <LevelBadge level={r.coverage_level as Level} />
+              <LevelBadge level={(r.display_level ?? r.coverage_level) as Level} />
               <Badge>{r.status_label}</Badge>
               {r.hold_reason && <Badge tone="warning" icon="alert">{r.hold_reason}</Badge>}
             </div>
@@ -120,7 +120,7 @@ export default function AdminPage() {
   );
 
   const cards: BoardCard[] = board.map((r) => ({
-    id: r.id, href: "#case", title: r.title ?? t("case.untitled"), stage: r.stage, level: r.coverage_level,
+    id: r.id, href: "#case", title: r.title ?? t("case.untitled"), stage: r.stage, level: r.display_level ?? r.coverage_level,
     date: new Date(r.created_at).toLocaleDateString("ru-RU"),
     attention: r.hold_reason ? t("board.attention.hold") : r.pending_approval_action_ids.length ? t("board.attention.approval") : null,
     tasks: r.tasks.map((x) => ({ label: `${x.action_id} · ${x.approval_status}`, done: ["submitted", "responded"].includes(x.status) })),

@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
+from ..core import qualifier
 from ..core.documents import docx_text
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.coverage.schema import Forum
@@ -48,9 +49,11 @@ def _card(container: Container, c: Case) -> dict[str, Any]:
     lang = pack.lang(c.language)
     pending = [str(a.id) for a in c.actions if a.approval_status == "pending"]
     title = None
+    draft = False
     if c.scenario_id:
         try:
-            title = pack.localized(container.packs.scenario(c.scenario_id).title, lang)
+            sc = container.packs.scenario(c.scenario_id)
+            title, draft = pack.localized(sc.title, lang), sc.is_draft
         except KeyError:
             title = c.scenario_id
     elif c.taxonomy and pack.coverage and c.taxonomy.get("dispute_id") in pack.coverage.disputes:
@@ -62,7 +65,8 @@ def _card(container: Container, c: Case) -> dict[str, Any]:
         "currency": c.currency, "created_at": c.created_at.isoformat(),
         "confidence": c.qualification_confidence, "pending_approval_action_ids": pending,
         "status_label": pack.t(lang, f"statuses.{c.status}", default=c.status),
-        "stage": board_column(c.status), "coverage_level": c.coverage_level, "hold_reason": c.hold_reason,
+        "stage": board_column(c.status), "coverage_level": c.coverage_level,
+        "display_level": qualifier.display_level(c.coverage_level, draft), "hold_reason": c.hold_reason,
         "title": title, "route_reasons": c.route_reasons or [],
         "tasks": [{"id": str(a.id), "action_id": a.action_id, "status": a.status,
                    "approval_status": a.approval_status} for a in c.actions],

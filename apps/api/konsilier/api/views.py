@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core import ai
+from ..core import ai, qualifier
 from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
 from ..core.models import AuditLog, Case, Deadline
@@ -16,10 +16,19 @@ from ..core.roadmap import build_roadmap
 from ..core.state_machine import board_column
 
 
+def _scenario_is_draft(engine: CaseEngine, case: Case) -> bool:
+    if not case.scenario_id:
+        return False
+    try:
+        return engine.packs.scenario(case.scenario_id).is_draft
+    except KeyError:
+        return False
+
+
 def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[str, Any]:
     """Coverage level and what it means for this case (ADR 0001): shown to the user on every step."""
     cov = pack.coverage
-    out: dict[str, Any] = {"level": case.coverage_level, "dispute": None, "forum": None, "reasons": [],
+    out: dict[str, Any] = {"level": qualifier.display_level(case.coverage_level, _scenario_is_draft(engine, case)), "dispute": None, "forum": None, "reasons": [],
                            "options": engine.forum_options(case), "upl_notice": None,
                            "religious_requested": bool((case.taxonomy or {}).get("religious_path")),
                            "state_alternative_notice": None}
