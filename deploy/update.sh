@@ -59,11 +59,25 @@ for task in ('narrative', 'classify_response'):
     except Exception as e:
         out.append(p.model_for(task) + ':' + str(e)[:120].replace(' ', '_'))
 print(','.join(out))" 2>&1 | tail -1)
-      set -a; . ./.env; set +a
+      # Sign-in methods that are configured, and whether NCANode (ЭЦП checks) answers at all.
+      AUTH=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+import httpx
+from konsilier.config import get_settings
+from konsilier.container import build_container
+s = get_settings(); c = build_container(s)
+m = ','.join(k for k, v in c.identity_methods().items() if v) or 'none'
+nca = 'off'
+if s.ncanode_url:
+    try: nca = str(httpx.post(s.ncanode_url.rstrip('/') + '/cms/verify', json={'cms': 'AA=='}, timeout=20).status_code)
+    except Exception as e: nca = e.__class__.__name__
+print(m + ';ncanode=' + nca)" 2>&1 | tail -1)
+      # Read only what we need: .env holds values bash must not execute (e.g. "Name <a@b>").
+      SITE_DOMAIN=$(grep -E '^SITE_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"'')
+      API_DOMAIN=$(grep -E '^API_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"'')
       HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
         printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)
       CACHE=$(curl -sI --max-time 20 "https://$SITE_DOMAIN/" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2-)
-      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM $HTTPS cache=[$CACHE]"
+      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
       log "deploy of ${REMOTE:0:7} FAILED"

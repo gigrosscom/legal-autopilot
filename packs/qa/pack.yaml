@@ -29,3 +29,22 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: almeezan
+  name:
+    en: Al Meezan — Qatar Legal Portal
+    ru: Аль-Мизан — правовой портал Катара
+    ar: الميزان - البوابة القانونية القطرية
+  url: https://www.almeezan.qa/
+  operator: Ministry of Justice of the State of Qatar
+  kind: legislation
+  languages:
+  - ar
+  - en
+  access: web
+  api: unknown
+  reuse_note: Legislation since 1961 (in force, amended, repealed) and indexed Court of Cassation rulings; English
+    texts are translations.
+  verified_on: 2026-09-27

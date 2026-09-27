@@ -30,3 +30,37 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: lex_uz
+  name:
+    en: National Database of Legislation LexUZ
+    ru: Национальная база данных законодательства LEX.UZ
+    uz: Qonunchilik ma'lumotlari milliy bazasi
+  url: https://lex.uz/ru/
+  operator: Ministry of Justice of the Republic of Uzbekistan
+  kind: legislation
+  languages:
+  - uz
+  - ru
+  - en
+  access: web
+  api: unknown
+  terms_url: https://lex.uz/agreement
+  reuse_note: Official source of legislation; use of the database means acceptance of its terms (lex.uz/agreement).
+  verified_on: 2026-09-27
+- id: sud_uz
+  name:
+    en: 'Supreme Court of Uzbekistan: court decisions'
+    ru: 'Верховный суд Узбекистана: решения судов'
+    uz: 'Oliy sud: sud qarorlari'
+  url: https://sud.uz
+  operator: Supreme Court of the Republic of Uzbekistan
+  kind: case_law
+  languages:
+  - uz
+  - ru
+  access: web
+  api: unknown
+  reuse_note: 'Court decision bank; personal data: link only.'

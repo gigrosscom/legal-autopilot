@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import admin, routes
+from .api import admin, auth, routes
 from .config import Settings, get_settings
 from .container import Container, build_container
 from .core.engine import EngineError
@@ -28,6 +28,8 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         c.scheduler.stop()
 
     app = FastAPI(title="Konsilier API", version="0.1.0", lifespan=lifespan)
+    if settings.identity_secret == "change-me-identity" and not settings.database_url.startswith("sqlite"):
+        logging.getLogger(__name__).warning("IDENTITY_SECRET is the default: set a random value in production")
     app.state.container = container or build_container(settings)
     app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
                        allow_methods=["*"], allow_headers=["*"])
@@ -47,6 +49,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
 
     app.include_router(routes.router)
     app.include_router(admin.router)
+    app.include_router(auth.router)
     return app
 
 

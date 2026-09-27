@@ -29,3 +29,20 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: lob
+  name:
+    en: 'Legislation and Opinion Bureau: legislation database'
+    ru: 'Бюро законодательства и заключений: база законодательства'
+    ar: ديوان التشريع والرأي
+  url: https://lob.gov.jo/
+  operator: Legislation and Opinion Bureau, Prime Ministry of Jordan
+  kind: legislation
+  languages:
+  - ar
+  access: web
+  api: unknown
+  reuse_note: Free access to all legislation since 1921 with amendments; also publishes draft laws for comment.
+  verified_on: 2026-09-27

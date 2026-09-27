@@ -30,3 +30,35 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: ncz
+  name:
+    en: Legislation Database of the Republic of Tajikistan
+    ru: База законодательства Республики Таджикистан
+    tg: Бонки қонунгузории Ҷумҳурии Тоҷикистон
+  url: https://ncz.tj/legislation
+  operator: National Center of Legislation under the President of the Republic of Tajikistan
+  kind: legislation
+  languages:
+  - tg
+  - ru
+  access: web
+  api: unknown
+  reuse_note: Same institution also runs mmk.tj.
+  verified_on: 2026-09-27
+- id: adlia
+  name:
+    en: Centralized Bank of Legal Information ADLIA
+    ru: ЦБПИ «Адлия»
+    tg: БМИҲ «Адлия»
+  url: https://www.adlia.tj/
+  operator: SUE «Qonuniyat», Ministry of Justice of the Republic of Tajikistan
+  kind: legislation
+  languages:
+  - ru
+  access: web
+  api: unknown
+  reuse_note: 'Paid: unregistered users see only the first 1500 characters of a document.'
+  verified_on: 2026-09-27

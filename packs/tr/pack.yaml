@@ -31,3 +31,59 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: mevzuat
+  name:
+    en: Legislation Information System
+    ru: Информационная система законодательства
+    tr: Mevzuat Bilgi Sistemi
+  url: https://www.mevzuat.gov.tr/
+  operator: Presidency of the Republic of Türkiye, Directorate General of Law and Legislation
+  kind: legislation
+  languages:
+  - tr
+  access: web
+  api: unknown
+  reuse_note: Free, no subscription; consolidated texts of laws, presidential decrees, regulations.
+  verified_on: 2026-09-27
+- id: resmi_gazete
+  name:
+    en: Official Gazette of the Republic of Türkiye
+    ru: Официальная газета Турции
+    tr: T.C. Resmî Gazete
+  url: https://www.resmigazete.gov.tr/
+  operator: Presidency of the Republic of Türkiye, Directorate General of Law and Legislation
+  kind: gazette
+  languages:
+  - tr
+  access: web
+  api: unknown
+  verified_on: 2026-09-27
+- id: yargitay
+  name:
+    en: Court of Cassation decision search
+    ru: Поиск решений Кассационного суда
+    tr: Yargıtay Karar Arama
+  url: https://karararama.yargitay.gov.tr/
+  operator: Court of Cassation (Yargıtay)
+  kind: case_law
+  languages:
+  - tr
+  access: web
+  api: unknown
+  verified_on: 2026-09-27
+- id: uyap_emsal
+  name:
+    en: Precedent decision search (regional and local courts)
+    ru: Поиск прецедентных решений (региональные и местные суды)
+    tr: UYAP Emsal Karar Arama
+  url: https://emsal.uyap.gov.tr/
+  operator: Ministry of Justice of the Republic of Türkiye
+  kind: case_law
+  languages:
+  - tr
+  access: web
+  api: unknown
+  verified_on: 2026-09-27

@@ -30,3 +30,33 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: arlis
+  name:
+    en: Armenian Legal Information System ARLIS
+    ru: Правовая информационная система Армении ARLIS
+    hy: ՀՀ իրավական տեղեկատվական համակարգ
+  url: https://www.arlis.am/
+  operator: Ministry of Justice of the Republic of Armenia
+  kind: legislation
+  languages:
+  - hy
+  access: web
+  api: unknown
+  verified_on: 2026-09-27
+- id: datalex
+  name:
+    en: DataLex judicial information system
+    ru: Судебная информационная система DataLex
+    hy: DataLex դատական տեղեկատվական համակարգ
+  url: https://www.datalex.am/
+  operator: Judicial Department of the Republic of Armenia
+  kind: case_law
+  languages:
+  - hy
+  access: web
+  api: unknown
+  reuse_note: 'National portal of court decisions and case information; contains personal data: link only.'
+  verified_on: 2026-09-27

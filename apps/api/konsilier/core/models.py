@@ -18,6 +18,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -53,8 +54,45 @@ class User(TimestampMixin, Base):
     country: Mapped[str | None] = mapped_column(String(2))
     display_name: Mapped[str | None] = mapped_column(String(200))
     email: Mapped[str | None] = mapped_column(String(200))
+    phone: Mapped[str | None] = mapped_column(String(32))
 
     cases: Mapped[list["Case"]] = relationship(back_populates="owner")
+    identities: Mapped[list["Identity"]] = relationship(back_populates="user")
+
+
+class Identity(TimestampMixin, Base):
+    """A verified way to recognise a person: e-mail, phone, ЭЦП (IIN from the certificate) or eGov Mobile.
+
+    `subject_hash` is an HMAC of the normalised identifier, so the IIN itself is never stored;
+    `display` is a masked form for the UI (e.g. "••••••••1234", "a•••@mail.kz").
+    """
+
+    __tablename__ = "identities"
+    __table_args__ = (UniqueConstraint("kind", "subject_hash", name="uq_identity_kind_subject"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # email | phone | iin (ЭЦП or eGov Mobile)
+    subject_hash: Mapped[str] = mapped_column(String(64))
+    display: Mapped[str] = mapped_column(String(120))
+    verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="identities")
+
+
+class LoginChallenge(TimestampMixin, Base):
+    """One sign-in attempt: a one-time code (email/phone) or a nonce to sign (ЭЦП / eGov Mobile)."""
+
+    __tablename__ = "login_challenges"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    kind: Mapped[str] = mapped_column(String(16))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    target_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    secret_hash: Mapped[str] = mapped_column(String(64))  # HMAC of the code or the nonce
+    ip_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)  # eGov: verified signer, until claimed
 
 
 class Organization(TimestampMixin, Base):

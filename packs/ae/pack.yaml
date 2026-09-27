@@ -29,3 +29,23 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: uae_legislation
+  name:
+    en: UAE Legislation
+    ru: Законодательство ОАЭ
+    ar: منصة التشريعات الإماراتية
+  url: https://uaelegislation.gov.ae/en
+  operator: General Secretariat of the UAE Cabinet
+  kind: legislation
+  languages:
+  - ar
+  - en
+  access: web
+  api: unknown
+  reuse_note: Federal laws, executive regulations and resolutions with amendments. A «UAE Legislation» entry is
+    listed on the open data portal bayanat.ae (CC BY 4.0 per bayanat.ae terms); check the dataset's own licence
+    before any reuse.
+  verified_on: 2026-09-27

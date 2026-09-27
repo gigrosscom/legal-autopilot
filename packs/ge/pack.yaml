@@ -30,3 +30,22 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: matsne
+  name:
+    en: Legislative Herald of Georgia (Matsne)
+    ru: Законодательный вестник Грузии (Мацне)
+    ka: საქართველოს საკანონმდებლო მაცნე
+  url: https://matsne.gov.ge/en
+  operator: LEPL Legislative Herald of Georgia, Ministry of Justice of Georgia
+  kind: legislation
+  languages:
+  - ka
+  - en
+  access: web
+  api: unknown
+  reuse_note: Normative acts take effect on publication here; consolidated texts with change history; English translations
+    are not official.
+  verified_on: 2026-09-27

@@ -41,6 +41,29 @@ class ComplianceSpec(BaseModel):
     service_disclaimer: Localized
 
 
+class LegalSource(BaseModel):
+    """An official legal database of the country: we link to and cite it, never mirror it."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    id: str = Field(pattern=r"^[a-z0-9_]+$")
+    name: Localized  # at least ``en``; ``ru`` and the local language where helpful
+    url: str = Field(pattern=r"^https?://")
+    operator: str
+    kind: Literal["legislation", "case_law", "gazette", "registry"]
+    languages: tuple[str, ...]
+    access: Literal["web", "api", "bulk"] = "web"
+    api: str | None = None  # docs URL of an official API, or "unknown"; never guessed
+    terms_url: str | None = None
+    reuse_note: str | None = None
+    verified_on: date | None = None  # set only when the URL and operator were confirmed online
+
+    @field_validator("name")
+    @classmethod
+    def _name_en(cls, v: Localized) -> Localized:
+        if "en" not in v:
+            raise ValueError("legal source name needs an 'en' entry")
+        return v
+
+
 class PackManifest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     country: str
@@ -54,6 +77,15 @@ class PackManifest(BaseModel):
     authorities: dict[str, AuthoritySpec] = Field(default_factory=dict)
     compliance: ComplianceSpec
     status: Literal["live", "test", "planned"] = "live"  # planned: skeleton, no cases accepted
+    legal_sources: tuple[LegalSource, ...] = ()  # official legislation / case-law databases (docs/legal-sources.md)
+
+    @field_validator("legal_sources")
+    @classmethod
+    def _unique_sources(cls, v: tuple[LegalSource, ...]) -> tuple[LegalSource, ...]:
+        ids = [s.id for s in v]
+        if len(ids) != len(set(ids)):
+            raise ValueError("legal_sources ids must be unique")
+        return v
 
     @field_validator("country")
     @classmethod

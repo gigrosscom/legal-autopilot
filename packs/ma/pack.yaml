@@ -29,3 +29,38 @@ compliance:
     en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
       a case needs to be taken further, a professional lawyer on the platform can
       step in. Documents are filed in your name.
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: sgg
+  name:
+    en: 'General Secretariat of the Government: Official Bulletin and legislation'
+    ru: 'Генеральный секретариат правительства: Официальный бюллетень'
+    ar: الأمانة العامة للحكومة
+    fr: Secrétariat Général du Gouvernement
+  url: https://www.sgg.gov.ma/Legislation.aspx
+  operator: Secrétariat Général du Gouvernement
+  kind: gazette
+  languages:
+  - ar
+  - fr
+  access: web
+  api: unknown
+  reuse_note: Bulletin officiel in Arabic (authoritative) and French (official translation edition).
+  verified_on: 2026-09-27
+- id: adala
+  name:
+    en: Adala — legal portal of the Ministry of Justice
+    ru: Adala — правовой портал Минюста
+    ar: عدالة - البوابة القانونية لوزارة العدل
+    fr: Adala — Portail juridique du Ministère de la Justice
+  url: https://adala.justice.gov.ma/fr
+  operator: Ministry of Justice of the Kingdom of Morocco
+  kind: legislation
+  languages:
+  - ar
+  - fr
+  access: web
+  api: unknown
+  reuse_note: Legal texts, case law, Constitutional Court decisions, international conventions.
+  verified_on: 2026-09-27
