@@ -8,7 +8,7 @@ const tr: Dict = {
     skip: "İçeriğe geç", main: "Ana menü",
   },
   legal: {
-    disclaimer: "Konsiliér AI, hukuki konularda yapay zekâ asistanıdır. Yapay zekâ yanıtları bilgi amaçlıdır, belgeler taslaktır: sunmadan önce kontrol edin.",
+    disclaimer: "Konsiliér AI, hukuki konularda yapay zekâ asistanıdır. Yapay zekâ yanıtları bilgi amaçlıdır, belgeler sizin kontrolünüzü gerektirir: sunmadan önce kontrol edin.",
     terms: "Kullanım Koşulları",
     accept: "Mesaj göndererek şunu kabul etmiş olursunuz:",
     version: "sürüm",
@@ -131,7 +131,7 @@ const tr: Dict = {
     newQuestion: "Yeni soru",
     toSite: "Siteye dön",
     recent: "Son dosyalar",
-    docs: { title: "Belgeler", lead: "Dosyalarınızdaki tüm belge taslakları tek yerde.", empty: "Henüz belge yok", emptyHint: "Durumunuzu sohbette anlatın — Konsiliér AI bilgileri toplayıp bir belge taslağı hazırlar.", create: "Belge hazırla", search: "Başlığa göre ara", draft: "Taslak", ready: "Sunulmaya hazır", submitted: "Sunuldu", open: "Dosyayı aç", count: "Belgeler: {n}" },
+    docs: { title: "Belgeler", lead: "Dosyalarınızdaki tüm belgeler tek yerde.", empty: "Henüz belge yok", emptyHint: "Durumunuzu sohbette anlatın — Konsiliér AI bilgileri toplayıp bir belge hazırlar.", create: "Belge hazırla", search: "Başlığa göre ara", draft: "Hazırlanıyor", ready: "Sunulmaya hazır", submitted: "Sunuldu", open: "Dosyayı aç", count: "Belgeler: {n}" },
     digits: "{n} / {total}",
     back: "Geri",
     more: "Daha fazla",
@@ -423,7 +423,7 @@ const tr: Dict = {
     back: "Tüm dosyalar",
     untitled: "Yeni dosya",
     holdTitle: "Dosya elle incelemede",
-    draftTitle: "Taslak",
+    draftTitle: "Önemli",
     lawyerTitle: "Dosya avukata iletiliyor",
     lawyerCta: "Doğrulanmış avukatlar",
     lawyerText: "Açıklamanızı kaydettik ve dosyayı platformun doğrulanmış bir avukatına iletiyoruz.",
@@ -527,9 +527,9 @@ const tr: Dict = {
   ds: {
     title: "Tasarım sistemi", lead: "Konsiliér AI token'ları ve bileşenleri: telefonda ve bilgisayarda, beş dilde güven, açıklık ve erişilebilirlik.",
     colors: "Renkler", type: "Tipografi", buttons: "Düğmeler", badges: "Seviye rozetleri", notices: "Bildirimler",
-    noticesLead: "Acil numaralar, gerçeğe aykırı ihbar, hizmetin hukuki statüsü ve «Taslak» küçük yazı değil, bileşendir.",
+    noticesLead: "Acil numaralar, gerçeğe aykırı ihbar, hizmetin hukuki statüsü ve «Önemli» küçük yazı değil, bileşendir.",
     uplSample: "Konsiliér AI, bir belge hazırlama hizmeti ve avukatlarla bağlantı kuran teknolojik bir aracıdır.",
-    draftSample: "Senaryo henüz avukat tarafından onaylanmadı. Mevzuat ve süre atıfları kontrol edilmelidir.",
+    draftSample: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır. Başvurmadan önce bilgileri kontrol edin.",
     forms: "Giriş alanları", progress: "Dosya aşamaları", board: "Dosya panosu", icons: "İkonlar",
   },
   errors: {

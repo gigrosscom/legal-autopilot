@@ -290,7 +290,7 @@ class Scenario(_Strict):
 
     @property
     def is_draft(self) -> bool:
-        """Not signed off by a lawyer → documents carry a DRAFT disclaimer."""
+        """Not signed off by a lawyer → documents carry the neutral compliance.draft_disclaimer note."""
         return self.reviewed_at is None
 
     def todos(self) -> list[str]:

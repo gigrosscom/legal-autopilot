@@ -11,6 +11,7 @@ from konsilier.core.models import Action, DemandSignal
 
 from .conftest import hide_scenarios
 from .test_e2e import ADMIN, admin_approve, statuses, web_user
+from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU
 
 WAGES = "Работодатель не платит зарплату три месяца, задолженность 450000 тенге"
 
@@ -52,7 +53,7 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
     out = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})
     case = out["case"]
     assert case["scenario"]["id"].startswith("kz.generic.labor__unpaid_wages.employee.")
-    assert case["scenario"]["draft"] is True  # universal documents always carry the DRAFT mark
+    assert case["scenario"]["draft"] is True  # universal documents always carry the unsigned note
     assert case["coverage"]["forum"]["id"] == "kz.labor_inspection"
     assert case["coverage"]["upl_notice"]
 
@@ -80,7 +81,7 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
         text = docx_text(ctx.container.storage.get(a.docx_key))
     assert "[норма: уточнит юрист]" in text
     assert "Выплатить долг по зарплате" in text
-    assert "ЧЕРНОВИК" in text
+    assert NEUTRAL_NOTE_RU in text and not DRAFT_WORDS.search(text)
 
     case = api.get(f"/v1/cases/{cid}").json()
     assert case["stage"] == "action_ready"
