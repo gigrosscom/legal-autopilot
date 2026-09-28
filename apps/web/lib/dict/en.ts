@@ -556,6 +556,26 @@ const en: Dict = {
     hint: "Get case reports and next-step reminders by e-mail.",
     hintCta: "Confirm e-mail",
   },
+  law: {
+    title: "Ask about the law",
+    lead: "Ask about your case. The AI finds the norms on the official Adilet portal (adilet.zan.kz), opens the articles and answers with links — every quote is checked against the official text.",
+    placeholder: "For example: how soon must the employer pay me after dismissal?",
+    ask: "Ask",
+    busy: "Searching the law…",
+    busyHint: "Usually 20–60 seconds: the AI opens articles on adilet.zan.kz.",
+    verified: "Norms checked against the official text",
+    needsLawyer: "A lawyer will confirm: not every point is backed by the official text, or the question needs a lawyer.",
+    norms: "What the answer rests on",
+    article: "Article {n}",
+    source: "Open on adilet.zan.kz",
+    dropped: "Unconfirmed references dropped: {n}",
+    disclaimer: "This is information from the official texts of the law, not a legal opinion. For complex cases we bring in a lawyer.",
+    errors: {
+      agent_unavailable: "Answers about the law are not available yet.",
+      agent_failed: "Could not answer right now. Try again a little later.",
+      too_many_questions: "Many questions were asked on this case today. Try tomorrow.",
+    },
+  },
 };
 
 export default en;

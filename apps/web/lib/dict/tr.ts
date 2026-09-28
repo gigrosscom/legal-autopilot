@@ -556,6 +556,26 @@ const tr: Dict = {
     hint: "Dosya raporlarını ve sonraki adım hatırlatmalarını e-postayla alın.",
     hintCta: "E-postayı doğrula",
   },
+  law: {
+    title: "Yasa hakkında soru",
+    lead: "Dosyanız hakkında sorun. Yapay zekâ resmî «Әділет» portalında (adilet.zan.kz) normları bulur, maddeleri açar ve bağlantılarla yanıtlar — her alıntı resmî metinle karşılaştırılır.",
+    placeholder: "Örneğin: işten çıkarıldıktan sonra işveren ödemeyi ne kadar sürede yapmalı?",
+    ask: "Sor",
+    busy: "Yasalarda arıyoruz…",
+    busyHint: "Genellikle 20–60 saniye: yapay zekâ adilet.zan.kz'de maddeleri açar.",
+    verified: "Normlar resmî metinle karşılaştırıldı",
+    needsLawyer: "Avukat teyit edecek: tüm sonuçlar resmî metinle doğrulanmadı veya soru avukat gerektiriyor.",
+    norms: "Yanıtın dayanağı",
+    article: "Madde {n}",
+    source: "adilet.zan.kz'de aç",
+    dropped: "Doğrulanmayan atıflar çıkarıldı: {n}",
+    disclaimer: "Bu, yasaların resmî metinlerine dayanan bir bilgidir, hukuki görüş değildir. Karmaşık durumlarda avukat dahil ederiz.",
+    errors: {
+      agent_unavailable: "Yasa soruları henüz kullanılamıyor.",
+      agent_failed: "Şu anda yanıtlanamadı. Biraz sonra tekrar deneyin.",
+      too_many_questions: "Bugün bu dosyada çok soru soruldu. Yarın deneyin.",
+    },
+  },
 };
 
 export default tr;
