@@ -22,7 +22,7 @@ from .test_e2e import web_user
 from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU, PACKS
 
 KZ = load_pack(PACKS / "kz", PACKS)
-BETA = sorted(s.id for s in KZ.scenarios.values() if s.beta and s.published)
+BETA = sorted(s.id for s in KZ.scenarios.values() if s.beta)
 SERVICES = [sid for sid in BETA if KZ.scenarios[sid].kind == "service"]
 
 # answers by field name; anything else is answered by type (see _answer)
@@ -49,7 +49,7 @@ def only(ctx, sid: str) -> None:
     """Offer only the scenario under test (the others stay loaded for cases already open)."""
     for pack in ctx.container.packs.packs.values():
         for other, sc in list(pack.scenarios.items()):
-            pack.scenarios[other] = sc.model_copy(update={"published": other == sid})
+            pack.scenarios[other] = sc.model_copy(update={"published": other == sid, "beta": sc.beta and other == sid})
 
 
 def run_to_documents(ctx, sid: str, skip_optional: bool = False) -> tuple[dict, dict, str]:
@@ -182,7 +182,7 @@ def test_old_scenarios_still_win_their_stories(ctx):
     pack = ctx.container.packs
     llm = RedactingLLM(ctx.llm, PiiVault({}))
     for sc in KZ.scenarios.values():
-        if sc.beta or not sc.published:
+        if not sc.published:
             continue
         for phrase in sc.classification.examples.get("ru", ()):
             got, _, _ = ai.qualify(llm, pack.published("KZ"), pack.packs, phrase, "ru")

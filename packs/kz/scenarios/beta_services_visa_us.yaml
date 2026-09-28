@@ -18,7 +18,7 @@ jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01
 reviewed_at: null
-published: true
+published: false  # beta: offered only with EXPERIMENTAL_SCENARIOS=true
 beta: true
 kind: service
 title:

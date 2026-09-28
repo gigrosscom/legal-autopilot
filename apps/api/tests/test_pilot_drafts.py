@@ -39,7 +39,7 @@ def _ok_ref(ref: str, titles: set[str]) -> bool:
 
 
 def test_twenty_published_scenarios_all_drafts(kz):
-    published = [sc for sc in kz.scenarios.values() if sc.published and not sc.beta]  # beta: test_beta_scenarios.py
+    published = [sc for sc in kz.scenarios.values() if sc.published]
     assert len(published) == 20
     for sc in published:
         assert sc.reviewed_at is None, f"{sc.id}: sign-off comes only from a lawyer"

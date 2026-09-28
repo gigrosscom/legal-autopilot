@@ -338,5 +338,5 @@ class PackRegistry:
         return out
 
     def offered(self, sc: Scenario) -> bool:
-        """Published and, for a beta scenario, experimental scenarios switched on."""
-        return sc.published and (self.experimental or not sc.beta)
+        """Published scenarios, plus beta ones (kept ``published: false``) while experimental scenarios are on."""
+        return sc.published or (sc.beta and self.experimental)
