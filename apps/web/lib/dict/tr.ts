@@ -484,6 +484,7 @@ const tr: Dict = {
     plannedTitle: "Yakında: BDT ve Orta Doğu",
     plannedLead: "Bu ülkeler için yerel avukatlarla doğrulanmış veriler hazırlıyoruz. Şimdilik dosya kabul etmiyoruz.",
     waitlistTitle: "Açılışta bana haber ver",
+    otherCountries: "Diğer ülkeler — yakında ({n})",
     sourcesTitle: "Resmî hukuk kaynakları",
     sourcesLead: "Yalnızca resmî devlet veri tabanlarına bağlantı veriyor ve onlardan alıntı yapıyoruz. Bağlantılar yeni sekmede açılır.",
     sourceKind: { legislation: "Mevzuat", case_law: "İçtihat", gazette: "Resmî gazete", registry: "Sicil" },
