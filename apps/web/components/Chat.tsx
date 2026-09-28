@@ -6,6 +6,7 @@ import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
 import { Mark } from "@/components/Brand";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { Invite } from "@/components/Invite";
 import { Alert, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
 import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
@@ -307,6 +308,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             </Link>
           </div>
         )}
+        {caseId && messages.some((m) => m.role !== "user") && streaming === null && <Invite compact />}
       </div>
     </AppShell>
   );

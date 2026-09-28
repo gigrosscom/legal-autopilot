@@ -57,6 +57,10 @@ class User(TimestampMixin, Base):
     phone: Mapped[str | None] = mapped_column(String(32))
     # case status reports and next-step reminders by e-mail (only to a verified address)
     notify_email: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # referral programme: the person's own invite code, who invited them and the channel they came from
+    ref_code: Mapped[str | None] = mapped_column(String(12), unique=True, index=True)
+    referred_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
+    source: Mapped[str | None] = mapped_column(String(40))
 
     cases: Mapped[list["Case"]] = relationship(back_populates="owner", foreign_keys="Case.owner_id")
     identities: Mapped[list["Identity"]] = relationship(back_populates="user")

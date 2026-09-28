@@ -678,6 +678,15 @@ const en: Dict = {
       other: "Lawyer",
     },
   },
+  invite: {
+    title: "Invite people who need it",
+    lead: "Send your link to friends and family who have a similar problem. The consultation is free for them.",
+    share: "Share link",
+    copied: "Link copied",
+    invited: "People who came by your link: {n}",
+    chatAsk: "Did this help? Send the link to someone in a similar situation.",
+    shareText: "Konsiliér AI — a free AI consultation on legal matters. Describe your situation and it tells you what to do:",
+  },
   support: {
     title: "Contact us",
     lead: "Ask a question about the service, report a problem or suggest an improvement. The reply will come to your e-mail and appear on this page.",

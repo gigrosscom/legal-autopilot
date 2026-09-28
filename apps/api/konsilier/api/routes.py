@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..team import notify_team
+from .referral import attribute
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
@@ -36,12 +37,15 @@ class NewUser(BaseModel):
     language: str = "ru"
     country: str | None = None
     email: str | None = None
+    ref: str | None = None  # invite code from a ?ref= link
+    src: str | None = None  # channel from ?src= / utm_source (tiktok, instagram, partner-…)
 
 
 @router.post("/users")
 def create_user(body: NewUser, session: Session = Depends(get_session)) -> dict[str, Any]:
     user = User(channel="web", language=body.language, country=(body.country or "").upper() or None,
                 email=body.email)
+    attribute(session, user, body.ref, body.src)
     session.add(user)
     session.flush()
     return {"id": str(user.id), "token": user.api_token}

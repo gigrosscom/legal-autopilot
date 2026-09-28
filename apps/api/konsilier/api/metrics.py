@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..core.models import Action, Case, LawyerApplication, Outcome, User, WaitlistEntry
 from .deps import get_session, require_admin
+from .referral import referral_metrics
 
 router = APIRouter(prefix="/v1/admin", dependencies=[Depends(require_admin)])
 
@@ -109,6 +110,7 @@ def compute(session: Session, weeks: int = 12) -> dict[str, Any]:
                                else c.coverage_level for c in cases)),
         "countries": dict(Counter(c.jurisdiction or "—" for c in cases)),
         "top_scenarios": Counter(c.scenario_id for c in cases if c.scenario_id).most_common(10),
+        "referral": referral_metrics(session),
         "weekly": [{"week": w, **{k: series[w].get(k, 0) for k in ("users", "cases", "documents", "submitted")}}
                    for w in sorted(series)][-weeks:],
     }
