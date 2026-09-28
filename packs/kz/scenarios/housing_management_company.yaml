@@ -7,6 +7,9 @@
 #     управления объектом кондоминиума; предписания об устранении нарушений).
 # «В течение одного месяца» не переведён в deadline (календарные дни) — TODO(lawyer).
 # TODO(lawyer): КСК, созданные до реформы, — какие нормы применяются; наименование жилищной инспекции и канал подачи.
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.housing.management_company
 version: 0.1.0
 ontology: HOUSING.CONDOMINIUM.MANAGEMENT
@@ -34,6 +37,8 @@ classification:
       - Басқарушы компания жарна жинайды, бірақ есеп бермейді
 intake:
   - respondent_name: {label: {ru: Управляющая компания / ОСИ / КСК, kk: Басқарушы компания / МИБ / ПИК}, question: {ru: "Как называется управляющая компания, ОСИ или КСК вашего дома?", kk: "Үйіңіздің басқарушы компаниясының, МИБ-інің не ПИК-інің атауы қандай?"}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address: {optional: true}
   - event_date: {type: date, optional: true, label: {ru: Дата обращения или события, kk: Өтініш не оқиға күні}}
   - problem_description: {type: longtext}
   - applicant_name: {pii: person}
@@ -43,7 +48,7 @@ intake:
   - evidence: [photo, receipt, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: claim_to_manager
     title: {ru: Письменное требование управляющей компании (ОСИ), kk: Басқарушы компанияға (МИБ-ке) жазбаша талап}
@@ -69,6 +74,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: housing_inspection}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Закон Республики Казахстан «О жилищных отношениях», статья 10-9"
     demands:

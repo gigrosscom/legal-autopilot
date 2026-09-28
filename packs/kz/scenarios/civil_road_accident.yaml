@@ -10,6 +10,9 @@
 #   - ГК РК (Особенная часть), ст. 924 (застраховавший ответственность возмещает разницу между страховой суммой и
 #     фактическим ущербом) — https://adilet.zan.kz/rus/docs/K990000409_
 # TODO(lawyer): норма для жалобы в АРРФР; оценка ущерба; европротокол.
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.civil.road_accident
 version: 0.1.0
 ontology: CIVIL.DAMAGES.ROAD_ACCIDENT
@@ -40,6 +43,8 @@ claim:
   amount_field: amount
 intake:
   - respondent_name: {label: {ru: Страховая компания виновника, kk: Кінәлінің сақтандыру компаниясы}, question: {ru: "В какой страховой компании застрахован виновник ДТП?", kk: "Жол-көлік оқиғасының кінәлісі қай сақтандыру компаниясында сақтандырылған?"}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address: {optional: true}
   - event_date: {type: date, label: {ru: Дата ДТП, kk: Оқиға күні}, question: {ru: "Когда произошло ДТП? (ДД.ММ.ГГГГ)", kk: "Жол-көлік оқиғасы қашан болды? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, question: {ru: "Какой ущерб по оценке или смете ремонта, в тенге?", kk: "Бағалау не жөндеу сметасы бойынша залал қанша, теңгемен?"}}
   - problem_description: {type: longtext}
@@ -50,7 +55,7 @@ intake:
   - evidence: [accident_docs, insurance_policy, photo, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: statement_to_insurer
     title: {ru: Заявление в страховую компанию о страховой выплате, kk: Сақтандыру компаниясына сақтандыру төлемі туралы арыз}
@@ -78,6 +83,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: arrf}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Закон Республики Казахстан «Об обязательном страховании гражданско-правовой ответственности владельцев транспортных средств», статья 26"
     demands:

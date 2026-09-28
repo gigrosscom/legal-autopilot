@@ -7,6 +7,9 @@
 #     ст. 16, п. 1 (права должника, подп. 5) — жалоба в уполномоченный орган на действия коллекторского агентства).
 # Уполномоченный орган = АРРФР — по данным пакета (authorities.arrf), не подтверждено юристом. Срок ответа — TODO.
 # Угрозы жизни и насилие → экстренные номера (routing.yaml, emergency), это не предмет сценария.
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.finance.debt_collectors
 version: 0.1.0
 ontology: FINANCE.COLLECTORS.MISCONDUCT
@@ -34,6 +37,8 @@ classification:
       - Коллекторлар басқа біреудің қарызы үшін қоңырау шалып, қорқытады
 intake:
   - respondent_name: {label: {ru: Коллекторское агентство, kk: Коллекторлық агенттік}, question: {ru: "Как называется коллекторское агентство? Если не знаете — с какого номера звонят и от какого кредитора.", kk: "Коллекторлық агенттіктің атауы қандай? Білмесеңіз — қай нөмірден және қай кредитордың атынан қоңырау шалады."}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address: {optional: true}
   - event_date: {type: date, optional: true, label: {ru: Дата последнего звонка, kk: Соңғы қоңырау күні}, question: {ru: "Когда был последний звонок или сообщение? (ДД.ММ.ГГГГ) Или «пропустить».", kk: "Соңғы қоңырау не хабарлама қашан болды? (КК.АА.ЖЖЖЖ) Не «өткізу»."}}
   - problem_description: {type: longtext}
   - applicant_name: {pii: person}
@@ -43,7 +48,7 @@ intake:
   - evidence: [collector_messages, loan_contract, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: statement_to_collector
     title: {ru: Требование коллекторскому агентству, kk: Коллекторлық агенттікке талап}
@@ -72,6 +77,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: arrf}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Закон Республики Казахстан «О коллекторской деятельности», статья 16"
     demands:

@@ -6,6 +6,9 @@
 #   - Закон РК «О защите прав потребителей», ст. 42-4 (ответ — 10 календарных дней), ст. 42-5 —
 #     https://adilet.zan.kz/rus/docs/Z100000274_
 # TODO(lawyer): образовательные организации с лицензией — особый порядок? адресат жалобы.
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.consumer.education_refund
 version: 0.1.0
 ontology: CONSUMER.SERVICE.EDUCATION_REFUND
@@ -36,6 +39,8 @@ claim:
   amount_field: amount
 intake:
   - respondent_name: {label: {ru: Организатор обучения, kk: Оқуды ұйымдастырушы}, question: {ru: "Как называется школа, учебный центр или организатор курса?", kk: "Мектептің, оқу орталығының не курс ұйымдастырушысының атауы қандай?"}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address
   - event_date: {type: date, label: {ru: Дата оплаты, kk: Төлем күні}, question: {ru: "Когда вы оплатили обучение? (ДД.ММ.ГГГГ)", kk: "Оқуды қашан төледіңіз? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, question: {ru: "Какую сумму вы хотите вернуть, в тенге?", kk: "Қандай соманы қайтарғыңыз келеді, теңгемен?"}}
   - problem_description: {type: longtext}
@@ -46,7 +51,7 @@ intake:
   - evidence: [service_contract, receipt, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: claim_to_school
     title: {ru: Заявление об отказе от договора и претензия о возврате денег, kk: Шарттан бас тарту туралы арыз және ақшаны қайтару туралы талап-арыз}
@@ -74,6 +79,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: consumer_protection}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Закон Республики Казахстан «О защите прав потребителей», статья 42-5"
     demands:

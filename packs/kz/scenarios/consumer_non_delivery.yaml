@@ -4,6 +4,9 @@
 #   - Закон РК «О защите прав потребителей», ст. 42-4, п. 2 (ответ продавца — 10 календарных дней со дня получения претензии),
 #     ст. 42-5 (обращение в госорган не позднее двух месяцев с момента обращения к продавцу) — https://adilet.zan.kz/rus/docs/Z100000274_
 # TODO(lawyer): кто адресат при покупке на маркетплейсе (продавец, площадка или оба); наименование органа и канал подачи.
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.consumer.non_delivery
 version: 0.1.0
 ontology: CONSUMER.GOODS.NON_DELIVERY
@@ -34,6 +37,8 @@ claim:
   amount_field: amount
 intake:
   - respondent_name: {label: {ru: Продавец, kk: Сатушы}, question: {ru: "Как называется продавец или интернет-магазин? Если покупали на маркетплейсе — продавец и площадка.", kk: "Сатушының не интернет-дүкеннің атауы қандай? Маркетплейстен алсаңыз — сатушы мен алаң."}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address
   - event_date: {type: date, label: {ru: Дата оплаты, kk: Төлем күні}, question: {ru: "Когда вы оплатили заказ? (ДД.ММ.ГГГГ)", kk: "Тапсырысты қашан төледіңіз? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, question: {ru: "Сколько вы заплатили, в тенге?", kk: "Қанша төледіңіз, теңгемен?"}}
   - problem_description: {type: longtext}
@@ -44,7 +49,7 @@ intake:
   - evidence: [receipt, order_screenshot, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: claim_to_seller
     title: {ru: Претензия продавцу о возврате предоплаты, kk: Сатушыға алдын ала төлемді қайтару туралы талап-арыз}
@@ -74,6 +79,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: consumer_protection}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Закон Республики Казахстан «О защите прав потребителей», статья 42-5"
     demands:
