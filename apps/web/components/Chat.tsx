@@ -151,6 +151,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     { href: "/cases", icon: "briefcase", label: t("nav.cases") },
     { href: "/account", icon: "user", label: t("app.account") },
     { href: "/", icon: "home", label: t("app.home") },
+    { href: caseId ? `/support?case=${caseId}` : "/support", icon: "mail", label: t("footer.support") },
     { href: "/terms", icon: "scroll", label: t("legal.terms") },
   ];
   const sections: MoreSection[] = [{ key: "about", icon: "info", label: t("app.about"), render: () => (
