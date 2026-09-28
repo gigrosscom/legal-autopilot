@@ -206,9 +206,12 @@ def test_gemini_retries_high_demand_before_the_reply_starts(monkeypatch):
 
     def next_model(req):
         urls.append(req.url.path)
-        return answers.pop(0)
+        a = answers.pop(0)
+        if isinstance(a, Exception):
+            raise a
+        return a
 
-    answers[:] = [busy, busy, busy, httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
+    answers[:] = [busy, busy, httpx.RemoteProtocolError("Server disconnected"), httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
     fb = gemini.GeminiClient("k", http=httpx.Client(transport=httpx.MockTransport(next_model)), fallback_models=("m2",))
     assert fb.stream(model="m1", max_tokens=5, system="s", tools=[],
                      messages=[{"role": "user", "content": "?"}]).get_final_message().content[0].text == "ok"

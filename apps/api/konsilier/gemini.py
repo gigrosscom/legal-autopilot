@@ -138,17 +138,22 @@ class _Stream:
         model). Only before any text reached the reader, so nothing is shown twice."""
         for i, url in enumerate(self._urls):
             for delay in (*RETRY_DELAYS, None):
-                r = self._http.send(self._http.build_request("POST", url, json=self._body, headers=self._headers),
-                                    stream=True)
-                if r.status_code < 400:
-                    return r
-                r.read()
-                r.close()
-                if r.status_code not in RETRY_STATUSES:
-                    raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
+                try:
+                    r = self._http.send(self._http.build_request("POST", url, json=self._body,
+                                                                 headers=self._headers), stream=True)
+                except httpx.TransportError as e:  # dropped connection under load: same as an overload answer
+                    error = f"gemini: {e.__class__.__name__}: {e}"
+                else:
+                    if r.status_code < 400:
+                        return r
+                    r.read()
+                    r.close()
+                    error = f"gemini {r.status_code}: {r.text[:300]}"
+                    if r.status_code not in RETRY_STATUSES:
+                        raise RuntimeError(error)
                 if delay is None:
                     if i == len(self._urls) - 1:
-                        raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
+                        raise RuntimeError(error)
                     break
                 time.sleep(delay)
         raise RuntimeError("gemini: no model configured")
