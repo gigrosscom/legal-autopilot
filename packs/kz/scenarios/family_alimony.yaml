@@ -25,6 +25,11 @@ classification:
   keywords:
     ru: [алимент, содержание ребёнка, не платит на ребёнка]
     kk: [алимент, баланы асырау]
+  examples:
+    ru:
+      - Бывший муж не платит алименты на ребёнка
+    kk:
+      - Бұрынғы күйеуім балаға алимент төлемейді
 intake:
   - respondent_name
   - problem_description: {type: longtext}
