@@ -186,3 +186,26 @@ def test_gemini_error_is_raised_for_the_chat_to_report():
     with pytest.raises(RuntimeError, match="location is not supported"):
         list(agent.stream([{"role": "user", "text": "вопрос"}], context={"case": {}}, language="ru", country="X",
                           use_portal=False))
+
+
+def test_gemini_retries_high_demand_before_the_reply_starts(monkeypatch):
+    import httpx
+
+    from konsilier import gemini
+
+    monkeypatch.setattr(gemini, "RETRY_DELAYS", (0, 0))
+    busy = httpx.Response(503, json={"error": {"message": "This model is currently experiencing high demand."}})
+    ok = "data: " + json.dumps({"candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}]})
+    answers = [busy, busy, httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
+    http = httpx.Client(transport=httpx.MockTransport(lambda req: answers.pop(0)))
+    with gemini.GeminiClient("k", http=http).stream(model="m", max_tokens=5, system="s", tools=[],
+                                                    messages=[{"role": "user", "content": "?"}]) as st:
+        assert [b.text for b in st.get_final_message().content] == ["ok"]
+    assert answers == []
+
+    answers[:] = [busy, busy, busy]
+    import pytest
+
+    with pytest.raises(RuntimeError, match="gemini 503"):
+        gemini.GeminiClient("k", http=http).stream(model="m", max_tokens=5, system="s", tools=[],
+                                                   messages=[{"role": "user", "content": "?"}]).get_final_message()

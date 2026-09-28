@@ -12,6 +12,7 @@ every block keeps the raw part it came from for that reason.
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterator
@@ -19,6 +20,8 @@ from typing import Any, Iterator
 import httpx
 
 BASE = "https://generativelanguage.googleapis.com/v1beta"
+RETRY_STATUSES = (429, 500, 503)  # "high demand" and rate spikes on the free tier pass within seconds
+RETRY_DELAYS = (1.0, 3.0)  # seconds before the 2nd and 3rd attempt
 
 
 @dataclass
@@ -101,10 +104,17 @@ class _Stream:
         blocks: list[Block] = []
         usage = Usage()
         finish = "STOP"
-        with self._http.stream("POST", self._url, json=self._body, headers=self._headers) as r:
-            if r.status_code >= 400:
-                r.read()
+        for delay in (*RETRY_DELAYS, None):  # retried only before any text reached the reader
+            r = self._http.send(self._http.build_request("POST", self._url, json=self._body, headers=self._headers),
+                                stream=True)
+            if r.status_code < 400:
+                break
+            r.read()
+            r.close()
+            if r.status_code not in RETRY_STATUSES or delay is None:
                 raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
+            time.sleep(delay)
+        try:
             for line in r.iter_lines():
                 if not line.startswith("data: "):
                     continue
@@ -126,6 +136,8 @@ class _Stream:
                             else:
                                 blocks.append(Block("text", text=part["text"], part=dict(part)))
                             yield part["text"]
+        finally:
+            r.close()
         stop = "tool_use" if any(b.type == "tool_use" for b in blocks) else (
             "max_tokens" if finish == "MAX_TOKENS" else "end_turn")
         self._final = Message(blocks, stop, usage)
