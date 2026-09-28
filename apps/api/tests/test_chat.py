@@ -104,6 +104,7 @@ def test_chat_endpoint_streams_saves_and_limits(ctx):
     assert [m["role"] for m in hist] == ["user", "assistant"] and "По статье 113" in hist[1]["text"]
     other = web_user(ctx)
     assert ctx.client.post(f"/v1/cases/{cid}/chat", headers=other.h, json={"text": "чужое"}).status_code == 404
+    assert ctx.client.get("/v1/chat/info").json() == {"provider": "anthropic", "daily_limit": 40}
     ctx.container.settings.chat_daily_limit = 1
     r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"})
     assert r.status_code == 429
@@ -128,3 +129,60 @@ def test_chat_without_agent_is_503_and_failure_is_reported(ctx):
     ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
     assert ev[-1]["type"] == "error" and ev[-1]["code"] == "agent_failed"
     assert [m["role"] for m in api.get(f"/v1/cases/{cid}/chat").json()] == ["user"]
+
+
+# ------------------------------------------------------------------ Gemini adapter (free tier), offline
+def _gemini_http(replies, seen):
+    import httpx
+
+    def handler(req):
+        seen.append(json.loads(req.content))
+        body = "".join(f"data: {json.dumps(r, ensure_ascii=False)}\r\n\r\n" for r in replies.pop(0))
+        return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
+
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
+def test_gemini_adapter_runs_tools_and_echoes_signature():
+    from konsilier.gemini import GeminiClient
+
+    call = {"functionCall": {"name": "get_article", "args": {"act": TK, "article": "113"}}, "thoughtSignature": "sig1"}
+    usage = {"promptTokenCount": 40, "candidatesTokenCount": 5}
+    replies = [
+        [{"candidates": [{"content": {"role": "model", "parts": [call]}, "finishReason": "STOP"}], "usageMetadata": usage}],
+        [{"candidates": [{"content": {"role": "model", "parts": [{"text": "По статье 113 расчёт — "}]}}]},
+         {"candidates": [{"content": {"role": "model", "parts": [{"text": "не позднее трёх рабочих дней."}]},
+                          "finishReason": "STOP"}], "usageMetadata": usage}],
+    ]
+    seen: list = []
+    client = GeminiClient("k", http=_gemini_http(replies, seen))
+    agent = ChatAgent(client, "gemini-3.1-flash-lite", Adilet(fetch=fake_fetch), web_search=False)
+    events = list(agent.stream([{"role": "user", "text": "Когда рассчитаются?"}],
+                               context={"pack": NS(add_days=lambda *a: None), "forums": [], "case": {},
+                                        "key_acts": [{"code": TK, "title": "Трудовой кодекс"}]},
+                               language="ru", country="X", use_portal=True))
+    res = events[-1]["result"]
+    assert "".join(e["text"] for e in events if e["type"] == "text").endswith("не позднее трёх рабочих дней.")
+    assert res.unchecked is False and res.norms[0]["article"] == "113" and res.usage["input_tokens"] == 80
+    first, second = seen
+    assert TK in first["systemInstruction"]["parts"][0]["text"]  # the main acts are listed for the model
+    decl = {d["name"]: d for d in first["tools"][0]["functionDeclarations"]}
+    assert "web_search" not in decl and "additionalProperties" not in json.dumps(decl)
+    model_turn, tool_turn = second["contents"][1], second["contents"][2]
+    assert model_turn == {"role": "model", "parts": [call]}  # signature sent back unchanged
+    fr = tool_turn["parts"][0]["functionResponse"]
+    assert fr["name"] == "get_article" and Q113[:40] in fr["response"]["result"]
+
+
+def test_gemini_error_is_raised_for_the_chat_to_report():
+    import httpx
+    import pytest
+
+    from konsilier.gemini import GeminiClient
+
+    http = httpx.Client(transport=httpx.MockTransport(
+        lambda req: httpx.Response(400, json={"error": {"message": "User location is not supported"}})))
+    agent = ChatAgent(GeminiClient("k", http=http), "m", Adilet(fetch=fake_fetch), web_search=False)
+    with pytest.raises(RuntimeError, match="location is not supported"):
+        list(agent.stream([{"role": "user", "text": "вопрос"}], context={"case": {}}, language="ru", country="X",
+                          use_portal=False))

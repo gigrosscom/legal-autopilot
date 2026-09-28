@@ -69,13 +69,41 @@ try:
     print('ok:' + str(len(a.text)) + 'ch')
 except Exception as e:
     print(e.__class__.__name__ + ':' + str(e)[:60].replace(' ', '_'))" 2>&1 | tail -1)
+      # Main acts listed in the packs: each code must open on the portal (free, reads public pages).
+      ACTS=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+from konsilier.config import get_settings
+from konsilier.core.packs import PackRegistry
+from konsilier.lawagent.sources import Adilet
+a, ok, bad = Adilet(), 0, []
+for p in PackRegistry.load(get_settings().packs_dir).packs.values():
+    for s in p.manifest.legal_sources:
+        for k in s.key_acts:
+            try:
+                a.contents(k.code); ok += 1
+            except Exception as e:
+                bad.append(k.code)
+print(str(ok) + 'ok' + ('' if not bad else ',bad:' + '/'.join(bad)))" 2>&1 | tail -1)
+      # Chat model: only the free Gemini tier is called (one short request); a paid model is never called here.
+      CHAT=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+from konsilier.config import get_settings
+s = get_settings()
+if s.chat_provider != 'gemini' or not s.gemini_api_key:
+    print(s.chat_provider + ':not-called'); raise SystemExit
+from konsilier.gemini import GeminiClient
+try:
+    with GeminiClient(s.gemini_api_key).messages.stream(model=s.gemini_model, max_tokens=5, system='Reply: ok',
+                                                        tools=[], messages=[{'role': 'user', 'content': 'ok?'}]) as st:
+        st.get_final_message()
+    print('gemini:' + s.gemini_model + ':ok')
+except Exception as e:
+    print('gemini:' + str(e)[:120].replace(' ', '_'))" 2>&1 | tail -1)
       # Read only what we need: .env holds values bash must not execute (e.g. "Name <a@b>").
       SITE_DOMAIN=$(grep -E '^SITE_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"'')
       API_DOMAIN=$(grep -E '^API_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"'')
       HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
         printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)
       CACHE=$(curl -sI --max-time 20 "https://$SITE_DOMAIN/" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2-)
-      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS $HTTPS cache=[$CACHE]"
+      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
       log "deploy of ${REMOTE:0:7} FAILED"

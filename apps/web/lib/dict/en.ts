@@ -97,6 +97,10 @@ const en: Dict = {
     lawyersLead: "Describe the situation — we prepare the documents and bring in a lawyer when you need one.",
   },
   chat: {
+    provider: {
+      gemini: "Replies come from Google's free Gemini AI. We replace names, ID numbers and phones with placeholders before sending; Google may use the conversation to improve its models — do not share unnecessary personal details.",
+      anthropic: "Replies come from Anthropic's Claude AI. We replace names, ID numbers and phones with placeholders before sending.",
+    },
     eyebrow: "Free consultation",
     title: "Tell us what happened",
     lead: "Type or speak, attach photos and documents. The consultation is free: we explain your rights and what to do next.",

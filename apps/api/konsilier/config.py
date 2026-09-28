@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Main model writes the document text; the fast model does classification and extraction.
     llm_model: str = "claude-sonnet-5"
     llm_fast_model: str = "claude-haiku-4-5"
+    chat_provider: str = "gemini"  # gemini (free tier) | anthropic (paid): the model behind the consultation chat
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.1-flash-lite"
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"

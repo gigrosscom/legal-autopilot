@@ -41,6 +41,14 @@ class ComplianceSpec(BaseModel):
     service_disclaimer: Localized
 
 
+class KeyAct(BaseModel):
+    """A frequently needed act on a legislation source: the chat is told these codes instead of searching."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    code: str = Field(pattern=r"^[A-Z]\d{9,10}_?$")
+    title: Localized
+    verified_on: date | None = None  # set only when the code was opened on the portal and the title matched
+
+
 class LegalSource(BaseModel):
     """An official legal database of the country: we link to and cite it, never mirror it."""
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -55,6 +63,7 @@ class LegalSource(BaseModel):
     terms_url: str | None = None
     reuse_note: str | None = None
     verified_on: date | None = None  # set only when the URL and operator were confirmed online
+    key_acts: tuple[KeyAct, ...] = ()
 
     @field_validator("name")
     @classmethod

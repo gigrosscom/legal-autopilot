@@ -72,6 +72,35 @@ legal_sources:
   reuse_note: 'Terms: non-commercial copying of individual items allowed with the source «Әділет» and http://adilet.zan.kz/
     indicated; other use needs written consent.'
   verified_on: 2026-09-27
+  key_acts:  # verified_on is set once the code was opened on the portal and the title matched
+  - code: K1500000414
+    title:
+      ru: Трудовой кодекс Республики Казахстан
+    verified_on: 2026-09-28
+  - code: K940001000_
+    title:
+      ru: Гражданский кодекс Республики Казахстан (Общая часть)
+  - code: K990000409_
+    title:
+      ru: Гражданский кодекс Республики Казахстан (Особенная часть)
+  - code: K1400000235
+    title:
+      ru: Кодекс Республики Казахстан об административных правонарушениях
+  - code: K2000000350
+    title:
+      ru: Административный процедурно-процессуальный кодекс Республики Казахстан
+  - code: K1500000377
+    title:
+      ru: Гражданский процессуальный кодекс Республики Казахстан
+  - code: K1100000518
+    title:
+      ru: Кодекс Республики Казахстан «О браке (супружестве) и семье»
+  - code: K1500000375
+    title:
+      ru: Предпринимательский кодекс Республики Казахстан
+  - code: Z100000274
+    title:
+      ru: Закон Республики Казахстан «О защите прав потребителей»
 - id: ekb
   name:
     en: Reference Control Bank of Legal Acts (electronic)

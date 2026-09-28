@@ -93,17 +93,23 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     from .reports import CaseReporter
 
     container.reporter = CaseReporter(container)
+    from .chat import ChatAgent
+    from .lawagent.sources import Adilet
+
+    adilet = Adilet()
     if settings.llm_provider == "anthropic":
         import anthropic
 
         from .lawagent.agent import LawAgent
-        from .lawagent.sources import Adilet
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else anthropic.Anthropic()
-        from .chat import ChatAgent
-
-        adilet = Adilet()
         container.law_agent = LawAgent(client, settings.llm_model, adilet)
-        container.chat_agent = ChatAgent(client, settings.llm_fast_model, adilet)
+        if settings.chat_provider == "anthropic":
+            container.chat_agent = ChatAgent(client, settings.llm_fast_model, adilet)
+    if settings.chat_provider == "gemini" and settings.gemini_api_key:
+        from .gemini import GeminiClient
+
+        container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key), settings.gemini_model, adilet,
+                                         web_search=False)
     scheduler.extra_jobs.append(container.reporter.tick)
     return container

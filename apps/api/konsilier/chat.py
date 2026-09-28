@@ -41,8 +41,8 @@ How to work
 6. Files the person attached are listed in the case context with any text read from them.
 Keep replies under about 150 words unless the person asks for detail."""
 
-PORTAL_RULE = ("Open the official text with act_contents / get_article (find the act with web_search on the "
-               "official portal) and mention an article only after reading it in this conversation.")
+PORTAL_RULE = ("Open the official text with act_contents / get_article and mention an article only after "
+               "reading it in this conversation. Find the act among the main acts listed below{search}.")
 NO_PORTAL_RULE = "You have no access to the official texts here, so do not cite articles at all."
 
 # "статья 113", "ст. 113-1", "113-бап", "article 113", "madde 113", "المادة 113"
@@ -66,9 +66,10 @@ def mentioned_articles(text: str) -> set[str]:
 
 class ChatAgent:
     def __init__(self, client: Any, model: str, adilet: Adilet | None = None, *,
-                 portal_domain: str = "adilet.zan.kz", max_turns: int = 6, max_tokens: int = 2000):
+                 portal_domain: str = "adilet.zan.kz", max_turns: int = 6, max_tokens: int = 2000,
+                 web_search: bool = True):
         self.client, self.model, self.max_turns, self.max_tokens = client, model, max_turns, max_tokens
-        self.portal_domain = portal_domain
+        self.portal_domain, self.web_search = portal_domain, web_search
         # the portal tools are the legal agent's; the chat reuses them rather than re-implementing
         self._law = LawAgent(client, model, adilet or Adilet(), portal_domain=portal_domain)
 
@@ -76,7 +77,7 @@ class ChatAgent:
         out = []
         for t in self._law.tools():
             if t.get("name") == "web_search":
-                if use_portal:  # basic search variant: works on the fast model too
+                if use_portal and self.web_search:  # basic search variant: works on the fast model too
                     out.append({"type": "web_search_20250305", "name": "web_search", "max_uses": 2,
                                 "allowed_domains": [self.portal_domain]})
             elif t["name"] in ("act_contents", "get_article"):
@@ -95,8 +96,12 @@ class ChatAgent:
         messages: list[dict[str, Any]] = [{"role": m["role"], "content": m["text"]} for m in history[-HISTORY_TURNS:]]
         if messages and messages[0]["role"] != "user":
             messages = messages[1:]
+        search = " or with web_search on the official portal" if self.web_search else ""
         system = SYSTEM.format(country=country, language=language,
-                               portal_rule=PORTAL_RULE if use_portal else NO_PORTAL_RULE)
+                               portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE)
+        if use_portal and context.get("key_acts"):
+            system += "\n\nMain acts on the official portal (code — title):\n" + "\n".join(
+                f"{a['code']} — {a['title']}" for a in context["key_acts"])
         system += "\n\nCase context (names and numbers are replaced by placeholders):\n" + case_note
         usage = {"input_tokens": 0, "output_tokens": 0}
         text_parts: list[str] = []

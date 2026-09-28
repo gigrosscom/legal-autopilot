@@ -32,7 +32,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [files, setFiles] = useState<Pending[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState<string | null>(null);
-  const [tts, setTts] = useState(false);  // known only in the browser: avoids a hydration mismatch
+  const [tts, setTts] = useState(false);
+  const [provider, setProvider] = useState<string | null>(null);  // known only in the browser: avoids a hydration mismatch
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const sentInitial = useRef(false);
@@ -47,6 +48,9 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   }, [initialCase]);
 
   useEffect(() => setTts(canSpeak()), []);
+  useEffect(() => {
+    publicApi<{ provider: string | null }>("/v1/chat/info").then((i) => setProvider(i.provider)).catch(() => {});
+  }, []);
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, streaming]);
 
@@ -271,6 +275,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           )}
         </div>
         {dictation.supported && dictation.listening && <p className="px-2 text-xs text-muted">{t("chat.micNote")}</p>}
+        {provider && <p className="px-2 text-xs text-muted">{t(`chat.provider.${provider}`)}</p>}
       </div>
     </div>
   );

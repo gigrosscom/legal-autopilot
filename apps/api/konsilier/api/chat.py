@@ -34,6 +34,14 @@ def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[s
                               "text": (e.text or "")[:1500]}) for e in rows]
 
 
+@router.get("/chat/info")
+def info(container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Which model answers in the chat, so the page can say who processes the messages."""
+    agent = container.chat_agent
+    provider = None if agent is None else ("gemini" if type(agent.client).__name__ == "GeminiClient" else "anthropic")
+    return {"provider": provider, "daily_limit": container.settings.chat_daily_limit}
+
+
 @router.get("/cases/{case_id}/chat")
 def history(case_id: uuid.UUID, user: User = Depends(current_user),
             session: Session = Depends(get_session)) -> list[dict[str, Any]]:
@@ -79,7 +87,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
     lang = pack.lang(case.language)
     country = pack.localized(pack.manifest.name, "en") or pack.country
-    use_portal = any(agent.portal_domain in str(s.url) for s in pack.manifest.legal_sources)
+    portal = [s for s in pack.manifest.legal_sources if agent.portal_domain in str(s.url)]
+    use_portal = bool(portal)
+    ctx["key_acts"] = [{"code": a.code, "title": pack.localized(a.title, lang)} for s in portal for a in s.key_acts]
     case_pk, user_pk = case.id, user.id
     session.commit()  # the user's message is saved even if the reply fails
 
