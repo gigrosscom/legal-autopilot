@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     chat_provider: str = "gemini"  # gemini (free tier) | anthropic (paid): the model behind the consultation chat
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite"
+    # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.
+    gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
+    # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
+    chat_fallback_to_anthropic: bool = True
     team_email: str = "info@konsilier.com"  # fallback address for desk notifications
     # Operations centre: e-mails (comma-separated) of the operators of each desk. They sign in with an e-mail code;
     # new items of the desk are also e-mailed to these addresses.
