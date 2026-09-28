@@ -15,7 +15,6 @@ export default function Footer() {
         <div className="space-y-2">
           <p className="text-base font-bold" dir="ltr">Konsiliér<span className="text-brand"> AI</span></p>
           <p className="font-medium">{t("footer.said")}</p>
-          <p className="text-muted">{t("footer.tagline")}</p>
           <InstallApp className="pt-2" />
         </div>
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">

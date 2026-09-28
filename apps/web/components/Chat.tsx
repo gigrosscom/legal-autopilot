@@ -213,7 +213,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   );
 
   return (
-    <AppShell title={t("app.chat")} subtitle={t("chat.eyebrow")} back={caseId ? "/cases" : "/"} sections={sections}
+    <AppShell title={t("app.chat")} subtitle="Konsiliér AI" back={caseId ? "/cases" : "/"} sections={sections}
       links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}`}>
       <div className="space-y-4" aria-live="polite">
 

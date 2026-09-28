@@ -45,14 +45,15 @@ export default function CasesPage() {
           <h1 className="text-3xl font-bold tracking-tight">{t("cases.title")}</h1>
           <p className="text-muted">{t("cases.lead")}</p>
         </div>
-        <Button href="/start" icon="plus">{t("cases.new")}</Button>
+        {cases && cases.length > 0 && <Button href="/start" icon="plus">{t("cases.new")}</Button>}
       </div>
       {!cases && !error && <p className="text-muted">{t("common.loading")}</p>}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {cases?.length === 0 && (
-        <div className="card space-y-3">
-          <p className="text-muted">{t("cases.empty")}</p>
-          <Button href="/start" iconEnd="arrowRight">{t("nav.start")}</Button>
+        <div className="card flex flex-col items-start gap-3">
+          <p className="font-semibold">{t("cases.empty")}</p>
+          <p className="text-sm text-muted">{t("cases.emptyHint")}</p>
+          <Button href="/start" size="lg" iconEnd="arrowRight">{t("home.cta")}</Button>
         </div>
       )}
       {cases && cases.length > 0 && <CaseBoard cards={cards} />}

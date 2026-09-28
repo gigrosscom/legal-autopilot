@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon, type IconName } from "@/components/ui";
-import { LevelBadge, type Level } from "@/components/LevelBadge";
+import type { Level } from "@/components/LevelBadge";
 import { useT } from "@/lib/i18n";
 
 // Which coverage levels take part in each step (the case page shows the level of that particular case).
@@ -30,7 +30,7 @@ export function PathMap() {
             <h3 className="font-semibold">{t(`path.${s.key}.title`)}</h3>
             <p className="text-sm text-muted">{t(`path.${s.key}.text`)}</p>
           </div>
-          <div className="mt-auto flex flex-wrap gap-1.5">{s.levels.map((l) => <LevelBadge key={l} level={l} />)}</div>
+
         </li>
       ))}
     </ol>

@@ -72,11 +72,9 @@ export default function AccountPage() {
         </section>
       )}
 
-      {me && <ReportsToggle me={me} onChange={setMe} />}
-
       <section aria-labelledby="ways" className="space-y-3">
         <h2 id="ways" className="text-lg font-semibold">{t("account.waysTitle")}</h2>
-        {METHODS.map((m) => {
+        {[...METHODS].sort((a, b) => Number(methods?.[b.id] ?? false) - Number(methods?.[a.id] ?? false)).map((m) => {
           const available = methods?.[m.id] ?? false;
           const isOpen = open === m.id;
           return (
@@ -102,6 +100,8 @@ export default function AccountPage() {
           );
         })}
       </section>
+
+      {me && <ReportsToggle me={me} onChange={setMe} />}
 
       <p className="text-xs text-muted">{t("account.privacy")}</p>
     </div>
