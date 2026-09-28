@@ -8,9 +8,9 @@ const tr: Dict = {
     skip: "İçeriğe geç", main: "Ana menü",
   },
   legal: {
-    disclaimer: "Konsiliér AI bir BT hizmetidir, hukuki yardım değildir: avukat veya hukuk danışmanı değiliz. Yapay zekâ yanıtları bilgi amaçlıdır, belgeler taslaktır; kararları siz verir, belgeleri kendiniz sunarsınız.",
+    disclaimer: "Konsiliér AI, hukuki konularda yapay zekâ asistanıdır. Yapay zekâ yanıtları bilgi amaçlıdır, belgeler taslaktır: sunmadan önce kontrol edin.",
     terms: "Kullanım Koşulları",
-    accept: "Mesaj göndererek hizmet koşullarını kabul etmiş ve Konsiliér AI'nin hukuki yardım değil, bir BT hizmeti olduğunu anlamış olursunuz.",
+    accept: "Mesaj göndererek şunu kabul etmiş olursunuz:",
     version: "sürüm",
     languageNote: "Koşullar Kazakça ve Rusça hazırlanmıştır; burada İngilizce çevirisi gösterilmektedir.",
   },
