@@ -5,7 +5,7 @@
 // The operator's legal details are filled in after the company is registered. The text must be checked by a
 // lawyer admitted in Kazakhstan before it is relied on (see packs/kz/REVIEW.md).
 
-export const TERMS_VERSION = "2026-09-28.2";
+export const TERMS_VERSION = "2026-09-28.3";
 
 export type LegalDoc = {
   title: string;
