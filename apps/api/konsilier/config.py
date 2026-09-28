@@ -39,9 +39,18 @@ class Settings(BaseSettings):
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
     chat_fallback_to_anthropic: bool = True
-    # Daily cap (UTC day) on the estimated cost of chat replies written by Claude. Once reached, the fallback is
-    # off until the next day and the person is asked to retry in a minute. 0 → the fallback is never used.
-    chat_fallback_daily_budget_usd: float = 10.0
+    # Daily cap (UTC day) on the estimated cost of chat replies written by Claude, whether Claude is the main chat
+    # model (CHAT_PROVIDER=anthropic) or the fallback. Once reached, Claude is skipped until the next day: Gemini
+    # answers if configured, else the person is asked to retry in a minute. 0 → Claude never answers the chat.
+    chat_fallback_daily_budget_usd: float = 10.0  # kept for existing env files (CHAT_FALLBACK_DAILY_BUDGET_USD)
+    chat_anthropic_daily_budget_usd: float | None = None  # CHAT_ANTHROPIC_DAILY_BUDGET_USD: wins over the above if set
+
+    @property
+    def chat_anthropic_budget(self) -> float:
+        """The daily Claude chat budget in force: CHAT_ANTHROPIC_DAILY_BUDGET_USD, else the legacy name."""
+        if self.chat_anthropic_daily_budget_usd is not None:
+            return self.chat_anthropic_daily_budget_usd
+        return self.chat_fallback_daily_budget_usd
     # Prices of the fast model (LLM_FAST_MODEL, claude-haiku-4-5) used for the estimate, USD.
     anthropic_price_input_per_mtok: float = 1.0
     anthropic_price_output_per_mtok: float = 5.0

@@ -383,3 +383,83 @@ def test_gemini_reply_is_counted_by_provider(ctx):
     assert ev[-1]["type"] == "done"
     chat = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]
     assert chat["gemini"] >= 1 and chat["anthropic_budget_usd"] == 10.0
+
+
+def _gemini_ok():
+    import httpx
+
+    from konsilier.gemini import GeminiClient
+
+    http = httpx.Client(transport=httpx.MockTransport(lambda req: _ok_sse()))
+    return ChatAgent(GeminiClient("k", http=http), "m", Adilet(fetch=fake_fetch), web_search=False)
+
+
+def _claude_main_over_budget(ctx, fallback):
+    """Claude is the main chat model and has already spent today's budget ($2.01 of $2)."""
+    from .test_e2e import web_user
+
+    s = ctx.container.settings
+    s.chat_fallback_daily_budget_usd, s.chat_anthropic_daily_budget_usd = 100.0, 2.0  # the new name wins
+    ctx.container.chat_agent = _claude(input_tokens=1_000_000, output_tokens=200_000)  # $2.01 per reply
+    ctx.container.chat_fallback_agent = fallback
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+    assert ev[-1]["type"] == "done" and ev[-1]["message"]["text"].startswith("Расчёт")  # within budget: Claude
+    return api, cid
+
+
+def test_claude_main_within_budget_answers(ctx):
+    from .test_e2e import ADMIN
+
+    _claude_main_over_budget(ctx, _gemini_ok())
+    chat = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]
+    assert chat["anthropic"] == 1 and chat["gemini"] == 0 and chat["anthropic_budget_usd"] == 2.0
+    assert chat["anthropic_open"] is False and chat["fallback_open"] is False
+
+
+def test_claude_main_over_budget_hands_over_to_gemini(ctx):
+    from .test_e2e import ADMIN
+
+    api, cid = _claude_main_over_budget(ctx, _gemini_ok())
+    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+    assert ev[-1]["type"] == "done" and ev[-1]["message"]["text"] == "ok"
+    chat = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]
+    assert chat["anthropic"] == 1 and chat["gemini"] == 1 and chat["unavailable"] == 0
+
+
+def test_claude_main_over_budget_without_gemini_is_busy_and_keeps_the_limit(ctx, caplog):
+    import logging
+
+    api, cid = _claude_main_over_budget(ctx, None)
+    ctx.container.settings.chat_daily_limit = 2
+    with caplog.at_level(logging.WARNING, logger="konsilier.api.chat"):
+        for _ in range(3):  # busy replies do not use up the one message left
+            ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+            assert ev[-1]["code"] == "busy"
+    assert any("reason=anthropic_budget" in r.getMessage() for r in caplog.records)
+    ctx.container.settings.chat_anthropic_daily_budget_usd = 10.0  # budget raised: Claude answers again
+    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+    assert ev[-1]["type"] == "done"
+    assert ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё"}).status_code == 429
+
+
+def test_claude_main_chat_gets_gemini_as_fallback(tmp_path):
+    from konsilier.config import Settings
+    from konsilier.container import build_container
+
+    def build(**kw):
+        return build_container(Settings(database_url=f"sqlite:///{tmp_path}/c.db", storage_local_dir=tmp_path / "f",
+                                        llm_provider="anthropic", anthropic_api_key="test", scheduler_interval_seconds=0,
+                                        smtp_host=None, **kw))
+
+    from konsilier.api.chat import provider_of
+
+    c = build(chat_provider="anthropic", gemini_api_key="g")
+    assert provider_of(c.chat_agent) == "anthropic" and provider_of(c.chat_fallback_agent) == "gemini"
+    c = build(chat_provider="anthropic", gemini_api_key="")
+    assert provider_of(c.chat_agent) == "anthropic" and c.chat_fallback_agent is None
+    c = build(chat_provider="gemini", gemini_api_key="g")
+    assert provider_of(c.chat_agent) == "gemini" and provider_of(c.chat_fallback_agent) == "anthropic"
+    assert Settings(chat_fallback_daily_budget_usd=7).chat_anthropic_budget == 7
+    assert Settings(chat_fallback_daily_budget_usd=7, chat_anthropic_daily_budget_usd=0).chat_anthropic_budget == 0

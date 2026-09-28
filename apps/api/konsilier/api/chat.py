@@ -67,9 +67,11 @@ def chat_usage_today(session: Session, settings: Settings) -> dict[str, Any]:
                 cost += reply_cost_usd(meta.get("usage") or {}, settings)
         elif role == "user" and meta.get("failed"):
             out["unavailable"] += 1
-    budget = settings.chat_fallback_daily_budget_usd
+    budget = settings.chat_anthropic_budget
+    anthropic_open = budget > 0 and cost < budget
+    # fallback_open is the older name of anthropic_open (Claude may be the main chat model or the fallback)
     return {"day": start.date().isoformat(), **out, "anthropic_cost_usd": round(cost, 4),
-            "anthropic_budget_usd": budget, "fallback_open": budget > 0 and cost < budget}
+            "anthropic_budget_usd": budget, "anthropic_open": anthropic_open, "fallback_open": anthropic_open}
 
 
 def _reason(provider: str, e: Exception) -> str:
@@ -156,9 +158,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
     settings = container.settings
 
-    def fallback_allowed() -> bool:
+    def anthropic_allowed() -> bool:
         with container.session_factory() as s:
-            return chat_usage_today(s, settings)["fallback_open"]
+            return chat_usage_today(s, settings)["anthropic_open"]
 
     def unavailable(reason: str, started: bool) -> Iterator[str]:
         """No reply: say so in the person's language and give the message back to the daily limit."""
@@ -175,9 +177,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         result, used, reasons, started = None, None, [], False
         for i, a in enumerate(agents):
             provider = provider_of(a)
-            if i > 0 and provider == "anthropic" and not fallback_allowed():
+            if provider == "anthropic" and not anthropic_allowed():  # main model or fallback: same daily cap
                 reasons.append("anthropic_budget")
-                break
+                continue
             started = False
             try:
                 for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
