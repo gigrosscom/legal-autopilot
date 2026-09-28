@@ -12,7 +12,7 @@ export function BetaNotice({ disclaimer }: { disclaimer: string | null | undefin
   return (
     <p className="flex items-start gap-2 rounded-2xl bg-info-50 px-3 py-2 text-xs text-info" data-testid="beta-notice">
       <Badge tone="info">{LABEL[lang] ?? LABEL.ru}</Badge>
-      {disclaimer && <span>{disclaimer}</span>}
+      {disclaimer && <span>{disclaimer.replace(/^(Бета|Beta)\.\s*/, "")}</span>}
     </p>
   );
 }
