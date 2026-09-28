@@ -263,7 +263,7 @@ export default function ForLawyers() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.basic}</h3>
-            <div className="text-2xl font-semibold">0 ₸</div>
+            <div className="text-lg font-semibold">{L.pricing.basicPrice}</div>
             <p className="text-sm text-muted">{L.pricing.basicText}</p>
           </div>
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
