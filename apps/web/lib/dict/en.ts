@@ -162,7 +162,6 @@ const en: Dict = {
     provider: {
       gemini: "Replies come from Google's free Gemini AI. We replace names, ID numbers and phones with placeholders before sending; Google may use the conversation to improve its models — do not share unnecessary personal details.",
       anthropic: "Replies come from Anthropic's Claude AI. We replace names, ID numbers and phones with placeholders before sending.",
-      free: "Replies come from free AI services (Google Gemini, Cerebras, Groq, NVIDIA). We replace names, ID numbers and phones with placeholders before sending; the providers may use the conversation to improve their models — do not share unnecessary personal details.",
     },
     eyebrow: "Free consultation",
     title: "Tell us what happened",
