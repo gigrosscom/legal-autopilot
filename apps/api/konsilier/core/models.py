@@ -409,3 +409,15 @@ class ForumDraft(Base):
     author: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(16), default="draft")  # draft | exported | discarded
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CaseQuestion(Base):
+    """A legal question about a case, answered by the legal agent from the official texts (see lawagent/)."""
+
+    __tablename__ = "case_questions"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

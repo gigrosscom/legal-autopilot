@@ -9,6 +9,7 @@ import { SignDocument } from "@/components/SignDocument";
 import { Agreements } from "@/components/Agreements";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
+import { LawQuestions } from "@/components/LawQuestions";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
@@ -321,6 +322,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <ReportsHint />
 
         <LawyerBlock caseId={c.id} />
+
+        {c.jurisdiction === "KZ" && <LawQuestions caseId={c.id} />}
 
         {c.status !== "intake" && <GovServices caseId={c.id} />}
 

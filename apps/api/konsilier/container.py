@@ -40,6 +40,15 @@ class Container:
     sms_sender: Sender | None = None
     signature_verifier: SignatureVerifier | None = None
     reporter: Any = None
+    law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
+
+    def law_agent_for(self, case: Any) -> Any:
+        """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
+        if self.law_agent is None:
+            return None
+        pack = self.engine.pack_of(case)
+        portal = self.law_agent.portal_domain
+        return self.law_agent if any(portal in str(s.url) for s in pack.manifest.legal_sources) else None
 
     def identity_methods(self) -> dict[str, bool]:
         ecp = self.signature_verifier is not None
@@ -83,5 +92,13 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     from .reports import CaseReporter
 
     container.reporter = CaseReporter(container)
+    if settings.llm_provider == "anthropic":
+        import anthropic
+
+        from .lawagent.agent import LawAgent
+        from .lawagent.sources import Adilet
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else anthropic.Anthropic()
+        container.law_agent = LawAgent(client, settings.llm_model, Adilet())
     scheduler.extra_jobs.append(container.reporter.tick)
     return container
