@@ -65,6 +65,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     db = make_engine(settings.database_url)
     factory = make_session_factory(db)
     packs = packs or PackRegistry.load(settings.packs_dir)
+    if settings.experimental_scenarios:
+        packs.experimental = True
     storage = storage or build_storage(settings)
     channels = channels or {"web": WebChannel(), "telegram": TelegramChannel(settings.telegram_bot_token)}
     notifier = Notifier(channels)

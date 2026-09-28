@@ -82,6 +82,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         view["scenario"] = {
             "id": sc.id, "version": sc.version, "title": pack.localized(sc.title, lang),
             "ontology": sc.ontology, "draft": sc.is_draft,
+            "kind": sc.kind, "beta": sc.beta, "disclaimer": pack.localized(sc.disclaimer, lang) if sc.disclaimer else None,
             "draft_disclaimer": pack.localized(compliance.draft_disclaimer, lang) if sc.is_draft else None,
             "price": {"amount": sc.pricing.amount, "currency": sc.pricing.currency or pack.currency,
                       "model": sc.pricing.model},

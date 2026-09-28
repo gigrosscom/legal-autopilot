@@ -14,7 +14,7 @@ from .test_e2e import web_user
 from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU, PACKS
 
 KZ = load_pack(PACKS / "kz", PACKS)
-PUBLISHED = sorted(s.id for s in KZ.scenarios.values() if s.published)
+PUBLISHED = sorted(s.id for s in KZ.scenarios.values() if s.published and not s.beta)  # beta: test_beta_scenarios.py
 ANSWERS = {
     "respondent_name": "ТОО «Ромашка»", "seller_name": "ТОО «Ромашка»", "lender_name": "АО «Банк»",
     "seller_bin": "пропустить", "lender_bin": "пропустить", "seller_email": "пропустить", "lender_email": "пропустить",

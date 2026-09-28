@@ -19,6 +19,8 @@ from konsilier.main import create_app
 
 REPO = Path(__file__).resolve().parents[3]
 FIXTURES = Path(__file__).parent / "fixtures"
+# Beta scenarios (tender bid, admission, visa, business…) are on in tests and dev, off in production.
+os.environ.setdefault("EXPERIMENTAL_SCENARIOS", "true")
 
 
 @pytest.fixture

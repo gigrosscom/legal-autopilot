@@ -83,8 +83,8 @@ def list_packs(lang: str = "ru", container: Container = Depends(get_container)) 
             "scenarios": [{
                 "id": s.id, "title": pack.localized(s.title, lg), "summary": pack.localized(s.summary, lg),
                 "price": {"amount": s.pricing.amount, "currency": s.pricing.currency or pack.currency},
-                "draft": s.is_draft,
-            } for s in pack.scenarios.values() if s.published],
+                "draft": s.is_draft, "beta": s.beta, "kind": s.kind,
+            } for s in pack.scenarios.values() if container.packs.offered(s)],
         })
     return out
 

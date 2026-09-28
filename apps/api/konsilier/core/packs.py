@@ -291,9 +291,11 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
 class PackRegistry:
     """All jurisdiction packs found under one directory."""
 
-    def __init__(self, packs: dict[str, JurisdictionPack]):
+    def __init__(self, packs: dict[str, JurisdictionPack], experimental: bool = False):
         self.packs = packs
         self._generic: dict[str, Scenario] = {}
+        # EXPERIMENTAL_SCENARIOS: beta scenarios (tender bid, admission, visa, business…) are offered only when on
+        self.experimental = experimental
 
     @classmethod
     def load(cls, packs_root: Path) -> "PackRegistry":
@@ -332,5 +334,9 @@ class PackRegistry:
                 continue
             if not country and pack.manifest.status != "live":
                 continue
-            out.extend(s for s in pack.scenarios.values() if s.published)
+            out.extend(s for s in pack.scenarios.values() if self.offered(s))
         return out
+
+    def offered(self, sc: Scenario) -> bool:
+        """Published and, for a beta scenario, experimental scenarios switched on."""
+        return sc.published and (self.experimental or not sc.beta)

@@ -311,3 +311,25 @@ def write_demands(llm: RedactingLLM, pack: JurisdictionPack, lang: str, desired_
     except LLMError as e:
         log.warning("write_demands failed: %s", e)
         return desired_outcome
+
+
+def write_letter(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,
+                 facts: dict[str, Any], package_title: str) -> str:
+    """Service scenarios: the body of a cover / motivation letter from the person's own answers only."""
+    specs = _field_specs(scenario, pack, lang, only=list(facts))
+    schema = {"type": "object", "properties": {"narrative": {"type": "string"}}, "required": ["narrative"],
+              "additionalProperties": False}
+    language_name = pack.t(lang, "language_name", default=lang)
+    system = (
+        f"{_COMMON_RULES}\nTask: write the main paragraph of a cover or motivation letter for '{package_title}' "
+        f"in {language_name}: first person of the applicant, polite business style, 4-8 sentences, only the "
+        "provided facts (purpose, background, plans). Never invent achievements, grades, employers, amounts, dates, "
+        "requirements of the receiving body, fees or guarantees of the result. No greetings or signatures."
+    )
+    try:
+        out = llm.complete_json(task="narrative", system=system, schema=schema,
+                                payload={"language": lang, "facts": facts, "fields": specs, "attachments": []})
+        return (out.get("narrative") or "").strip()
+    except LLMError as e:
+        log.warning("write_letter failed: %s", e)
+        return ""
