@@ -48,7 +48,7 @@ main() {
       LLM=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 from konsilier.config import get_settings
 s = get_settings()
-print(s.llm_provider if s.llm_provider != 'anthropic' else s.llm_model + ',' + s.llm_fast_model + ':configured')" 2>&1 | tail -1)
+print({'anthropic': s.llm_model + ',' + s.llm_fast_model, 'gemini': 'gemini:' + s.gemini_model}.get(s.llm_provider, s.llm_provider) + ':configured')" 2>&1 | tail -1)
       # Sign-in methods that are configured, and whether NCANode (ЭЦП checks) answers at all.
       AUTH=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 import httpx
