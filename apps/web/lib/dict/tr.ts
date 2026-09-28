@@ -197,6 +197,7 @@ const tr: Dict = {
       agent_unavailable: "Sohbet danışmanı şu anda kullanılamıyor. Daha sonra deneyin veya belgeyi adım adım hazırlayın.",
       agent_failed: "Danışman yanıt veremedi. Bir dakika sonra tekrar deneyin.",
       too_many_messages: "Bugünkü ücretsiz mesaj hakkı doldu. Yarın devam edelim — veya belgeyi adım adım hazırlayın.",
+      busy: "Şu anda yoğunluk var, lütfen bir dakika sonra tekrar deneyin.",
     },
   },
   home: {
