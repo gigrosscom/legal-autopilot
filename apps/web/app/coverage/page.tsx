@@ -37,17 +37,6 @@ export default function CoveragePage() {
         <p className="text-lg text-muted">{t("coverage.lead")}</p>
       </header>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold">{t("coverage.legend")}</h2>
-        <ul className="grid gap-3 md:grid-cols-2">
-          {LEGEND.map((lv) => (
-            <li key={lv} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-              <LevelBadge level={lv} /><span className="text-sm text-muted">{t(`level.${lv}.desc`)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {!data && !error && <p className="text-muted">{t("common.loading")}</p>}
 
@@ -62,10 +51,17 @@ export default function CoveragePage() {
               </li>
             ))}
           </ul>
-          <div className="flex flex-wrap gap-2">
-            <Button href="/start" iconEnd="arrowRight">{t("cta.startCase")}</Button>
-            <Button href="/how-it-works" variant="secondary">{t("cta.more")}</Button>
-          </div>
+          {/* what the statuses mean: right under the list, folded */}
+          <details className="card">
+            <summary className="cursor-pointer font-semibold">{t("coverage.legend")}</summary>
+            <ul className="mt-3 grid gap-3 md:grid-cols-2">
+              {LEGEND.map((lv) => (
+                <li key={lv} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
+                  <LevelBadge level={lv} /><span className="text-sm text-muted">{t(`level.${lv}.desc`)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
         </Section>
       ))}
 
@@ -84,7 +80,7 @@ export default function CoveragePage() {
         <Section title={t("coverage.sourcesTitle")} lead={t("coverage.sourcesLead")}>
           <div className="space-y-2">
             {[...live, ...planned].filter((c) => c.legal_sources?.length).map((c) => (
-              <details key={c.country} className="card" open={c.status === "live"}>
+              <details key={c.country} className="card">
                 <summary className="cursor-pointer font-semibold">{c.name}</summary>
                 <ul className="mt-3 space-y-2">
                   {c.legal_sources!.map((s) => (

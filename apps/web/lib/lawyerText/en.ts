@@ -14,7 +14,7 @@ const en: LawyerText = {
       ["lock", "Guaranteed payment", "The client's money is held in reserve until the stage is done. No more \"I'll transfer it tomorrow\".", true],
       ["document", "AI assistant", "Drafts of lawsuits and complaints, case summaries, procedural deadline tracking with reminders.", false],
       ["chart", "A reputation that can't be bought", "A rating based on proven results: cases won and money recovered, not reviews from friends.", false],
-      ["users", "Your clients stay yours", "Manage your own clients on the platform too: CRM, deadlines, documents. No commission on clients you bring.", false],
+      ["users", "Your clients stay yours", "Manage your own clients on the platform too: CRM, deadlines, documents. No commission on clients you bring.", true],
     ] as [string, string, string, boolean][],
     faq: [
       ["How much does the platform charge lawyers?", "0% of your fee. The Basic plan is free. Pro (unlimited responses, priority, AI tools, CRM) is 15,000–25,000 ₸/mo. Konsiliér AI partners get Pro free for 6 months, scenario experts for 12 months."],
@@ -75,7 +75,7 @@ const en: LawyerText = {
     hero: {
       chip: "For advocates, lawyers and human rights defenders",
       title: "Clients come to you with a ready case. You practice law, not chase clients and paperwork.",
-      sub: "AI gathers the facts and evidence, the platform guarantees pay-per-stage, and your rating is built on real cases won. 0% of your fee.",
+      sub: "AI gathers the facts, documents and timeline of the case before it reaches you. You choose cases in your field and set your own price. 0% of your fee.",
       apply: "Become a partner for free",
       rating: "What the rating looks like",
       perks: "Partners get Pro free for 6 months, scenario experts for 12 months.",
@@ -111,6 +111,7 @@ const en: LawyerText = {
       gets: ["Pro free for 12 months.", "\"Expert\" status and their name in every verified scenario: \"Scenario verified by: …\".", "First access to cases in their scenarios.", "Mentions in Konsiliér AI materials and social media."],
     },
     pricing: {
+      pilot: "We are in a pilot: everything is free for lawyers. Paid plans and stage-by-stage payment through a payment partner will come after the pilot — we will tell you in advance.",
       title: "Plans",
       basic: "Basic",
       basicText: "Profile, status verification, responses to cases (monthly limit), rating.",

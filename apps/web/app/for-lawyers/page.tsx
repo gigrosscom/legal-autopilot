@@ -16,38 +16,6 @@ function useText(): Text {
   return lawyerText(lang);
 }
 
-function Calculator() {
-  const L = useText().calc;
-  const [cases, setCases] = useState(8);
-  const [check, setCheck] = useState(60000);
-  const hours = cases * 1.5;
-  const income = cases * check;
-  return (
-    <div className="card space-y-4">
-      <h3 className="text-lg font-semibold">{L.title}</h3>
-      <label className="block text-sm">
-        {L.cases}: <b>{cases}</b>
-        <input type="range" min={1} max={40} value={cases} onChange={(e) => setCases(+e.target.value)} className="h-10 w-full accent-brand" />
-      </label>
-      <label className="block text-sm">
-        {L.fee}: <b>{check.toLocaleString("ru-RU")} ₸</b>
-        <input type="range" min={10000} max={500000} step={5000} value={check} onChange={(e) => setCheck(+e.target.value)} className="h-10 w-full accent-brand" />
-      </label>
-      <div className="grid grid-cols-2 gap-3 text-center">
-        <div className="rounded-xl bg-brand-50 p-3">
-          <div className="text-xl font-bold text-brand sm:text-2xl">{income.toLocaleString("ru-RU")} ₸</div>
-          <div className="text-xs text-muted">{L.income}</div>
-        </div>
-        <div className="rounded-xl bg-sand p-3">
-          <div className="text-xl font-bold sm:text-2xl">{hours.toLocaleString("ru-RU")} {L.hoursUnit}</div>
-          <div className="text-xs text-muted">{L.hours}</div>
-        </div>
-      </div>
-      <p className="text-xs text-muted">{L.note}</p>
-    </div>
-  );
-}
-
 function DossierPreview() {
   const L = useText().dossier;
   return (
@@ -66,10 +34,6 @@ function DossierPreview() {
         ))}
       </dl>
       <p className="text-xs text-muted">{L.hidden}</p>
-      <div className="flex flex-wrap gap-2">
-        <button className="btn-primary" disabled>{L.respond}</button>
-        <button className="btn-ghost" disabled>{L.ask}</button>
-      </div>
     </div>
   );
 }
@@ -230,19 +194,6 @@ export default function ForLawyers() {
         <DossierPreview />
       </section>
 
-      {/* PAINS → FIX */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold">{L.painsTitle}</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {L.pains.map(([pain, fix]) => (
-            <div key={pain} className="card space-y-2">
-              <p className="flex gap-2 text-sm text-danger"><Icon name="x" size={18} className="mt-0.5" />{pain}</p>
-              <p className="flex gap-2 text-sm"><Icon name="check" size={18} className="mt-0.5 text-brand" />{fix}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* BENEFITS */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">{L.benefitsTitle}</h2>
@@ -254,30 +205,6 @@ export default function ForLawyers() {
                 <h3 className="font-semibold">{title}</h3>
                 {soon && <span className="chip bg-warning-50 text-warning">{L.soon}</span>}
               </div>
-              <p className="text-sm text-muted">{text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CALCULATOR + SHARE CARD */}
-      <section className="grid gap-6 md:grid-cols-2 md:items-center">
-        <Calculator />
-        <div className="space-y-3">
-          <h2 className="text-2xl font-bold">{L.reputationTitle}</h2>
-          <p className="text-muted">{L.reputation}</p>
-          <ShareCard name="" demo />
-        </div>
-      </section>
-
-      {/* GROWTH LOOP */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold">{L.growthTitle}</h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          {L.growth.map(([icon, title, text]) => (
-            <div key={title} className="card space-y-1">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name={icon as IconName} /></span>
-              <h3 className="font-semibold">{title}</h3>
               <p className="text-sm text-muted">{text}</p>
             </div>
           ))}
@@ -325,6 +252,7 @@ export default function ForLawyers() {
       {/* PRICING */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">{L.pricing.title}</h2>
+        <p className="rounded-2xl bg-brand-50 p-3 text-sm font-medium text-brand-dark">{L.pricing.pilot}</p>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.basic}</h3>
@@ -349,7 +277,7 @@ export default function ForLawyers() {
 
       {/* FAQ + FORM */}
       <section id="apply" className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-3">
+        <div className="order-2 space-y-3">
           <h2 className="text-2xl font-bold">{L.faqTitle}</h2>
           {L.faq.map(([q, a]) => (
             <details key={q} className="card">
@@ -358,7 +286,7 @@ export default function ForLawyers() {
             </details>
           ))}
         </div>
-        <ApplyForm />
+        <div className="order-1"><ApplyForm /></div>
       </section>
     </div>
   );

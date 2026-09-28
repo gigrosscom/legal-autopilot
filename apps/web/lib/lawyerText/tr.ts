@@ -14,7 +14,7 @@ const tr: LawyerText = {
       ["lock", "Ödeme güvencesi", "Müvekkilin parası aşama tamamlanana kadar bloke. «Yarın gönderirim» yok.", true],
       ["document", "Yapay zekâ asistanı", "Dava dilekçesi ve şikâyet taslakları, dosya özeti, hatırlatmalı usul süresi takibi.", false],
       ["chart", "Satın alınamayan itibar", "Kanıtlanmış sonuçlara dayalı puan: arkadaş yorumları değil, kazanılan dosyalar ve geri alınan para.", false],
-      ["users", "Müvekkilleriniz sizindir", "Kendi müvekkillerinizi de platformda yönetin: CRM, süreler, belgeler. Getirdiğiniz müvekkillerde komisyon yok.", false],
+      ["users", "Müvekkilleriniz sizindir", "Kendi müvekkillerinizi de platformda yönetin: CRM, süreler, belgeler. Getirdiğiniz müvekkillerde komisyon yok.", true],
     ] as [string, string, string, boolean][],
     faq: [
       ["Platform avukattan ne kadar alıyor?", "Ücretten %0. Temel paket ücretsiz. Pro (sınırsız başvuru, öncelik, yapay zekâ araçları, CRM): 15 000–25 000 ₸/ay. Konsiliér AI ortaklarına Pro 6 ay, senaryo uzmanlarına 12 ay ücretsiz."],
@@ -75,7 +75,7 @@ const tr: LawyerText = {
     hero: {
       chip: "Avukatlar, hukukçular ve insan hakları savunucuları için",
       title: "Müvekkiller size hazır dosyayla gelir. Siz hukukla ilgilenirsiniz, müvekkil aramak ve evrak işiyle değil.",
-      sub: "Yapay zekâ olguları ve delilleri toplar, platform aşamalı ödemeyi güvenceye alır, puanınız gerçekten kazanılan dosyalara dayanır. Ücretinizden %0.",
+      sub: "Yapay zekâ davanın olgularını, belgelerini ve kronolojisini size gelmeden önce toplar. Uzmanlık alanınızdaki davaları siz seçer, ücreti siz belirlersiniz. Ücretinizden %0 kesinti.",
       apply: "Ortak olun, ücretsiz",
       rating: "Puan nasıl görünür",
       perks: "Ortaklara 6 ay, senaryo uzmanlarına 12 ay ücretsiz Pro.",
@@ -111,6 +111,7 @@ const tr: LawyerText = {
       gets: ["12 ay ücretsiz Pro.", "«Uzman» statüsü ve her doğrulanmış senaryoda adı: «Senaryoyu kontrol eden: …».", "Kendi senaryolarındaki dosyaları ilk o alır.", "Konsiliér AI materyallerinde ve sosyal medyasında anılma."],
     },
     pricing: {
+      pilot: "Şu anda pilot aşamasındayız: avukatlar için her şey ücretsiz. Ücretli planlar ve ödeme ortağı üzerinden aşamalı ödeme pilottan sonra gelecek — önceden haber vereceğiz.",
       title: "Paketler",
       basic: "Temel",
       basicText: "Profil, statü doğrulaması, dosyalara başvuru (aylık sınırlı), puan.",

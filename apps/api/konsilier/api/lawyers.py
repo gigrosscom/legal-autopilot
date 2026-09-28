@@ -15,12 +15,12 @@ from typing import Any, Literal
 
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..core.models import Agreement, Case, Identity, LawyerApplication, User
+from ..core.models import Agreement, Case, Identity, LawyerApplication, LawyerRequest, User
 from .deps import current_user, get_container, get_session, load_case, require_admin
 from .signing import agreement_view, signature_view
 from .views import case_view
@@ -204,3 +204,39 @@ def assign_lawyer(case_id: uuid.UUID, body: AssignIn, session: Session = Depends
 
 
 __all__ = ["router", "admin_router", "signature_view"]
+
+
+class LawyerRequestIn(BaseModel):
+    lawyer_ref: str | None = Field(default=None, max_length=100)
+    full_name: str = Field(min_length=2, max_length=200)
+    phone: str = Field(min_length=6, max_length=40)
+    email: str | None = Field(default=None, max_length=200)
+    consent: bool
+
+
+@router.post("/cases/{case_id}/lawyer-request", status_code=201)
+def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depends(current_user),
+                   session: Session = Depends(get_session), container: Container = Depends(get_container)) -> dict[str, Any]:
+    """«Обратиться»: register the case and the applicant's contacts for a lawyer. Direct booking opens later;
+    until then the team passes the request to a verified lawyer of the right field."""
+    case = load_case(case_id, session, user)
+    if not body.consent:
+        raise HTTPException(422, {"code": "consent_required", "message": "consent_required"})
+    digits = "".join(ch for ch in body.phone if ch.isdigit())
+    if len(digits) < 10:
+        raise HTTPException(422, {"code": "phone", "message": "phone"})
+    req = LawyerRequest(case_id=case.id, user_id=user.id, lawyer_ref=body.lawyer_ref, full_name=body.full_name.strip(),
+                        phone=("+" if body.phone.strip().startswith("+") else "") + digits,
+                        email=(body.email or "").strip() or None)
+    session.add(req)
+    session.flush()
+    container.engine.audit(session, case, f"user:{user.id}", "lawyer_requested", request=req.id, lawyer=body.lawyer_ref)
+    return {"id": req.id, "case_id": str(case.id), "status": req.status}
+
+
+@admin_router.get("/lawyer-requests")
+def list_lawyer_requests(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
+    rows = session.scalars(select(LawyerRequest).order_by(LawyerRequest.created_at.desc()).limit(200)).all()
+    return [{"id": r.id, "case_id": str(r.case_id), "lawyer_ref": r.lawyer_ref, "full_name": r.full_name,
+             "phone": r.phone, "email": r.email, "status": r.status, "created_at": r.created_at.isoformat()}
+            for r in rows]

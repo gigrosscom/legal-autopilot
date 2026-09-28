@@ -434,3 +434,19 @@ class ChatMessage(Base):
     text: Mapped[str] = mapped_column(Text)
     meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # attachments, norms, unchecked, usage
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class LawyerRequest(Base):
+    """A person's request to be put in touch with a lawyer ("Обратиться"): the case plus contact details.
+    While direct booking is not open, the team passes the case to a verified lawyer of the right field."""
+
+    __tablename__ = "lawyer_requests"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    lawyer_ref: Mapped[str | None] = mapped_column(String(100))  # directory id the person clicked, if any
+    full_name: Mapped[str] = mapped_column(String(200))
+    phone: Mapped[str] = mapped_column(String(40))
+    email: Mapped[str | None] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16), default="new")  # new | passed | closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

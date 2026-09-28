@@ -155,7 +155,7 @@ export default function LawyersPage() {
                   {l.pro_bono ? t("lawyers.proBono") : `${t("lawyers.from")} ${l.price_from.toLocaleString("ru-RU")} ${cur}`}
                   {` · ${t("lawyers.response")} ${l.response_hours} ${t("lawyers.hours")}`}
                 </span>
-                <Button href="/start" variant="secondary" iconEnd="arrowRight">{t("lawyers.choose")}</Button>
+                <Button href={`/lawyers/request?lawyer=${encodeURIComponent(l.id)}&name=${encodeURIComponent(l.name)}`} variant="secondary" iconEnd="arrowRight">{t("lawyers.choose")}</Button>
               </div>
             </article>
           ))}
