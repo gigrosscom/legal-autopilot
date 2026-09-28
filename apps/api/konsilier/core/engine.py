@@ -73,6 +73,7 @@ class Question:
     optional: bool
     evidence_kinds: list[dict[str, str]] = field(default_factory=list)
     uploaded: int = 0  # files already attached to this evidence question
+    pattern: str | None = None  # the field's format (e.g. twelve digits): lets the web show a digit keypad
 
 
 @dataclass
@@ -385,7 +386,8 @@ class CaseEngine:
         text = pack.localized(f.question, lang) if f.question else pack.t(
             lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name))
         kinds = [{"kind": k, "label": pack.t(lang, f"evidence.{k}", default=k)} for k in f.evidence_kinds]
-        return Question(field=name, text=text, type=f.type, optional=f.optional, evidence_kinds=kinds)
+        return Question(field=name, text=text, type=f.type, optional=f.optional, evidence_kinds=kinds,
+                        pattern=f.pattern)
 
     def _next_step(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack) -> Reply:
         lang = case.language

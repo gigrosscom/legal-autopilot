@@ -25,7 +25,10 @@ export const metadata: Metadata = {
 };
 
 // viewportFit "cover": the installed app uses the whole screen; notches are handled with safe-area insets.
-export const viewport: Viewport = { themeColor: "#f7f4ee", width: "device-width", initialScale: 1, viewportFit: "cover" };
+// interactiveWidget: the on-screen keyboard shrinks the layout, so input bars stay above it (Android Chrome).
+export const viewport: Viewport = {
+  themeColor: "#f7f4ee", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

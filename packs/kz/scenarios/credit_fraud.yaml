@@ -29,7 +29,7 @@ intake:
   - lender_bin: {optional: true, pattern: '^\d{12}$'}
   - contract_number: {optional: true}
   - loan_date: {type: date}
-  - amount: {type: money, currency: KZT}
+  - amount: {type: money, currency: KZT, question: {ru: "На какую сумму оформлен займ, в тенге?", kk: "Қарыз қандай сомаға рәсімделді, теңгемен?"}}
   - problem_description: {type: longtext}
   - police_report_number: {optional: true}
   - applicant_name: {pii: person}

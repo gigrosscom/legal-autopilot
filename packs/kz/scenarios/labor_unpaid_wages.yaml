@@ -28,7 +28,7 @@ claim:
 intake:
   - respondent_name
   - event_date: {type: date}
-  - amount: {type: money, currency: KZT}
+  - amount: {type: money, currency: KZT, question: {ru: "Какую сумму вам не выплатили, в тенге?", kk: "Сізге қанша сома төленбеді, теңгемен?"}}
   - problem_description: {type: longtext}
   - applicant_name: {pii: person}
   - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}

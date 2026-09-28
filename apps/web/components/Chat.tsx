@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
-import { Alert, Icon } from "@/components/ui";
+import { Alert, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
 import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
 import { useLang, useT } from "@/lib/i18n";
@@ -34,7 +35,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [speaking, setSpeaking] = useState<string | null>(null);
   const [tts, setTts] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);  // known only in the browser: avoids a hydration mismatch
-  const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const sentInitial = useRef(false);
 
@@ -51,8 +51,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   useEffect(() => {
     publicApi<{ provider: string | null }>("/v1/chat/info").then((i) => setProvider(i.provider)).catch(() => {});
   }, []);
-
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, streaming]);
 
   useEffect(() => {  // grow the box with the text, up to a limit
     const el = box.current;
@@ -146,9 +144,79 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   };
   const empty = messages.length === 0 && streaming === null;
 
+  const links: MoreLink[] = [
+    ...(caseId ? [{ href: `/case/${caseId}`, icon: "document" as IconName, label: `${t("chat.doc")} · ${t("chat.docPrice")}` }] : []),
+    { href: "/lawyers", icon: "lawyer", label: t("chat.lawyer") },
+    { href: "/cases", icon: "briefcase", label: t("nav.cases") },
+    { href: "/account", icon: "user", label: t("app.account") },
+    { href: "/", icon: "home", label: t("app.home") },
+  ];
+  const sections: MoreSection[] = [{ key: "about", icon: "info", label: t("app.about"), render: () => (
+    <div className="space-y-3 text-sm">
+      <p>{t("chat.free")}</p>
+      {provider && <p className="text-muted">{t(`chat.provider.${provider}`)}</p>}
+      {dictation.supported && <p className="text-muted">{t("chat.micNote")}</p>}
+    </div>) }];
+
+  const bar = (
+    <div className="space-y-2">
+        {files.length > 0 && (
+          <ul className="flex flex-wrap gap-2">
+            {files.map((f) => (
+              <li key={f.key} className="inline-flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs">
+                <Icon name="paperclip" size={14} />{f.filename}
+                <button type="button" aria-label={t("chat.remove")} onClick={() => setFiles((xs) => xs.filter((x) => x.key !== f.key))}
+                  className="ms-1 text-muted hover:text-ink"><Icon name="x" size={14} /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form onSubmit={(e) => { e.preventDefault(); send(); }}
+          className="flex items-end gap-1 rounded-3xl border border-line bg-surface p-2 shadow-[var(--shadow-raised)] focus-within:border-brand">
+          <label className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}
+            title={t("chat.attach")}>
+            <Icon name="paperclip" size={20} /><span className="sr-only">{t("chat.attach")}</span>
+            <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only" disabled={busy}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addFile(f); }} />
+          </label>
+          <label htmlFor="chat-input" className="sr-only">{t("chat.placeholder")}</label>
+          <textarea id="chat-input" ref={box} rows={1} value={interim ? `${draft} ${interim}`.trim() : draft}
+            onChange={(e) => { setDraft(e.target.value); setInterim(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
+            placeholder={dictation.listening ? t("chat.listening") : t("chat.placeholder")} maxLength={4000}
+            className="max-h-[200px] min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 shadow-none outline-none placeholder:text-muted"
+            style={{ outline: "none" }} /* the whole box shows focus (focus-within) */ />
+          {dictation.supported && (
+            <button type="button" onClick={dictation.listening ? dictation.stop : dictation.start} disabled={busy}
+              aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening ? "bg-danger text-white motion-safe:animate-pulse" : "text-muted hover:bg-sand hover:text-ink"}`}>
+              <Icon name={dictation.listening ? "stop" : "mic"} size={20} />
+              <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
+            </button>
+          )}
+          <button type="submit" disabled={busy || !(draft.trim() || interim.trim())} title={t("chat.send")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40">
+            <Icon name={busy ? "spinner" : "send"} size={18} /><span className="sr-only">{t("chat.send")}</span>
+          </button>
+        </form>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-muted">
+          <span>{t("chat.freeShort")}</span>
+          {tts && (
+            <button type="button" onClick={() => { setVoiceMode((v) => !v); stopSpeaking(); setSpeaking(null); }} aria-pressed={voiceMode}
+              className="inline-flex min-h-8 items-center gap-1.5 hover:text-ink">
+              <Icon name="volume" size={14} className={voiceMode ? "text-brand" : ""} />{voiceMode ? t("chat.voiceOn") : t("chat.voiceOff")}
+            </button>
+          )}
+        </div>
+        {dictation.supported && dictation.listening && <p className="px-2 text-xs text-muted">{t("chat.micNote")}</p>}
+    </div>
+  );
+
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-10rem)] max-w-3xl flex-col">
-      <div className="flex-1 space-y-4 pb-4" aria-live="polite">
+    <AppShell title={t("app.chat")} subtitle={t("chat.eyebrow")} back={caseId ? "/cases" : "/"} sections={sections}
+      links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}`}>
+      <div className="space-y-4" aria-live="polite">
+
         {empty && (
           <div className="space-y-4 py-6 text-center sm:py-12">
             <p className="eyebrow">{t("chat.eyebrow")}</p>
@@ -212,71 +280,20 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
         )}
         {emergency && <EmergencyPanel info={emergency} onContinue={() => send(undefined, true)} />}
         {error && <Alert tone="danger" role="alert">{error}</Alert>}
-        <div ref={bottom} />
-      </div>
 
-      <div className="sticky bottom-0 space-y-2 bg-sand pb-3 pt-2">
-        {caseId && messages.length > 0 && (
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Link href={`/case/${caseId}`} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-surface px-3 hover:border-brand">
-              <Icon name="document" size={16} className="text-brand" />{t("chat.doc")}<span className="text-muted">· {t("chat.docPrice")}</span>
+        {caseId && messages.length > 0 && streaming === null && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link href={`/case/${caseId}`} className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
+              <Icon name="document" size={22} className="text-brand" />
+              <span className="flex-1"><span className="block font-semibold">{t("chat.doc")}</span><span className="text-xs text-muted">{t("chat.docPrice")}</span></span>
             </Link>
-            <Link href="/lawyers" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-surface px-3 hover:border-brand">
-              <Icon name="lawyer" size={16} className="text-brand" />{t("chat.lawyer")}<span className="text-muted">· {t("chat.lawyerPrice")}</span>
+            <Link href="/lawyers" className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
+              <Icon name="lawyer" size={22} className="text-brand" />
+              <span className="flex-1"><span className="block font-semibold">{t("chat.lawyer")}</span><span className="text-xs text-muted">{t("chat.lawyerPrice")}</span></span>
             </Link>
           </div>
         )}
-        {files.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
-            {files.map((f) => (
-              <li key={f.key} className="inline-flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs">
-                <Icon name="paperclip" size={14} />{f.filename}
-                <button type="button" aria-label={t("chat.remove")} onClick={() => setFiles((xs) => xs.filter((x) => x.key !== f.key))}
-                  className="ms-1 text-muted hover:text-ink"><Icon name="x" size={14} /></button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form onSubmit={(e) => { e.preventDefault(); send(); }}
-          className="flex items-end gap-1 rounded-3xl border border-line bg-surface p-2 shadow-[var(--shadow-raised)] focus-within:border-brand">
-          <label className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}
-            title={t("chat.attach")}>
-            <Icon name="paperclip" size={20} /><span className="sr-only">{t("chat.attach")}</span>
-            <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only" disabled={busy}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addFile(f); }} />
-          </label>
-          <label htmlFor="chat-input" className="sr-only">{t("chat.placeholder")}</label>
-          <textarea id="chat-input" ref={box} rows={1} value={interim ? `${draft} ${interim}`.trim() : draft}
-            onChange={(e) => { setDraft(e.target.value); setInterim(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
-            placeholder={dictation.listening ? t("chat.listening") : t("chat.placeholder")} maxLength={4000}
-            className="max-h-[200px] min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 shadow-none outline-none placeholder:text-muted"
-            style={{ outline: "none" }} /* the whole box shows focus (focus-within) */ />
-          {dictation.supported && (
-            <button type="button" onClick={dictation.listening ? dictation.stop : dictation.start} disabled={busy}
-              aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening ? "bg-danger text-white motion-safe:animate-pulse" : "text-muted hover:bg-sand hover:text-ink"}`}>
-              <Icon name={dictation.listening ? "stop" : "mic"} size={20} />
-              <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
-            </button>
-          )}
-          <button type="submit" disabled={busy || !(draft.trim() || interim.trim())} title={t("chat.send")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40">
-            <Icon name={busy ? "spinner" : "send"} size={18} /><span className="sr-only">{t("chat.send")}</span>
-          </button>
-        </form>
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-muted">
-          <span>{t("chat.free")}</span>
-          {tts && (
-            <button type="button" onClick={() => { setVoiceMode((v) => !v); stopSpeaking(); setSpeaking(null); }} aria-pressed={voiceMode}
-              className="inline-flex min-h-8 items-center gap-1.5 hover:text-ink">
-              <Icon name="volume" size={14} className={voiceMode ? "text-brand" : ""} />{voiceMode ? t("chat.voiceOn") : t("chat.voiceOff")}
-            </button>
-          )}
-        </div>
-        {dictation.supported && dictation.listening && <p className="px-2 text-xs text-muted">{t("chat.micNote")}</p>}
-        {provider && <p className="px-2 text-xs text-muted">{t(`chat.provider.${provider}`)}</p>}
       </div>
-    </div>
+    </AppShell>
   );
 }

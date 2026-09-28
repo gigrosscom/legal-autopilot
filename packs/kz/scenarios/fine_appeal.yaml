@@ -29,7 +29,7 @@ claim:
 intake:
   - respondent_name
   - event_date: {type: date}
-  - amount: {type: money, currency: KZT, optional: true}
+  - amount: {type: money, currency: KZT, optional: true, question: {ru: "Какая сумма штрафа, в тенге?", kk: "Айыппұл сомасы қанша, теңгемен?"}}
   - problem_description: {type: longtext}
   - applicant_name: {pii: person}
   - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}

@@ -11,6 +11,7 @@ export type Question = {
   optional: boolean;
   evidence_kinds: { kind: string; label: string }[];
   uploaded?: number;
+  pattern?: string | null;
 };
 
 export type CaseAction = {
