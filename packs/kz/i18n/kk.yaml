@@ -159,7 +159,7 @@ reports:
   next_open: "Істі ашыңыз — онда келесі қадам көрсетілген."
   next_sign: "Заңгермен құжаттарға ЭЦҚ-мен қол қойыңыз: {titles}."
   open_case: "Істі ашу: {link}"
-  footer: "Konsiliér AI — құқықтық мәселелер бойынша ЖИ-көмекші. Поштаға есептерді өшіру: {link}"
+  footer: "Konsiliér AI — құқықтық мәселелер бойынша ЖИ-көмекшісі. Поштаға есептерді өшіру: {link}"
   subject_update: "Konsiliér AI: «{title}» ісі — {status}"
   subject_reminder: "Еске салу: «{title}» ісі бойынша келесі қадам"
 
