@@ -18,6 +18,7 @@ ADMIN = {"X-Admin-Token": "adm"}
 
 class Api:
     def __init__(self, ctx, token: str):
+        self.ctx = ctx
         self.c = ctx.client
         self.h = {"Authorization": f"Bearer {token}"}
 

@@ -15,9 +15,8 @@ from .test_e2e import ADMIN, admin_approve, statuses, web_user
 WAGES = "Работодатель не платит зарплату три месяца, задолженность 450000 тенге"
 
 
-def _universal_case(api, ctx=None):
-    if ctx is not None:
-        hide_scenarios(ctx, "kz.labor.")
+def _universal_case(api):
+    hide_scenarios(api.ctx, "kz.labor.")  # the universal path: no published scenario fits the story
     created = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ"})
     case = created["case"]
     assert case["scenario"] is None
@@ -43,7 +42,7 @@ def test_level1_verified_scenarios_unchanged(ctx):
 def test_level2_universal_path_needs_lawyer_approval(ctx):
     ctx.container.engine.config.self_service = False  # the lawyer-review policy (SELF_SERVICE=false)
     api = web_user(ctx)
-    cid, _ = _universal_case(api, ctx)
+    cid, _ = _universal_case(api)
 
     # a message before choosing a forum only repeats the choice
     out = api.answer(cid, "что дальше?")
@@ -156,7 +155,7 @@ def test_coverage_and_forums_endpoints(ctx):
 
 def test_admin_board_keeps_every_case_in_one_column(ctx):
     api = web_user(ctx)
-    _universal_case(api, ctx)
+    _universal_case(api)
     api.post("/v1/cases", expect=201, json={"text": "Меня обвиняют в мошенничестве, возбудили дело против меня",
                                             "country": "KZ"})
     board = ctx.client.get("/v1/admin/board", headers=ADMIN).json()
@@ -243,7 +242,7 @@ def _fill_and_prepare(api, cid, case):
 
 def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
     api = web_user(ctx)
-    cid, _ = _universal_case(api, ctx)
+    cid, _ = _universal_case(api)
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
     action = _fill_and_prepare(api, cid, case)
     assert action["approval_status"] == "not_required" and action["downloadable"] is True
@@ -257,7 +256,7 @@ def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
 
 def test_pre_trial_claim_goes_to_the_other_party(ctx):
     api = web_user(ctx)
-    cid, options = _universal_case(api, ctx)
+    cid, options = _universal_case(api)
     assert "kz.counterparty.claim" in options  # a pre-trial claim is offered next to the bodies
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.counterparty.claim"})["case"]
     action = _fill_and_prepare(api, cid, case)
@@ -271,7 +270,7 @@ def test_pre_trial_claim_goes_to_the_other_party(ctx):
 
 def test_court_documents_still_wait_for_a_lawyer(ctx):
     api = web_user(ctx)
-    cid, _ = _universal_case(api, ctx)
+    cid, _ = _universal_case(api)
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.district"})["case"]
     action = _fill_and_prepare(api, cid, case)
     assert action["approval_status"] == "pending" and action["downloadable"] is False
