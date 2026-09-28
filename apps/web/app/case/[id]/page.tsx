@@ -196,6 +196,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
             <LevelBadge level={cov.level} />
             <Badge>{c.status_label}</Badge>
           </div>
+          <Link href={`/chat/${c.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-line bg-surface px-3 text-sm hover:border-brand">
+            <Icon name="sparkle" size={16} className="text-brand" />{t("chat.open")}
+          </Link>
           <StageProgress stage={c.stage} />
         </div>
 

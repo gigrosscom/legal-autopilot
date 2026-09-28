@@ -50,4 +50,4 @@ actions:
     kind: handoff
     when: lawsuit_alimony.response in [none, refusal, partial]
     title: {ru: Передача дела юристу, kk: Істі заңгерге беру}
-pricing: {model: free}
+pricing: {model: fixed, amount: 1990, currency: KZT}

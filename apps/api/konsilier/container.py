@@ -41,6 +41,7 @@ class Container:
     signature_verifier: SignatureVerifier | None = None
     reporter: Any = None
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
+    chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
 
     def law_agent_for(self, case: Any) -> Any:
         """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
@@ -99,6 +100,10 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         from .lawagent.sources import Adilet
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else anthropic.Anthropic()
-        container.law_agent = LawAgent(client, settings.llm_model, Adilet())
+        from .chat import ChatAgent
+
+        adilet = Adilet()
+        container.law_agent = LawAgent(client, settings.llm_model, adilet)
+        container.chat_agent = ChatAgent(client, settings.llm_fast_model, adilet)
     scheduler.extra_jobs.append(container.reporter.tick)
     return container

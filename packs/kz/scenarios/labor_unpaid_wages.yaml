@@ -78,4 +78,4 @@ actions:
     kind: handoff
     when: complaint_labor_inspection.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (иск в суд), kk: Істі заңгерге беру (сотқа талап)}
-pricing: {model: free}
+pricing: {model: fixed, amount: 1990, currency: KZT}

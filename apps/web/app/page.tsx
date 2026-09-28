@@ -3,24 +3,27 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CtaBanner } from "@/components/CtaBanner";
-import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { LevelAction, LevelExplainer } from "@/components/LevelBadge";
 import { PathMap } from "@/components/PathMap";
 import Trust from "@/components/Trust";
-import { Alert, Button, Icon, Section } from "@/components/ui";
-import { useLang, useT } from "@/lib/i18n";
+import { Button, Icon, Section } from "@/components/ui";
+import { useT } from "@/lib/i18n";
 import { SITUATIONS } from "@/lib/situations";
-import { useStartCase } from "@/lib/startCase";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const t = useT();
-  const { lang } = useLang();
   const [text, setText] = useState("");
-  const { start, busy, error, emergency, dismissEmergency } = useStartCase(lang);
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
 
+  // The story goes to the consultation chat, which checks for emergencies and opens the case.
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (text.trim().length >= 10) start(text.trim());
+    if (text.trim().length < 10) return;
+    setBusy(true);
+    try { sessionStorage.setItem("konsilier.chat.draft", text.trim()); } catch {}
+    router.push("/start?send=1");
   }
 
   return (
@@ -47,8 +50,6 @@ export default function Home() {
           <label id="describe" htmlFor="story" className="block text-lg font-semibold">{t("home.describe")}</label>
           <textarea id="story" className="input min-h-44 resize-y" required minLength={10} value={text}
             onChange={(e) => setText(e.target.value)} placeholder={t("start.placeholder")} />
-          {emergency && <EmergencyPanel info={emergency} onContinue={() => { dismissEmergency(); start(text.trim(), { skipTriage: true }); }} />}
-          {error && <Alert tone="danger" role="alert">{error}</Alert>}
           <Button size="lg" className="w-full" disabled={busy || text.trim().length < 10} iconEnd={busy ? undefined : "arrowRight"}
             icon={busy ? "spinner" : undefined}>
             {busy ? t("start.busy") : t("home.cta")}

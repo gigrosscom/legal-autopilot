@@ -44,6 +44,7 @@ export default function LawyersPage() {
   const { lang } = useLang();
   const [data, setData] = useState<Directory | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [freeOnly, setFreeOnly] = useState(false);
 
   useEffect(() => {
     publicApi<Directory>(`/v1/lawyers?country=KZ&lang=${lang}`).then(setData).catch((e) => setError(errorText(e)));
@@ -63,9 +64,22 @@ export default function LawyersPage() {
       {!data && !error && <p aria-busy="true" className="min-h-[80vh] text-muted">{t("common.loading")}</p>}
       {error && <p role="alert" className="rounded-xl bg-danger-50 p-3 text-sm text-danger">{error}</p>}
 
+      {data && (
+        <div role="group" aria-label={t("lawyers.filter")} className="flex flex-wrap gap-2">
+          {([false, true] as const).map((v) => (
+            <button key={String(v)} type="button" aria-pressed={freeOnly === v} onClick={() => setFreeOnly(v)}
+              className={`min-h-10 rounded-full border px-4 text-sm ${freeOnly === v ? "border-brand bg-brand text-white" : "border-line bg-surface hover:border-brand"}`}>
+              {v ? t("lawyers.freeOnly") : t("lawyers.all")}
+            </button>
+          ))}
+          {freeOnly && <p className="basis-full text-sm text-muted">{t("lawyers.freeNote")}</p>}
+        </div>
+      )}
+
       {data && <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">
-          {data?.lawyers.map((l, i) => (
+          {freeOnly && !data.lawyers.some((l) => l.pro_bono) && <p className="text-muted">{t("lawyers.freeNone")}</p>}
+          {data.lawyers.filter((l) => !freeOnly || l.pro_bono).map((l, i) => (
             <article key={l.id} className="card space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex gap-3">

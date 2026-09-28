@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Main model writes the document text; the fast model does classification and extraction.
     llm_model: str = "claude-sonnet-5"
     llm_fast_model: str = "claude-haiku-4-5"
+    chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
     # Images cannot be PII-redacted; send them to the LLM only if explicitly enabled.
