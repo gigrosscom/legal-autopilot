@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..container import Container
+from ..team import notify_team
 from ..core.models import Agreement, Case, Identity, LawyerApplication, LawyerRequest, User
 from .deps import current_user, get_container, get_session, load_case, require_admin
 from .signing import agreement_view, signature_view
@@ -123,10 +124,14 @@ def _verified_application(session: Session, user: User) -> LawyerApplication:
 def lawyer_me(user: User = Depends(current_user), session: Session = Depends(get_session)) -> dict[str, Any]:
     apps = session.scalars(select(LawyerApplication).where(LawyerApplication.user_id == user.id)
                            .order_by(LawyerApplication.id.desc())).all()
+    ident = iin_identity(session, user.id)
+    for a in apps:  # applied first, confirmed ЭЦП later: the application now carries who they are
+        if ident is not None and not a.iin_hash:
+            a.iin_hash, a.ecp_name = ident.subject_hash, user.display_name
     return {"applications": [{"id": a.id, "status": a.status, "name": a.ecp_name or a.full_name, "kind": a.kind}
                              for a in apps],
             "verified": any(a.status == "verified" for a in apps),
-            "has_ecp": iin_identity(session, user.id) is not None}
+            "has_ecp": ident is not None}
 
 
 @router.get("/lawyer/cases")
@@ -231,6 +236,10 @@ def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depen
     session.add(req)
     session.flush()
     container.engine.audit(session, case, f"user:{user.id}", "lawyer_requested", request=req.id, lawyer=body.lawyer_ref)
+    notify_team(container, f"Заявка клиента юристу №{req.id}",
+                f"{req.full_name}, тел. {req.phone}{', ' + req.email if req.email else ''}\n"
+                f"Дело: {case.id}\nЮрист в каталоге: {body.lawyer_ref or '—'}\n\n"
+                f"Передайте дело проверенному юристу нужной специализации и сообщите клиенту.")
     return {"id": req.id, "case_id": str(case.id), "status": req.status}
 
 

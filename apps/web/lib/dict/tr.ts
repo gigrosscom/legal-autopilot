@@ -222,6 +222,7 @@ const tr: Dict = {
     coverageCta: "Ülkelere göre kapsam",
     stepsTitle: "Nasıl çalışır",
     steps: {
+      share: "Bunun uygun olacağı meslektaşlarınız var mı? Onlara bağlantıyı gönderin.",
       s1t: "Ne olduğunu anlatın",
       s1d: "Yazarak veya sesli. Fiş, sözleşme ve yazışma fotoğrafları ekleyebilirsiniz.",
       s2t: "Ücretsiz danışmanlık alın",
@@ -673,6 +674,19 @@ const tr: Dict = {
     },
   },
   lawyer: {
+    steps: {
+      title: "Avukat olarak katılım",
+      applied: "Başvuru gönderildi",
+      appliedHint: "Kısa formu doldurun: statü, kuruluş, uzmanlık alanları.",
+      ecp: "Kimliğinizi e-imzayla doğrulayın",
+      ecpHint: "Zorunludur: başvurunun gerçekten size ait olduğunu gösterir; müvekkillerle belgeleri yalnızca bu e-imzayla imzalarsınız.",
+      ecpDo: "E-imzayla doğrula",
+      check: "Ekip tarafından statü kontrolü",
+      checkHint: "Avukat veya hukuk danışmanı statünüzü sicilden kontrol eder, verdiğiniz iletişim bilgisiyle size ulaşırız. Genellikle 1–2 iş günü.",
+      access: "Dosyalara erişim",
+      accessHint: "Panel otomatik açılır: dosyalar, belgeler ve müvekkillerle sözleşme imzalama.",
+      doneLead: "Tek adım kaldı: kimliğinizi e-imzayla doğrulayın, ardından başvuru statü kontrolüne gider.",
+    },
     eyebrow: "Avukatlar için",
     title: "Avukat paneli",
     lead: "Platformun size ilettiği dosyalar ve müvekkille e-imzayla imzalanan belgeler.",

@@ -222,6 +222,7 @@ const en: Dict = {
     coverageCta: "Coverage by country",
     stepsTitle: "How it works",
     steps: {
+      share: "Know colleagues this would suit? Send them the link.",
       s1t: "Tell us what happened",
       s1d: "In text or by voice. You can attach photos of receipts, contracts, messages.",
       s2t: "Get a free consultation",
@@ -673,6 +674,19 @@ const en: Dict = {
     },
   },
   lawyer: {
+    steps: {
+      title: "Joining as a lawyer",
+      applied: "Application sent",
+      appliedHint: "Fill in a short form: status, organisation, fields of practice.",
+      ecp: "Confirm your identity with EDS",
+      ecpHint: "This is required: it shows the application is really yours, and you will sign documents with clients only with this EDS.",
+      ecpDo: "Confirm with EDS",
+      check: "Status check by the team",
+      checkHint: "We check your advocate or legal consultant status against the registry and contact you by the contact you gave. Usually 1–2 working days.",
+      access: "Access to cases",
+      accessHint: "The dashboard opens automatically: cases, documents and signing agreements with clients.",
+      doneLead: "One step left: confirm your identity with EDS, then the application goes to the status check.",
+    },
     eyebrow: "For lawyers",
     title: "Lawyer dashboard",
     lead: "Cases the platform has passed to you, and documents with clients that are signed with EDS.",

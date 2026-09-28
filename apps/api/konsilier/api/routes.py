@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
+from ..team import notify_team
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
@@ -536,7 +537,8 @@ class LawyerApplicationIn(BaseModel):
 
 @router.post("/lawyer-applications", status_code=201)
 def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_session),
-                    user: User | None = Depends(optional_user)) -> dict[str, Any]:
+                    user: User | None = Depends(optional_user),
+                    container: Container = Depends(get_container)) -> dict[str, Any]:
     import secrets
 
     code = secrets.token_urlsafe(5).replace("-", "x").replace("_", "y")[:7].upper()
@@ -545,11 +547,19 @@ def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_se
         ref = None  # unknown code is ignored, not an error
     app_row = LawyerApplication(**body.model_dump(exclude={"referred_by", "country"}), country=body.country.upper(),
                                 referral_code=code, referred_by=ref)
+    if user is not None:  # the application belongs to this browser's account, even before ЭЦП
+        app_row.user_id = user.id
     ident = session.scalar(select(Identity).where(Identity.user_id == user.id, Identity.kind == "iin")) if user else None
     if ident is not None:  # applied signed in with ЭЦП: who they are, per the certificate
-        app_row.user_id, app_row.iin_hash, app_row.ecp_name = user.id, ident.subject_hash, user.display_name
+        app_row.iin_hash, app_row.ecp_name = ident.subject_hash, user.display_name
     session.add(app_row)
     session.flush()
+    notify_team(container, f"Новая заявка юриста №{app_row.id}: {app_row.full_name}",
+                 f"{app_row.full_name} ({app_row.kind})\nОрганизация: {app_row.organization or '—'}\n"
+                 f"Лицензия / удостоверение: {app_row.license_number or '—'}\nГород: {app_row.city or '—'}\n"
+                 f"Контакт: {app_row.contact}\nСпециализации: {', '.join(app_row.specializations or []) or '—'}\n"
+                 f"ЭЦП: {'подтверждена' if ident is not None else 'ещё нет'}\n\n"
+                 f"Проверьте статус по реестру и подтвердите заявку в админке (Юристы).")
     invited = session.scalar(select(func.count()).select_from(LawyerApplication)
                              .where(LawyerApplication.referred_by == code))
     return {"id": app_row.id, "referral_code": code, "invited": invited or 0, "ecp_verified": ident is not None}

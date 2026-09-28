@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, errorText } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { LawyerSteps } from "@/components/LawyerSteps";
 import { Icon, type IconName } from "@/components/ui";
 import { useLang } from "@/lib/i18n";
 import { lawyerText, type LawyerText } from "@/lib/lawyerText";
@@ -110,10 +111,15 @@ function ApplyForm() {
 
   if (done) {
     return (
-      <div className="card space-y-4">
-        <h3 className="text-xl font-bold">{L.doneTitle}</h3>
-        <p className="text-sm text-muted">{L.doneText}</p>
+      <div className="space-y-4">
+        <div className="card space-y-2">
+          <h3 className="text-xl font-bold">{L.doneTitle}</h3>
+          <p className="text-sm text-muted">{t("lawyer.steps.doneLead")}</p>
+        </div>
+        <LawyerSteps s={{ applied: true, hasEcp: hasEcp === true, status: "new" }} />
         <a className="link text-sm" href="/lawyer">{t("lawyer.cabinetLink")}</a>
+        <div className="card space-y-3">
+        <p className="text-sm text-muted">{t("lawyer.steps.share")}</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input className="input" readOnly value={link} onFocus={(e) => e.target.select()} />
           <button className="btn-ghost shrink-0" onClick={() => navigator.clipboard?.writeText(link)}>{L.copy}</button>
@@ -122,6 +128,7 @@ function ApplyForm() {
           <a className="btn-primary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(L.share + link)}`}>WhatsApp</a>
           <a className="btn-primary" target="_blank" rel="noreferrer" href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(L.share)}`}>Telegram</a>
           <a className="btn-ghost" target="_blank" rel="noreferrer" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`}>LinkedIn</a>
+        </div>
         </div>
         <ShareCard name={form.full_name} demo={false} />
       </div>
@@ -138,7 +145,7 @@ function ApplyForm() {
       {hasEcp === true && <p className="chip bg-brand-50 text-brand-dark">{t("lawyer.ecpOk")}</p>}
       {hasEcp === false && (
         <p className="rounded-xl bg-info-50 p-3 text-sm text-info">
-          {t("lawyer.ecpNeeded")} <a className="link font-semibold" href="/account">{t("lawyer.ecpSignIn")}</a>
+          {t("lawyer.ecpNeeded")} <a className="link font-semibold" href="/account?method=ecp&next=/for-lawyers%23apply">{t("lawyer.ecpSignIn")}</a>
         </p>
       )}
       <input className="input" required minLength={3} aria-label={L.name} placeholder={L.name} value={form.full_name} onChange={set("full_name")} />
