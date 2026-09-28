@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Invite } from "@/components/Invite";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -111,6 +112,8 @@ export default function AccountPage() {
       {me && <ReportsToggle me={me} onChange={setMe} />}
 
       <p className="text-xs text-muted">{t("account.privacy")}</p>
+
+      <Invite />
     </div>
   );
 }

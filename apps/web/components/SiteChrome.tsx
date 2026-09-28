@@ -1,14 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AppTopBar, isAppRoute, Sidebar, TabBar } from "@/components/AppNav";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import { captureReferral } from "@/lib/api";
 
 /** The website gets the header and footer; the app (chat, cases, documents, profile) gets its own navigation. */
 export function SiteChrome({ children }: { children: ReactNode }) {
   const path = usePathname();
+  useEffect(() => { captureReferral(); }, []);
   if (isAppRoute(path)) {
     return (
       <>

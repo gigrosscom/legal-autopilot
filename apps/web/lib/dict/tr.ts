@@ -678,6 +678,15 @@ const tr: Dict = {
       other: "Hukukçu",
     },
   },
+  invite: {
+    title: "İhtiyacı olanları davet edin",
+    lead: "Bağlantınızı benzer bir sorunu olan arkadaşlarınıza ve yakınlarınıza gönderin. Danışmanlık onlar için ücretsiz.",
+    share: "Bağlantıyı paylaş",
+    copied: "Bağlantı kopyalandı",
+    invited: "Bağlantınızla gelenler: {n}",
+    chatAsk: "İşinize yaradı mı? Bağlantıyı benzer durumdaki birine gönderin.",
+    shareText: "Konsiliér AI — hukuki konularda ücretsiz yapay zekâ danışmanlığı. Durumunuzu anlatın, ne yapmanız gerektiğini söylesin:",
+  },
   support: {
     title: "Bize yazın",
     lead: "Hizmetle ilgili bir soru sorun, bir sorunu bildirin veya bir iyileştirme önerin. Yanıt e-posta adresinize gelir ve bu sayfada görünür.",
