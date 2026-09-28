@@ -44,21 +44,11 @@ main() {
         python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/health').status)" 2>&1 | tail -1)
       WEB=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T web \
         node -e "fetch('http://localhost:3000/').then(r=>console.log(r.status)).catch(e=>console.log(e.message))" 2>&1 | tail -1)
-      # Real structured-output call to each model the app uses (a few tokens, well under a cent).
+      # Which models are configured — read from settings only: no API call, nothing is spent.
       LLM=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 from konsilier.config import get_settings
-from konsilier.core.llm import build_provider
 s = get_settings()
-if s.llm_provider != 'anthropic': print('off'); raise SystemExit
-p = build_provider(s)
-schema = {'type': 'object', 'properties': {'ok': {'type': 'boolean'}}, 'required': ['ok'], 'additionalProperties': False}
-out = []
-for task in ('narrative', 'classify_response'):
-    try:
-        p.complete_json(task=task, system='Answer ok=true.', user='{}', schema=schema); out.append(p.model_for(task) + ':ok')
-    except Exception as e:
-        out.append(p.model_for(task) + ':' + str(e)[:120].replace(' ', '_'))
-print(','.join(out))" 2>&1 | tail -1)
+print(s.llm_provider if s.llm_provider != 'anthropic' else s.llm_model + ',' + s.llm_fast_model + ':configured')" 2>&1 | tail -1)
       # Sign-in methods that are configured, and whether NCANode (ЭЦП checks) answers at all.
       AUTH=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 import httpx
