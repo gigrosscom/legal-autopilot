@@ -130,6 +130,13 @@ def test_chat_without_agent_is_503_and_failure_is_reported(ctx):
     assert ev[-1]["type"] == "error" and ev[-1]["code"] == "agent_failed"
     assert [m["role"] for m in api.get(f"/v1/cases/{cid}/chat").json()] == ["user"]
 
+    # the fallback (Claude) answers when the main chat model fails before the reply starts
+    ctx.container.chat_fallback_agent = ChatAgent(StreamingClient(reply_turns(
+        "По статье 113 расчёт — не позднее трёх рабочих дней.")), "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"}))
+    assert ev[-1]["type"] == "done" and "По статье 113" in ev[-1]["message"]["text"]
+    ctx.container.chat_fallback_agent = None
+
 
 # ------------------------------------------------------------------ Gemini adapter (free tier), offline
 def _gemini_http(replies, seen):
@@ -186,3 +193,38 @@ def test_gemini_error_is_raised_for_the_chat_to_report():
     with pytest.raises(RuntimeError, match="location is not supported"):
         list(agent.stream([{"role": "user", "text": "вопрос"}], context={"case": {}}, language="ru", country="X",
                           use_portal=False))
+
+
+def test_gemini_retries_high_demand_before_the_reply_starts(monkeypatch):
+    import httpx
+
+    from konsilier import gemini
+
+    monkeypatch.setattr(gemini, "RETRY_DELAYS", (0, 0))
+    busy = httpx.Response(503, json={"error": {"message": "This model is currently experiencing high demand."}})
+    ok = "data: " + json.dumps({"candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}]})
+    answers = [busy, busy, httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
+    http = httpx.Client(transport=httpx.MockTransport(lambda req: answers.pop(0)))
+    with gemini.GeminiClient("k", http=http).stream(model="m", max_tokens=5, system="s", tools=[],
+                                                    messages=[{"role": "user", "content": "?"}]) as st:
+        assert [b.text for b in st.get_final_message().content] == ["ok"]
+    assert answers == []
+
+    urls: list = []
+
+    def next_model(req):
+        urls.append(req.url.path)
+        return answers.pop(0)
+
+    answers[:] = [busy, busy, busy, httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
+    fb = gemini.GeminiClient("k", http=httpx.Client(transport=httpx.MockTransport(next_model)), fallback_models=("m2",))
+    assert fb.stream(model="m1", max_tokens=5, system="s", tools=[],
+                     messages=[{"role": "user", "content": "?"}]).get_final_message().content[0].text == "ok"
+    assert [u.split("/")[-1] for u in urls] == ["m1:streamGenerateContent"] * 3 + ["m2:streamGenerateContent"]
+
+    answers[:] = [busy, busy, busy]
+    import pytest
+
+    with pytest.raises(RuntimeError, match="gemini 503"):
+        gemini.GeminiClient("k", http=http).stream(model="m", max_tokens=5, system="s", tools=[],
+                                                   messages=[{"role": "user", "content": "?"}]).get_final_message()
