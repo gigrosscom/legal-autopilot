@@ -782,11 +782,12 @@ class CaseEngine:
                          addressee: dict[str, Any]) -> dict[str, Any]:
         lang = case.language
         f = {fl.name: display(fl, case.facts.get(fl.name)) for fl in sc.intake if fl.type != "evidence"}
-        applicant = {}
-        if "applicant" in sc.parties:
-            p = sc.parties["applicant"]
-            applicant = {"name": f.get(p.name_field, ""), "id": f.get(p.id_field or "", ""),
-                         "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", "")}
+        # requisites of every party (the header, "whose actions are complained of", the defendant of a lawsuit)
+        parties = {role: {"name": f.get(p.name_field, ""), "id": f.get(p.id_field or "", ""),
+                          "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", ""),
+                          "kind": p.kind}
+                   for role, p in sc.parties.items()}
+        applicant = parties.get("applicant", {})
         evidence = [pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
                     for e in case.evidence if e.kind != "response"]
         previous = [{"title": pack.localized(sc.action(a.action_id).title, lang),
@@ -804,6 +805,8 @@ class CaseEngine:
             "title": pack.localized(spec.title, lang),
             "f": f,
             "applicant": applicant,
+            "respondent": parties.get("respondent", {}),
+            "labels": {fl.name: ai.field_label(sc, pack, lang, fl.name) for fl in sc.intake},
             "addressee": addressee,
             "narrative": case.narrative or f.get("problem_description", ""),
             "demands": demands,
