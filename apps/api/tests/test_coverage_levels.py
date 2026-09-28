@@ -79,7 +79,8 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
     with ctx.container.session_factory() as s:
         a = s.get(Action, uuid.UUID(action["id"]))
         text = docx_text(ctx.container.storage.get(a.docx_key))
-    assert "[норма: уточнит юрист]" in text
+    # the labour inspection's term comes from the registry (АППК ст. 76, verified on adilet), not from the model
+    assert "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76" in text
     assert "Выплатить долг по зарплате" in text
     assert NEUTRAL_NOTE_RU in text and not DRAFT_WORDS.search(text)
 
@@ -123,7 +124,10 @@ def test_alimony_scenario_lawsuit_waits_for_a_lawyer(ctx):
     assert case["scenario"]["id"] == "kz.family.alimony"
     assert case["plan"]["lawyer_check"] is True
     answers = {**_ANSWERS, "respondent_name": "Петров Пётр Петрович",
-               "desired_outcome": "Взыскать алименты на сына"}
+               "desired_outcome": "Взыскать алименты на сына", "applicant_iin": "900101300128",
+               "applicant_birth_date": "01.01.1990", "applicant_email": "пропустить",
+               "respondent_address": "Алматы, ул. Сатпаева 3", "respondent_iin": "пропустить",
+               "children_info": "Петров Алихан Петрович, 01.02.2018"}
     q = case["question"]
     while q is not None:
         out = api.answer(case["id"], "пропустить" if q["type"] == "evidence" else answers[q["field"]])
@@ -250,7 +254,7 @@ def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
     steps = action["instructions"]
     assert steps[0].startswith("Скачайте «Жалоба»")
     assert any("eotinish.kz" in s and "ЭЦП" in s for s in steps)  # portal walk-through, not one line
-    assert any("Местный орган по инспекции труда" in s for s in steps)  # the chosen body is named
+    assert any("государственная инспекция труда" in s for s in steps)  # the chosen body is named
     assert any(s.startswith("Что приложить:") for s in steps)
     assert steps[-1].startswith("После подачи нажмите")
 

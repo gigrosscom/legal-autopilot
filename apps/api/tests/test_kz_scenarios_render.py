@@ -22,7 +22,10 @@ ANSWERS = {
     "event_date": "01.09.2026", "purchase_date": "01.09.2026", "loan_date": "01.09.2026", "amount": "100000",
     "problem_description": "Описание ситуации", "desired_outcome": "Вернуть деньги",
     "applicant_name": "Иванов Иван Иванович", "applicant_iin": "900101300128", "applicant_address": "Алматы, ул. Абая 1",
-    "applicant_phone": "+7 701 123 45 67",
+    "applicant_phone": "+7 701 123 45 67", "applicant_birth_date": "01.01.1990", "applicant_email": "пропустить",
+    "seller_address": "Алматы, пр. Достык 10", "lender_address": "пропустить", "respondent_address": "Алматы, пр. Достык 10",
+    "respondent_bin": "пропустить", "respondent_iin": "пропустить", "children_info": "Иванова Алия, 01.02.2018",
+    "decision_number": "№ 123 от 01.09.2026",
 }
 
 

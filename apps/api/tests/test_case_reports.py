@@ -73,7 +73,8 @@ def test_ready_document_report_contains_instructions(client):
     answers = {"seller_name": "ТОО Технодом", "seller_bin": "пропустить", "goods_description": "Телефон",
                "purchase_date": "12.08.2026", "amount": "150000", "problem_description": "Сломался",
                "applicant_name": "Тестов Тест", "applicant_phone": "+77011234567", "applicant_iin": "пропустить",
-               "seller_email": "пропустить"}
+               "seller_email": "пропустить", "seller_address": "Алматы, пр. Абая 10",
+               "applicant_address": "Алматы, ул. Абая 1"}
     q = reply
     for _ in range(25):
         if q is None:
