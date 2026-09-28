@@ -19,7 +19,7 @@ export function Alert({ tone = "info", title, icon, children, actions, role }: {
 }) {
   const s = STYLE[tone];
   return (
-    <div role={role ?? (tone === "danger" ? "alert" : "note")} className={`rounded-2xl border p-4 ${s.box}`}>
+    <div role={role ?? (tone === "danger" ? "alert" : "note")} className={`rounded-2xl border p-5 ${s.box}`}>
       <div className="flex gap-3">
         <Icon name={icon ?? s.icon} size={22} className="mt-0.5" />
         <div className="min-w-0 flex-1 space-y-2">

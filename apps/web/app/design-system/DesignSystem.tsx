@@ -11,7 +11,7 @@ import { useT } from "@/lib/i18n";
 const COLORS = [
   ["ink", "bg-ink"], ["ink-soft", "bg-ink-soft"], ["muted", "bg-muted"], ["line", "bg-line"], ["sand", "bg-sand"],
   ["sand-deep", "bg-sand-deep"], ["surface", "bg-surface"], ["brand", "bg-brand"], ["brand-dark", "bg-brand-dark"],
-  ["brand-50", "bg-brand-50"], ["danger", "bg-danger"], ["warning", "bg-warning"], ["info", "bg-info"], ["draft", "bg-draft"],
+  ["brand-50", "bg-brand-50"], ["action", "bg-action"], ["accent", "bg-accent"], ["danger", "bg-danger"], ["warning", "bg-warning"], ["info", "bg-info"], ["draft", "bg-draft"],
 ];
 const ICONS: IconName[] = ["document", "building", "clock", "escalate", "lawyer", "shieldCheck", "lock", "chart", "map",
   "alert", "info", "phone", "check", "globe", "cart", "briefcase", "family", "receipt", "landmark", "handshake", "scroll",
@@ -24,7 +24,7 @@ export default function DesignSystem() {
     <div className="space-y-14">
       <header className="max-w-3xl space-y-3">
         <p className="eyebrow">Konsiliér AI</p>
-        <h1 className="text-4xl font-semibold tracking-tight">{t("ds.title")}</h1>
+        <h1 className="text-[48px] font-semibold leading-[1.05] tracking-[-0.015em]">{t("ds.title")}</h1>
         <p className="text-lg text-muted">{t("ds.lead")}</p>
       </header>
 

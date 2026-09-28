@@ -36,14 +36,14 @@ export function TabBar({ inline = false }: { inline?: boolean }) {
   const tabs = useTabs();
   return (
     <nav aria-label={t("nav.main")}
-      className={`${inline ? "" : "fixed inset-x-0 bottom-0 z-30"} border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden`}>
+      className={`${inline ? "" : "fixed inset-x-0 bottom-0 z-30"} border-t border-black/[0.08] bg-[#fbfbfd]/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-[1.8] lg:hidden`}>
       <ul className="mx-auto grid max-w-lg grid-cols-5">
         {tabs.map((tab) => {
           const on = tab.match(path);
           return (
             <li key={tab.key}>
               <Link href={tab.href} aria-current={on ? "page" : undefined}
-                className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] ${on ? "font-semibold text-ink" : "text-muted hover:text-ink"}`}>
+                className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] tracking-normal ${on ? "font-medium text-brand" : "text-muted hover:text-ink"}`}>
                 <Icon name={tab.icon} size={22} strokeWidth={on ? 2.1 : 1.6} />
                 <span className="max-w-full truncate px-0.5">{t(`app.tabs.${tab.key}`)}</span>
               </Link>
@@ -65,9 +65,9 @@ export function Sidebar() {
   useEffect(() => { api<CaseView[]>("/v1/cases").then(setCases).catch(() => {}); }, []);
   const recent = cases.slice(0, 5).map((c) => ({ id: c.id, title: c.scenario?.title ?? c.coverage?.dispute?.title ?? t("case.untitled") }));
   return (
-    <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-line bg-sand px-4 py-6 lg:flex">
-      <Link href="/" className="px-2" aria-label="Konsiliér AI"><Brand size={28} /></Link>
-      <Link href="/start" className="btn-primary mt-8 min-h-12 justify-between px-4 text-base">
+    <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-black/[0.06] bg-sand px-4 py-6 lg:flex">
+      <Link href="/" className="px-2" aria-label="Konsiliér AI"><Brand size={24} /></Link>
+      <Link href="/start" className="btn-primary mt-8 min-h-11 justify-between px-5 text-[15px]">
         {t("app.newQuestion")}<Icon name="plus" size={20} />
       </Link>
       <nav aria-label={t("nav.main")} className="mt-6">
@@ -77,8 +77,8 @@ export function Sidebar() {
             return (
               <li key={tab.key}>
                 <Link href={tab.href} aria-current={on ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] ${on ? "bg-sand-deep font-medium text-ink" : "text-ink-soft hover:bg-sand-deep"}`}>
-                  <Icon name={tab.icon} size={20} className={on ? "text-ink" : "text-muted"} />{t(`app.tabs.${tab.key}`)}
+                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] ${on ? "bg-surface font-medium text-ink shadow-[var(--shadow-card)]" : "text-ink hover:bg-black/[0.04]"}`}>
+                  <Icon name={tab.icon} size={20} className={on ? "text-action" : "text-muted"} />{t(`app.tabs.${tab.key}`)}
                 </Link>
               </li>
             );
@@ -91,7 +91,7 @@ export function Sidebar() {
           <ul className="mt-2 space-y-0.5">
             {recent.map((c) => (
               <li key={c.id}>
-                <Link href={`/case/${c.id}`} className="block truncate rounded-lg px-3 py-2 text-sm text-muted hover:bg-sand-deep hover:text-ink">{c.title}</Link>
+                <Link href={`/case/${c.id}`} className="block truncate rounded-lg px-3 py-2 text-sm text-muted hover:bg-black/[0.04] hover:text-ink">{c.title}</Link>
               </li>
             ))}
           </ul>
@@ -99,8 +99,8 @@ export function Sidebar() {
       )}
       <div className="mt-auto space-y-3 border-t border-line pt-4">
         <LangSelect />
-        <Link href="/" className="flex min-h-10 items-center justify-between rounded-xl px-3 text-sm text-ink-soft hover:bg-sand-deep">
-          {t("app.toSite")}<Icon name="external" size={18} className="text-muted" />
+        <Link href="/" className="flex min-h-10 items-center justify-between rounded-xl px-3 text-sm text-brand hover:bg-black/[0.04]">
+          {t("app.toSite")}<Icon name="external" size={18} />
         </Link>
       </div>
     </aside>
@@ -110,9 +110,9 @@ export function Sidebar() {
 /** Phone top bar of the app list screens: brand and language. */
 export function AppTopBar() {
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
-      <div className="flex h-14 items-center justify-between px-5">
-        <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
+    <header className="sticky top-0 z-20 border-b border-black/[0.08] bg-[#fbfbfd]/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-[1.8] lg:hidden">
+      <div className="flex h-12 items-center justify-between px-5">
+        <Link href="/" aria-label="Konsiliér AI"><Brand size={22} /></Link>
         <LangSelect />
       </div>
     </header>

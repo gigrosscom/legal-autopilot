@@ -46,18 +46,18 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
 
   return (
     <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-dvh flex-col bg-surface lg:start-64">
-      <header className="border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
+      <header className="border-b border-black/[0.08] bg-[#fbfbfd]/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-[1.8]">
         <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-2 lg:h-16 lg:px-6">
           <Link href={back} aria-label={t("app.back")}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
             <Icon name="arrowRight" size={22} className="rotate-180 rtl:rotate-0" />
           </Link>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold leading-tight">{title}</h1>
+            <h1 className="truncate text-[17px] font-semibold leading-tight">{title}</h1>
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
-            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-line px-3.5 text-sm font-medium hover:bg-sand">
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sand px-4 text-sm font-medium text-ink hover:bg-sand-deep">
             <Icon name="menu" size={18} />{t("app.more")}
           </button>
         </div>
@@ -97,7 +97,7 @@ function MoreSheet({ sections, links, onClose }: { sections: MoreSection[]; link
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true"
       aria-label={active?.label ?? t("app.more")}>
-      <button type="button" aria-label={t("app.close")} onClick={onClose} className="absolute inset-0 bg-ink/40" />
+      <button type="button" aria-label={t("app.close")} onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div ref={panel} tabIndex={-1}
         className="relative flex max-h-[88dvh] w-full max-w-2xl flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-raised)] outline-none sm:rounded-3xl">
         <div className="flex items-center gap-1 border-b border-line px-2 py-2">
@@ -119,7 +119,7 @@ function MoreSheet({ sections, links, onClose }: { sections: MoreSection[]; link
                   {sections.map((s) => (
                     <li key={s.key}>
                       <button type="button" onClick={() => setActive(s)}
-                        className="flex min-h-20 w-full flex-col items-start justify-between gap-2 rounded-2xl border border-line bg-sand p-3 text-start text-sm font-semibold hover:border-brand">
+                        className="flex min-h-20 w-full flex-col items-start justify-between gap-2 rounded-2xl bg-sand p-4 text-start text-sm font-semibold hover:bg-sand-deep">
                         <Icon name={s.icon} size={22} className="text-brand" />{s.label}
                       </button>
                     </li>
@@ -127,7 +127,7 @@ function MoreSheet({ sections, links, onClose }: { sections: MoreSection[]; link
                 </ul>
               )}
               {links.length > 0 && (
-                <ul className="divide-y divide-line rounded-2xl border border-line">
+                <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-sand">
                   {links.map((l) => (
                     <li key={l.href}>
                       <Link href={l.href} onClick={onClose}

@@ -182,73 +182,78 @@ function ApplyForm() {
   );
 }
 
+const H2 = "text-[32px] font-semibold leading-[1.08] tracking-[-0.015em] text-balance text-ink md:text-[48px]";
+
 export default function ForLawyers() {
   const L = useText();
   return (
-    <div className="space-y-16">
-      {/* HERO */}
-      <section className="grid gap-8 pt-4 md:grid-cols-[1.3fr_1fr] md:items-center">
-        <div className="space-y-5">
-          <span className="chip bg-brand-50 text-brand-dark">{L.hero.chip}</span>
-          <h1 className="text-3xl font-semibold leading-tight md:text-4xl">{L.hero.title}</h1>
-          <p className="text-lg text-muted">{L.hero.sub}</p>
-          <div className="flex flex-wrap gap-3">
-            <a href="#apply" className="btn-primary px-6 py-3 text-base">{L.hero.apply}</a>
-            <a href="/lawyers" className="btn-ghost px-6 py-3 text-base">{L.hero.rating}</a>
-          </div>
-          <p className="text-sm text-muted">{L.hero.perks}</p>
+    <div className="space-y-4 md:space-y-5">
+      {/* HERO: centred, large type */}
+      <section className="mx-auto max-w-4xl space-y-6 pt-6 pb-10 text-center md:pt-10 md:pb-14">
+        <span className="chip bg-brand-50 text-brand-dark">{L.hero.chip}</span>
+        <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.015em] text-balance text-ink md:text-[64px]">{L.hero.title}</h1>
+        <p className="mx-auto max-w-2xl text-[21px] leading-[1.38] text-muted text-pretty md:text-[24px]">{L.hero.sub}</p>
+        <div className="flex flex-wrap justify-center gap-3 pt-2">
+          <a href="#apply" className="btn-primary min-h-12 px-7 text-[17px]">{L.hero.apply}</a>
+          <a href="/lawyers" className="btn-ghost min-h-12 px-7 text-[17px]">{L.hero.rating}</a>
         </div>
-        <DossierPreview />
+        <p className="text-sm text-muted">{L.hero.perks}</p>
+      </section>
+
+      <section className="tile flex justify-center">
+        <div className="w-full max-w-xl"><DossierPreview /></div>
       </section>
 
       {/* BENEFITS */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">{L.benefitsTitle}</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="space-y-10 px-1 py-16 md:py-20">
+        <h2 className={`${H2} text-center`}>{L.benefitsTitle}</h2>
+        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
           {L.benefits.map(([icon, title, text, soon]) => (
-            <div key={title} className="card space-y-2">
+            <div key={title} className="space-y-3">
+              <Icon name={icon as IconName} size={32} strokeWidth={1.5} className="text-action" />
               <div className="flex flex-wrap items-center gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name={icon as IconName} /></span>
-                <h3 className="font-semibold">{title}</h3>
+                <h3 className="text-[21px] font-semibold tracking-[-0.01em]">{title}</h3>
                 {soon && <span className="chip bg-warning-50 text-warning">{L.soon}</span>}
               </div>
-              <p className="text-sm text-muted">{text}</p>
+              <p className="text-[17px] text-muted">{text}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* PARTNER PROGRAMME */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">{L.partner.title}</h2>
-        <p className="text-muted">{L.partner.intro}</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="card space-y-2">
-            <h3 className="font-semibold">{L.partner.doesTitle}</h3>
-            <ul className="list-inside list-disc space-y-1 text-sm text-muted">
+      <section className="tile space-y-8">
+        <div className="mx-auto max-w-3xl space-y-3 text-center">
+          <h2 className={H2}>{L.partner.title}</h2>
+          <p className="text-[17px] text-muted md:text-[21px]">{L.partner.intro}</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="card space-y-3 border-0 shadow-none">
+            <h3 className="text-[21px] font-semibold">{L.partner.doesTitle}</h3>
+            <ul className="list-inside list-disc space-y-1.5 text-[15px] text-muted">
               {L.partner.does.map((x) => <li key={x}>{x}</li>)}
             </ul>
           </div>
-          <div className="card space-y-2 border-brand ring-2 ring-brand/20">
-            <h3 className="font-semibold">{L.partner.getsTitle}</h3>
-            <ul className="list-inside list-disc space-y-1 text-sm text-muted">
+          <div className="card space-y-3 border-0 shadow-none ring-2 ring-action">
+            <h3 className="text-[21px] font-semibold">{L.partner.getsTitle}</h3>
+            <ul className="list-inside list-disc space-y-1.5 text-[15px] text-muted">
               {L.partner.gets.map((x) => <li key={x}>{x}</li>)}
             </ul>
           </div>
         </div>
-        <p className="text-xs text-muted">{L.partner.lose}</p>
-        <div className="space-y-3 rounded-2xl bg-ink p-5 text-white shadow-sm">
+        <p className="text-center text-xs text-muted">{L.partner.lose}</p>
+        <div className="space-y-4 rounded-2xl bg-ink p-7 text-white md:p-10">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold">{L.expert.title}</h3>
+            <h3 className="text-[24px] font-semibold tracking-[-0.01em]">{L.expert.title}</h3>
             <span className="chip bg-white/15 text-white">{L.expert.chip}</span>
           </div>
-          <p className="text-sm text-white/80">{L.expert.intro}</p>
+          <p className="text-[17px] text-white/80">{L.expert.intro}</p>
           <div className="grid gap-4 md:grid-cols-2">
-            <ul className="list-inside list-disc space-y-1 text-sm text-white/80">
+            <ul className="list-inside list-disc space-y-1.5 text-[15px] text-white/80">
               <li className="list-none font-semibold text-white">{L.expert.doesTitle}</li>
               {L.expert.does.map((x) => <li key={x}>{x}</li>)}
             </ul>
-            <ul className="list-inside list-disc space-y-1 text-sm text-white/80">
+            <ul className="list-inside list-disc space-y-1.5 text-[15px] text-white/80">
               <li className="list-none font-semibold text-white">{L.expert.getsTitle}</li>
               {L.expert.gets.map((x) => <li key={x}>{x}</li>)}
             </ul>
@@ -257,41 +262,47 @@ export default function ForLawyers() {
       </section>
 
       {/* PRICING */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">{L.pricing.title}</h2>
-        <p className="rounded-2xl bg-brand-50 p-3 text-sm font-medium text-brand-dark">{L.pricing.pilot}</p>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="card space-y-2">
-            <h3 className="font-semibold">{L.pricing.basic}</h3>
-            <div className="text-lg font-semibold">{L.pricing.basicPrice}</div>
-            <p className="text-sm text-muted">{L.pricing.basicText}</p>
+      <section className="space-y-8 px-1 py-16 md:py-20">
+        <div className="mx-auto max-w-3xl space-y-4 text-center">
+          <h2 className={H2}>{L.pricing.title}</h2>
+          <p className="inline-block rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-dark">{L.pricing.pilot}</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-2 rounded-2xl bg-sand p-7">
+            <h3 className="text-[21px] font-semibold">{L.pricing.basic}</h3>
+            <div className="text-[28px] font-semibold tracking-[-0.015em]">{L.pricing.basicPrice}</div>
+            <p className="text-[15px] text-muted">{L.pricing.basicText}</p>
           </div>
-          <div className="card space-y-2 border-brand ring-2 ring-brand/20">
+          <div className="space-y-2 rounded-2xl bg-sand p-7 ring-2 ring-action">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold">Pro</h3>
-              <span className="chip bg-brand text-white">{L.pricing.proChip}</span>
+              <h3 className="text-[21px] font-semibold">Pro</h3>
+              <span className="chip bg-action text-white">{L.pricing.proChip}</span>
             </div>
-            <div className="text-2xl font-semibold">{L.proPrice}</div>
-            <p className="text-sm text-muted">{L.pricing.proText}</p>
+            <div className="text-[28px] font-semibold tracking-[-0.015em]">{L.proPrice}</div>
+            <p className="text-[15px] text-muted">{L.pricing.proText}</p>
           </div>
-          <div className="card space-y-2">
-            <h3 className="font-semibold">{L.pricing.ngo}</h3>
-            <div className="text-2xl font-semibold">{L.pricing.ngoPrice}</div>
-            <p className="text-sm text-muted">{L.pricing.ngoText}</p>
+          <div className="space-y-2 rounded-2xl bg-sand p-7">
+            <h3 className="text-[21px] font-semibold">{L.pricing.ngo}</h3>
+            <div className="text-[28px] font-semibold tracking-[-0.015em]">{L.pricing.ngoPrice}</div>
+            <p className="text-[15px] text-muted">{L.pricing.ngoText}</p>
           </div>
         </div>
       </section>
 
       {/* FAQ + FORM */}
-      <section id="apply" className="grid gap-6 md:grid-cols-2">
-        <div className="order-2 space-y-3">
-          <h2 className="text-2xl font-semibold">{L.faqTitle}</h2>
-          {L.faq.map(([q, a]) => (
-            <details key={q} className="card">
-              <summary className="cursor-pointer font-semibold">{q}</summary>
-              <p className="mt-2 text-sm text-muted">{a}</p>
-            </details>
-          ))}
+      <section id="apply" className="tile grid scroll-mt-20 gap-8 md:grid-cols-2">
+        <div className="order-2 space-y-4">
+          <h2 className="text-[28px] font-semibold tracking-[-0.015em] md:text-[40px]">{L.faqTitle}</h2>
+          <div className="divide-y divide-line border-y border-line">
+            {L.faq.map(([q, a]) => (
+              <details key={q} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[17px] font-semibold [&::-webkit-details-marker]:hidden">
+                  {q}<Icon name="chevronDown" size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="mt-2 text-[15px] text-muted">{a}</p>
+              </details>
+            ))}
+          </div>
         </div>
         <div className="order-1"><ApplyForm /></div>
       </section>

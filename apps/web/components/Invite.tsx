@@ -30,14 +30,14 @@ export function Invite({ compact = false }: { compact?: boolean }) {
   );
   if (compact) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-sand px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-sand px-5 py-4">
         <p className="text-sm text-ink-soft">{t("invite.chatAsk")}</p>
         {button}
       </div>
     );
   }
   return (
-    <section className="space-y-3 rounded-2xl border border-line p-5" aria-labelledby="invite-title">
+    <section className="space-y-3 rounded-2xl bg-sand p-6" aria-labelledby="invite-title">
       <h2 id="invite-title" className="text-lg font-semibold">{t("invite.title")}</h2>
       <p className="text-sm text-muted">{t("invite.lead")}</p>
       <p dir="ltr" className="truncate rounded-xl bg-sand px-3 py-2.5 font-mono text-sm text-ink">{ref.link}</p>
