@@ -16,20 +16,20 @@ default_language: ru
 status: planned
 compliance:
   ai_label:
-    ru: Подготовлено с помощью ИИ (Konsilier.AI). Проверьте данные перед подачей.
-    en: Prepared with AI (Konsilier.AI). Check the details before filing.
+    ru: Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей.
+    en: Prepared with AI (Konsiliér AI). Check the details before filing.
   draft_disclaimer:
     ru: 'ЧЕРНОВИК: сценарий ещё не подписан юристом. Ссылки на нормы и сроки подлежат
       проверке.'
-    en: 'DRAFT: not yet signed off by a lawyer. Legal references and deadlines must
-      be checked.'
+    en: 'DRAFT: this scenario has not yet been signed off by a lawyer. Legal references
+      and deadlines must be checked.'
   service_disclaimer:
-    ru: Konsilier.AI помогает подготовить и подать документы и следит за сроками.
+    ru: Konsiliér AI помогает подготовить и подать документы и следит за сроками.
       Если нужно довести дело до результата — подключим профессионального юриста платформы.
       Документы подаются от вашего имени.
-    en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
-      a case needs to be taken further, a professional lawyer on the platform can
-      step in. Documents are filed in your name.
+    en: Konsiliér AI helps you prepare and file documents and keeps track of deadlines.
+      If your case needs to be seen through to the end, we will bring in a professional
+      lawyer from the platform. Documents are filed in your name.
 # Official legal databases: we link to and cite them only (docs/legal-sources.md).
 # verified_on: URL and operator confirmed online on that date; absent = not confirmed.
 legal_sources:

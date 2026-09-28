@@ -4,8 +4,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Konsilier.AI — ИИ-помощник в юридических вопросах",
-    short_name: "Konsilier",
+    name: "Konsiliér AI — ИИ-помощник по юридическим вопросам",
+    short_name: "Konsiliér AI",
     description: "Опишите проблему — подготовим документ, подскажем, куда подать, и проследим за сроками.",
     lang: "ru",
     start_url: "/?source=app",

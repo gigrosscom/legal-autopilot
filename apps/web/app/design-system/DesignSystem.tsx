@@ -23,7 +23,7 @@ export default function DesignSystem() {
   return (
     <div className="space-y-14">
       <header className="max-w-3xl space-y-3">
-        <p className="eyebrow">Konsilier.AI</p>
+        <p className="eyebrow">Konsiliér AI</p>
         <h1 className="text-4xl font-bold tracking-tight">{t("ds.title")}</h1>
         <p className="text-lg text-muted">{t("ds.lead")}</p>
       </header>

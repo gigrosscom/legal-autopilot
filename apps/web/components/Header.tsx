@@ -40,7 +40,7 @@ export default function Header() {
       </a>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 min-[360px]:gap-3 min-[360px]:px-4">
         <Link href="/" className="flex min-h-11 items-center text-base font-bold tracking-tight min-[360px]:text-lg" dir="ltr">
-          Konsilier<span className="text-brand">.AI</span>
+          Konsiliér<span className="ms-[0.25em] text-brand">AI</span>
         </Link>
         <nav aria-label={t("nav.main")} className="hidden items-center gap-5 text-sm font-medium lg:flex">
           {NAV.map((n) => (

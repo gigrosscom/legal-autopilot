@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
     s3_region: str | None = None  # provider region name, if the S3 endpoint requires one
 
-    llm_provider: str = "mock"  # anthropic | bedrock | mock
+    llm_provider: str = "mock"  # anthropic | bedrock | gemini | mock
     # Claude on Amazon Bedrock (LLM_PROVIDER=bedrock), e.g. paid from AWS Activate credits.
     # Keys may be left empty to use the standard AWS credential chain.
     bedrock_region: str = "eu-central-1"
@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Main model writes the document text; the fast model does classification and extraction.
     llm_model: str = "claude-sonnet-5"
     llm_fast_model: str = "claude-haiku-4-5"
+    chat_provider: str = "gemini"  # gemini (free tier) | anthropic (paid): the model behind the consultation chat
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.1-flash-lite"
+    chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
     # Images cannot be PII-redacted; send them to the LLM only if explicitly enabled.
@@ -62,7 +66,7 @@ class Settings(BaseSettings):
     report_every_days: int = 3  # next-step reminder when a case has not moved
     report_max_nudges: int = 5  # then stop reminding until something changes  # eGov Mobile fetches the document to sign from here
     resend_api_key: str | None = None  # e-mail codes via Resend; otherwise SMTP_HOST; otherwise disabled
-    email_from: str = "Konsilier.AI <no-reply@konsilier.com>"
+    email_from: str = "Konsiliér AI <no-reply@konsilier.com>"
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)
     sms_api_key: str | None = None  # Mobizon API key
     smsc_login: str | None = None
@@ -70,7 +74,7 @@ class Settings(BaseSettings):
     sms_sender: str | None = None  # registered alpha name, if any
     ncanode_url: str | None = None  # e.g. http://ncanode:14579 — enables ЭЦП and eGov Mobile checks
     egov_org_bin: str | None = None  # BIN shown in eGov Mobile; eGov Mobile sign-in is off without it
-    egov_org_name: str = "Konsilier.AI"
+    egov_org_name: str = "Konsiliér AI"
     phone_default_country_code: str = "7"  # for numbers typed without "+"
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
 

@@ -12,7 +12,7 @@ reviewed_at: null
 published: false
 title:
   ru: Взыскание алиментов на ребёнка
-  kk: Балаға алимент өндіру
+  kk: Балаға алимент өндіріп алу
 summary:
   ru: Второй родитель не участвует в содержании ребёнка. Документ готовит и проверяет юрист.
   kk: Екінші ата-ана баланы асырауға қатыспайды. Құжатты заңгер дайындайды және тексереді.
@@ -34,7 +34,7 @@ parties:
   respondent: {kind: person, name_field: respondent_name}
 actions:
   - id: lawsuit_alimony
-    title: {ru: Исковое заявление о взыскании алиментов, kk: Алимент өндіру туралы талап арыз}
+    title: {ru: Исковое заявление о взыскании алиментов, kk: Алимент өндіріп алу туралы талап қою арызы}
     template: kz/templates/generic/lawsuit.docx
     channel: user_submits
     addressee: {forum: kz.court.district}
@@ -50,4 +50,4 @@ actions:
     kind: handoff
     when: lawsuit_alimony.response in [none, refusal, partial]
     title: {ru: Передача дела юристу, kk: Істі заңгерге беру}
-pricing: {model: free}
+pricing: {model: fixed, amount: 1990, currency: KZT}

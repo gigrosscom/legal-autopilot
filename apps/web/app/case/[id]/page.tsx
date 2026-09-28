@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { AnswerBar } from "@/components/AnswerBar";
+import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
@@ -33,6 +35,18 @@ import { useLang, useT } from "@/lib/i18n";
 
 type Msg = { from: "bot" | "user"; text: string };
 
+// Question texts are shared with the Telegram bot, where people type everything («пропустить», dates as
+// ДД.ММ.ГГГГ). On the web the calendar and the «Пропустить» button do that, so those typing hints are hidden.
+const SKIP_WORD = /«(пропустить|өткізу|skip|atla|تخطي)»/i;
+function forScreen(text: string): string {
+  const out = text
+    .replace(/\s*\((ДД\.ММ\.ГГГГ|КК\.АА\.ЖЖЖЖ|DD\.MM\.YYYY|GG\.AA\.YYYY)\)/g, "")
+    .split(/(?<=[.?!])(\s+)/)  // sentences with the spaces / line breaks after them kept as separate items
+    .reduce((acc: string[], part, i, all) => (i % 2 === 0 && !SKIP_WORD.test(part) ? [...acc, part, all[i + 1] ?? ""] : acc), [])
+    .join("").trim();
+  return out || text;
+}
+
 function saveReply(id: string, reply: Reply) {
   try {
     sessionStorage.setItem(`konsilier.reply.${id}`, JSON.stringify(reply));
@@ -54,15 +68,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const t = useT();
   const [c, setCase] = useState<CaseView | null>(null);
   const [log, setLog] = useState<Msg[]>([]);
-  const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [pendingEvidence, setPendingEvidence] = useState<{ id: string; facts: Record<string, string> } | null>(null);
-  const [responseText, setResponseText] = useState("");
-  const [showResponse, setShowResponse] = useState(false);
-  const [amount, setAmount] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
 
   const push = (m: Msg) => setLog((l) => [...l, m]);
 
@@ -82,8 +91,6 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       })
       .catch((e) => setError(errorText(e)));
   }, [id]);
-
-  useEffect(() => endRef.current?.scrollIntoView({ block: "nearest" }), [log, busy]);
 
   const run = useCallback(async (fn: () => Promise<void>): Promise<boolean> => {
     setBusy(true);
@@ -107,19 +114,18 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
-  async function sendAnswer(text: string) {
+  async function sendAnswer(text: string, shown?: string): Promise<boolean> {
     const ok = await run(async () => {
-      push({ from: "user", text });
-      setAnswer("");
+      push({ from: "user", text: shown ?? text });
       applyReply(await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/messages`, {
         method: "POST", body: JSON.stringify({ text }),
       }));
     });
     if (!ok) {
       // Not delivered (bad connection): take the message back into the input so nothing is lost.
-      setLog((l) => (l.at(-1)?.from === "user" && l.at(-1)?.text === text ? l.slice(0, -1) : l));
-      setAnswer(text);
+      setLog((l) => (l.at(-1)?.from === "user" && l.at(-1)?.text === (shown ?? text) ? l.slice(0, -1) : l));
     }
+    return ok;
   }
 
   async function chooseForum(f: ForumOption) {
@@ -173,8 +179,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     });
   }
 
-  if (error && !c) return <Alert tone="danger" role="alert">{error}</Alert>;
-  if (!c) return <p className="text-muted">{t("common.loading")}</p>;
+  if (error && !c) return <div className="mx-auto max-w-2xl p-4"><Alert tone="danger" role="alert">{error}</Alert></div>;
+  if (!c) return <p className="p-4 text-muted">{t("common.loading")}</p>;
 
   const last = c.actions.at(-1);
   const proposal = c.proposal;
@@ -183,294 +189,263 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const choosingForum = c.status === "intake" && !c.scenario && cov.options.length > 0;
   const ack = c.status === "intake" ? c.safety.pending_ack : null;
   const title = c.scenario?.title ?? cov.dispute?.title ?? t("case.untitled");
+  const interviewing = c.status === "intake" && !choosingForum && !ack;
 
-  return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-      <div className="min-w-0 space-y-5">
-        <div className="space-y-3">
-          <Link href="/cases" className="inline-flex items-center gap-1 text-sm text-muted hover:text-brand">
-            <Icon name="arrowRight" size={16} className="rotate-180 rtl:rotate-0" />{t("case.back")}
-          </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="me-auto text-2xl font-bold tracking-tight">{title}</h1>
-            <LevelBadge level={cov.level} />
-            <Badge>{c.status_label}</Badge>
-          </div>
+  const sections: MoreSection[] = [
+    ...(c.roadmap ? [{ key: "roadmap", icon: "map" as IconName, label: t("app.roadmap"), render: () => <RoadmapView roadmap={c.roadmap!} /> }] : []),
+    { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
+    ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
+      render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}</> }] : []),
+    { key: "lawyer", icon: "lawyer", label: t("app.lawyer"), render: () => (
+      <>
+        <LawyerBlock caseId={c.id} />
+        <div className="card space-y-2 text-sm">
+          <p className="text-muted">{t("cta.caseLawyerText")}</p>
+          <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
+        </div>
+      </>) },
+    ...(c.status !== "intake" ? [{ key: "gov", icon: "building" as IconName, label: t("app.gov"), render: () => <GovServices caseId={c.id} /> }] : []),
+    ...(c.jurisdiction === "KZ" ? [{ key: "law", icon: "scroll" as IconName, label: t("app.law"), render: () => <LawQuestions caseId={c.id} /> }] : []),
+    { key: "about", icon: "info", label: t("app.about"), render: () => (
+      <>
+        <div className="card space-y-3">
+          <LevelBadge level={cov.level} />
+          <LevelExplainer level={cov.level} />
+          {cov.reasons.length > 0 && <ul className="flex flex-wrap gap-2">{cov.reasons.map((r) => <li key={r.code}><Badge tone="warning">{r.label}</Badge></li>)}</ul>}
+          {cov.forum && <p className="flex items-center gap-2 text-sm"><Icon name="building" size={18} className="text-brand" />{cov.forum.name}</p>}
           <StageProgress stage={c.stage} />
         </div>
-
-        {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
-
-        <div className="card space-y-3">
-          <LevelExplainer level={cov.level} />
-          <Link href="/how-it-works" className="link inline-flex items-center gap-1 text-sm">
-            {t("cta.more")}<Icon name="arrowRight" size={14} className="rtl:-scale-x-100" />
-          </Link>
-          {cov.reasons.length > 0 && (
-            <ul className="flex flex-wrap gap-2">{cov.reasons.map((r) => <li key={r.code}><Badge tone="warning">{r.label}</Badge></li>)}</ul>
-          )}
-          {cov.forum && (
-            <p className="flex items-center gap-2 text-sm"><Icon name="building" size={18} className="text-brand" />{cov.forum.name}</p>
-          )}
-        </div>
-
-        {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
-        {c.scenario?.draft_disclaimer && <Alert tone="draft" title={t("case.draftTitle")}>{c.scenario.draft_disclaimer}</Alert>}
-
-        {ack && (
-          <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
-            actions={<Button disabled={busy} onClick={() => acknowledge(ack)} icon="check">{t(`ack.${ack}.button`)}</Button>}>
-            {log.at(-1)?.from === "bot" && log.at(-1)?.text ? log.at(-1)!.text : t(`ack.${ack}.text`)}
-          </Alert>
-        )}
-
-        {c.status === "handed_to_lawyer" && cov.level === "lawyer" && (
-          <Alert tone="info" icon="lawyer" title={t("case.lawyerTitle")}
-            actions={<Button href="/lawyers" variant="secondary" iconEnd="arrowRight">{t("case.lawyerCta")}</Button>}>
-            {log.find((m) => m.from === "bot")?.text ?? t("case.lawyerText")}
-          </Alert>
-        )}
-
-        {choosingForum && <ForumChoice options={cov.options} busy={busy} onChoose={chooseForum} />}
-
-        {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
-          <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
-        )}
-
-        {/* interview */}
-        {c.status === "intake" && !choosingForum && !ack && (
-          <div className="card space-y-3">
-            <div className="max-h-[440px] space-y-2 overflow-y-auto" aria-live="polite">
-              {log.map((m, i) => (
-                <div key={i} className={`flex ${m.from === "user" ? "justify-end" : ""}`}>
-                  <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2 text-sm ${m.from === "user" ? "bg-brand text-white" : "bg-sand"}`}>
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-              {busy && (
-                <div className="flex">
-                  <div className="flex items-center gap-2 rounded-2xl bg-sand px-4 py-2 text-sm text-muted">
-                    <Icon name="spinner" size={16} />{t("case.thinking")}
-                  </div>
-                </div>
-              )}
-              <div ref={endRef} />
-            </div>
-
-            {pendingEvidence && (
-              <div className="rounded-xl bg-brand-50 p-3 text-sm">
-                {Object.keys(pendingEvidence.facts).length > 0 ? (
-                  <>
-                    <p className="mb-1 font-semibold">{t("case.found")}:</p>
-                    <ul className="mb-2 list-inside list-disc">
-                      {Object.entries(pendingEvidence.facts).map(([k, v]) => (
-                        <li key={k}>{c.facts.find((f) => f.field === k)?.label ?? k}: {v}</li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <p className="mb-2">{t("case.nothingFound")}</p>
-                )}
-                <Button disabled={busy} onClick={confirmEvidence} icon="check">{t("case.confirm")}</Button>
-              </div>
-            )}
-
-            {!pendingEvidence && (
-              <div className="space-y-2">
-                {/* One form element for both "tell us more" and field answers: swapping whole forms
-                    under a focused input breaks pages when browser extensions have touched the DOM. */}
-                <form className={q?.type === "evidence" ? "hidden" : q ? "flex flex-col gap-2 sm:flex-row" : "space-y-2"}
-                  onSubmit={(e) => { e.preventDefault(); if (answer.trim()) sendAnswer(answer.trim()); }}>
-                  {q ? (
-                    <>
-                      <label htmlFor="answer" className="sr-only">{q.text}</label>
-                      <input id="answer" key="answer" className="input" autoFocus type="text" value={answer}
-                        inputMode={q.type === "date" ? "numeric" : undefined}
-                        placeholder={q.type === "date" ? t("case.datePlaceholder") : t("case.answerPlaceholder")}
-                        onChange={(e) => setAnswer(e.target.value)} />
-                    </>
-                  ) : (
-                    <>
-                      <label htmlFor="more" className="sr-only">{t("case.more")}</label>
-                      <textarea id="more" key="more" className="input min-h-24" autoFocus placeholder={t("case.morePlaceholder")}
-                        value={answer} onChange={(e) => setAnswer(e.target.value)} />
-                    </>
-                  )}
-                  <Button className={q ? "shrink-0" : undefined} disabled={busy || !answer.trim()} icon="send">
-                    {q ? t("case.send") : t("case.more")}
-                  </Button>
-                </form>
-                {q && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <FilePicker onFile={upload} disabled={busy} />
-                  {q.type === "evidence" && (q.uploaded ?? 0) > 0 ? (
-                    <Button disabled={busy} icon="check" onClick={() => sendAnswer("готово")}>{t("case.doneUploading")}</Button>
-                  ) : q.optional && (
-                    <Button variant="secondary" disabled={busy} onClick={() => sendAnswer("пропустить")}>{t("case.skip")}</Button>
-                  )}
-                  <span className="text-xs text-muted">{t("case.uploadHint")}</span>
-                </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {c.roadmap && <RoadmapView roadmap={c.roadmap} />}
-
-        <ReportsHint />
-
-        <LawyerBlock caseId={c.id} />
-
-        {c.jurisdiction === "KZ" && <LawQuestions caseId={c.id} />}
-
-        {c.status !== "intake" && <GovServices caseId={c.id} />}
-
-        {c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}
-
-        {/* next step */}
-        {c.status !== "intake" && (
-          <div className="card space-y-3">
-            {c.status === "qualified" && (
-              <Button disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>
-            )}
-
-            {c.status === "action_ready" && last && (
-              last.approval_status === "pending" || last.approval_status === "rejected" ? (
-                <p className="flex items-center gap-2 text-sm">
-                  <Icon name="lawyer" size={18} className="text-brand" />
-                  {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>
-                    {t("case.submitted")}
-                  </Button>
-                  {last.email_allowed && last.addressee?.email && (
-                    <Button variant="secondary" disabled={busy} icon="mail" onClick={() => post(`/actions/${last.id}/submitted`, { via: "email" })}>
-                      {t("case.sendEmail")}
-                    </Button>
-                  )}
-                </div>
-              )
-            )}
-
-            {c.status === "awaiting_response" && last && proposal && (
-              <>
-                {proposal.message && <p className="text-sm">{proposal.message}</p>}
-                {proposal.type === "wait" && !showResponse && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button icon="mail" onClick={() => setShowResponse(true)}>{t("case.gotResponse")}</Button>
-                    <Button variant="secondary" disabled={busy} icon="hourglass"
-                      onClick={() => post(`/actions/${last.id}/response`, { no_response: true })}>{t("case.noResponse")}</Button>
-                  </div>
-                )}
-                {proposal.type === "wait" && showResponse && (
-                  <div className="space-y-2">
-                    <label htmlFor="resp" className="sr-only">{t("case.responsePlaceholder")}</label>
-                    <textarea id="resp" className="input" rows={5} placeholder={t("case.responsePlaceholder")}
-                      value={responseText} onChange={(e) => setResponseText(e.target.value)} />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button disabled={busy || !responseText.trim()}
-                        onClick={() => post(`/actions/${last.id}/response`, { text: responseText }).then(() => setShowResponse(false))}>
-                        {t("case.responseSend")}
-                      </Button>
-                      <FilePicker attachLabel={t("case.responseFile")} disabled={busy} onFile={(f) => {
-                        run(async () => {
-                          const form = new FormData();
-                          form.append("file", f);
-                          const out = await api<{ case: CaseView }>(`/v1/cases/${id}/actions/${last.id}/response/file`, { method: "POST", body: form });
-                          setCase(out.case);
-                          setShowResponse(false);
-                        });
-                      }} />
-                    </div>
-                  </div>
-                )}
-                {proposal.type === "clarify" && (
-                  <div className="flex flex-wrap gap-2">
-                    {(["full", "partial", "refusal", "none"] as const).map((cls) => (
-                      <Button key={cls} variant="secondary" disabled={busy}
-                        onClick={() => post(`/actions/${last.id}/response`, { response_class: cls })}>{t(`case.classes.${cls}`)}</Button>
-                    ))}
-                  </div>
-                )}
-                {(proposal.type === "prepare_action" || proposal.type === "handoff") && (
-                  <Button disabled={busy} icon={proposal.type === "handoff" ? "lawyer" : "document"} onClick={() => post("/actions/next")}>
-                    {proposal.type === "handoff" ? t("case.handoff") : proposal.title}
-                  </Button>
-                )}
-                {proposal.type !== "wait" && proposal.type !== "clarify" && (
-                  <div className="space-y-2 border-t border-line pt-3">
-                    <p className="text-sm font-semibold">{t("case.close")}</p>
-                    <label htmlFor="amount" className="sr-only">{t("case.amountRecovered")}</label>
-                    <input id="amount" className="input max-w-xs" inputMode="decimal"
-                      placeholder={`${t("case.amountRecovered")}, ${c.currency ?? ""}`} value={amount} onChange={(e) => setAmount(e.target.value)} />
-                    <div className="flex flex-wrap gap-2">
-                      {(["won", "partial", "lost"] as const).map((r) => (
-                        <Button key={r} variant={r === proposal.suggested_result ? "primary" : "secondary"} disabled={busy}
-                          onClick={() => post("/close", { result: r, amount_recovered: amount || (r === "won" ? c.amount_at_stake : null) })}>
-                          {t(`case.close${r[0].toUpperCase()}${r.slice(1)}`)}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {c.status === "handed_to_lawyer" && cov.level !== "lawyer" && (
-              <p className="flex items-center gap-2 text-sm"><Icon name="lawyer" size={18} className="text-brand" />{proposal?.message || c.status_label}</p>
-            )}
-
-            {c.outcome && (
-              <div className="text-sm">
-                <p className="font-semibold">{t("case.outcome")}: {c.outcome.result}</p>
-                {c.outcome.amount_recovered && <p>{c.outcome.amount_recovered} {c.outcome.currency}</p>}
-                <p className="text-muted">{c.outcome.days_to_resolution} {t("case.days")}</p>
-              </div>
-            )}
-          </div>
-        )}
-        {error && <Alert tone="danger" role="alert">{error}</Alert>}
-        {busy && c.status !== "intake" && <p className="flex items-center gap-2 text-sm text-muted"><Icon name="spinner" size={16} />{t("case.working")}</p>}
-      </div>
-
-      <aside className="space-y-4">
-        {c.facts.length > 0 && (
-          <div className="card space-y-2">
-            <h2 className="font-semibold">{t("case.facts")}</h2>
-            <dl className="space-y-1.5 text-sm">
-              {c.facts.map((f) => (
-                <div key={f.field}>
-                  <dt className="text-xs text-muted">{f.label}</dt>
-                  <dd className="break-words">{f.value}</dd>
-                </div>
-              ))}
-            </dl>
-            {c.evidence.length > 0 && (
-              <ul className="space-y-1 border-t border-line pt-2 text-xs text-muted">
-                {c.evidence.map((e) => <li key={e.id} className="flex items-center gap-1"><Icon name="document" size={14} />{e.filename}</li>)}
-              </ul>
-            )}
-          </div>
-        )}
         {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
-        {!(c.status === "handed_to_lawyer" && cov.level === "lawyer") && (
-          <div className="card space-y-2 text-sm">
-            <h2 className="flex items-center gap-2 font-semibold"><Icon name="lawyer" size={18} className="text-brand" />{t("cta.caseLawyerTitle")}</h2>
-            <p className="text-muted">{t("cta.caseLawyerText")}</p>
-            <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
-          </div>
-        )}
-        <div className="rounded-2xl border border-line bg-surface p-4 text-xs text-muted">
+        <ReportsHint />
+        <div className="rounded-2xl border border-line p-4 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>
         </div>
-      </aside>
+      </>) },
+  ];
+  const links: MoreLink[] = [
+    { href: `/chat/${c.id}`, icon: "sparkle", label: t("chat.open") },
+    { href: "/cases", icon: "briefcase", label: t("nav.cases") },
+    { href: "/account", icon: "user", label: t("app.account") },
+    { href: "/", icon: "home", label: t("app.home") },
+  ];
+
+  let bar: React.ReactNode = null;
+  if (pendingEvidence) {
+    bar = <Button className="min-h-12 w-full" disabled={busy} onClick={confirmEvidence} icon="check">{t("case.confirm")}</Button>;
+  } else if (interviewing) {
+    bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFile={upload}
+      onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
+  } else if (c.status !== "intake") {
+    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} />;
+  }
+
+  return (
+    <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
+      scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}`}>
+      {c.scenario?.draft_disclaimer && (
+        <p className="flex items-start gap-2 rounded-2xl bg-draft-50 px-3 py-2 text-xs text-draft">
+          <Icon name="info" size={16} className="mt-0.5" /><span><b>{t("case.draftTitle")}.</b> {c.scenario.draft_disclaimer}</span>
+        </p>
+      )}
+      {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
+      {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
+
+      {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
+        <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
+      )}
+
+      <div className="space-y-2" aria-live="polite">
+        {log.map((m, i) => (
+          <div key={i} className={`flex ${m.from === "user" ? "justify-end" : ""}`}>
+            <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 ${m.from === "user" ? "rounded-ee-sm bg-brand text-white" : "rounded-es-sm bg-surface shadow-sm"}`}>
+              {m.from === "bot" ? forScreen(m.text) : m.text}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="flex">
+            <div className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 text-sm text-muted shadow-sm">
+              <Icon name="spinner" size={16} />{c.status === "intake" ? t("case.thinking") : t("case.working")}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {ack && (
+        <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
+          actions={<Button disabled={busy} onClick={() => acknowledge(ack)} icon="check">{t(`ack.${ack}.button`)}</Button>}>
+          {log.at(-1)?.from === "bot" && log.at(-1)?.text ? log.at(-1)!.text : t(`ack.${ack}.text`)}
+        </Alert>
+      )}
+
+      {choosingForum && <ForumChoice options={cov.options} busy={busy} onChoose={chooseForum} />}
+
+      {pendingEvidence && (
+        <div className="rounded-2xl bg-brand-50 p-4 text-sm">
+          {Object.keys(pendingEvidence.facts).length > 0 ? (
+            <>
+              <p className="mb-1 font-semibold">{t("case.found")}:</p>
+              <ul className="list-inside list-disc">
+                {Object.entries(pendingEvidence.facts).map(([k, v]) => (
+                  <li key={k}>{(() => { const label = c.facts.find((f) => f.field === k)?.label; return label ? `${label}: ${v}` : v; })()}</li>
+                ))}
+              </ul>
+            </>
+          ) : <p>{t("case.nothingFound")}</p>}
+        </div>
+      )}
+
+      {c.status === "handed_to_lawyer" && (
+        <Alert tone="info" icon="lawyer" title={t("case.lawyerTitle")}
+          actions={<Button href="/lawyers" variant="secondary" iconEnd="arrowRight">{t("case.lawyerCta")}</Button>}>
+          {proposal?.message || log.find((m) => m.from === "bot")?.text || t("case.lawyerText")}
+        </Alert>
+      )}
+
+      {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} />}
+
+      {c.status === "awaiting_response" && proposal?.message && (
+        <div className="flex"><div className="max-w-[85%] rounded-2xl rounded-es-sm bg-surface px-4 py-2.5 shadow-sm">{proposal.message}</div></div>
+      )}
+
+      {c.outcome && (
+        <div className="card text-sm">
+          <p className="font-semibold">{t("case.outcome")}: {c.outcome.result}</p>
+          {c.outcome.amount_recovered && <p>{c.outcome.amount_recovered} {c.outcome.currency}</p>}
+          <p className="text-muted">{c.outcome.days_to_resolution} {t("case.days")}</p>
+        </div>
+      )}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+    </AppShell>
+  );
+}
+
+function FactsPanel({ c }: { c: CaseView }) {
+  const t = useT();
+  if (c.facts.length === 0 && c.evidence.length === 0) return <p className="text-sm text-muted">{t("app.noFacts")}</p>;
+  return (
+    <div className="space-y-3">
+      <dl className="divide-y divide-line rounded-2xl border border-line">
+        {c.facts.map((f) => (
+          <div key={f.field} className="px-4 py-2.5">
+            <dt className="text-xs text-muted">{f.label}</dt>
+            <dd className="break-words">{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {c.evidence.length > 0 && (
+        <ul className="space-y-1 text-sm">
+          {c.evidence.map((e) => <li key={e.id} className="flex items-center gap-2"><Icon name="paperclip" size={16} className="text-brand" />{e.filename}</li>)}
+        </ul>
+      )}
     </div>
   );
+}
+
+/** What to do now once the document stage has started: submitted? got a reply? close the case. */
+function NextStepBar({ c, busy, post, run, setCase }: {
+  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>;
+  run: (fn: () => Promise<void>) => Promise<boolean>; setCase: (c: CaseView) => void;
+}) {
+  const t = useT();
+  const [responseText, setResponseText] = useState("");
+  const [showResponse, setShowResponse] = useState(false);
+  const [amount, setAmount] = useState("");
+  const last = c.actions.at(-1);
+  const proposal = c.proposal;
+  const big = "min-h-12 flex-1";
+
+  if (c.status === "qualified") {
+    return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
+  }
+  if (c.status === "action_ready" && last) {
+    if (last.approval_status === "pending" || last.approval_status === "rejected") {
+      return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="lawyer" size={18} className="text-brand" />
+        {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
+    }
+    return (
+      <div className="space-y-2">
+      <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
+      <div className="flex gap-2">
+        <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
+        {last.email_allowed && last.addressee?.email && (
+          <Button className={big} variant="secondary" disabled={busy} icon="mail" onClick={() => post(`/actions/${last.id}/submitted`, { via: "email" })}>{t("case.sendEmail")}</Button>
+        )}
+      </div>
+      </div>
+    );
+  }
+  if (c.status === "awaiting_response" && last && proposal) {
+    if (proposal.type === "wait" && !showResponse) {
+      return (
+        <div className="flex gap-2">
+          <Button className={big} icon="mail" onClick={() => setShowResponse(true)}>{t("case.gotResponse")}</Button>
+          <Button className={big} variant="secondary" disabled={busy} icon="hourglass"
+            onClick={() => post(`/actions/${last.id}/response`, { no_response: true })}>{t("case.noResponse")}</Button>
+        </div>
+      );
+    }
+    if (proposal.type === "wait") {
+      return (
+        <div className="space-y-2">
+          <label htmlFor="resp" className="sr-only">{t("case.responsePlaceholder")}</label>
+          <textarea id="resp" className="input" rows={3} placeholder={t("case.responsePlaceholder")}
+            value={responseText} onChange={(e) => setResponseText(e.target.value)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled={busy || !responseText.trim()}
+              onClick={() => post(`/actions/${last.id}/response`, { text: responseText }).then(() => setShowResponse(false))}>{t("case.responseSend")}</Button>
+            <FilePicker attachLabel={t("case.responseFile")} disabled={busy} onFile={(f) => {
+              run(async () => {
+                const form = new FormData();
+                form.append("file", f);
+                const out = await api<{ case: CaseView }>(`/v1/cases/${c.id}/actions/${last.id}/response/file`, { method: "POST", body: form });
+                setCase(out.case);
+                setShowResponse(false);
+              });
+            }} />
+            <button type="button" className="px-2 text-sm text-muted" onClick={() => setShowResponse(false)}>{t("app.cancel")}</button>
+          </div>
+        </div>
+      );
+    }
+    if (proposal.type === "clarify") {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          {(["full", "partial", "refusal", "none"] as const).map((cls) => (
+            <Button key={cls} variant="secondary" disabled={busy} className="min-h-12"
+              onClick={() => post(`/actions/${last.id}/response`, { response_class: cls })}>{t(`case.classes.${cls}`)}</Button>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        {(proposal.type === "prepare_action" || proposal.type === "handoff") && (
+          <Button className="min-h-12 w-full" disabled={busy} icon={proposal.type === "handoff" ? "lawyer" : "document"} onClick={() => post("/actions/next")}>
+            {proposal.type === "handoff" ? t("case.handoff") : proposal.title}
+          </Button>
+        )}
+        <details className="rounded-2xl border border-line px-3 py-2">
+          <summary className="cursor-pointer text-sm font-semibold">{t("case.close")}</summary>
+          <div className="space-y-2 pt-2">
+            <label htmlFor="amount" className="sr-only">{t("case.amountRecovered")}</label>
+            <input id="amount" className="input" inputMode="numeric"
+              placeholder={`${t("case.amountRecovered")}, ${c.currency ?? ""}`} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))} />
+            <div className="grid grid-cols-3 gap-2">
+              {(["won", "partial", "lost"] as const).map((r) => (
+                <Button key={r} variant={r === proposal.suggested_result ? "primary" : "secondary"} disabled={busy}
+                  onClick={() => post("/close", { result: r, amount_recovered: amount || (r === "won" ? c.amount_at_stake : null) })}>
+                  {t(`case.close${r[0].toUpperCase()}${r.slice(1)}`)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </details>
+      </div>
+    );
+  }
+  return null;
 }
 
 /** The proposed solution right after the story: document → addressee → how to file → what to attach. */

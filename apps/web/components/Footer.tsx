@@ -13,8 +13,8 @@ export default function Footer() {
     <footer className="border-t border-line bg-sand">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
-          <p className="text-base font-bold" dir="ltr">Konsilier<span className="text-brand">.AI</span></p>
-          <p className="text-muted">{t("footer.tagline")}</p>
+          <p className="text-base font-bold" dir="ltr">Konsiliér<span className="text-brand"> AI</span></p>
+          <p className="font-medium">{t("footer.said")}</p>
           <InstallApp className="pt-2" />
         </div>
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
@@ -49,7 +49,7 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <p className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted" dir="ltr">© Konsilier.AI · konsilier.com</p>
+      <p className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted" dir="ltr">© Konsiliér AI · konsilier.com</p>
     </footer>
   );
 }

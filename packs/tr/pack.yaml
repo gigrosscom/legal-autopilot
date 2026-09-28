@@ -16,21 +16,21 @@ default_language: tr
 status: planned
 compliance:
   ai_label:
-    tr: Yapay zekâ ile hazırlandı (Konsilier.AI). Başvurmadan önce bilgileri kontrol
+    tr: Yapay zekâ ile hazırlandı (Konsiliér AI). Başvurmadan önce bilgileri kontrol
       edin.
-    en: Prepared with AI (Konsilier.AI). Check the details before filing.
+    en: Prepared with AI (Konsiliér AI). Check the details before filing.
   draft_disclaimer:
-    tr: 'TASLAK: henüz bir avukat tarafından onaylanmadı. Hukuki dayanaklar ve süreler
-      kontrol edilmelidir.'
-    en: 'DRAFT: not yet signed off by a lawyer. Legal references and deadlines must
-      be checked.'
+    tr: 'TASLAK: Senaryo henüz bir avukat tarafından onaylanmadı. Mevzuat ve
+      süre atıfları kontrol edilmelidir.'
+    en: 'DRAFT: this scenario has not yet been signed off by a lawyer. Legal references
+      and deadlines must be checked.'
   service_disclaimer:
-    tr: Konsilier.AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri takip
-      eder. Dava daha ileri taşınmalıysa platformdaki profesyonel bir avukat devreye
-      girer. Belgeler sizin adınıza sunulur.
-    en: Konsilier.AI helps you prepare and file documents and tracks deadlines. When
-      a case needs to be taken further, a professional lawyer on the platform can
-      step in. Documents are filed in your name.
+    tr: Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri
+      takip eder. Dosyanın sonuca ulaştırılması gerekirse platformdaki
+      profesyonel bir avukatı dahil ederiz. Belgeler sizin adınıza sunulur.
+    en: Konsiliér AI helps you prepare and file documents and keeps track of deadlines.
+      If your case needs to be seen through to the end, we will bring in a professional
+      lawyer from the platform. Documents are filed in your name.
 # Official legal databases: we link to and cite them only (docs/legal-sources.md).
 # verified_on: URL and operator confirmed online on that date; absent = not confirmed.
 legal_sources:

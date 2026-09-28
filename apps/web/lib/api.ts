@@ -11,6 +11,7 @@ export type Question = {
   optional: boolean;
   evidence_kinds: { kind: string; label: string }[];
   uploaded?: number;
+  pattern?: string | null;
 };
 
 export type CaseAction = {
@@ -271,7 +272,7 @@ async function request(url: string, init: RequestInit = {}): Promise<Response> {
   }
 }
 
-async function ensureToken(): Promise<string> {
+export async function ensureToken(): Promise<string> {
   const saved = typeof window !== "undefined" ? localStorage.getItem("konsilier.token") : null;
   if (saved) return saved;
   const r = await request(`${API_URL}/v1/users`, {

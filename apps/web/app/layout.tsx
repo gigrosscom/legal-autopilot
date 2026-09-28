@@ -13,19 +13,22 @@ const inter = Inter({ subsets: ["latin", "cyrillic", "cyrillic-ext"], variable: 
 const arabic = Noto_Sans_Arabic({ subsets: ["arabic"], variable: "--font-arabic", display: "swap", preload: false });
 
 export const metadata: Metadata = {
-  title: "Konsilier.AI — ИИ-помощник в юридических вопросах",
-  description: "Опишите проблему — Konsilier подготовит документ по законам вашей страны, подскажет, куда подать, проследит за сроками, а когда нужно — подключит проверенного юриста.",
+  title: "Konsiliér AI — ИИ-помощник по юридическим вопросам",
+  description: "Опишите проблему — Konsiliér AI подготовит документ по законам вашей страны, подскажет, куда подать, проследит за сроками, а когда нужно — подключит проверенного юриста.",
   // Browser auto-translation rewrites text nodes behind React's back and crashes live pages (chat, forms).
   other: { google: "notranslate" },
   // installed app on iPhone / iPad: own icon, full screen, a status bar that matches the site
-  appleWebApp: { capable: true, title: "Konsilier", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Konsiliér AI", statusBarStyle: "default" },
   icons: { apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] },
-  applicationName: "Konsilier",
+  applicationName: "Konsiliér AI",
   formatDetection: { telephone: false },
 };
 
 // viewportFit "cover": the installed app uses the whole screen; notches are handled with safe-area insets.
-export const viewport: Viewport = { themeColor: "#f7f4ee", width: "device-width", initialScale: 1, viewportFit: "cover" };
+// interactiveWidget: the on-screen keyboard shrinks the layout, so input bars stay above it (Android Chrome).
+export const viewport: Viewport = {
+  themeColor: "#f7f4ee", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
