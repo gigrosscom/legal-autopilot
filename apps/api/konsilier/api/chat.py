@@ -36,11 +36,8 @@ def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[s
 
 @router.get("/chat/info")
 def info(container: Container = Depends(get_container)) -> dict[str, Any]:
-    """Which model answers in the chat, so the page can say who processes the messages."""
-    agent = container.chat_agent
-    kind = None if agent is None else type(agent.client).__name__
-    provider = {None: None, "GeminiClient": "gemini", "ChainClient": None}.get(kind, "anthropic")  # chain: no note
-    return {"provider": provider, "daily_limit": container.settings.chat_daily_limit}
+    """Whether the chat is available and its daily limit; which AI answers is not disclosed to clients."""
+    return {"available": container.chat_agent is not None, "daily_limit": container.settings.chat_daily_limit}
 
 
 @router.get("/cases/{case_id}/chat")

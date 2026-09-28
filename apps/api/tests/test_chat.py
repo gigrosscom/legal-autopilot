@@ -104,7 +104,7 @@ def test_chat_endpoint_streams_saves_and_limits(ctx):
     assert [m["role"] for m in hist] == ["user", "assistant"] and "По статье 113" in hist[1]["text"]
     other = web_user(ctx)
     assert ctx.client.post(f"/v1/cases/{cid}/chat", headers=other.h, json={"text": "чужое"}).status_code == 404
-    assert ctx.client.get("/v1/chat/info").json() == {"provider": "anthropic", "daily_limit": 40}
+    assert ctx.client.get("/v1/chat/info").json() == {"available": True, "daily_limit": 40}
     ctx.container.settings.chat_daily_limit = 1
     r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"})
     assert r.status_code == 429

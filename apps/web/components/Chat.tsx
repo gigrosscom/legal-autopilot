@@ -35,7 +35,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState<string | null>(null);
   const [tts, setTts] = useState(false);
-  const [provider, setProvider] = useState<string | null>(null);  // known only in the browser: avoids a hydration mismatch
   const box = useRef<HTMLTextAreaElement>(null);
   const sentInitial = useRef(false);
 
@@ -49,9 +48,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   }, [initialCase]);
 
   useEffect(() => setTts(canSpeak()), []);
-  useEffect(() => {
-    publicApi<{ provider: string | null }>("/v1/chat/info").then((i) => setProvider(i.provider)).catch(() => {});
-  }, []);
 
   useEffect(() => {  // grow the box with the text, up to a limit
     const el = box.current;
@@ -158,7 +154,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     <div className="space-y-3 text-sm">
       <p>{t("chat.free")}</p>
       <p className="text-muted">{t("legal.disclaimer")}</p>
-      {provider && <p className="text-muted">{t(`chat.provider.${provider}`)}</p>}
       {dictation.supported && <p className="text-muted">{t("chat.micNote")}</p>}
     </div>) }];
 
