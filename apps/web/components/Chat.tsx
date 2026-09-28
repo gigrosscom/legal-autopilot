@@ -112,7 +112,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       const uploaded = await upload(id, files);
       const attachments = uploaded.filter((f) => f.id).map((f) => ({ id: f.id!, filename: f.filename }));
       setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "user", text, created_at: new Date().toISOString(),
-        attachments, norms: [], unchecked: false }]);
+        attachments, norms: [] }]);
       setDraft(""); setInterim(""); setFiles([]);
       setStreaming("");
       await sendChat(id, text, attachments.map((a) => a.id), (ev) => {
@@ -272,7 +272,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                   ))}
                 </ul>
               )}
-              {m.unchecked && <p className="text-xs text-muted">{t("chat.unchecked")}</p>}
               {tts && (
                 <button type="button" onClick={() => toggleSpeak(m)} className="inline-flex min-h-8 items-center gap-1.5 text-xs text-muted hover:text-ink">
                   <Icon name={speaking === m.id ? "stop" : "volume"} size={14} />{speaking === m.id ? t("chat.stopSpeak") : t("chat.speak")}
