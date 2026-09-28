@@ -650,7 +650,9 @@ class CaseEngine:
     def approval_required(self, session: Session, case: Case, spec: ActionSpec | None = None) -> bool:
         if self.config.self_service and not case.needs_review and case.hold_reason is None:
             if not is_generic(case.scenario_id):
-                return False  # signed / draft level-1 scenarios contain pre-trial documents only
+                # level-1 scenarios: pre-trial documents go out directly; a lawsuit to a court
+                # (e.g. kz.family.alimony) is filed only after a lawyer's check, as on the universal path
+                return spec is not None and self._to_court(case, spec)
             if spec is not None and self.document_type(case, spec) in self.config.self_service_documents \
                     and not self._to_court(case, spec):
                 return False

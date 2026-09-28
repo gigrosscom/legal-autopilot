@@ -106,6 +106,18 @@ evidence:
   loan_notice: SMS/уведомление о займе
   police_report: Талон/постановление полиции
   response: Ответ контрагента
+  service_contract: Договор (оферта) на услугу или обучение
+  rental_contract: Договор найма (аренды) жилья
+  air_ticket: Авиабилет (маршрутная квитанция)
+  insurance_policy: Страховой полис или договор страхования
+  accident_docs: "Документы о ДТП: схема, протокол, фото"
+  dismissal_order: Приказ об увольнении
+  utility_bill: Квитанция (счёт) за коммунальные услуги
+  bank_statement: Выписка по счёту или карте
+  medical_documents: "Медицинские документы: заключение, выписка"
+  collector_messages: Записи звонков, SMS и сообщения коллекторов
+  loan_contract: Договор банковского займа (кредита)
+  photo: Фото или видео
   other: Другой документ
 
 statuses:

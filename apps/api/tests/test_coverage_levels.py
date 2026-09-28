@@ -9,12 +9,14 @@ from sqlalchemy import func, select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import Action, DemandSignal
 
+from .conftest import hide_scenarios
 from .test_e2e import ADMIN, admin_approve, statuses, web_user
 
 WAGES = "Работодатель не платит зарплату три месяца, задолженность 450000 тенге"
 
 
 def _universal_case(api):
+    hide_scenarios(api.ctx, "kz.labor.")  # the universal path: no published scenario fits the story
     created = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ"})
     case = created["case"]
     assert case["scenario"] is None
@@ -106,9 +108,28 @@ def test_level3_defence_goes_to_lawyer_without_documents(ctx):
 
 def test_level3_children_route_to_lawyer(ctx):
     api = web_user(ctx)
-    created = api.post("/v1/cases", expect=201, json={"text": "Бывший муж не платит алименты", "country": "KZ"})
+    created = api.post("/v1/cases", expect=201, json={
+        "text": "Отец против: хочу определить через суд, с кем будет жить ребенок", "country": "KZ"})
     assert created["case"]["coverage"]["level"] == "lawyer"
     assert "children" in [r["code"] for r in created["case"]["coverage"]["reasons"]]
+
+
+def test_alimony_scenario_lawsuit_waits_for_a_lawyer(ctx):
+    """Published level-1 scenario with a court document: the lawsuit is released only after a lawyer's check."""
+    api = web_user(ctx)
+    created = api.post("/v1/cases", expect=201, json={"text": "Бывший муж не платит алименты", "country": "KZ"})
+    case = created["case"]
+    assert case["scenario"]["id"] == "kz.family.alimony"
+    assert case["plan"]["lawyer_check"] is True
+    answers = {**_ANSWERS, "respondent_name": "Петров Пётр Петрович",
+               "desired_outcome": "Взыскать алименты на сына"}
+    q = case["question"]
+    while q is not None:
+        out = api.answer(case["id"], "пропустить" if q["type"] == "evidence" else answers[q["field"]])
+        assert out["reply"]["error"] is None, out["reply"]
+        q = out["case"]["question"]
+    action = api.post(f"/v1/cases/{case['id']}/actions/next")["case"]["actions"][0]
+    assert action["approval_status"] == "pending" and action["downloadable"] is False
 
 
 def test_unclassified_story_asks_for_details(ctx):
@@ -123,7 +144,8 @@ def test_coverage_and_forums_endpoints(ctx):
     cov = ctx.client.get("/v1/coverage?lang=ru").json()
     kz = next(c for c in cov["countries"] if c["country"] == "KZ")
     assert kz["cells"]["consumer"] == "scenario_draft"  # published but not signed off by a lawyer
-    assert kz["cells"]["labor"] == "universal"
+    assert kz["cells"]["labor"] == "scenario_draft"  # published labour scenarios, not signed by a lawyer
+    assert kz["cells"]["inheritance"] == "universal"
     assert kz["cells"]["commercial"] == "lawyer"
     assert all(c["country"] != "XX" for c in cov["countries"])  # test packs hidden
     forums = ctx.client.get("/v1/forums?country=KZ&branch=labor").json()
