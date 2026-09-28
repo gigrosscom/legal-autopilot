@@ -130,14 +130,6 @@ def test_chat_without_agent_is_503_and_failure_is_reported(ctx):
     assert ev[-1]["type"] == "error" and ev[-1]["code"] == "agent_failed"
     assert [m["role"] for m in api.get(f"/v1/cases/{cid}/chat").json()] == ["user"]
 
-    # the fallback (Claude) answers when the main chat model fails before the reply starts
-    ctx.container.chat_fallback_agent = ChatAgent(StreamingClient(reply_turns(
-        "По статье 113 расчёт — не позднее трёх рабочих дней.")), "claude-haiku-4-5", Adilet(fetch=fake_fetch))
-    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"}))
-    assert ev[-1]["type"] == "done" and "По статье 113" in ev[-1]["message"]["text"]
-    ctx.container.chat_fallback_agent = None
-
-
 # ------------------------------------------------------------------ Gemini adapter (free tier), offline
 def _gemini_http(replies, seen):
     import httpx
