@@ -14,6 +14,7 @@ export default function Footer() {
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <p className="text-base font-bold" dir="ltr">Konsiliér<span className="text-brand"> AI</span></p>
+          <p className="font-medium">{t("footer.said")}</p>
           <p className="text-muted">{t("footer.tagline")}</p>
           <InstallApp className="pt-2" />
         </div>

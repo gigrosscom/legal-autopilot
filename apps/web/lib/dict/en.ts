@@ -8,6 +8,7 @@ const en: Dict = {
     skip: "Skip to content", main: "Main menu",
   },
   footer: {
+    said: "Konsiliér [kon-seel-YER] — your AI assistant for legal matters",
     contacts: "Contacts",
     lawyerCabinet: "Lawyer's cabinet",
     tagline: "Describe your problem — Konsiliér AI prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
@@ -96,7 +97,7 @@ const en: Dict = {
     lawyersLead: "Describe the situation — we prepare the documents and bring in a lawyer when you need one.",
   },
   home: {
-    eyebrow: "Your AI assistant for legal matters",
+    eyebrow: "Konsiliér [kon-seel-YER] — your AI assistant for legal matters",
     title: "Any legal problem, from complaint to resolution",
     sub: "Describe what happened. We will prepare the document, tell you where to file it and keep track of deadlines. If you need a lawyer, we will connect a verified one.",
     promise1: "We write your complaint or claim for you, by the law",

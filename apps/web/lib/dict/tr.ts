@@ -8,6 +8,7 @@ const tr: Dict = {
     skip: "İçeriğe geç", main: "Ana menü",
   },
   footer: {
+    said: "Konsiliér [kon-sil-YER] — hukuki konularda yapay zekâ asistanı",
     contacts: "İletişim",
     lawyerCabinet: "Avukat paneli",
     tagline: "Sorununuzu anlatın — Konsiliér AI ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
@@ -96,7 +97,7 @@ const tr: Dict = {
     lawyersLead: "Durumu anlatın — belgeleri hazırlarız, gerektiğinde bir avukatı dahil ederiz.",
   },
   home: {
-    eyebrow: "Hukuki konularda yapay zekâ asistanı",
+    eyebrow: "Konsiliér [kon-sil-YER] — hukuki konularda yapay zekâ asistanı",
     title: "Her hukuki sorun: şikâyetten sonuca kadar",
     sub: "Ne olduğunu anlatın. Belgeyi hazırlarız, nereye başvuracağınızı söyleriz, süreleri takip ederiz. Avukat gerekirse doğrulanmış birini dahil ederiz.",
     promise1: "Şikâyetinizi veya dilekçenizi yasaya uygun olarak sizin için yazarız",
