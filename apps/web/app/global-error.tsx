@@ -7,7 +7,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
   useEffect(() => reportClientError(error), [error]);
   return (
     <html lang="ru" translate="no">
-      <body style={{ fontFamily: "system-ui, sans-serif", background: "#ffffff", color: "#0b172a", padding: 32 }}>
+      <body style={{ fontFamily: "-apple-system, BlinkMacSystemFont, \"Helvetica Neue\", Inter, system-ui, sans-serif", background: "#ffffff", color: "#1d1d1f", padding: 32 }}>
         <div style={{ maxWidth: 480, margin: "10vh auto", textAlign: "center" }}>
           {/* No language context here (the root layout crashed), so both languages, short. */}
           <h1>Что-то пошло не так · Бірдеңе дұрыс болмады</h1>

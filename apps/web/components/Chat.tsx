@@ -181,7 +181,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           </ul>
         )}
         <form onSubmit={(e) => { e.preventDefault(); send(); }}
-          className="flex items-end gap-1 rounded-3xl border border-line bg-surface p-2 shadow-[var(--shadow-raised)] focus-within:border-accent">
+          className="flex items-end gap-1 rounded-[28px] bg-surface p-2 shadow-[var(--shadow-raised)] ring-1 ring-black/[0.08] transition-shadow focus-within:ring-2 focus-within:ring-action/40">
           <label className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}
             title={t("chat.attach")}>
             <Icon name="paperclip" size={20} /><span className="sr-only">{t("chat.attach")}</span>
@@ -193,7 +193,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             onChange={(e) => { setDraft(e.target.value); setInterim(""); }}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
             placeholder={dictation.listening ? t("chat.listening") : t("chat.placeholder")} maxLength={4000}
-            className="max-h-[200px] min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 shadow-none outline-none placeholder:text-muted"
+            className="max-h-[200px] min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 shadow-none outline-none placeholder:text-muted text-[17px]"
             style={{ outline: "none" }} /* the whole box shows focus (focus-within) */ />
           {dictation.supported && (
             <button type="button" onClick={dictation.listening ? dictation.stop : dictation.start} disabled={busy}
@@ -204,7 +204,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             </button>
           )}
           <button type="submit" disabled={busy || !(draft.trim() || interim.trim())} title={t("chat.send")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:opacity-30">
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white hover:bg-action-hover disabled:bg-sand-deep disabled:text-muted">
             <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
           </button>
         </form>
@@ -232,15 +232,15 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       <div className="space-y-4" aria-live="polite">
 
         {empty && (
-          <div className="space-y-4 py-6 sm:py-12">
-            <Mark size={40} className="text-ink" />
+          <div className="space-y-5 py-8 text-center sm:py-16">
+            <Mark size={44} className="mx-auto text-ink" />
             <p className="eyebrow">{t("chat.eyebrow")}</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">{t("chat.title")}</h1>
-            <p className="max-w-xl text-muted">{hint ?? t("chat.lead")}</p>
-            <div className="flex flex-wrap gap-2">
+            <h1 className="text-[40px] font-semibold leading-[1.08] tracking-[-0.015em] text-balance text-ink md:text-[56px]">{t("chat.title")}</h1>
+            <p className="mx-auto max-w-xl text-[19px] leading-[1.42] text-muted text-pretty md:text-[21px]">{hint ?? t("chat.lead")}</p>
+            <div className="flex flex-wrap justify-center gap-2 pt-4">
               {examples.map((e) => (
                 <button key={e} type="button" onClick={() => setDraft(e)}
-                  className="min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-start text-sm text-ink-soft hover:border-accent hover:bg-sand">{e}</button>
+                  className="min-h-11 rounded-full bg-sand px-5 py-2 text-start text-[15px] text-ink transition-colors hover:bg-sand-deep">{e}</button>
               ))}
             </div>
           </div>
@@ -248,7 +248,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {messages.map((m) => m.role === "user" ? (
           <div key={m.id} className="flex justify-end">
-            <div className="max-w-[85%] space-y-2 rounded-2xl rounded-ee-md bg-sand-deep px-4 py-2.5 text-ink">
+            <div className="max-w-[85%] space-y-2 rounded-[20px] rounded-ee-md bg-action px-4 py-2.5 text-white">
               <p className="whitespace-pre-line">{m.text}</p>
               {m.attachments.map((a) => (
                 <p key={a.id} className="flex items-center gap-1.5 text-xs opacity-90"><Icon name="paperclip" size={14} />{a.filename}</p>
@@ -259,13 +259,13 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           <div key={m.id} className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Mark size={18} />Konsiliér AI</p>
             <div className="min-w-0 space-y-2 lg:ps-7">
-              <p className="whitespace-pre-line text-[16px] leading-[1.7]">{m.text}</p>
+              <p className="whitespace-pre-line text-[17px] leading-[1.53]">{m.text}</p>
               {m.norms.length > 0 && (
                 <ul className="flex flex-wrap gap-2">
                   {m.norms.map((n) => (
                     <li key={`${n.act_code}-${n.article}`}>
                       <a href={n.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs hover:border-brand">
+                        className="inline-flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs hover:bg-sand-deep">
                         <Icon name="shieldCheck" size={14} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
                       </a>
                     </li>
@@ -285,7 +285,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Mark size={18} />Konsiliér AI</p>
             <div className="min-w-0 lg:ps-7">
-              {streaming && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{streaming}</p>}
+              {streaming && <p className="whitespace-pre-line text-[17px] leading-[1.53]">{streaming}</p>}
               <p className="flex items-center gap-2 text-sm text-muted" role="status">
                 <Icon name="spinner" size={14} />{lookingUp ? t("chat.lookingUp") : t("chat.thinking")}
               </p>
@@ -297,11 +297,11 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {caseId && messages.length > 0 && streaming === null && (
           <div className="grid gap-2 sm:grid-cols-2">
-            <Link href={`/case/${caseId}`} className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
+            <Link href={`/case/${caseId}`} className="flex min-h-16 items-center gap-3 rounded-2xl bg-sand px-5 transition-colors hover:bg-sand-deep">
               <Icon name="document" size={22} className="text-brand" />
               <span className="flex-1"><span className="block font-semibold">{t("chat.doc")}</span><span className="text-xs text-muted">{t("chat.docPrice")}</span></span>
             </Link>
-            <Link href="/lawyers" className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
+            <Link href="/lawyers" className="flex min-h-16 items-center gap-3 rounded-2xl bg-sand px-5 transition-colors hover:bg-sand-deep">
               <Icon name="lawyer" size={22} className="text-brand" />
               <span className="flex-1"><span className="block font-semibold">{t("chat.lawyer")}</span><span className="text-xs text-muted">{t("chat.lawyerPrice")}</span></span>
             </Link>

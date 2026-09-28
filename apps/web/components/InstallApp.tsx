@@ -61,7 +61,7 @@ export function InstallApp({ className = "" }: { className?: string }) {
   return (
     <div className={`space-y-2 ${className}`}>
       <button type="button" onClick={install}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand">
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium hover:border-action hover:text-brand">
         <Icon name="smartphone" size={18} className="text-brand" />{t("pwa.install")}
       </button>
       {help && (

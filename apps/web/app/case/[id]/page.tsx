@@ -217,7 +217,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         </div>
         {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
         <ReportsHint />
-        <div className="rounded-2xl border border-line p-4 text-xs text-muted">
+        <div className="rounded-2xl bg-sand p-5 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>
           <p className="mt-1">{t("legal.disclaimer")}</p>
@@ -261,7 +261,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       <div className="space-y-2" aria-live="polite">
         {log.map((m, i) => (
           <div key={i} className={`flex ${m.from === "user" ? "justify-end" : ""}`}>
-            <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 ${m.from === "user" ? "rounded-ee-sm bg-brand text-white" : "rounded-es-sm bg-surface shadow-sm"}`}>
+            <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 ${m.from === "user" ? "rounded-ee-sm bg-action text-white" : "rounded-es-sm bg-surface shadow-sm"}`}>
               {m.from === "bot" ? forScreen(m.text) : m.text}
             </div>
           </div>
@@ -329,7 +329,7 @@ function FactsPanel({ c }: { c: CaseView }) {
   if (c.facts.length === 0 && c.evidence.length === 0) return <p className="text-sm text-muted">{t("app.noFacts")}</p>;
   return (
     <div className="space-y-3">
-      <dl className="divide-y divide-line rounded-2xl border border-line">
+      <dl className="divide-y divide-line overflow-hidden rounded-2xl bg-sand">
         {c.facts.map((f) => (
           <div key={f.field} className="px-4 py-2.5">
             <dt className="text-xs text-muted">{f.label}</dt>
@@ -429,7 +429,7 @@ function NextStepBar({ c, busy, post, run, setCase }: {
             {proposal.type === "handoff" ? t("case.handoff") : proposal.title}
           </Button>
         )}
-        <details className="rounded-2xl border border-line px-3 py-2">
+        <details className="rounded-2xl bg-sand px-4 py-2">
           <summary className="cursor-pointer text-sm font-semibold">{t("case.close")}</summary>
           <div className="space-y-2 pt-2">
             <label htmlFor="amount" className="sr-only">{t("case.amountRecovered")}</label>
@@ -456,12 +456,12 @@ function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUploa
   const t = useT();
   const portalName = (url: string | null) => (url ? url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "");
   return (
-    <section className="card space-y-4 border-brand/40" aria-labelledby="plan-title">
-      <h2 id="plan-title" className="flex items-center gap-2 text-lg font-semibold">
+    <section className="card space-y-5 p-7" aria-labelledby="plan-title">
+      <h2 id="plan-title" className="flex items-center gap-2 text-[24px] font-semibold tracking-[-0.012em]">
         <Icon name="sparkle" className="text-brand" />{t("helper.planTitle")}
       </h2>
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-xl bg-brand-50 p-3 sm:col-span-2">
+        <div className="rounded-2xl bg-sand p-4 sm:col-span-2">
           <dt className="text-xs text-muted">{t("helper.planDoc")}</dt>
           <dd className="flex items-center gap-2 font-semibold"><Icon name="document" size={18} className="text-brand" />{plan.document}</dd>
         </div>

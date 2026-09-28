@@ -26,7 +26,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
-      <main id="main" className="mx-auto w-full max-w-[1208px] flex-1 px-5 py-8 md:py-12">{children}</main>
+      <main id="main" className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-8 sm:px-5 md:py-14">{children}</main>
       <Footer />
     </>
   );

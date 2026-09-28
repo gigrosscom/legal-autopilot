@@ -11,30 +11,30 @@ import { useT } from "@/lib/i18n";
 export default function Footer() {
   const t = useT();
   return (
-    <footer className="border-t border-line bg-surface">
-      <div className="mx-auto grid max-w-[1208px] gap-6 px-5 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="mt-10 bg-sand text-xs leading-[1.33] tracking-[-0.01em] text-muted">
+      <div className="mx-auto grid max-w-[1120px] gap-8 px-5 pt-10 pb-8 text-xs sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
-          <Brand size={26} />
+          <Brand size={20} />
           <p className="text-muted">{t("footer.said")}</p>
           <InstallApp className="pt-2" />
         </div>
-        <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
-          <Link href="/how-it-works" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.howItWorks")}</Link>
-          <Link href="/coverage" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.coverage")}</Link>
-          <Link href="/support" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.support")}</Link>
+        <nav aria-label={t("footer.product")} className="flex flex-col gap-2.5">
+          <Link href="/how-it-works" className="inline-flex items-center text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">{t("nav.howItWorks")}</Link>
+          <Link href="/coverage" className="inline-flex items-center text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">{t("nav.coverage")}</Link>
+          <Link href="/support" className="inline-flex items-center text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">{t("footer.support")}</Link>
         </nav>
-        <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">
-          <Link href="/lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.lawyers")}</Link>
-          <Link href="/for-lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.forLawyers")}</Link>
-          <Link href="/lawyer" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.lawyerCabinet")}</Link>
+        <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2.5">
+          <Link href="/lawyers" className="inline-flex items-center text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">{t("nav.lawyers")}</Link>
+          <Link href="/for-lawyers" className="inline-flex items-center text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">{t("nav.forLawyers")}</Link>
+          <Link href="/lawyer" className="inline-flex items-center text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">{t("footer.lawyerCabinet")}</Link>
         </nav>
         <div className="space-y-3">
-          <p className="font-semibold">{t("footer.contacts")}</p>
+          <p className="font-semibold text-ink">{t("footer.contacts")}</p>
           {CONTACTS.address && (
             <p className="flex items-start gap-2 text-muted"><Icon name="building" size={18} className="mt-0.5" />{CONTACTS.address}</p>
           )}
           {CONTACTS.email && (
-            <a href={`mailto:${CONTACTS.email}`} className="flex items-center gap-2 text-muted hover:text-ink pointer-coarse:min-h-10">
+            <a href={`mailto:${CONTACTS.email}`} className="flex items-center gap-2 text-muted hover:text-ink hover:underline pointer-coarse:min-h-10">
               <Icon name="mail" size={18} />{CONTACTS.email}
             </a>
           )}
@@ -43,7 +43,7 @@ export default function Footer() {
             {SOCIALS.map((s) => (
               <li key={s.key}>
                 <a href={s.url} target="_blank" rel="noopener noreferrer" aria-label={s.label} title={s.label}
-                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface text-muted hover:border-brand hover:text-brand">
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-muted hover:text-brand">
                   <SocialIcon name={s.key} />
                 </a>
               </li>
@@ -51,7 +51,7 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="mx-auto max-w-[1208px] space-y-2 px-5 pb-8 text-xs text-muted">
+      <div className="mx-auto max-w-[1120px] space-y-2 border-t border-line px-5 pt-4 pb-8 text-xs text-muted">
         <p className="max-w-3xl">{t("legal.disclaimer")}</p>
         <p className="flex flex-wrap gap-x-3 gap-y-1">
           <Link href="/terms" className="link">{t("legal.terms")}</Link>
