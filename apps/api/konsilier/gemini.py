@@ -21,7 +21,7 @@ import httpx
 
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 RETRY_STATUSES = (429, 500, 503)  # "high demand" and rate spikes on the free tier pass within seconds
-RETRY_DELAYS = (1.0, 3.0)  # seconds before the 2nd and 3rd attempt
+RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at each model
 
 
 @dataclass
@@ -89,8 +89,8 @@ def _contents(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 class _Stream:
-    def __init__(self, http: httpx.Client, url: str, body: dict[str, Any], headers: dict[str, str]):
-        self._http, self._url, self._body, self._headers = http, url, body, headers
+    def __init__(self, http: httpx.Client, urls: list[str], body: dict[str, Any], headers: dict[str, str]):
+        self._http, self._urls, self._body, self._headers = http, urls, body, headers
         self._final: Message | None = None
 
     def __enter__(self) -> "_Stream":
@@ -104,16 +104,7 @@ class _Stream:
         blocks: list[Block] = []
         usage = Usage()
         finish = "STOP"
-        for delay in (*RETRY_DELAYS, None):  # retried only before any text reached the reader
-            r = self._http.send(self._http.build_request("POST", self._url, json=self._body, headers=self._headers),
-                                stream=True)
-            if r.status_code < 400:
-                break
-            r.read()
-            r.close()
-            if r.status_code not in RETRY_STATUSES or delay is None:
-                raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
-            time.sleep(delay)
+        r = self._open()
         try:
             for line in r.iter_lines():
                 if not line.startswith("data: "):
@@ -142,6 +133,26 @@ class _Stream:
             "max_tokens" if finish == "MAX_TOKENS" else "end_turn")
         self._final = Message(blocks, stop, usage)
 
+    def _open(self) -> httpx.Response:
+        """First model that answers: each is retried on overload, then the next one (free-tier quotas are per
+        model). Only before any text reached the reader, so nothing is shown twice."""
+        for i, url in enumerate(self._urls):
+            for delay in (*RETRY_DELAYS, None):
+                r = self._http.send(self._http.build_request("POST", url, json=self._body, headers=self._headers),
+                                    stream=True)
+                if r.status_code < 400:
+                    return r
+                r.read()
+                r.close()
+                if r.status_code not in RETRY_STATUSES:
+                    raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
+                if delay is None:
+                    if i == len(self._urls) - 1:
+                        raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
+                    break
+                time.sleep(delay)
+        raise RuntimeError("gemini: no model configured")
+
     def get_final_message(self) -> Message:
         if self._final is None:
             for _ in self.text_stream:
@@ -153,8 +164,9 @@ class _Stream:
 class GeminiClient:
     """``GeminiClient(api_key).messages.stream(...)`` — the Anthropic-shaped surface the chat needs."""
 
-    def __init__(self, api_key: str, *, http: httpx.Client | None = None, timeout: float = 60):
-        self.api_key = api_key
+    def __init__(self, api_key: str, *, http: httpx.Client | None = None, timeout: float = 60,
+                 fallback_models: tuple[str, ...] = ()):
+        self.api_key, self.fallback_models = api_key, fallback_models
         self.http = http or httpx.Client(timeout=timeout)
         self.messages = self
 
@@ -164,5 +176,6 @@ class GeminiClient:
                                 "generationConfig": {"maxOutputTokens": max_tokens}}
         if t := _tools(tools):
             body["tools"] = t
-        return _Stream(self.http, f"{BASE}/models/{model}:streamGenerateContent?alt=sse", body,
+        models = [model, *(m for m in self.fallback_models if m != model)]
+        return _Stream(self.http, [f"{BASE}/models/{m}:streamGenerateContent?alt=sse" for m in models], body,
                        {"x-goog-api-key": self.api_key, "Content-Type": "application/json"})

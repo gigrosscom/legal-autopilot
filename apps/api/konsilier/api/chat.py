@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
@@ -20,6 +21,7 @@ from .deps import current_user, get_container, get_session
 from .questions import _case_for, _context
 
 router = APIRouter(prefix="/v1")
+log = logging.getLogger(__name__)
 
 
 def _view(m: ChatMessage) -> dict[str, Any]:
@@ -93,18 +95,26 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     case_pk, user_pk = case.id, user.id
     session.commit()  # the user's message is saved even if the reply fails
 
+    agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
+
     def events() -> Iterator[str]:
         result = None
-        try:
-            for ev in agent.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
+        for i, a in enumerate(agents):
+            started = False
+            try:
+                for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
                                    country=country, use_portal=use_portal):
-                if ev["type"] == "done":
-                    result = ev["result"]
-                else:
-                    yield _sse(ev)
-        except Exception as e:  # API down, no credits, …: the page shows a clear error
-            yield _sse({"type": "error", "code": "agent_failed", "message": str(e)[:200]})
-            return
+                    if ev["type"] == "done":
+                        result = ev["result"]
+                    else:
+                        started = started or ev["type"] == "text"
+                        yield _sse(ev)
+                break
+            except Exception as e:  # API down, no credits, …: the fallback agent, else the page shows a clear error
+                if started or i == len(agents) - 1:
+                    yield _sse({"type": "error", "code": "agent_failed", "message": str(e)[:200]})
+                    return
+                log.warning("chat agent failed before the reply started, using the fallback: %s", str(e)[:200])
         text = vault.restore(result.text) if result else ""
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
