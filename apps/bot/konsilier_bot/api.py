@@ -53,7 +53,8 @@ class KonsilierApi:
         return next((c for c in cases if c["status"] != "resolved"), None)
 
     async def create_case(self, tg_id: str, text: str, language: str = "ru") -> dict:
-        body: dict[str, Any] = {"text": text, "language": language}
+        # the welcome message says that sending a description accepts the Terms of Use (current version)
+        body: dict[str, Any] = {"text": text, "language": language, "accept_terms": True}
         if self.default_country:
             body["country"] = self.default_country
         return await self.call(tg_id, "POST", "/v1/cases", json=body)

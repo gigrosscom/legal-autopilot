@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import (Action, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
+from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
 from ..core.scenario import RESPONSE_CLASSES
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
@@ -139,6 +139,8 @@ class NewCase(BaseModel):
     text: str = Field(min_length=3, max_length=8000)
     language: str | None = None
     country: str | None = None
+    # the Terms of Use accepted with the first message: the wording's version, or true for the current one
+    accept_terms: bool | str | None = None
 
 
 @router.post("/cases", status_code=201)
@@ -147,6 +149,9 @@ def create_case(body: NewCase, user: User = Depends(current_user), session: Sess
     try:
         case, reply = container.engine.start_case(session, user, body.text, language=body.language,
                                                   country=body.country)
+        if body.accept_terms:
+            version = body.accept_terms if isinstance(body.accept_terms, str) else container.settings.terms_version
+            session.add(Consent(case_id=case.id, kind=f"terms:{version[:32]}"))
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()

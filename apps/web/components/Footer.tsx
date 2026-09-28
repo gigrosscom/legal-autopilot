@@ -49,7 +49,13 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <p className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted" dir="ltr">© Konsiliér AI · konsilier.com</p>
+      <div className="mx-auto max-w-6xl space-y-2 px-4 pb-8 text-xs text-muted">
+        <p className="max-w-3xl">{t("legal.disclaimer")}</p>
+        <p className="flex flex-wrap gap-x-3 gap-y-1">
+          <Link href="/terms" className="link">{t("legal.terms")}</Link>
+          <span dir="ltr">© Konsiliér AI · konsilier.com</span>
+        </p>
+      </div>
     </footer>
   );
 }

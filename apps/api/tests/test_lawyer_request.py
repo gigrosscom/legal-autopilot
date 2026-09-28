@@ -21,3 +21,22 @@ def test_request_registers_case_and_contacts(ctx):
     assert ctx.client.post(f"/v1/cases/{cid}/lawyer-request", headers=api.h, json={**body, "phone": "12-34-56"}).status_code == 422
     other = web_user(ctx)
     assert ctx.client.post(f"/v1/cases/{cid}/lawyer-request", headers=other.h, json=body).status_code == 404
+
+
+def test_terms_acceptance_is_recorded_with_the_case(ctx):
+    from sqlalchemy import select
+
+    from konsilier.core.models import Consent
+
+    from .test_e2e import web_user
+
+    api = web_user(ctx)
+    a = api.post("/v1/cases", expect=201, json={"text": "Не вернули деньги за товар", "country": "KZ",
+                                                "accept_terms": "2026-09-28"})["case"]["id"]
+    b = api.post("/v1/cases", expect=201, json={"text": "Не вернули деньги за товар", "country": "KZ",
+                                                "accept_terms": True})["case"]["id"]
+    c = api.post("/v1/cases", expect=201, json={"text": "Не вернули деньги за товар", "country": "KZ"})["case"]["id"]
+    with ctx.container.session_factory() as s:
+        kinds = {str(x.case_id): x.kind for x in s.scalars(select(Consent)).all() if x.kind.startswith("terms:")}
+    assert kinds[a] == "terms:2026-09-28" and kinds[b] == f"terms:{ctx.container.settings.terms_version}"
+    assert c not in kinds

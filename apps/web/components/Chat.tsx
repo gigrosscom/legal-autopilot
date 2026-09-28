@@ -8,6 +8,7 @@ import { Alert, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
 import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
 import { useLang, useT } from "@/lib/i18n";
+import { TERMS_VERSION } from "@/lib/legal/terms";
 import { canSpeak, speak, stopSpeaking, useDictation } from "@/lib/voice";
 
 type Pending = { key: string; filename: string; file?: File; id?: string };
@@ -74,7 +75,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       }
     }
     const out = await api<{ case: CaseView; reply: Reply }>("/v1/cases", {
-      method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ" }),
+      method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ", accept_terms: TERMS_VERSION }),
     });
     setCaseId(out.case.id);
     window.history.replaceState(null, "", `/chat/${out.case.id}`);
@@ -150,10 +151,12 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     { href: "/cases", icon: "briefcase", label: t("nav.cases") },
     { href: "/account", icon: "user", label: t("app.account") },
     { href: "/", icon: "home", label: t("app.home") },
+    { href: "/terms", icon: "scroll", label: t("legal.terms") },
   ];
   const sections: MoreSection[] = [{ key: "about", icon: "info", label: t("app.about"), render: () => (
     <div className="space-y-3 text-sm">
       <p>{t("chat.free")}</p>
+      <p className="text-muted">{t("legal.disclaimer")}</p>
       {provider && <p className="text-muted">{t(`chat.provider.${provider}`)}</p>}
       {dictation.supported && <p className="text-muted">{t("chat.micNote")}</p>}
     </div>) }];
@@ -209,6 +212,11 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           )}
         </div>
         {dictation.supported && dictation.listening && <p className="px-2 text-xs text-muted">{t("chat.micNote")}</p>}
+        {!caseId && (
+          <p className="px-2 text-xs text-muted">
+            {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+          </p>
+        )}
     </div>
   );
 

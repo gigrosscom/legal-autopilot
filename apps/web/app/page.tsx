@@ -52,6 +52,7 @@ export default function Home() {
             {busy ? t("start.busy") : t("home.cta")}
           </Button>
           <p className="text-xs text-muted">{t("home.privacy")}</p>
+          <p className="text-xs text-muted">{t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link></p>
         </form>
       </section>
 
