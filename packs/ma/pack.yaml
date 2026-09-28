@@ -19,16 +19,16 @@ compliance:
     ar: أُعدّ بمساعدة الذكاء الاصطناعي (Konsiliér AI). تحقّق من البيانات قبل التقديم.
     en: Prepared with AI (Konsiliér AI). Check the details before filing.
   draft_disclaimer:
-    ar: 'مسودة: لم يعتمدها محامٍ بعد. يجب التحقق من المراجع القانونية والمواعيد.'
-    en: 'DRAFT: not yet signed off by a lawyer. Legal references and deadlines must
-      be checked.'
+    ar: 'مسودة: لم يعتمد محامٍ هذا السيناريو بعد. يجب التحقق من الإحالات إلى النصوص القانونية
+      والمواعيد.'
+    en: 'DRAFT: this scenario has not yet been signed off by a lawyer. Legal references
+      and deadlines must be checked.'
   service_disclaimer:
-    ar: يساعدك Konsiliér AI على إعداد المستندات وتقديمها ومتابعة المواعيد. وعندما
-      تحتاج القضية إلى متابعة أبعد، يمكن لمحامٍ محترف على المنصة أن يتولاها. تُقدَّم
-      المستندات باسمك.
-    en: Konsiliér AI helps you prepare and file documents and tracks deadlines. When
-      a case needs to be taken further, a professional lawyer on the platform can
-      step in. Documents are filed in your name.
+    ar: يساعدك Konsiliér AI على إعداد المستندات وتقديمها ويتابع المواعيد. وإذا لزم
+      إيصال القضية إلى نتيجة، نُشرك محاميًا محترفًا من المنصة. تُقدَّم المستندات باسمك.
+    en: Konsiliér AI helps you prepare and file documents and keeps track of deadlines.
+      If your case needs to be seen through to the end, we will bring in a professional
+      lawyer from the platform. Documents are filed in your name.
 # Official legal databases: we link to and cite them only (docs/legal-sources.md).
 # verified_on: URL and operator confirmed online on that date; absent = not confirmed.
 legal_sources:

@@ -53,19 +53,20 @@ COMPLIANCE = {
     },
     "draft_disclaimer": {
         "ru": "ЧЕРНОВИК: сценарий ещё не подписан юристом. Ссылки на нормы и сроки подлежат проверке.",
-        "en": "DRAFT: not yet signed off by a lawyer. Legal references and deadlines must be checked.",
-        "ar": "مسودة: لم يعتمدها محامٍ بعد. يجب التحقق من المراجع القانونية والمواعيد.",
-        "tr": "TASLAK: henüz bir avukat tarafından onaylanmadı. Hukuki dayanaklar ve süreler kontrol edilmelidir.",
+        "en": "DRAFT: this scenario has not yet been signed off by a lawyer. Legal references and deadlines must be checked.",
+        "ar": "مسودة: لم يعتمد محامٍ هذا السيناريو بعد. يجب التحقق من الإحالات إلى النصوص القانونية والمواعيد.",
+        "tr": "TASLAK: Senaryo henüz bir avukat tarafından onaylanmadı. Mevzuat ve süre atıfları kontrol edilmelidir.",
     },
     "service_disclaimer": {
         "ru": "Konsiliér AI помогает подготовить и подать документы и следит за сроками. Если нужно довести дело "
               "до результата — подключим профессионального юриста платформы. Документы подаются от вашего имени.",
-        "en": "Konsiliér AI helps you prepare and file documents and tracks deadlines. When a case needs to be "
-              "taken further, a professional lawyer on the platform can step in. Documents are filed in your name.",
-        "ar": "يساعدك Konsiliér AI على إعداد المستندات وتقديمها ومتابعة المواعيد. وعندما تحتاج القضية إلى متابعة "
-              "أبعد، يمكن لمحامٍ محترف على المنصة أن يتولاها. تُقدَّم المستندات باسمك.",
-        "tr": "Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri takip eder. Dava daha ileri "
-              "taşınmalıysa platformdaki profesyonel bir avukat devreye girer. Belgeler sizin adınıza sunulur.",
+        "en": "Konsiliér AI helps you prepare and file documents and keeps track of deadlines. If your case needs to "
+              "be seen through to the end, we will bring in a professional lawyer from the platform. "
+              "Documents are filed in your name.",
+        "ar": "يساعدك Konsiliér AI على إعداد المستندات وتقديمها ويتابع المواعيد. وإذا لزم إيصال القضية إلى "
+              "نتيجة، نُشرك محاميًا محترفًا من المنصة. تُقدَّم المستندات باسمك.",
+        "tr": "Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri takip eder. Dosyanın sonuca "
+              "ulaştırılması gerekirse platformdaki profesyonel bir avukatı dahil ederiz. Belgeler sizin adınıza sunulur.",
     },
 }
 
