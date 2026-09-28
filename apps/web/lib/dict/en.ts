@@ -10,7 +10,7 @@ const en: Dict = {
   legal: {
     disclaimer: "Konsiliér AI is an IT service, not legal assistance: we are not an advocate or a legal consultant. AI answers are reference information and documents are drafts; you make the decisions and file documents yourself.",
     terms: "Terms of Use",
-    accept: "By sending a message you accept the Terms of Use and understand that Konsiliér AI is an IT service, not legal assistance.",
+    accept: "By sending a message you accept the service terms and understand that Konsiliér AI is an IT service, not legal assistance.",
     version: "version",
     languageNote: "The Terms are made in Kazakh and Russian; this is the English translation.",
   },
