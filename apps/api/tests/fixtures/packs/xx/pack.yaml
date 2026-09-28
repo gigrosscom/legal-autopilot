@@ -13,5 +13,5 @@ authorities:
     submit_url: https://ombudsman.example
 compliance:
   ai_label: {en: "Prepared with AI"}
-  draft_disclaimer: {en: "DRAFT: not reviewed by a lawyer"}
+  draft_disclaimer: {en: "Unsigned-scenario note from the pack"}
   service_disclaimer: {en: "We are not lawyers."}

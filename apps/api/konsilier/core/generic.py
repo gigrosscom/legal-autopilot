@@ -3,7 +3,7 @@
 No new engine: the generated scenario runs on the same CaseEngine and state machine. Everything legal
 (addressee, deadline, norms, filing channels) comes from the pack's forum registry and document types;
 where the pack has no data, norms stay "TODO" (the template prints a placeholder) and deadlines are absent.
-The scenario is never reviewed (``reviewed_at=None``), so documents carry the DRAFT mark, and the engine
+The scenario is never reviewed (``reviewed_at=None``), so documents carry the unsigned-scenario note, and the engine
 always requires a lawyer's approval for it.
 
 Generic scenario ids encode their inputs so they can be rebuilt deterministically:

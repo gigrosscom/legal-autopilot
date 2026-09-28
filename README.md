@@ -15,7 +15,7 @@ MVP v0.1 — два сценария Казахстана:
 Каналы: веб (Next.js) и Telegram-бот. Языки: русский, казахский (заготовка).
 
 > ⚠️ Все нормы и сроки в сценариях — `TODO` до подписи юристом. Список — в
-> [`packs/kz/REVIEW.md`](packs/kz/REVIEW.md). Документы до подписи помечаются «ЧЕРНОВИК».
+> [`packs/kz/REVIEW.md`](packs/kz/REVIEW.md). Документы до подписи юриста несут нейтральную пометку «Документ подготовлен IT-сервисом Konsiliér AI по вашим данным. Проверьте сведения перед подачей.»
 
 ---
 
@@ -155,7 +155,7 @@ POST /v1/cases/{id}/close {result, amount_recovered}
    jurisdiction: KZ
    languages: [ru, kk]
    owner: lawyer:kz-01
-   reviewed_at: null                 # пока null — документы с пометкой ЧЕРНОВИК
+   reviewed_at: null                 # пока null — на документах нейтральная пометка compliance.draft_disclaimer
    published: true                   # виден квалификатору
    title: {ru: …, kk: …}
    summary: {ru: …}

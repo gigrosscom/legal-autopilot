@@ -1,4 +1,4 @@
-"""Published KZ scenarios without a lawyer's sign-off: DRAFT mark, and no invented norms or deadlines.
+"""Published KZ scenarios without a lawyer's sign-off: a neutral note (no "draft" word), no invented norms or deadlines.
 
 A norm reference is either ``TODO`` (the document prints a placeholder) or ``<act title>, статья <N>`` where the act is
 a key act of the pack that was opened on adilet.zan.kz (``verified_on`` set). The article itself is checked by a human
@@ -16,6 +16,9 @@ PACKS = Path(__file__).resolve().parents[3] / "packs"
 # the first two published scenarios carry placeholder deadlines marked TODO (packs/kz/REVIEW.md, rows 2, 5, 12, 16)
 LEGACY_PLACEHOLDER_DEADLINES = {"kz.consumer.refund", "kz.money.credit_fraud"}
 # fields the generic templates read (see scripts/build_kz_templates.py)
+# owner's decision 28.09.2026: documents of unsigned scenarios carry this neutral note, never the word "draft"
+NEUTRAL_NOTE_RU = "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным. Проверьте сведения перед подачей."
+DRAFT_WORDS = re.compile(r"черновик|draft|жоба|taslak|مسود", re.IGNORECASE)
 TEMPLATE_FIELDS = {"respondent_name", "applicant_name", "applicant_address", "applicant_phone", "problem_description"}
 
 
@@ -47,6 +50,17 @@ def test_twenty_published_scenarios_all_drafts(kz):
             if a.kind == "document":
                 assert "ru" in a.instructions and "kk" in a.instructions, f"{sc.id}.{a.id}"
                 assert len(a.instructions["ru"]) == len(a.instructions["kk"]), f"{sc.id}.{a.id}"
+
+
+def test_unsigned_note_is_neutral_in_every_pack():
+    for pack_dir in sorted(p for p in PACKS.iterdir() if (p / "pack.yaml").exists()):
+        note = load_pack(pack_dir, PACKS).manifest.compliance.draft_disclaimer
+        assert note, pack_dir.name
+        for lang, text in note.items():
+            assert not DRAFT_WORDS.search(text), f"{pack_dir.name}/{lang}: {text!r}"
+            assert "Konsiliér AI" in text, f"{pack_dir.name}/{lang}"
+        if "ru" in note:
+            assert note["ru"] == NEUTRAL_NOTE_RU, pack_dir.name
 
 
 def test_norms_and_deadlines_are_verified_or_todo(kz):

@@ -5,7 +5,7 @@ taxonomy: consumer.refund
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01
-reviewed_at: null          # no lawyer sign-off yet → DRAFT disclaimer on every document
+reviewed_at: null          # no lawyer sign-off yet → compliance.draft_disclaimer note on every document
 published: true
 title:
   ru: Возврат денег за товар или услугу
