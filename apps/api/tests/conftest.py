@@ -55,3 +55,15 @@ def ctx(tmp_path: Path, packs_dir: Path):
     with TestClient(app) as client:
         yield SimpleNamespace(client=client, container=container, llm=llm, channels=channels, settings=settings)
     container.engine_db.dispose()
+
+
+def hide_scenarios(ctx, prefix: str) -> None:
+    """Unpublish level-1 scenarios whose id starts with ``prefix`` in this test's registry only.
+
+    Tests of the universal path (level 2) use a labour story; with the labour scenarios published the
+    keyword mock would pick them first. A real case reaches the universal path the same way when the
+    classifier finds no published scenario that fits."""
+    for pack in ctx.container.packs.packs.values():
+        for sid, sc in list(pack.scenarios.items()):
+            if sid.startswith(prefix):
+                pack.scenarios[sid] = sc.model_copy(update={"published": False})

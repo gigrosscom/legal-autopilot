@@ -9,12 +9,15 @@ from sqlalchemy import func, select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import Action, DemandSignal
 
+from .conftest import hide_scenarios
 from .test_e2e import ADMIN, admin_approve, statuses, web_user
 
 WAGES = "Работодатель не платит зарплату три месяца, задолженность 450000 тенге"
 
 
-def _universal_case(api):
+def _universal_case(api, ctx=None):
+    if ctx is not None:
+        hide_scenarios(ctx, "kz.labor.")
     created = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ"})
     case = created["case"]
     assert case["scenario"] is None
@@ -40,7 +43,7 @@ def test_level1_verified_scenarios_unchanged(ctx):
 def test_level2_universal_path_needs_lawyer_approval(ctx):
     ctx.container.engine.config.self_service = False  # the lawyer-review policy (SELF_SERVICE=false)
     api = web_user(ctx)
-    cid, _ = _universal_case(api)
+    cid, _ = _universal_case(api, ctx)
 
     # a message before choosing a forum only repeats the choice
     out = api.answer(cid, "что дальше?")
@@ -106,9 +109,28 @@ def test_level3_defence_goes_to_lawyer_without_documents(ctx):
 
 def test_level3_children_route_to_lawyer(ctx):
     api = web_user(ctx)
-    created = api.post("/v1/cases", expect=201, json={"text": "Бывший муж не платит алименты", "country": "KZ"})
+    created = api.post("/v1/cases", expect=201, json={
+        "text": "Отец против: хочу определить через суд, с кем будет жить ребенок", "country": "KZ"})
     assert created["case"]["coverage"]["level"] == "lawyer"
     assert "children" in [r["code"] for r in created["case"]["coverage"]["reasons"]]
+
+
+def test_alimony_scenario_lawsuit_waits_for_a_lawyer(ctx):
+    """Published level-1 scenario with a court document: the lawsuit is released only after a lawyer's check."""
+    api = web_user(ctx)
+    created = api.post("/v1/cases", expect=201, json={"text": "Бывший муж не платит алименты", "country": "KZ"})
+    case = created["case"]
+    assert case["scenario"]["id"] == "kz.family.alimony"
+    assert case["plan"]["lawyer_check"] is True
+    answers = {**_ANSWERS, "respondent_name": "Петров Пётр Петрович",
+               "desired_outcome": "Взыскать алименты на сына"}
+    q = case["question"]
+    while q is not None:
+        out = api.answer(case["id"], "пропустить" if q["type"] == "evidence" else answers[q["field"]])
+        assert out["reply"]["error"] is None, out["reply"]
+        q = out["case"]["question"]
+    action = api.post(f"/v1/cases/{case['id']}/actions/next")["case"]["actions"][0]
+    assert action["approval_status"] == "pending" and action["downloadable"] is False
 
 
 def test_unclassified_story_asks_for_details(ctx):
@@ -123,7 +145,8 @@ def test_coverage_and_forums_endpoints(ctx):
     cov = ctx.client.get("/v1/coverage?lang=ru").json()
     kz = next(c for c in cov["countries"] if c["country"] == "KZ")
     assert kz["cells"]["consumer"] == "scenario_draft"  # published but not signed off by a lawyer
-    assert kz["cells"]["labor"] == "universal"
+    assert kz["cells"]["labor"] == "scenario_draft"  # published labour scenarios, not signed by a lawyer
+    assert kz["cells"]["inheritance"] == "universal"
     assert kz["cells"]["commercial"] == "lawyer"
     assert all(c["country"] != "XX" for c in cov["countries"])  # test packs hidden
     forums = ctx.client.get("/v1/forums?country=KZ&branch=labor").json()
@@ -133,7 +156,7 @@ def test_coverage_and_forums_endpoints(ctx):
 
 def test_admin_board_keeps_every_case_in_one_column(ctx):
     api = web_user(ctx)
-    _universal_case(api)
+    _universal_case(api, ctx)
     api.post("/v1/cases", expect=201, json={"text": "Меня обвиняют в мошенничестве, возбудили дело против меня",
                                             "country": "KZ"})
     board = ctx.client.get("/v1/admin/board", headers=ADMIN).json()
@@ -220,7 +243,7 @@ def _fill_and_prepare(api, cid, case):
 
 def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
     api = web_user(ctx)
-    cid, _ = _universal_case(api)
+    cid, _ = _universal_case(api, ctx)
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
     action = _fill_and_prepare(api, cid, case)
     assert action["approval_status"] == "not_required" and action["downloadable"] is True
@@ -234,7 +257,7 @@ def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
 
 def test_pre_trial_claim_goes_to_the_other_party(ctx):
     api = web_user(ctx)
-    cid, options = _universal_case(api)
+    cid, options = _universal_case(api, ctx)
     assert "kz.counterparty.claim" in options  # a pre-trial claim is offered next to the bodies
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.counterparty.claim"})["case"]
     action = _fill_and_prepare(api, cid, case)
@@ -248,7 +271,7 @@ def test_pre_trial_claim_goes_to_the_other_party(ctx):
 
 def test_court_documents_still_wait_for_a_lawyer(ctx):
     api = web_user(ctx)
-    cid, _ = _universal_case(api)
+    cid, _ = _universal_case(api, ctx)
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.district"})["case"]
     action = _fill_and_prepare(api, cid, case)
     assert action["approval_status"] == "pending" and action["downloadable"] is False

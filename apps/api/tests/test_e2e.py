@@ -357,7 +357,13 @@ def test_other_users_cannot_see_case(ctx):
 def test_packs_and_waitlist(ctx):
     packs = ctx.client.get("/v1/packs").json()
     assert [p["country"] for p in packs] == ["KZ"]  # test packs are hidden
-    assert {s["id"] for s in packs[0]["scenarios"]} == {"kz.consumer.refund", "kz.money.credit_fraud"}
+    assert {s["id"] for s in packs[0]["scenarios"]} == {
+        "kz.consumer.refund", "kz.money.credit_fraud", "kz.labor.unpaid_wages", "kz.administrative.fine_appeal",
+        "kz.family.alimony", "kz.consumer.non_delivery", "kz.consumer.poor_service", "kz.consumer.air_ticket",
+        "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
+        "kz.housing.deposit_return", "kz.housing.management_company", "kz.housing.utility_billing",
+        "kz.finance.debt_collectors", "kz.finance.imposed_insurance", "kz.finance.loan_restructuring",
+        "kz.finance.unauthorized_debit", "kz.civil.road_accident"}
     r = ctx.client.post("/v1/waitlist", json={"country": "uz", "contact": "@someone", "problem": "долг"})
     assert r.status_code == 201
     rows = ctx.client.get("/v1/admin/waitlist", headers=ADMIN).json()
