@@ -44,7 +44,14 @@ export default function AccountPage() {
     setMe(applySignIn(r));
     setOpen(null);
     setDone(t("account.done"));
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next && next.startsWith("/") && !next.startsWith("//")) setTimeout(() => { window.location.href = next; }, 800);
   };
+
+  useEffect(() => {  // ?method=ecp: arrive with the ЭЦП form already open (lawyer onboarding)
+    const m = new URLSearchParams(window.location.search).get("method");
+    if (m === "ecp" || m === "egov") setOpen(m);
+  }, []);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

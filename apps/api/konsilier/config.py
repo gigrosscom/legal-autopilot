@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
+    team_email: str = "info@konsilier.com"  # fallback address for desk notifications
+    # Operations centre: e-mails (comma-separated) of the operators of each desk. They sign in with an e-mail code;
+    # new items of the desk are also e-mailed to these addresses.
+    ops_lawyers_emails: str = "info@konsilier.com"  # lawyers desk: applications of advocates and lawyers
+    ops_clients_emails: str = "info@konsilier.com"  # clients desk: questions, complaints, suggestions, lawyer requests
     terms_version: str = "2026-09-28"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None

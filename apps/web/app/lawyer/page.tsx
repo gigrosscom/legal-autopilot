@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Agreements } from "@/components/Agreements";
+import { LawyerSteps, type LawyerStatus } from "@/components/LawyerSteps";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
 import { ApiError, api, downloadFile, errorText, type CaseLawyer, type CaseView } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -32,20 +33,9 @@ export default function LawyerCabinet() {
       </div>
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
 
-      {me && !me.has_ecp && (
-        <div className="card space-y-3">
-          <p>{t("lawyer.ecpNeeded")}</p>
-          <Button href="/account" icon="key">{t("lawyer.ecpSignIn")}</Button>
-        </div>
-      )}
-      {me && me.has_ecp && me.applications.length === 0 && (
-        <div className="card space-y-3">
-          <p>{t("lawyer.noApplication")}</p>
-          <Button href="/for-lawyers#join" iconEnd="arrowRight">{t("lawyer.apply")}</Button>
-        </div>
-      )}
-      {me && me.applications.length > 0 && !me.verified && (
-        <Alert tone="info">{t(`lawyer.status.${me.applications[0].status}`)}</Alert>
+      {me && !(me.verified && me.has_ecp) && (
+        <LawyerSteps s={{ applied: me.applications.length > 0, hasEcp: me.has_ecp,
+          status: (me.applications[0]?.status as LawyerStatus["status"]) ?? null }} />
       )}
 
       {cases && cases.length === 0 && <p className="text-muted">{t("lawyer.noCases")}</p>}

@@ -229,6 +229,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     { href: "/cases", icon: "briefcase", label: t("nav.cases") },
     { href: "/account", icon: "user", label: t("app.account") },
     { href: "/", icon: "home", label: t("app.home") },
+    { href: `/support?case=${c.id}`, icon: "mail", label: t("footer.support") },
     { href: "/terms", icon: "scroll", label: t("legal.terms") },
   ];
 
