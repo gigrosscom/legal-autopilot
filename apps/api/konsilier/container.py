@@ -42,7 +42,7 @@ class Container:
     reporter: Any = None
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
-    chat_fallback_agent: Any = None  # Claude, used when the Gemini chat fails before the reply starts
+    chat_fallback_agent: Any = None  # the other chat model (Claude or Gemini), used when the main one fails or is capped
 
     def law_agent_for(self, case: Any) -> Any:
         """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
@@ -110,11 +110,15 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
             container.chat_agent = claude_chat
         elif settings.chat_fallback_to_anthropic:
             container.chat_fallback_agent = claude_chat
-    if settings.chat_provider == "gemini" and settings.gemini_api_key:
+    if settings.gemini_api_key and settings.chat_provider in ("gemini", "anthropic"):
         from .gemini import GeminiClient
 
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
-        container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
-                                         settings.gemini_model, adilet, web_search=False)
+        gemini_chat = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
+                                settings.gemini_model, adilet, web_search=False)
+        if settings.chat_provider == "gemini" or container.chat_agent is None:
+            container.chat_agent = gemini_chat
+        else:  # Claude is the main chat model: free Gemini answers once Claude's daily budget is spent or it fails
+            container.chat_fallback_agent = gemini_chat
     scheduler.extra_jobs.append(container.reporter.tick)
     return container
