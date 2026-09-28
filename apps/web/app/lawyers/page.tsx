@@ -22,16 +22,17 @@ type Lawyer = {
   title: string;
   organization: string;
   city: string;
-  years: number;
+  demo?: boolean;
+  years: number | null;
   verified: { license: boolean; registry: string; identity: boolean };
   specializations: { key: string; label: string }[];
   languages: string[];
-  price_from: number;
+  price_from: number | null;
   pro_bono?: boolean;
-  response_hours: number;
+  response_hours: number | null;
   reviews_count: number;
   results: { category: string; label: string; cases: number; success_rate: number | null; baseline: number | null; recovered: number }[];
-  score: Score;
+  score: Score | null; // null: a verified lawyer without closed cases yet
 };
 
 type Directory = { demo: boolean; disclaimer: string; currency: string; lawyers: Lawyer[] };
@@ -92,20 +93,24 @@ export default function LawyersPage() {
                   <div>
                     <h2 className="text-lg font-semibold">{l.name}</h2>
                     <p className="text-sm text-muted">
-                      {l.title} · {l.organization} · {l.city} · {l.years} {t("lawyers.years")}
+                      {[l.title, l.organization, l.city, l.years != null ? `${l.years} ${t("lawyers.years")}` : ""].filter(Boolean).join(" · ")}
                     </p>
                     <div className="mt-1 flex flex-wrap gap-1 text-xs">
+                      {l.demo && <span className="chip bg-warning-50 text-warning">{t("lawyers.sample")}</span>}
                       {l.verified.license && <span className="chip bg-brand-50 text-brand-dark">{t("lawyers.verifiedLicense")}</span>}
                       {l.verified.identity && <span className="chip bg-brand-50 text-brand-dark">{t("lawyers.verifiedId")}</span>}
                       {l.specializations.map((s) => <span key={s.key} className="chip">{s.label}</span>)}
                     </div>
                   </div>
                 </div>
-                <div className="text-end">
+                {l.score && <div className="text-end">
                   <div className="text-3xl font-semibold text-brand">{l.score.total}<span className="text-sm font-medium text-muted">/100</span></div>
                   <div className="text-xs text-muted">{t("lawyers.score")}</div>
-                </div>
+                </div>}
               </div>
+
+              {!l.score && <p className="text-sm text-muted">{t("lawyers.newProfile")}</p>}
+              {l.score && <>
 
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <Metric label={t("lawyers.cases")} value={String(l.score.verified_cases)} />
@@ -149,11 +154,12 @@ export default function LawyersPage() {
 
                 </div>
               </details>
+              </>}
 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 pt-3 text-sm">
                 <span className="text-muted">
-                  {l.pro_bono ? t("lawyers.proBono") : `${t("lawyers.from")} ${l.price_from.toLocaleString("ru-RU")} ${cur}`}
-                  {` · ${t("lawyers.response")} ${l.response_hours} ${t("lawyers.hours")}`}
+                  {[l.pro_bono ? t("lawyers.proBono") : l.price_from != null ? `${t("lawyers.from")} ${l.price_from.toLocaleString("ru-RU")} ${cur}` : "",
+                    l.response_hours != null ? `${t("lawyers.response")} ${l.response_hours} ${t("lawyers.hours")}` : ""].filter(Boolean).join(" · ")}
                 </span>
                 <Button href={`/lawyers/request?lawyer=${encodeURIComponent(l.id)}&name=${encodeURIComponent(l.name)}`} variant="secondary" iconEnd="arrowRight">{t("lawyers.choose")}</Button>
               </div>

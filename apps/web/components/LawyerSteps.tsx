@@ -3,7 +3,9 @@
 import { Button, Icon } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
-export type LawyerStatus = { applied: boolean; hasEcp: boolean; status: "new" | "verified" | "rejected" | null };
+export type LawyerStatus = {
+  applied: boolean; hasEcp: boolean; status: "new" | "verified" | "rejected" | null; rejectReason?: string | null;
+};
 
 /** Where the lawyer is on the way in: application → ЭЦП → status check → cases. One next action at a time. */
 export function LawyerSteps({ s }: { s: LawyerStatus }) {
@@ -29,6 +31,8 @@ export function LawyerSteps({ s }: { s: LawyerStatus }) {
               <p className={`font-semibold ${state === "todo" ? "text-muted" : ""}`}>{t(`lawyer.steps.${x.key}`)}</p>
               {state === "current" && !x.failed && <p className="text-sm text-muted">{t(`lawyer.steps.${x.key}Hint`)}</p>}
               {x.failed && <p className="text-sm text-danger">{t("lawyer.status.rejected")}</p>}
+              {x.failed && s.rejectReason && <p className="text-sm text-danger">{t("lawyer.status.rejectedReason", { reason: s.rejectReason })}</p>}
+              {x.failed && <Button href="/for-lawyers#apply" variant="secondary" iconEnd="arrowRight">{t("lawyer.apply")}</Button>}
               {state === "current" && x.key === "applied" && (
                 <Button href="/for-lawyers#apply" iconEnd="arrowRight">{t("lawyer.apply")}</Button>
               )}

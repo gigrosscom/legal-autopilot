@@ -63,22 +63,61 @@ def me(user: User = Depends(current_user), session: Session = Depends(get_sessio
 
 
 # ------------------------------------------------------------------ lawyers desk
+# Official registries for the operator's manual check (opened and checked 28.09.2026). «Заң көмегі» is the
+# Ministry of Justice portal with the search of advocates and legal consultants; e-licensing holds advocates'
+# licences. Legal consultants' chambers also keep their own member registries.
+REGISTRIES: dict[str, list[dict[str, str]]] = {
+    "advocate": [
+        {"title": "«Заң көмегі» (Минюст РК): поиск адвоката", "url": "https://eup.adilet.gov.kz/#/lawyers/advocate"},
+        {"title": "Е-лицензирование: реестр лицензий (адвокатская деятельность)",
+         "url": "https://elicense.kz/Licenses/Index?documentType=License"},
+        {"title": "Республиканская коллегия адвокатов", "url": "https://advokatura.kz/ru/"},
+    ],
+    "legal_consultant": [
+        {"title": "«Заң көмегі» (Минюст РК): поиск юридического консультанта",
+         "url": "https://eup.adilet.gov.kz/#/lawyers/consultant"},
+    ],
+    "human_rights": [],
+}
+
+
+def _checks(a: LawyerApplication) -> dict[str, Any]:
+    """What the form rules say about this application now (older applications were accepted without them)."""
+    from ..identity import form_rules as R
+
+    phone, phone_err = R.normalize_kz_phone(a.phone or a.contact)
+    return {
+        "full_name": R.check_full_name(a.full_name),
+        "phone": phone_err, "phone_normalized": phone,
+        "license_number": R.check_license(a.license_number, a.kind),
+        "city": R.check_city(a.city),
+        "kind": None if a.kind in R.LAWYER_KINDS else "required",
+        "ecp": None if a.iin_hash else "missing",
+    }
+
+
+def application_view(a: LawyerApplication) -> dict[str, Any]:
+    return {"id": a.id, "created_at": a.created_at.isoformat(), "full_name": a.full_name, "kind": a.kind,
+            "organization": a.organization, "license_number": a.license_number, "city": a.city,
+            "specializations": a.specializations, "contact": a.contact, "phone": a.phone, "email": a.email,
+            "message": a.message, "wants_expert": a.wants_expert, "status": a.status, "ecp_verified": bool(a.iin_hash),
+            "ecp_name": a.ecp_name, "note": a.desk_note, "reject_reason": a.reject_reason,
+            "checks": _checks(a), "registries": REGISTRIES.get(a.kind, [])}
+
+
 @router.get("/lawyers/applications")
 def applications(status: str | None = None, session: Session = Depends(get_session),
                  _: User = Depends(operator("lawyers"))) -> list[dict[str, Any]]:
     q = select(LawyerApplication).order_by(LawyerApplication.id.desc()).limit(500)
     if status:
         q = q.where(LawyerApplication.status == status)
-    return [{"id": a.id, "created_at": a.created_at.isoformat(), "full_name": a.full_name, "kind": a.kind,
-             "organization": a.organization, "license_number": a.license_number, "city": a.city,
-             "specializations": a.specializations, "contact": a.contact, "message": a.message,
-             "wants_expert": a.wants_expert, "status": a.status, "ecp_verified": bool(a.iin_hash),
-             "ecp_name": a.ecp_name, "note": a.desk_note} for a in session.scalars(q).all()]
+    return [application_view(a) for a in session.scalars(q).all()]
 
 
 class AppUpdate(BaseModel):
     status: Literal["new", "verified", "rejected"] | None = None
     note: str | None = Field(default=None, max_length=4000)
+    reason: str | None = Field(default=None, max_length=2000)  # required to reject: the lawyer is told it
 
 
 @router.post("/lawyers/applications/{app_id}")
@@ -94,15 +133,23 @@ def update_application(app_id: int, body: AppUpdate, session: Session = Depends(
         if body.status == "verified" and not a.iin_hash:
             # who signs papers with clients is known only from the ЭЦП certificate
             raise HTTPException(409, {"code": "ecp_required", "message": "ecp_required"})
+        reason = (body.reason or "").strip()
+        if body.status == "rejected" and len(reason) < 5:
+            raise HTTPException(422, {"code": "reason_required", "message": "reason_required",
+                                      "fields": {"reason": "required"}})
         a.status = body.status
+        a.reject_reason = reason if body.status == "rejected" else None
+        email = a.email or (a.contact if "@" in (a.contact or "") else None)
         if body.status == "verified":
-            _tell(session, container, a.user_id, a.contact, "Konsiliér AI: заявка юриста подтверждена",
-                  f"{a.full_name}, ваш статус проверен, доступ к кабинету юриста открыт: https://konsilier.com/lawyer")
+            _tell(session, container, a.user_id, email, "Konsiliér AI: заявка юриста подтверждена",
+                  f"{a.full_name}, ваш статус проверен, доступ к кабинету юриста открыт, профиль появился в каталоге "
+                  f"юристов: https://konsilier.com/lawyer")
         elif body.status == "rejected":
-            _tell(session, container, a.user_id, a.contact, "Konsiliér AI: заявка юриста",
-                  f"{a.full_name}, подтвердить статус по заявке не удалось. Если это ошибка, ответьте на это письмо "
-                  f"или напишите на info@konsilier.com.")
-    return {"id": a.id, "status": a.status, "note": a.desk_note}
+            _tell(session, container, a.user_id, email, "Konsiliér AI: заявка юриста",
+                  f"{a.full_name}, подтвердить статус по заявке не удалось.\nПричина: {reason}\n\n"
+                  f"Исправьте данные и подайте заявку заново на https://konsilier.com/for-lawyers или ответьте на это "
+                  f"письмо (info@konsilier.com).")
+    return application_view(a)
 
 
 # ------------------------------------------------------------------ clients desk

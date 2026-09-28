@@ -6,7 +6,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -89,16 +89,42 @@ def list_packs(lang: str = "ru", container: Container = Depends(get_container)) 
     return out
 
 
+def real_lawyers(session: Session, pack: Any, country: str, lg: str) -> list[dict[str, Any]]:
+    """Lawyers whose application the desk verified (status checked by the registry, identity by ЭЦП)."""
+    rows = session.scalars(select(LawyerApplication).where(
+        LawyerApplication.country == country.upper(), LawyerApplication.status == "verified",
+        LawyerApplication.iin_hash.is_not(None)).order_by(LawyerApplication.id)).all()
+    kinds = pack.agreements.lawyer_kinds if pack.agreements is not None else {}
+    out = []
+    for a in rows:
+        title = pack.localized(kinds[a.kind], lg) if a.kind in kinds else a.kind
+        out.append({
+            "id": f"lawyer-{a.id}", "demo": False, "name": a.full_name,
+            "title": title[:1].upper() + title[1:], "organization": a.organization or "", "city": a.city or "",
+            "years": None, "languages": [], "price_from": None, "response_hours": None, "reviews_count": 0,
+            "pro_bono": a.kind == "human_rights",
+            "verified": {"license": a.kind in ("advocate", "legal_consultant"), "identity": True, "registry": ""},
+            "specializations": [{"key": k, "label": pack.t(lg, f"categories.{k}", default=k)}
+                                for k in (a.specializations or [])],
+            "results": [], "score": None,
+        })
+    return out
+
+
 @router.get("/lawyers")
-def list_lawyers(country: str, lang: str = "ru",
+def list_lawyers(country: str, lang: str = "ru", session: Session = Depends(get_session),
                  container: Container = Depends(get_container)) -> dict[str, Any]:
-    """Lawyer directory ranked by proven results. v0.1 serves the pack's demo profiles only."""
+    """Lawyer directory. Verified lawyers of the platform once there is at least one; until then the pack's demo
+    profiles, marked as demo (no «verified» promise for people who do not exist)."""
     from ..core.rating import CategoryStats, LawyerStats, score
 
     try:
         pack = container.packs.pack(country)
     except KeyError as e:
         raise HTTPException(404, "unknown country") from e
+    real = real_lawyers(session, pack, country, pack.lang(lang))
+    if real:
+        return {"demo": False, "disclaimer": "", "currency": pack.currency, "lawyers": real}
     demo = pack.demo_lawyers
     lg = pack.lang(lang)
     baseline = demo.get("baseline", {})
@@ -119,6 +145,9 @@ def list_lawyers(country: str, lang: str = "ru",
             "baseline": baseline.get(c.category), "recovered": c.recovered, "claimed": c.claimed,
         } for c in cats]
         profile["score"] = s.to_dict()
+        profile["demo"] = True
+        # a made-up person is not «verified»: the demo card never shows the registry/ЭЦП badges
+        profile["verified"] = {"license": False, "identity": False, "registry": ""}
         out.append(profile)
     out.sort(key=lambda p: p["score"]["total"], reverse=True)
     return {"demo": True, "disclaimer": pack.localized(demo.get("disclaimer", {}), lg) if demo else "",
@@ -526,34 +555,118 @@ def close_case(case_id: uuid.UUID, body: CloseIn, user: User = Depends(current_u
 
 
 class LawyerApplicationIn(BaseModel):
+    """Loose types on purpose: every field is checked below, so the answer is 422 with a code per field."""
     country: str = Field(min_length=2, max_length=2)
-    full_name: str = Field(min_length=3, max_length=200)
-    kind: Literal["advocate", "legal_consultant", "human_rights", "other"]
+    full_name: str | None = Field(default=None, max_length=300)
+    kind: str | None = Field(default=None, max_length=40)
     organization: str | None = Field(default=None, max_length=300)
     license_number: str | None = Field(default=None, max_length=100)
-    city: str | None = Field(default=None, max_length=100)
+    city: str | None = Field(default=None, max_length=200)
     specializations: list[str] = Field(default_factory=list, max_length=10)
-    contact: str = Field(min_length=3, max_length=200)
+    phone: str | None = Field(default=None, max_length=60)
+    email: str | None = Field(default=None, max_length=300)
+    consent: bool = False
     message: str | None = Field(default=None, max_length=2000)
     referred_by: str | None = Field(default=None, max_length=16)
     wants_expert: bool = False
+    website: str | None = Field(default=None, max_length=300)  # honeypot: hidden from people, bots fill it
+
+
+APPS_PER_IP_HOUR = 5
+
+
+def validate_lawyer_application(body: LawyerApplicationIn) -> tuple[dict[str, str], str | None]:
+    """({field: error code}, normalized phone)."""
+    from ..identity import form_rules as R
+
+    phone, phone_err = R.normalize_kz_phone(body.phone)
+    checks = {
+        "full_name": R.check_full_name(body.full_name),
+        "kind": None if body.kind in R.LAWYER_KINDS else "required",
+        "license_number": R.check_license(body.license_number, body.kind),
+        "city": R.check_city(body.city),
+        "phone": phone_err,
+        "email": R.check_email(body.email),
+        "consent": None if body.consent else "required",
+        "specializations": None if all(0 < len(x) <= 40 for x in body.specializations) else "invalid",
+    }
+    errors = {k: v for k, v in checks.items() if v}
+    if body.organization and len(body.organization.strip()) > 300:
+        errors["organization"] = "too_long"
+    return errors, phone
+
+
+def _client_ip(request: Request) -> str | None:
+    fwd = request.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else None)
 
 
 @router.post("/lawyer-applications", status_code=201)
-def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_session),
-                    user: User | None = Depends(optional_user),
+def apply_as_lawyer(body: LawyerApplicationIn, request: Request, response: Response,
+                    session: Session = Depends(get_session), user: User | None = Depends(optional_user),
                     container: Container = Depends(get_container)) -> dict[str, Any]:
     import secrets
+
+    from ..identity.form_rules import clean
+
+    if (body.website or "").strip():
+        raise HTTPException(422, {"code": "spam", "message": "spam", "fields": {}})
+    errors, phone = validate_lawyer_application(body)
+    if errors:
+        raise HTTPException(422, {"code": "invalid_application", "message": "invalid_application", "fields": errors})
+
+    ip = _client_ip(request)
+    ip_hash = container.identities.h("ip", ip) if ip else None
+    if ip_hash and (session.scalar(select(func.count()).select_from(LawyerApplication).where(
+            LawyerApplication.ip_hash == ip_hash, LawyerApplication.created_at > utcnow() - timedelta(hours=1))) or 0) \
+            >= APPS_PER_IP_HOUR:
+        raise HTTPException(429, {"code": "too_many", "message": "too_many"})
+
+    ident = session.scalar(select(Identity).where(Identity.user_id == user.id, Identity.kind == "iin")) if user else None
+    active = (LawyerApplication.status.in_(("new", "verified")))
+    same_phone = session.scalar(select(LawyerApplication).where(LawyerApplication.phone == phone, active)
+                                .order_by(LawyerApplication.id.desc()))
+    if same_phone is None:  # applications sent before the form had a phone field: the number is in `contact`
+        from ..identity.form_rules import normalize_kz_phone
+        for old in session.scalars(select(LawyerApplication).where(LawyerApplication.phone.is_(None), active)).all():
+            if normalize_kz_phone(old.contact)[0] == phone:
+                old.phone, same_phone = phone, old
+                break
+    if same_phone is not None:
+        if ident is not None and not same_phone.iin_hash and user is not None:
+            # applied on the phone, confirmed ЭЦП on the computer: the same number ties the two together
+            same_phone.user_id, same_phone.iin_hash, same_phone.ecp_name = user.id, ident.subject_hash, user.display_name
+            fresh = {"license_number": clean(body.license_number), "city": clean(body.city),
+                     "organization": clean(body.organization), "email": (body.email or "").strip()}
+            for k, v in fresh.items():  # the old form may have left these empty
+                if v and not getattr(same_phone, k):
+                    setattr(same_phone, k, v)
+            response.status_code = 200
+            notify_team(container, f"Заявка юриста №{same_phone.id}: ЭЦП подтверждена",
+                        f"{same_phone.full_name}: к заявке привязана ЭЦП ({user.display_name or '—'}). "
+                        f"Сверьте ФИО по ЭЦП с ФИО в заявке и статус по реестру в оперативном центре.")
+            return {"id": same_phone.id, "referral_code": same_phone.referral_code, "linked": True,
+                    "ecp_verified": True, "invited": 0}
+        raise HTTPException(409, {"code": "duplicate_application", "message": "duplicate_application",
+                                  "fields": {"phone": "duplicate"}})
+    if ident is not None and session.scalar(select(LawyerApplication.id).where(
+            LawyerApplication.iin_hash == ident.subject_hash, active)):
+        raise HTTPException(409, {"code": "duplicate_application", "message": "duplicate_application",
+                                  "fields": {"ecp": "duplicate"}})
 
     code = secrets.token_urlsafe(5).replace("-", "x").replace("_", "y")[:7].upper()
     ref = (body.referred_by or "").strip().upper() or None
     if ref and not session.scalar(select(LawyerApplication.id).where(LawyerApplication.referral_code == ref)):
         ref = None  # unknown code is ignored, not an error
-    app_row = LawyerApplication(**body.model_dump(exclude={"referred_by", "country"}), country=body.country.upper(),
-                                referral_code=code, referred_by=ref)
+    email = (body.email or "").strip() or None
+    app_row = LawyerApplication(
+        country=body.country.upper(), full_name=clean(body.full_name), kind=body.kind,
+        organization=clean(body.organization) or None, license_number=clean(body.license_number) or None,
+        city=clean(body.city), specializations=body.specializations, phone=phone, email=email,
+        contact=email or phone, message=(body.message or "").strip() or None, wants_expert=body.wants_expert,
+        referral_code=code, referred_by=ref, ip_hash=ip_hash)
     if user is not None:  # the application belongs to this browser's account, even before ЭЦП
         app_row.user_id = user.id
-    ident = session.scalar(select(Identity).where(Identity.user_id == user.id, Identity.kind == "iin")) if user else None
     if ident is not None:  # applied signed in with ЭЦП: who they are, per the certificate
         app_row.iin_hash, app_row.ecp_name = ident.subject_hash, user.display_name
     session.add(app_row)
@@ -561,12 +674,14 @@ def apply_as_lawyer(body: LawyerApplicationIn, session: Session = Depends(get_se
     notify_team(container, f"Новая заявка юриста №{app_row.id}: {app_row.full_name}",
                  f"{app_row.full_name} ({app_row.kind})\nОрганизация: {app_row.organization or '—'}\n"
                  f"Лицензия / удостоверение: {app_row.license_number or '—'}\nГород: {app_row.city or '—'}\n"
-                 f"Контакт: {app_row.contact}\nСпециализации: {', '.join(app_row.specializations or []) or '—'}\n"
+                 f"Телефон: {app_row.phone}\nE-mail: {app_row.email or '—'}\n"
+                 f"Специализации: {', '.join(app_row.specializations or []) or '—'}\n"
                  f"ЭЦП: {'подтверждена' if ident is not None else 'ещё нет'}\n\n"
-                 f"Проверьте статус по реестру и подтвердите заявку в админке (Юристы).")
+                 f"Сверьте данные по чек-листу и реестру в оперативном центре: https://konsilier.com/ops")
     invited = session.scalar(select(func.count()).select_from(LawyerApplication)
                              .where(LawyerApplication.referred_by == code))
-    return {"id": app_row.id, "referral_code": code, "invited": invited or 0, "ecp_verified": ident is not None}
+    return {"id": app_row.id, "referral_code": code, "invited": invited or 0, "ecp_verified": ident is not None,
+            "linked": False}
 
 
 class ClientErrorIn(BaseModel):

@@ -11,11 +11,26 @@ type App = {
   id: number; created_at: string; full_name: string; kind: string; organization: string | null; license_number: string | null;
   city: string | null; specializations: string[] | null; contact: string; message: string | null; wants_expert: boolean;
   status: string; ecp_verified: boolean; ecp_name: string | null; note: string | null;
+  phone: string | null; email: string | null; reject_reason: string | null;
+  checks: { full_name: string | null; phone: string | null; phone_normalized: string | null; license_number: string | null;
+    city: string | null; kind: string | null; ecp: string | null };
+  registries: { title: string; url: string }[];
 };
 type OpsTicket = Ticket & { name: string | null; email: string | null; phone: string | null; language: string };
 type Req = { id: number; case_id: string; lawyer_ref: string | null; full_name: string; phone: string; email: string | null; status: string; note: string | null; created_at: string };
 
-const KIND: Record<string, string> = { advocate: "Адвокат", consultant: "Юридический консультант", ngo: "Правозащитная организация" };
+const KIND: Record<string, string> = {
+  advocate: "Адвокат", legal_consultant: "Юридический консультант", human_rights: "Правозащитник / правозащитная организация",
+  other: "Другое (старая форма)",
+};
+// What a failed automatic check means, for the operator.
+const CHECK: Record<string, string> = {
+  required: "не заполнено", name_words: "нет фамилии и имени полностью", name_chars: "недопустимые символы (цифры, точки…)",
+  name_length: "длина не 2–100 символов", phone_format: "не номер Казахстана (+7 и 10 цифр)",
+  phone_operator: "не казахстанский номер (после +7 не 7xx)", license_format: "мусор вместо номера (нет цифр / лишние знаки)",
+  city_format: "город не буквами", missing: "юрист ещё не вошёл по ЭЦП",
+};
+const norm = (s: string) => s.toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е").split(/\s+/).filter(Boolean).sort().join(" ");
 const APP_STATUS: Record<string, string> = { new: "Новая", verified: "Подтверждена", rejected: "Отклонена" };
 const TICKET_KIND: Record<string, string> = { question: "Вопрос", complaint: "Жалоба", suggestion: "Предложение" };
 const TICKET_STATUS: Record<string, string> = { new: "Новое", in_progress: "В работе", done: "Решено" };
@@ -102,15 +117,18 @@ function LawyersDesk({ onChange }: { onChange: () => void }) {
     .then(setRows).catch((e) => setError(errorText(e))), [status]);
   useEffect(() => { load(); }, [load]);
 
-  async function update(id: number, body: { status?: string; note?: string }) {
+  async function update(id: number, body: { status?: string; note?: string; reason?: string }) {
     setError(null);
     try {
       await api(`/v1/ops/lawyers/applications/${id}`, { method: "POST", body: JSON.stringify(body) });
       if (body.status) { load(); onChange(); }
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.code === "ecp_required"
         ? "Подтвердить можно только после входа юриста по ЭЦП: ФИО и ИИН известны только из сертификата. Попросите юриста войти по ЭЦП в кабинете юриста."
+        : e instanceof ApiError && e.code === "reason_required" ? "Укажите причину отказа — её получит юрист."
         : errorText(e));
+      return false;
     }
   }
 
@@ -133,25 +151,93 @@ function LawyersDesk({ onChange }: { onChange: () => void }) {
             {a.license_number && <><dt className="text-muted">Лицензия / членство</dt><dd>{a.license_number}</dd></>}
             {a.city && <><dt className="text-muted">Город</dt><dd>{a.city}</dd></>}
             {!!a.specializations?.length && <><dt className="text-muted">Специализации</dt><dd>{a.specializations.join(", ")}</dd></>}
-            <dt className="text-muted">Контакт</dt><dd><a className="link" href={a.contact.includes("@") ? `mailto:${a.contact}` : `tel:${a.contact.replace(/[^\d+]/g, "")}`}>{a.contact}</a></dd>
+            {a.phone && <><dt className="text-muted">Телефон</dt><dd><a className="link" href={`tel:${a.phone}`}>{a.phone}</a></dd></>}
+            {a.email && <><dt className="text-muted">E-mail</dt><dd><a className="link" href={`mailto:${a.email}`}>{a.email}</a></dd></>}
+            {!a.phone && <><dt className="text-muted">Контакт</dt><dd><a className="link" href={a.contact.includes("@") ? `mailto:${a.contact}` : `tel:${a.contact.replace(/[^\d+]/g, "")}`}>{a.contact}</a></dd></>}
             {a.wants_expert && <><dt className="text-muted">Эксперт</dt><dd>Готов проверять сценарии</dd></>}
           </dl>
           {a.message && <p className="whitespace-pre-line rounded-xl bg-sand px-3 py-2">{a.message}</p>}
-          <Note value={a.note} onSave={(note) => update(a.id, { note })} />
-          <div className="flex flex-wrap gap-2">
-            {a.status !== "verified" && (
-              <Button icon="check" disabled={!a.ecp_verified} onClick={() => update(a.id, { status: "verified" })}
-                title={a.ecp_verified ? undefined : "Нужен вход юриста по ЭЦП"}>Подтвердить и открыть доступ</Button>
-            )}
-            {a.status !== "rejected" && <Button variant="secondary" onClick={() => update(a.id, { status: "rejected" })}>Отклонить</Button>}
-            {a.status !== "new" && <Button variant="secondary" onClick={() => update(a.id, { status: "new" })}>Вернуть в новые</Button>}
-          </div>
+          <Checklist a={a} />
+          {a.reject_reason && a.status === "rejected" && <p className="text-danger">Причина отказа: {a.reject_reason}</p>}
+          <Note value={a.note} onSave={async (note) => { await update(a.id, { note }); }} />
+          <Decision a={a} update={update} />
           {!a.ecp_verified && a.status === "new" && (
             <p className="text-xs text-muted">Подтверждение станет доступно, когда юрист войдёт по ЭЦП в кабинете юриста — ему приходит эта подсказка на экране заявки.</p>
           )}
         </article>
       ))}
     </section>
+  );
+}
+
+/** The operator's checklist: automatic checks of the form, then the manual comparison with the official registry. */
+function Checklist({ a }: { a: App }) {
+  const c = a.checks;
+  const ecpMatch = a.ecp_name ? norm(a.ecp_name) === norm(a.full_name) : null;
+  const rows: [string, string | null, string][] = [
+    ["ФИО: фамилия и имя полностью", c.full_name, a.full_name],
+    ["ФИО по ЭЦП совпадает с заявкой", a.ecp_verified ? (ecpMatch ? null : "mismatch") : "missing",
+      a.ecp_name ? `ЭЦП: ${a.ecp_name}` : ""],
+    ["Телефон Казахстана", c.phone, c.phone_normalized ?? a.phone ?? a.contact],
+    ["Статус выбран", c.kind, KIND[a.kind] ?? a.kind],
+    ["Номер лицензии / членства", c.license_number, a.license_number ?? (a.kind === "human_rights" ? "не требуется" : "—")],
+    ["Город", c.city, a.city ?? "—"],
+  ];
+  return (
+    <div className="space-y-2 rounded-xl border border-line p-3">
+      <p className="font-semibold">Чек-лист проверки</p>
+      <ul className="space-y-1">
+        {rows.map(([label, err, value]) => (
+          <li key={label} className="flex flex-wrap gap-x-2">
+            <span className={err ? "text-danger" : "text-brand"}>{err ? "✗" : "✓"}</span>
+            <span>{label}</span>
+            {value && <span className="text-muted">— {value}</span>}
+            {err && <span className="text-danger">({err === "mismatch" ? "ФИО по ЭЦП отличается — сверьте вручную" : CHECK[err] ?? err})</span>}
+          </li>
+        ))}
+      </ul>
+      {a.registries.length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-muted">Сверьте ФИО и номер {a.license_number ? <b className="text-ink">{a.license_number}</b> : null} в официальном реестре:</p>
+          <ul className="list-inside list-disc">
+            {a.registries.map((r) => <li key={r.url}><a className="link" href={r.url} target="_blank" rel="noreferrer">{r.title}</a></li>)}
+          </ul>
+          <p className="text-xs text-muted">Позвоните по телефону из заявки и убедитесь, что отвечает заявитель. Результат сверки запишите в заметку.</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">Для правозащитников единого реестра нет: проверьте организацию и полномочия по документам, личность — по ЭЦП. Результат запишите в заметку.</p>
+      )}
+    </div>
+  );
+}
+
+function Decision({ a, update }: { a: App; update: (id: number, body: { status?: string; reason?: string }) => Promise<boolean> }) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {a.status !== "verified" && (
+          <Button icon="check" disabled={!a.ecp_verified} onClick={() => update(a.id, { status: "verified" })}
+            title={a.ecp_verified ? undefined : "Нужен вход юриста по ЭЦП"}>Одобрить: открыть кабинет и каталог</Button>
+        )}
+        {a.status !== "rejected" && !rejecting && <Button variant="secondary" onClick={() => setRejecting(true)}>Отклонить с причиной</Button>}
+        {a.status !== "new" && <Button variant="secondary" onClick={() => update(a.id, { status: "new" })}>Вернуть в новые</Button>}
+      </div>
+      {rejecting && (
+        <div className="space-y-2 rounded-xl border border-line p-3">
+          <label className="block text-xs text-muted">Причина отказа (придёт юристу на e-mail и в кабинет)
+            <textarea className="input mt-1 min-h-20 text-sm text-ink" value={reason} onChange={(e) => setReason(e.target.value)}
+              placeholder="Например: номер лицензии не найден в реестре адвокатов; укажите номер из лицензии и подайте заявку заново." />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={reason.trim().length < 5}
+              onClick={async () => { if (await update(a.id, { status: "rejected", reason })) { setRejecting(false); setReason(""); } }}>Отклонить</Button>
+            <Button variant="secondary" onClick={() => setRejecting(false)}>Отмена</Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

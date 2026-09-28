@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, errorText } from "@/lib/api";
+import { ApiError, api, errorText } from "@/lib/api";
+import { FieldError, useFieldErrorText } from "@/components/FieldError";
+import {
+  KZ_CITIES, LAWYER_KINDS, apiFieldErrors, checkCity, checkEmail, checkFullName, checkLicense, clean, normalizeKzPhone, only,
+} from "@/lib/formRules";
 import { useT } from "@/lib/i18n";
 import { LawyerSteps } from "@/components/LawyerSteps";
 import { Icon, type IconName } from "@/components/ui";
@@ -67,19 +71,42 @@ function ShareCard({ name, demo }: { name: string; demo: boolean }) {
   );
 }
 
+type FormState = {
+  full_name: string; kind: string; organization: string; license_number: string; city: string; phone: string;
+  email: string; message: string; website: string;
+};
+
+function validate(f: FormState, consent: boolean): Record<string, string> {
+  const [, phoneErr] = normalizeKzPhone(f.phone);
+  return only({
+    full_name: checkFullName(f.full_name),
+    kind: LAWYER_KINDS.includes(f.kind) ? null : "required",
+    license_number: checkLicense(f.license_number, f.kind),
+    city: checkCity(f.city),
+    phone: phoneErr,
+    email: checkEmail(f.email),
+    consent: consent ? null : "required",
+  });
+}
+
 function ApplyForm() {
   const L = useText().form;
-  const [form, setForm] = useState({
-    full_name: "", kind: "advocate", organization: "", license_number: "", city: "", contact: "", message: "",
+  const [form, setForm] = useState<FormState>({
+    full_name: "", kind: "", organization: "", license_number: "", city: "", phone: "", email: "", message: "", website: "",
   });
+  const [consent, setConsent] = useState(false);
   const [wantsExpert, setWantsExpert] = useState(false);
   const [spec, setSpec] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ referral_code: string } | null>(null);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+  const [done, setDone] = useState<{ referral_code: string; linked?: boolean } | null>(null);
   const [ref, setRef] = useState<string | null>(null);
   const [hasEcp, setHasEcp] = useState<boolean | null>(null);
   const t = useT();
+  const errText = useFieldErrorText();
   useEffect(() => {
     api<{ has_ecp: boolean }>("/v1/lawyer/me").then((m) => setHasEcp(m.has_ecp)).catch(() => setHasEcp(false));
   }, []);
@@ -90,20 +117,40 @@ function ApplyForm() {
     () => (done && typeof window !== "undefined" ? `${window.location.origin}/for-lawyers?ref=${done.referral_code}` : ""),
     [done],
   );
+  const errors = useMemo(() => ({ ...validate(form, consent), ...serverErrors }), [form, consent, serverErrors]);
+  const shown = (k: string) => ((submitted || touched[k]) && errors[k]) || null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
+    setSubmitted(true);
     setError(null);
+    const local = validate(form, consent);
+    if (Object.keys(local).length) {
+      setError(t("formErrors.fix"));
+      document.getElementById(`lf-${Object.keys(local)[0]}`)?.focus();
+      return;
+    }
+    setBusy(true);
     try {
       // sent with the session token: if the lawyer signed in with ЭЦП, the application carries who they are
-      const out = await api<{ referral_code: string }>("/v1/lawyer-applications", {
+      const [phone] = normalizeKzPhone(form.phone);
+      const out = await api<{ referral_code: string; linked?: boolean }>("/v1/lawyer-applications", {
         method: "POST",
-        body: JSON.stringify({ ...form, country: "KZ", specializations: spec, referred_by: ref, wants_expert: wantsExpert }),
+        body: JSON.stringify({ ...form, full_name: clean(form.full_name), city: clean(form.city), phone, consent,
+          country: "KZ", specializations: spec, referred_by: ref, wants_expert: wantsExpert }),
       });
       setDone(out);
     } catch (err) {
-      setError(errorText(err));
+      const fields = err instanceof ApiError ? apiFieldErrors(err.detail) : null;
+      if (fields && Object.keys(fields).length) {
+        setServerErrors(fields);
+        const [k, code] = Object.entries(fields)[0];
+        setError(k === "phone" || k === "ecp" ? errText(k, code) : t("formErrors.fix"));
+      } else if (err instanceof ApiError && err.code === "too_many") {
+        setError(t("formErrors.too_many"));
+      } else {
+        setError(errorText(err));
+      }
     } finally {
       setBusy(false);
     }
@@ -114,9 +161,9 @@ function ApplyForm() {
       <div className="space-y-4">
         <div className="card space-y-2">
           <h3 className="text-xl font-semibold">{L.doneTitle}</h3>
-          <p className="text-sm text-muted">{t("lawyer.steps.doneLead")}</p>
+          <p className="text-sm text-muted">{done.linked ? L.linked : t("lawyer.steps.doneLead")}</p>
         </div>
-        <LawyerSteps s={{ applied: true, hasEcp: hasEcp === true, status: "new" }} />
+        <LawyerSteps s={{ applied: true, hasEcp: hasEcp === true || !!done.linked, status: "new" }} />
         <a className="link text-sm" href="/lawyer">{t("lawyer.cabinetLink")}</a>
         <div className="card space-y-3">
         <p className="text-sm text-muted">{t("lawyer.steps.share")}</p>
@@ -135,11 +182,21 @@ function ApplyForm() {
     );
   }
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [k]: e.target.value });
+    setError(null);
+    if (serverErrors[k]) setServerErrors((x) => Object.fromEntries(Object.entries(x).filter(([f]) => f !== k)));
+  };
+  const blur = (k: string) => () => setTouched((x) => ({ ...x, [k]: true }));
+  const aria = (k: string) => ({
+    id: `lf-${k}`, "aria-invalid": !!shown(k), "aria-describedby": shown(k) ? `lf-${k}-err` : undefined, onBlur: blur(k),
+  });
+  const cls = (k: string) => `input mt-1 ${shown(k) ? "border-danger" : ""}`;
+  const licenseLabel = form.kind === "advocate" ? L.licenseAdvocate : form.kind === "legal_consultant" ? L.licenseConsultant
+    : form.kind === "human_rights" ? L.licenseOptional : L.license;
 
   return (
-    <form onSubmit={submit} className="card space-y-3">
+    <form onSubmit={submit} noValidate className="card space-y-3">
       <h3 className="text-xl font-semibold">{L.title}</h3>
       {ref && <p className="chip bg-brand-50 text-brand-dark">{L.invited}</p>}
       {hasEcp === true && <p className="chip bg-brand-50 text-brand-dark">{t("lawyer.ecpOk")}</p>}
@@ -148,21 +205,50 @@ function ApplyForm() {
           {t("lawyer.ecpNeeded")} <a className="link font-semibold" href="/account?method=ecp&next=/for-lawyers%23apply">{t("lawyer.ecpSignIn")}</a>
         </p>
       )}
-      <input className="input" required minLength={3} aria-label={L.name} placeholder={L.name} value={form.full_name} onChange={set("full_name")} />
-      <select className="input" aria-label={L.kind} value={form.kind} onChange={set("kind")}>
-        {L.kinds.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-      </select>
+      <label className="block text-sm font-medium">{L.name}
+        <input className={cls("full_name")} autoComplete="name" value={form.full_name} onChange={set("full_name")} {...aria("full_name")} />
+        <FieldError id="lf-full_name-err" field="full_name" code={shown("full_name")} />
+      </label>
+      <label className="block text-sm font-medium">{L.kind}
+        <select className={cls("kind")} value={form.kind} onChange={set("kind")} {...aria("kind")}>
+          <option value="" disabled>{L.kindPick}</option>
+          {L.kinds.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+        </select>
+        <FieldError id="lf-kind-err" field="kind" code={shown("kind")} />
+      </label>
       <div className="grid gap-3 sm:grid-cols-2">
-        <input className="input" aria-label={L.org} placeholder={L.org} value={form.organization} onChange={set("organization")} />
-        <input className="input" aria-label={L.license} placeholder={L.license} value={form.license_number} onChange={set("license_number")} />
-        <input className="input" aria-label={L.city} placeholder={L.city} value={form.city} onChange={set("city")} />
-        <input className="input" required minLength={3} aria-label={L.contact} placeholder={L.contact} value={form.contact} onChange={set("contact")} />
+        <label className="block text-sm font-medium">{licenseLabel}
+          <input className={cls("license_number")} value={form.license_number} onChange={set("license_number")} {...aria("license_number")} />
+          <FieldError id="lf-license_number-err" field="license_number" code={shown("license_number")} />
+        </label>
+        <label className="block text-sm font-medium">{L.org}
+          <input className={cls("organization")} autoComplete="organization" value={form.organization} onChange={set("organization")} {...aria("organization")} />
+        </label>
+        <label className="block text-sm font-medium">{L.city}
+          <input className={cls("city")} list="lf-cities" autoComplete="address-level2" value={form.city} onChange={set("city")} {...aria("city")} />
+          <datalist id="lf-cities">{KZ_CITIES.map((c) => <option key={c} value={c} />)}</datalist>
+          <FieldError id="lf-city-err" field="city" code={shown("city")} />
+        </label>
+        <label className="block text-sm font-medium">{L.phone}
+          <input className={cls("phone")} type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 7XX XXX XX XX"
+            value={form.phone} onChange={set("phone")} {...aria("phone")} />
+          {shown("phone") ? <FieldError id="lf-phone-err" field="phone" code={shown("phone")} />
+            : <span className="mt-1 block text-xs font-normal text-muted">{L.phoneHint}</span>}
+        </label>
+        <label className="block text-sm font-medium sm:col-span-2">{L.email}
+          <input className={cls("email")} type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set("email")} {...aria("email")} />
+          <FieldError id="lf-email-err" field="email" code={shown("email")} />
+        </label>
       </div>
+      {/* honeypot: people never see or fill it */}
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={form.website}
+        onChange={set("website")} className="absolute -left-[9999px] h-px w-px opacity-0" />
       <div className="flex flex-wrap gap-2">
         {L.specs.map(([k, label]) => (
           <button
             type="button"
             key={k}
+            aria-pressed={spec.includes(k)}
             onClick={() => setSpec(spec.includes(k) ? spec.filter((s) => s !== k) : [...spec, k])}
             className={`chip min-h-10 px-3 py-2 text-sm ${spec.includes(k) ? "bg-brand text-white" : ""}`}
           >
@@ -175,6 +261,15 @@ function ApplyForm() {
         <span>{L.expert}</span>
       </label>
       <textarea className="input" rows={2} aria-label={L.message} placeholder={L.message} value={form.message} onChange={set("message")} />
+      <div>
+        <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm">
+          <input id="lf-consent" type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand" checked={consent}
+            aria-invalid={!!shown("consent")} aria-describedby={shown("consent") ? "lf-consent-err" : undefined}
+            onChange={(e) => setConsent(e.target.checked)} />
+          <span>{L.consent} <a className="link" href="/terms">{t("legal.terms")}</a></span>
+        </label>
+        <FieldError id="lf-consent-err" field="consent" code={shown("consent")} />
+      </div>
       <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? L.busy : L.submit}</button>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-danger">{error}</p>}
       <p className="text-xs text-muted">{L.privacy}</p>
