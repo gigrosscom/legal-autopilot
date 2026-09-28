@@ -69,7 +69,7 @@ export default function LawyerRequestPage() {
         <Icon name="arrowRight" size={16} className="rotate-180 rtl:rotate-0" />{t("request.back")}
       </Link>
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">{t("request.title")}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("request.title")}</h1>
         {lawyer.name && <p className="flex items-center gap-2 font-medium"><Icon name="lawyer" className="text-brand" />{lawyer.name}</p>}
         <p className="text-muted">{t("request.lead")}</p>
       </div>

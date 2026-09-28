@@ -24,7 +24,7 @@ export default function DesignSystem() {
     <div className="space-y-14">
       <header className="max-w-3xl space-y-3">
         <p className="eyebrow">Konsiliér AI</p>
-        <h1 className="text-4xl font-bold tracking-tight">{t("ds.title")}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">{t("ds.title")}</h1>
         <p className="text-lg text-muted">{t("ds.lead")}</p>
       </header>
 
@@ -41,8 +41,8 @@ export default function DesignSystem() {
 
       <Section title={t("ds.type")}>
         <div className="card space-y-3">
-          <p className="text-5xl font-bold tracking-tight">Konsilier · Қазақша ә ғ қ ң ө ұ ү һ і</p>
-          <p className="text-3xl font-bold" dir="rtl" lang="ar">كونسيلير — من الشكوى إلى القرار</p>
+          <p className="text-5xl font-semibold tracking-tight">Konsilier · Қазақша ә ғ қ ң ө ұ ү һ і</p>
+          <p className="text-3xl font-semibold" dir="rtl" lang="ar">كونسيلير — من الشكوى إلى القرار</p>
           <p className="text-2xl font-semibold">Türkçe ğ ş ı İ ö ü ç · English · Русский</p>
           <p className="text-base">{t("home.sub")}</p>
           <p className="text-sm text-muted">{t("landing.disclaimer")}</p>

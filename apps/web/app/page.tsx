@@ -1,12 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CtaBanner } from "@/components/CtaBanner";
-import { Button, Icon, Section } from "@/components/ui";
+import { Icon } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 import { SITUATIONS } from "@/lib/situations";
-import { useRouter } from "next/navigation";
+
+function SectionHead({ title, lead, href, more }: { title: string; lead?: string; href?: string; more?: string }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="max-w-2xl space-y-1.5">
+        <h2 className="text-2xl font-semibold tracking-tight text-balance md:text-[28px]">{title}</h2>
+        {lead && <p className="text-muted text-pretty">{lead}</p>}
+      </div>
+      {href && more && (
+        <Link href={href} className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-brand hover:text-ink">
+          {more}<Icon name="arrowRight" size={16} className="rtl:-scale-x-100" />
+        </Link>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const t = useT();
@@ -24,123 +40,131 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-20">
-      {/* HERO: the main action is a free text field, not a menu */}
-      {/* phones: heading → form → promises; desktop: heading + promises | form */}
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_1fr] lg:gap-x-10 lg:gap-y-6">
-        <div className="space-y-5 lg:self-end">
+    <div className="space-y-16 md:space-y-20">
+      {/* HERO: one main action — describe the situation */}
+      <section className="grid items-center gap-8 pt-2 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-6">
+        <div className="space-y-5">
           <p className="eyebrow">{t("home.eyebrow")}</p>
-          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-balance md:text-5xl">{t("home.title")}</h1>
-          <p className="max-w-xl text-lg text-muted text-pretty">{t("home.sub")}</p>
-        </div>
-        <ul className="order-3 grid gap-2 self-start text-sm sm:grid-cols-2 lg:order-none lg:col-start-1 lg:row-start-2">
+          <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] text-ink text-balance md:text-[56px]">{t("home.title")}</h1>
+          <p className="max-w-xl text-lg leading-relaxed text-muted text-pretty">{t("home.sub")}</p>
+          <ul className="grid gap-2 pt-1 text-[15px] text-ink-soft sm:grid-cols-2">
             {(["promise1", "promise2", "promise3", "promise4"] as const).map((k) => (
-              <li key={k} className="flex items-start gap-2">
-                <Icon name="checkCircle" size={18} className="mt-0.5 text-brand" />
-                <span>{t(`home.${k}`)}</span>
+              <li key={k} className="flex items-start gap-2.5">
+                <Icon name="check" size={18} className="mt-0.5 text-brand" /><span>{t(`home.${k}`)}</span>
               </li>
             ))}
-        </ul>
+          </ul>
+        </div>
 
         <form onSubmit={submit} aria-labelledby="describe"
-          className="card space-y-4 p-5 shadow-[var(--shadow-raised)] md:p-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
-          <label id="describe" htmlFor="story" className="block text-lg font-semibold">{t("home.describe")}</label>
-          <textarea id="story" className="input min-h-44 resize-y" required minLength={10} value={text}
-            onChange={(e) => setText(e.target.value)} placeholder={t("start.placeholder")} />
-          <Button size="lg" className="w-full" disabled={busy || text.trim().length < 10} iconEnd={busy ? undefined : "arrowRight"}
-            icon={busy ? "spinner" : undefined}>
-            {busy ? t("start.busy") : t("home.cta")}
-          </Button>
-          <p className="text-xs text-muted">{t("home.privacy")}</p>
-          <p className="text-xs text-muted">{t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link></p>
+          className="space-y-3 rounded-3xl border border-line bg-surface p-3 shadow-[var(--shadow-raised)] focus-within:border-accent">
+          <label id="describe" htmlFor="story" className="block px-2 pt-2 text-base font-semibold text-ink">{t("home.describe")}</label>
+          <textarea id="story" className="block min-h-40 w-full resize-y border-0 bg-transparent px-2 text-base leading-relaxed text-ink outline-none placeholder:text-faint"
+            required minLength={10} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("start.placeholder")} />
+          <div className="flex items-center justify-between gap-3 border-t border-line px-2 pt-3">
+            <span className="flex items-center gap-1.5 text-xs text-muted"><Icon name="globe" size={16} />{t("start.country").replace(/\.$/, "")}</span>
+            <button type="submit" disabled={busy || text.trim().length < 10}
+              className="btn-primary min-h-12 rounded-xl px-5 text-[15px]">
+              {busy ? <Icon name="spinner" size={18} /> : null}{busy ? t("start.busy") : t("home.cta")}
+              {!busy && <Icon name="arrowRight" size={18} className="rtl:-scale-x-100" />}
+            </button>
+          </div>
+          <p className="px-2 pb-1 text-xs leading-relaxed text-muted">
+            {t("home.privacy")} {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+          </p>
         </form>
       </section>
 
       {/* LIFE SITUATIONS */}
-      <Section id="situations" className="scroll-mt-24" eyebrow={t("home.situationsEyebrow")} title={t("home.situationsTitle")} lead={t("home.situationsLead")}>
-        <ul className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+      <section id="situations" className="scroll-mt-24 space-y-6 border-t border-line pt-12">
+        <SectionHead title={t("home.situationsTitle")} lead={t("home.situationsLead")} href="/coverage" more={t("home.coverageCta")} />
+        <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
           {SITUATIONS.map((s) => (
             <li key={s.key}>
               <Link href={`/start?s=${s.key}`}
-                className="card flex h-full min-h-20 flex-col items-start gap-2 p-3 transition-shadow hover:shadow-[var(--shadow-raised)] sm:flex-row sm:gap-3 sm:p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand sm:h-10 sm:w-10">
-                  <Icon name={s.icon} />
+                className="flex h-full min-h-32 flex-col gap-3 rounded-2xl border border-transparent bg-sand p-4 transition-colors hover:border-line hover:bg-surface">
+                <Icon name={s.icon} size={22} className="text-ink" />
+                <span className="space-y-1">
+                  <span className="block text-[15px] font-medium leading-snug text-ink">{t(`situations.${s.key}.label`)}</span>
+                  <span className="line-clamp-2 block text-xs leading-relaxed text-muted">{t(`situations.${s.key}.hint`)}</span>
                 </span>
-                <span className="min-w-0 break-words text-sm font-semibold leading-snug">{t(`situations.${s.key}.label`)}</span>
               </Link>
             </li>
           ))}
-          {/* not in the list — describe your own; spans two columns so the last row is always full */}
-          <li className="col-span-full min-[360px]:col-span-2">
+          <li className="col-span-2">
             <Link href="/start"
-              className="flex h-full min-h-20 items-center gap-3 rounded-2xl bg-brand p-3 text-white transition-shadow hover:bg-brand-dark hover:shadow-[var(--shadow-raised)] sm:p-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 sm:h-10 sm:w-10">
-                <Icon name="plus" />
-              </span>
+              className="flex h-full min-h-32 items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-accent">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-white"><Icon name="plus" /></span>
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold leading-snug">{t("home.mySituation")}</span>
-                <span className="block text-sm text-white/80">{t("home.mySituationText")}</span>
+                <span className="block text-[15px] font-medium text-ink">{t("home.mySituation")}</span>
+                <span className="block text-sm text-muted">{t("home.mySituationText")}</span>
               </span>
-              <Icon name="arrowRight" className="shrink-0 rtl:-scale-x-100" />
+              <Icon name="arrowRight" className="shrink-0 text-muted rtl:-scale-x-100" />
             </Link>
           </li>
         </ul>
-      </Section>
+      </section>
 
-      {/* HOW IT WORKS: three steps in plain words */}
-      <Section title={t("home.stepsTitle")}>
-        <ol className="grid gap-3 md:grid-cols-3">
+      {/* FROM A QUESTION TO THE NEXT STEP */}
+      <section className="space-y-8 border-t border-line pt-12">
+        <SectionHead title={t("home.stepsTitle")} href="/how-it-works" more={t("home.more")} />
+        <ol className="grid gap-8 md:grid-cols-3 md:gap-6">
           {([1, 2, 3] as const).map((n) => (
-            <li key={n} className="card flex gap-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-lg font-bold text-white">{n}</span>
-              <span className="space-y-1">
-                <span className="block font-semibold leading-snug">{t(`home.steps.s${n}t`)}</span>
-                <span className="block text-sm text-muted">{t(`home.steps.s${n}d`)}</span>
-              </span>
+            <li key={n} className="relative space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-sand text-sm font-medium text-ink">{n}</span>
+                {n < 3 && <span aria-hidden className="hidden h-px flex-1 bg-line md:block" />}
+              </div>
+              <p className="font-semibold text-ink">{t(`home.steps.s${n}t`)}</p>
+              <p className="text-sm leading-relaxed text-muted">{t(`home.steps.s${n}d`)}</p>
             </li>
           ))}
         </ol>
-        <Link href="/how-it-works" className="link inline-flex items-center gap-1 text-sm font-medium">
-          {t("home.more")}<Icon name="arrowRight" size={14} className="rtl:-scale-x-100" />
-        </Link>
-      </Section>
+      </section>
 
-      {/* PRICES */}
-      <Section title={t("home.priceTitle")}>
+      {/* WHAT IT COSTS: three ways to get help, the lawyer card is the dark one */}
+      <section className="space-y-6 border-t border-line pt-12">
+        <SectionHead title={t("home.priceTitle")} />
         <ul className="grid gap-3 md:grid-cols-3">
-          {([["chat", "sparkle", "/start"], ["doc", "document", "/start"], ["lawyer", "lawyer", "/lawyers"]] as const).map(([k, icon, href]) => (
-            <li key={k}>
-              <Link href={href} className={`card flex h-full flex-col gap-2 transition-shadow hover:shadow-[var(--shadow-raised)] ${k === "chat" ? "border-brand" : ""}`}>
-                <span className="flex items-center gap-2 font-semibold"><Icon name={icon} className="text-brand" />{t(`home.price.${k}T`)}</span>
-                <span className="text-2xl font-bold text-brand">{t(`home.price.${k}P`)}</span>
-                <span className="text-sm text-muted">{t(`home.price.${k}D`)}</span>
-              </Link>
-            </li>
-          ))}
+          {([["chat", "chat", "/start"], ["doc", "document", "/start"], ["lawyer", "user", "/lawyers"]] as const).map(([k, icon, href]) => {
+            const dark = k === "lawyer";
+            return (
+              <li key={k}>
+                <Link href={href} className={`flex h-full flex-col gap-3 rounded-2xl border p-6 transition-colors ${dark ? "border-ink bg-ink text-white hover:bg-brand" : "border-line bg-surface hover:border-accent"}`}>
+                  <Icon name={icon} size={22} className={dark ? "text-white" : "text-ink"} />
+                  <span className={`text-lg font-semibold ${dark ? "text-white" : "text-ink"}`}>{t(`home.price.${k}T`)}</span>
+                  <span className={`text-2xl font-semibold tracking-tight ${dark ? "text-white" : "text-ink"}`}>{t(`home.price.${k}P`)}</span>
+                  <span className={`flex-1 text-sm leading-relaxed ${dark ? "text-white/75" : "text-muted"}`}>{t(`home.price.${k}D`)}</span>
+                  <Icon name="arrowRight" size={18} className={`rtl:-scale-x-100 ${dark ? "text-white" : "text-ink"}`} />
+                </Link>
+              </li>
+            );
+          })}
         </ul>
-      </Section>
+      </section>
 
       {/* TRUST: only what is true today */}
-      <Section title={t("home.trustTitle")}>
-        <ul className="grid gap-3 md:grid-cols-3">
+      <section className="space-y-6 border-t border-line pt-12">
+        <SectionHead title={t("home.trustTitle")} />
+        <ul className="grid gap-6 md:grid-cols-3">
           {(["t1", "t2", "t3"] as const).map((k, i) => (
-            <li key={k} className="flex gap-3 text-sm">
-              <Icon name={(["scroll", "lock", "user"] as const)[i]} size={22} className="mt-0.5 shrink-0 text-brand" />
+            <li key={k} className="flex gap-3 text-sm leading-relaxed text-muted">
+              <Icon name={(["scroll", "lock", "shieldCheck"] as const)[i]} size={22} className="mt-0.5 shrink-0 text-ink" />
               <span>{t(`home.trust.${k}`)}</span>
             </li>
           ))}
         </ul>
-      </Section>
+      </section>
 
       <CtaBanner />
 
-      {/* COVERAGE TEASER */}
-      <section className="card flex flex-col items-start gap-4 bg-ink p-6 text-white md:flex-row md:items-center md:justify-between md:p-8">
+      {/* COVERAGE */}
+      <section className="flex flex-col items-start gap-3 border-t border-line pt-10 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold">{t("home.coverageTitle")}</h2>
-          <p className="text-white/80">{t("home.coverageLead")}</p>
+          <h2 className="text-lg font-semibold">{t("home.coverageTitle")}</h2>
+          <p className="text-sm text-muted">{t("home.coverageLead")}</p>
         </div>
-        <Link href="/coverage" className="btn bg-white text-ink hover:bg-sand">{t("home.coverageCta")}</Link>
+        <Link href="/coverage" className="btn-ghost">{t("home.coverageCta")}</Link>
       </section>
     </div>
   );

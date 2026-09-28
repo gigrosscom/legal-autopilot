@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Brand } from "@/components/Brand";
 import { InstallApp } from "@/components/InstallApp";
 import { Icon } from "@/components/ui";
 import { SocialIcon } from "@/components/SocialIcon";
@@ -10,11 +11,11 @@ import { useT } from "@/lib/i18n";
 export default function Footer() {
   const t = useT();
   return (
-    <footer className="border-t border-line bg-sand">
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="border-t border-line bg-surface">
+      <div className="mx-auto grid max-w-[1208px] gap-6 px-5 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
-          <p className="text-base font-bold" dir="ltr">Konsiliér<span className="text-brand"> AI</span></p>
-          <p className="font-medium">{t("footer.said")}</p>
+          <Brand size={26} />
+          <p className="text-muted">{t("footer.said")}</p>
           <InstallApp className="pt-2" />
         </div>
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
@@ -50,7 +51,7 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="mx-auto max-w-6xl space-y-2 px-4 pb-8 text-xs text-muted">
+      <div className="mx-auto max-w-[1208px] space-y-2 px-5 pb-8 text-xs text-muted">
         <p className="max-w-3xl">{t("legal.disclaimer")}</p>
         <p className="flex flex-wrap gap-x-3 gap-y-1">
           <Link href="/terms" className="link">{t("legal.terms")}</Link>

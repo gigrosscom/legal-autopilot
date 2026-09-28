@@ -25,7 +25,7 @@ export default function PageError({ error, reset }: { error: Error & { digest?: 
   if (retrying) return null;
   return (
     <div className="card mx-auto max-w-lg space-y-3 text-center">
-      <h1 className="text-xl font-bold">{t("errors.title")}</h1>
+      <h1 className="text-xl font-semibold">{t("errors.title")}</h1>
       <p className="text-sm text-muted">{t("errors.saved")}</p>
       <p className="text-xs text-muted">{t("errors.translate")}</p>
       <div className="flex justify-center gap-2">

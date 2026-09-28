@@ -33,7 +33,7 @@ export default function CoveragePage() {
     <div className="space-y-12">
       <header className="max-w-3xl space-y-3">
         <p className="eyebrow">{t("coverage.eyebrow")}</p>
-        <h1 className="text-4xl font-bold tracking-tight text-balance">{t("coverage.title")}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-balance">{t("coverage.title")}</h1>
         <p className="text-lg text-muted">{t("coverage.lead")}</p>
       </header>
 

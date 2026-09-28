@@ -18,7 +18,7 @@ export function EmergencyPanel({ info, onContinue }: { info: EmergencyInfo; onCo
             <a href={`tel:${n.number}`}
               className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-surface px-4 py-2 text-ink no-underline shadow-sm">
               <span className="text-sm">{n.label}</span>
-              <span className="text-lg font-bold tabular-nums text-danger" dir="ltr">{n.number}</span>
+              <span className="text-lg font-semibold tabular-nums text-danger" dir="ltr">{n.number}</span>
             </a>
           </li>
         ))}

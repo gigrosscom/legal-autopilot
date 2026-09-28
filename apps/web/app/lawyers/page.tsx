@@ -55,7 +55,7 @@ export default function LawyersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">{t("lawyers.title")}</h1>
+        <h1 className="text-3xl font-semibold">{t("lawyers.title")}</h1>
         <p className="text-muted">{t("lawyers.subtitle")}</p>
       </div>
 
@@ -86,7 +86,7 @@ export default function LawyersPage() {
             <article key={l.id} className="card space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sand text-lg font-bold">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sand text-lg font-semibold">
                     {i + 1}
                   </div>
                   <div>
@@ -102,7 +102,7 @@ export default function LawyersPage() {
                   </div>
                 </div>
                 <div className="text-end">
-                  <div className="text-3xl font-bold text-brand">{l.score.total}<span className="text-sm font-medium text-muted">/100</span></div>
+                  <div className="text-3xl font-semibold text-brand">{l.score.total}<span className="text-sm font-medium text-muted">/100</span></div>
                   <div className="text-xs text-muted">{t("lawyers.score")}</div>
                 </div>
               </div>

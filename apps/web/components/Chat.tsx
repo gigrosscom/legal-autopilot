@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
+import { Mark } from "@/components/Brand";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { Alert, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
@@ -49,6 +51,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   }, [initialCase]);
 
   useEffect(() => setTts(canSpeak()), []);
+  // the «Чат» tab returns to the latest conversation
+  useEffect(() => { if (caseId) try { localStorage.setItem(LAST_CASE_KEY, caseId); } catch {} }, [caseId]);
   useEffect(() => {
     publicApi<{ provider: string | null }>("/v1/chat/info").then((i) => setProvider(i.provider)).catch(() => {});
   }, []);
@@ -176,7 +180,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           </ul>
         )}
         <form onSubmit={(e) => { e.preventDefault(); send(); }}
-          className="flex items-end gap-1 rounded-3xl border border-line bg-surface p-2 shadow-[var(--shadow-raised)] focus-within:border-brand">
+          className="flex items-end gap-1 rounded-3xl border border-line bg-surface p-2 shadow-[var(--shadow-raised)] focus-within:border-accent">
           <label className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}
             title={t("chat.attach")}>
             <Icon name="paperclip" size={20} /><span className="sr-only">{t("chat.attach")}</span>
@@ -199,8 +203,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             </button>
           )}
           <button type="submit" disabled={busy || !(draft.trim() || interim.trim())} title={t("chat.send")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40">
-            <Icon name={busy ? "spinner" : "send"} size={18} /><span className="sr-only">{t("chat.send")}</span>
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:opacity-30">
+            <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
           </button>
         </form>
         <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-muted">
@@ -227,14 +231,15 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       <div className="space-y-4" aria-live="polite">
 
         {empty && (
-          <div className="space-y-4 py-6 text-center sm:py-12">
+          <div className="space-y-4 py-6 sm:py-12">
+            <Mark size={40} className="text-ink" />
             <p className="eyebrow">{t("chat.eyebrow")}</p>
-            <h1 className="text-3xl font-bold tracking-tight text-balance">{t("chat.title")}</h1>
-            <p className="mx-auto max-w-xl text-muted">{hint ?? t("chat.lead")}</p>
-            <div className="flex flex-wrap justify-center gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">{t("chat.title")}</h1>
+            <p className="max-w-xl text-muted">{hint ?? t("chat.lead")}</p>
+            <div className="flex flex-wrap gap-2">
               {examples.map((e) => (
                 <button key={e} type="button" onClick={() => setDraft(e)}
-                  className="min-h-10 rounded-full border border-line bg-surface px-3 py-2 text-start text-sm hover:border-brand hover:text-brand">{e}</button>
+                  className="min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-start text-sm text-ink-soft hover:border-accent hover:bg-sand">{e}</button>
               ))}
             </div>
           </div>
@@ -242,7 +247,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {messages.map((m) => m.role === "user" ? (
           <div key={m.id} className="flex justify-end">
-            <div className="max-w-[85%] space-y-2 rounded-2xl rounded-ee-sm bg-brand px-4 py-2.5 text-white">
+            <div className="max-w-[85%] space-y-2 rounded-2xl rounded-ee-md bg-sand-deep px-4 py-2.5 text-ink">
               <p className="whitespace-pre-line">{m.text}</p>
               {m.attachments.map((a) => (
                 <p key={a.id} className="flex items-center gap-1.5 text-xs opacity-90"><Icon name="paperclip" size={14} />{a.filename}</p>
@@ -250,10 +255,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             </div>
           </div>
         ) : (
-          <div key={m.id} className="flex gap-3">
-            <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand"><Icon name="sparkle" size={16} /></span>
-            <div className="min-w-0 flex-1 space-y-2">
-              <p className="whitespace-pre-line">{m.text}</p>
+          <div key={m.id} className="space-y-2">
+            <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Mark size={18} />Konsiliér AI</p>
+            <div className="min-w-0 space-y-2 lg:ps-7">
+              <p className="whitespace-pre-line text-[16px] leading-[1.7]">{m.text}</p>
               {m.norms.length > 0 && (
                 <ul className="flex flex-wrap gap-2">
                   {m.norms.map((n) => (
@@ -277,10 +282,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
         ))}
 
         {streaming !== null && (
-          <div className="flex gap-3">
-            <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand"><Icon name="sparkle" size={16} /></span>
-            <div className="min-w-0 flex-1">
-              {streaming && <p className="whitespace-pre-line">{streaming}</p>}
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Mark size={18} />Konsiliér AI</p>
+            <div className="min-w-0 lg:ps-7">
+              {streaming && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{streaming}</p>}
               <p className="flex items-center gap-2 text-sm text-muted" role="status">
                 <Icon name="spinner" size={14} />{lookingUp ? t("chat.lookingUp") : t("chat.thinking")}
               </p>

@@ -7,9 +7,9 @@ import { useT } from "@/lib/i18n";
 export function CtaBanner({ title, lead }: { title?: string; lead?: string }) {
   const t = useT();
   return (
-    <section className="card flex flex-col items-start gap-4 bg-brand-50 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+    <section className="flex flex-col items-start gap-5 rounded-2xl border border-line bg-sand p-6 md:flex-row md:items-center md:justify-between md:p-10">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold">{title ?? t("cta.title")}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{title ?? t("cta.title")}</h2>
         <p className="text-muted">{lead ?? t("cta.lead")}</p>
       </div>
       <div className="flex flex-wrap gap-2">
