@@ -162,6 +162,7 @@ const tr: Dict = {
     provider: {
       gemini: "Yanıtları ücretsiz Google Gemini yapay zekâsı hazırlar. Adları, kimlik numaralarını ve telefonları göndermeden önce etiketlerle değiştiririz; Google yazışmayı modellerini geliştirmek için kullanabilir — gereksiz kişisel bilgi yazmayın.",
       anthropic: "Yanıtları Anthropic Claude yapay zekâsı hazırlar. Adları, kimlik numaralarını ve telefonları göndermeden önce etiketlerle değiştiririz.",
+      free: "Yanıtları ücretsiz yapay zekâ hizmetleri (Google Gemini, Cerebras, Groq, NVIDIA) hazırlar. Adları, kimlik numaralarını ve telefonları göndermeden önce etiketlerle değiştiririz; sağlayıcılar yazışmayı modellerini geliştirmek için kullanabilir — gereksiz kişisel bilgi yazmayın.",
     },
     eyebrow: "Ücretsiz danışmanlık",
     title: "Ne olduğunu anlatın",

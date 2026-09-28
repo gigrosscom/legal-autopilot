@@ -57,6 +57,26 @@ class Container:
                 "ecp": ecp, "egov": ecp and bool(self.settings.egov_org_bin)}
 
 
+def free_chat_clients(settings: Settings) -> list[Any]:
+    """The free chat providers of CHAT_FREE_PROVIDERS, in that order, skipping those without a key."""
+    from .gemini import GeminiClient
+    from .openai_compat import PROVIDERS, OpenAICompatClient
+
+    out: list[Any] = []
+    for name in (n.strip() for n in settings.chat_free_providers.split(",") if n.strip()):
+        if name == "gemini":
+            if settings.gemini_api_key:
+                fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
+                out.append(GeminiClient(settings.gemini_api_key, fallback_models=fallback))
+        elif name in PROVIDERS:
+            key = getattr(settings, f"{name}_api_key", "")
+            if key:
+                out.append(OpenAICompatClient(name, key, getattr(settings, f"{name}_model", "")))
+        else:
+            raise ValueError(f"unknown chat provider {name!r} in CHAT_FREE_PROVIDERS")
+    return out
+
+
 def build_container(settings: Settings, *, llm: LLMProvider | None = None, storage: Storage | None = None,
                     pdf: PdfConverter | None = None, channels: dict[str, ChannelAdapter] | None = None,
                     packs: PackRegistry | None = None, email_sender: Sender | None = None,
@@ -112,5 +132,11 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
         container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
                                          settings.gemini_model, adilet, web_search=False)
+    if settings.chat_provider == "free":
+        clients = free_chat_clients(settings)
+        if clients:
+            from .openai_compat import ChainClient
+
+            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False)
     scheduler.extra_jobs.append(container.reporter.tick)
     return container

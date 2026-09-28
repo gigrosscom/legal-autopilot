@@ -32,7 +32,20 @@ class Settings(BaseSettings):
     # Main model writes the document text; the fast model does classification and extraction.
     llm_model: str = "claude-sonnet-5"
     llm_fast_model: str = "claude-haiku-4-5"
-    chat_provider: str = "gemini"  # gemini (free tier) | anthropic (paid): the model behind the consultation chat
+    # The model behind the consultation chat: gemini (free tier) | anthropic (paid) | free (CHAT_FREE_PROVIDERS in turn)
+    chat_provider: str = "gemini"
+    # Free providers tried in turn when CHAT_PROVIDER=free; those without a key are skipped.
+    chat_free_providers: str = "gemini,cerebras,groq,nvidia"
+    cerebras_api_key: str = ""
+    cerebras_model: str = ""  # empty: the default in konsilier/openai_compat.py
+    groq_api_key: str = ""
+    groq_model: str = ""
+    nvidia_api_key: str = ""
+    nvidia_model: str = ""
+    mistral_api_key: str = ""
+    mistral_model: str = ""
+    openrouter_api_key: str = ""
+    openrouter_model: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.

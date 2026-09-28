@@ -171,7 +171,7 @@ class GeminiClient:
 
     def __init__(self, api_key: str, *, http: httpx.Client | None = None, timeout: float = 60,
                  fallback_models: tuple[str, ...] = ()):
-        self.api_key, self.fallback_models = api_key, fallback_models
+        self.name, self.api_key, self.fallback_models = "gemini", api_key, fallback_models
         self.http = http or httpx.Client(timeout=timeout)
         self.messages = self
 
