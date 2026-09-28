@@ -67,7 +67,7 @@ def api_app(tmp_path):
 
     settings = Settings(database_url=f"sqlite:///{tmp_path}/bot.db", packs_dir=ROOT / "packs",
                         storage_local_dir=tmp_path / "files", bot_api_secret="s", approval_required_first_n=0,
-                        soffice_bin="")
+                        soffice_bin="", payment_mode="stub")
     container = build_container(settings, llm=HeuristicMockProvider(), pdf=NullPdfConverter())
     Base.metadata.create_all(container.engine_db)
     app: FastAPI = create_app(settings, container, start_scheduler=False)
@@ -128,3 +128,15 @@ def test_profile_texts_fit_telegram_limits():
         for c in BOT_COMMANDS:
             assert 0 < len(t(f"profile.commands.{c}", lang)) <= 256
             assert t(f"profile.commands.{c}", lang) != f"profile.commands.{c}"
+
+
+def test_unpaid_document_shows_transfer_details_and_paid_button():
+    case = {"id": "c1", "language": "ru", "status": "qualified", "actions": [], "proposal": None,
+            "payment": {"amount": 1990, "currency": "KZT", "status": "pending", "code": "KA-7F3K2Q",
+                        "recipient_name": "Получатель", "kaspi_phone": "+7 700 000 00 00"}}
+    screen = case_screen(case)
+    assert "1 990 KZT" in screen.text and "KA-7F3K2Q" in screen.text and "+7 700 000 00 00" in screen.text
+    assert ("✅ Я оплатил(а)", "paid:c1") in screen.buttons[0]
+    case["payment"]["status"] = "awaiting_confirmation"
+    screen = case_screen(case)
+    assert "Проверяем перевод" in screen.text and all(b[1] != "paid:c1" for row in screen.buttons for b in row)

@@ -22,6 +22,16 @@ def last_action(case: dict[str, Any]) -> dict[str, Any] | None:
     return case["actions"][-1] if case.get("actions") else None
 
 
+def payment_text(pay: dict[str, Any], lang: str) -> str:
+    """Where and how much to transfer for the document; the status line after "I have paid"."""
+    amount = f"{pay['amount']:,.0f}".replace(",", " ")
+    if pay["status"] == "awaiting_confirmation":
+        return t("payment_waiting", lang, code=pay["code"])
+    text = t("payment", lang, amount=amount, currency=pay.get("currency") or "", name=pay.get("recipient_name") or "",
+             phone=pay.get("kaspi_phone") or "", code=pay["code"])
+    return t("payment_not_found", lang, code=pay["code"]) + "\n\n" + text if pay["status"] == "not_found" else text
+
+
 def case_screen(case: dict[str, Any], message: str | None = None) -> Screen:
     lang = case.get("language", "ru")
     cid = case["id"]
@@ -48,11 +58,16 @@ def case_screen(case: dict[str, Any], message: str | None = None) -> Screen:
         if q and q.get("optional"):
             buttons.append([(t("buttons.skip", lang), f"skip:{cid}")])
     elif status == "qualified":
+        pay = case.get("payment") or {}
+        if pay.get("status") in ("pending", "awaiting_confirmation", "not_found"):
+            parts.append(payment_text(pay, lang))
+            if pay["status"] != "awaiting_confirmation":
+                buttons.append([(t("buttons.paid", lang), f"paid:{cid}")])
         buttons.append([(t("buttons.prepare", lang), f"prep:{cid}")])
     elif status == "action_ready" and action:
         if action["approval_status"] in ("pending", "rejected"):
             parts.append(t("awaiting_approval", lang))
-        else:
+        elif action.get("downloadable", True):
             doc = action
             steps = "\n".join(f"{i}. {s}" for i, s in enumerate(action["instructions"], 1))
             parts.append(f"{t('instructions', lang)}\n{steps}")

@@ -46,7 +46,7 @@ docker-compose.yml          postgres, s3 (SeaweedFS), mailpit, api, bot, web
 | `LLMProvider` | `complete_json(task, system, user, schema, attachments)` | `AnthropicProvider`, `MockProvider` |
 | `ChannelAdapter` | уведомления пользователю | `web` (inbox в БД), `telegram` (Bot API) |
 | `SubmissionAdapter` | как документ уходит адресату | `user_submits` (инструкция), `email` (SMTP) |
-| `PaymentAdapter` | оплата | `StubPaymentAdapter` |
+| `PaymentAdapter` | оплата | `ManualTransferPaymentAdapter` (перевод на Kaspi, подтверждение в /ops), `StubPaymentAdapter` (тесты) |
 | `DeadlineScheduler` | создать срок, напоминания, `tick(now)` | `DbDeadlineScheduler` + APScheduler (заменяется на Temporal) |
 | `Storage` | файлы | `LocalStorage`, `S3Storage` (MinIO) |
 

@@ -71,6 +71,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "proposal": None,
         "roadmap": None,
         "plan": None,
+        "payment": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
         "safety": {"hold_reason": case.hold_reason,
@@ -96,6 +97,8 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
             kinds = {k["kind"] for k in q["evidence_kinds"]}
             q["uploaded"] = sum(1 for e in case.evidence if e.kind in kinds) if kinds else 0
             view["question"] = q
+        view["payment"] = engine.payment_view(session, case)
+        locked = view["payment"] is not None and view["payment"]["status"] != "paid"  # documents open once paid
         deadlines = {d.action_id: d for d in session.scalars(select(Deadline).where(Deadline.case_id == case.id))}
         for a in case.actions:
             spec = sc.action(a.action_id)
@@ -110,7 +113,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "signatures": [{"id": str(g.id), "role": g.role, "signer_name": g.signer_name, "display": g.display,
                                 "method": g.method, "format": g.file_format, "signed_at": g.signed_at.isoformat()}
                                for g in a.signatures],
-                "downloadable": a.status in ("ready", "submitted", "responded") or admin,
+                "downloadable": (a.status in ("ready", "submitted", "responded") and not locked) or admin,
                 "submitted_at": a.submitted_at.isoformat() if a.submitted_at else None,
                 "submitted_via": a.submitted_via,
                 "response_class": a.response_class,

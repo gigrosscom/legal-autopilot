@@ -37,6 +37,7 @@ from .models import (
     Consent,
     DemandSignal,
     Evidence,
+    Invoice,
     Organization,
     Outcome,
     Party,
@@ -693,6 +694,9 @@ class CaseEngine:
         spec = self.next_action_spec(case, sc)
         if spec is None:
             raise EngineError("no_next_action")
+        # a document is prepared only once the case is paid for (the invoice is created here on the first try)
+        if spec.kind != "handoff" and self.payment_due(session, case) is not None:
+            raise EngineError("payment_required")
         if status == S.AWAITING_RESPONSE:
             self.transition(session, case, S.ESCALATED, actor, reason=case.actions[-1].response_class)
         action = Action(case_id=case.id, sequence=len(case.actions) + 1, action_id=spec.id, kind=spec.kind,
@@ -704,13 +708,98 @@ class CaseEngine:
             self.transition(session, case, S.HANDED_TO_LAWYER, actor, action=spec.id)
             self.notifier.notify(session, case, "handoff", pack.t(case.language, "notifications.handoff"))
             return action
-        if not case.paid and sc.pricing.model == "fixed":
-            inv = self.payments.create_invoice(case_id=str(case.id), amount=Decimal(str(sc.pricing.amount)),
-                                               currency=sc.pricing.currency or pack.currency)
-            case.paid = inv.status == "paid"
-            self.audit(session, case, "system", "invoice_created", invoice=inv.id, status=inv.status,
-                       amount=str(inv.amount), currency=inv.currency)
         return self._render_action(session, case, sc, pack, spec, action, actor)
+
+    # ================================================================ payment
+    def price(self, case: Case) -> tuple[Decimal, str | None] | None:
+        """What the case's documents cost (scenario price, paid once per case); None when they are free."""
+        if not case.scenario_id:
+            return None
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        if sc.pricing.model != "fixed" or not sc.pricing.amount or sc.pricing.amount <= 0:
+            return None
+        return Decimal(str(sc.pricing.amount)), sc.pricing.currency or pack.currency
+
+    def invoice_of(self, session: Session, case: Case) -> Invoice | None:
+        return session.scalar(select(Invoice).where(Invoice.case_id == case.id).order_by(Invoice.id.desc()).limit(1))
+
+    def payment_due(self, session: Session, case: Case) -> Invoice | None:
+        """None when documents of the case may be prepared now; otherwise the unpaid invoice (created on the first
+        call). Raises ``payment_unavailable`` when payment cannot be accepted (requisites not configured)."""
+        if case.paid:
+            return None
+        price = self.price(case)
+        if price is None:
+            return None
+        inv = self.invoice_of(session, case)
+        if inv is not None and inv.status == "paid":
+            case.paid = True
+            return None
+        if not self.payments.available():
+            raise EngineError("payment_unavailable")
+        if inv is None:
+            bill = self.payments.create_invoice(case_id=str(case.id), amount=price[0], currency=price[1])
+            inv = Invoice(case_id=case.id, user_id=case.owner_id, code=bill.id, method=self.payments.method,
+                          amount=bill.amount, currency=bill.currency, status=bill.status)
+            if bill.status == "paid":
+                inv.decided_at = utcnow()
+            session.add(inv)
+            session.flush()
+            self.audit(session, case, "system", "invoice_created", invoice=inv.code, status=inv.status,
+                       amount=str(inv.amount), currency=inv.currency)
+        if inv.status == "paid":
+            case.paid = True
+            return None
+        return inv
+
+    def claim_payment(self, session: Session, case: Case, actor: str) -> Invoice:
+        """The person reports the transfer ("I have paid"): the clients desk is to check and confirm it."""
+        inv = self.invoice_of(session, case)
+        if inv is None or case.paid:
+            raise EngineError("no_open_invoice")
+        if inv.status in ("pending", "not_found"):
+            inv.status, inv.claimed_at = "awaiting_confirmation", utcnow()
+            self.audit(session, case, actor, "payment_claimed", invoice=inv.code)
+        return inv
+
+    def decide_payment(self, session: Session, inv: Invoice, operator: str, received: bool,
+                       note: str | None = None) -> None:
+        """The clients desk found the transfer (→ paid) or did not (→ not_found); the person is told either way."""
+        case = session.get(Case, inv.case_id)
+        if inv.status == "paid":
+            raise EngineError("already_paid")
+        inv.status = "paid" if received else "not_found"
+        inv.decided_at, inv.decided_by = utcnow(), operator
+        if note is not None:
+            inv.desk_note = note
+        pack = self.pack_of(case)
+        lang = pack.lang(case.language)
+        if received:
+            case.paid = True
+            text = pack.t(lang, "notifications.payment_confirmed",
+                          default="Оплата получена. Документ можно подготовить и скачать в карточке дела.")
+        else:
+            text = pack.t(lang, "notifications.payment_not_found", code=inv.code,
+                          default=f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу "
+                                  f"и нажмите «Я оплатил(а)» ещё раз или напишите в поддержку.")
+        self.audit(session, case, f"ops:{operator}", "payment_confirmed" if received else "payment_not_found",
+                   invoice=inv.code)
+        self.notifier.notify(session, case, "payment", text)
+
+    def payment_view(self, session: Session, case: Case) -> dict[str, Any] | None:
+        """What the payment screen shows: price, invoice status and, while unpaid, where to transfer."""
+        price = self.price(case)
+        if price is None:
+            return None
+        inv = self.invoice_of(session, case)
+        status = "paid" if case.paid else (inv.status if inv else "none")
+        view: dict[str, Any] = {"amount": float(price[0]), "currency": price[1], "status": status,
+                                "method": self.payments.method, "available": self.payments.available(),
+                                "code": inv.code if inv is not None else None,
+                                "recipient_name": None, "kaspi_phone": None}
+        if status not in ("paid", "none"):
+            view.update(self.payments.details())
+        return view
 
     def _addressee(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec) -> dict[str, Any]:
         lang = case.language

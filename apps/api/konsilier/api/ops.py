@@ -1,7 +1,8 @@
 """Operations centre: two desks, each opened by its operators' verified e-mail (sign in with an e-mail code).
 
 - lawyers desk: every application of an advocate, legal consultant or human-rights organisation;
-- clients desk: every client question, complaint or suggestion, and every client request to a lawyer.
+- clients desk: every client question, complaint or suggestion, every client request to a lawyer, and document
+  payments by transfer waiting for confirmation.
 
 Which e-mails operate which desk: settings OPS_LAWYERS_EMAILS / OPS_CLIENTS_EMAILS (konsilier/team.py).
 """
@@ -18,7 +19,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..core.models import LawyerApplication, LawyerRequest, Notification, SupportTicket, TicketMessage, User
+from ..core.engine import EngineError
+from ..core.models import (Case, Invoice, LawyerApplication, LawyerRequest, Notification, SupportTicket,
+                           TicketMessage, User)
 from ..team import Desk, desks_of
 from .deps import current_user, get_container, get_session
 from .support import messages_of, ticket_view
@@ -58,7 +61,9 @@ def me(user: User = Depends(current_user), session: Session = Depends(get_sessio
         counts["clients"] = (session.scalar(select(func.count()).select_from(SupportTicket)
                                             .where(SupportTicket.status == "new")) or 0) + \
                             (session.scalar(select(func.count()).select_from(LawyerRequest)
-                                            .where(LawyerRequest.status == "new")) or 0)
+                                            .where(LawyerRequest.status == "new")) or 0) + \
+                            (session.scalar(select(func.count()).select_from(Invoice)
+                                            .where(Invoice.status == "awaiting_confirmation")) or 0)
     return {"email": user.email, "desks": desks, "new": counts}
 
 
@@ -176,3 +181,61 @@ def update_request(req_id: int, body: RequestUpdate, session: Session = Depends(
     if body.status:
         r.status = body.status
     return {"id": r.id, "status": r.status, "note": r.desk_note}
+
+
+# ------------------------------------------------------------------ clients desk: document payments
+def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[str, Any]:
+    case = session.get(Case, inv.case_id)
+    owner = session.get(User, inv.user_id)
+    title = None
+    if case is not None and case.scenario_id:
+        try:
+            title = container.engine.pack_of(case).localized(container.engine.scenario_of(case).title, "ru")
+        except Exception:  # noqa: BLE001 — a removed scenario must not hide the payment
+            title = case.scenario_id
+    return {"id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
+            "status": inv.status, "method": inv.method, "case_id": str(inv.case_id), "case_title": title,
+            "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,
+            "created_at": inv.created_at.isoformat(), "claimed_at": inv.claimed_at.isoformat() if inv.claimed_at else None,
+            "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
+            "note": inv.desk_note}
+
+
+@router.get("/clients/payments")
+def payments(status: str | None = "awaiting_confirmation", session: Session = Depends(get_session),
+             container: Container = Depends(get_container),
+             _: User = Depends(operator("clients"))) -> list[dict[str, Any]]:
+    q = select(Invoice).where(Invoice.method != "stub").order_by(Invoice.created_at.desc()).limit(500)
+    if status:
+        q = q.where(Invoice.status == status)
+    return [invoice_view(session, container, inv) for inv in session.scalars(q).all()]
+
+
+class PaymentDecision(BaseModel):
+    decision: Literal["paid", "not_found"]
+    note: str | None = Field(default=None, max_length=4000)
+
+
+@router.post("/clients/payments/{invoice_id}")
+def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = Depends(get_session),
+                   container: Container = Depends(get_container),
+                   op: User = Depends(operator("clients"))) -> dict[str, Any]:
+    inv = session.get(Invoice, invoice_id)
+    if inv is None:
+        raise HTTPException(404, "invoice not found")
+    try:
+        container.engine.decide_payment(session, inv, op.email or "operator", body.decision == "paid", body.note)
+    except EngineError as e:
+        raise HTTPException(409, {"code": e.code, "message": e.code}) from e
+    owner = session.get(User, inv.user_id)
+    if owner is not None and owner.email and container.email_sender is not None:
+        text = ("Оплата получена. Документ можно подготовить и скачать в карточке дела: "
+                f"https://konsilier.com/case/{inv.case_id}") if body.decision == "paid" else (
+            f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
+            f"«Я оплатил(а)» ещё раз: https://konsilier.com/case/{inv.case_id}")
+        try:
+            container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}", text)
+        except Exception:  # noqa: BLE001
+            log.warning("payment e-mail to a client failed", exc_info=True)
+    session.flush()
+    return invoice_view(session, container, inv)
