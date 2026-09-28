@@ -35,8 +35,10 @@ claim:
   amount_field: amount
 intake:
   - respondent_name
+  - decision_number
+  - respondent_address: {optional: true}
   - event_date: {type: date}
-  - amount: {type: money, currency: KZT, optional: true, question: {ru: "Какая сумма штрафа, в тенге?", kk: "Айыппұл сомасы қанша, теңгемен?"}}
+  - amount: {type: money, currency: KZT, optional: true, label: {ru: Сумма штрафа, kk: Айыппұл сомасы}, question: {ru: "Какая сумма штрафа, в тенге?", kk: "Айыппұл сомасы қанша, теңгемен?"}}
   - problem_description: {type: longtext}
   - applicant_name: {pii: person}
   - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
@@ -45,7 +47,7 @@ intake:
   - evidence: [fine_decision, correspondence, other]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: authority, name_field: respondent_name}
+  respondent: {kind: authority, name_field: respondent_name, address_field: respondent_address}
 actions:
   - id: complaint_superior
     title: {ru: Жалоба на постановление о штрафе, kk: Айыппұл туралы қаулыға шағым}

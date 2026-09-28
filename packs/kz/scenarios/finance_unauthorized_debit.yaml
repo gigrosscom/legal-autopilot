@@ -2,8 +2,14 @@
 # Нормы проверены 28.09.2026 по официальному тексту ИПС «Әділет» (страница акта открыта, номер статьи — как в тексте):
 #   - Закон РК «О платежах и платежных системах», ст. 56 (несанкционированные платежи; п. 4 — банк обеспечивает
 #     выполнение процедур безопасности от несанкционированных платежей) — https://adilet.zan.kz/rus/docs/Z1600000011
-# TODO(lawyer): ст. 57 (возврат денег) — применимость; срок ответа банка; норма для жалобы в АРРФР.
+# TODO(lawyer): ст. 57 (возврат денег) — применимость. В жалобе в АРРФР указана та же ст. 56 (нарушение, на которое
+# жалуются); срок ответа банка — Закон о банках, ст. 31 (ниже).
 # Кредит на ваше имя без вашего ведома — это другой сценарий (kz.money.credit_fraud).
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
+#   - Закон РК «О банках и банковской деятельности в РК», ст. 31, п. 2, пп. 7) (обращение клиента банк рассматривает
+#     не более 15 рабочих дней со дня поступления) — https://adilet.zan.kz/rus/docs/Z950002444_, открыт 28.09.2026.
 id: kz.finance.unauthorized_debit
 version: 0.1.0
 ontology: FINANCE.CARD.UNAUTHORIZED_DEBIT
@@ -34,6 +40,8 @@ claim:
   amount_field: amount
 intake:
   - respondent_name: {label: {ru: Банк, kk: Банк}, question: {ru: "В каком банке карта или счёт?", kk: "Карта не шот қай банкте?"}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address: {optional: true}
   - event_date: {type: date, label: {ru: Дата списания, kk: Есептен шығару күні}, question: {ru: "Когда списали деньги? (ДД.ММ.ГГГГ)", kk: "Ақша қашан есептен шығарылды? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, question: {ru: "Какую сумму списали без вашего согласия, в тенге?", kk: "Келісіміңізсіз қанша сома есептен шығарылды, теңгемен?"}}
   - problem_description: {type: longtext}
@@ -44,14 +52,16 @@ intake:
   - evidence: [bank_statement, police_report, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: statement_to_bank
     title: {ru: Заявление в банк о несанкционированном списании, kk: Банкке рұқсатсыз есептен шығару туралы арыз}
     template: kz/templates/generic/statement.docx
     channel: user_submits
     addressee: {party: respondent}
+    deadline: {business_days: 15, norm_ref: "Закон Республики Казахстан «О банках и банковской деятельности в Республике Казахстан», статья 31"}
     norm_refs:
+      - "Закон Республики Казахстан «О банках и банковской деятельности в Республике Казахстан», статья 31"
       - "Закон Республики Казахстан «О платежах и платежных системах», статья 56"
     demands:
       ru: "признать платёж (перевод) на сумму {amount} {currency} несанкционированным, так как я его не совершал(а) и не подтверждал(а); провести проверку, в том числе соблюдения процедур безопасности; вернуть мне списанные деньги; сообщить о результатах письменно с приложением данных о способе подтверждения операции."
@@ -72,7 +82,9 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: arrf}
-    norm_refs: [TODO]
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
+    norm_refs:
+      - "Закон Республики Казахстан «О платежах и платежных системах», статья 56"
     demands:
       ru: "провести проверку действий банка при проведении несанкционированного платежа с моей карты (счёта) и при рассмотрении моего заявления, принять меры реагирования, о результатах сообщить мне."
     instructions:

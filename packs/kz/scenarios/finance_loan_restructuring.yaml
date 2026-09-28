@@ -33,6 +33,8 @@ classification:
       - Жұмыссыз қалдым, несие төлей алмаймын, банктен кейінге қалдыру сұрағым келеді
 intake:
   - respondent_name: {label: {ru: Банк, kk: Банк}, question: {ru: "В каком банке кредит?", kk: "Несие қай банкте?"}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address: {optional: true}
   - event_date: {type: date, label: {ru: Дата просрочки, kk: Мерзімі өткен күн}, question: {ru: "С какой даты у вас просрочка платежа? (ДД.ММ.ГГГГ)", kk: "Төлем қай күннен бастап мерзімі өтті? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, optional: true, question: {ru: "Какой сейчас ежемесячный платёж, в тенге? Или «пропустить».", kk: "Қазір ай сайынғы төлем қанша, теңгемен? Не «өткізу»."}}
   - problem_description: {type: longtext}
@@ -43,7 +45,7 @@ intake:
   - evidence: [loan_contract, pay_slip, gov_certificate, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: statement_to_bank
     title: {ru: Заявление в банк об изменении условий займа, kk: Банкке қарыз шартының талаптарын өзгерту туралы арыз}

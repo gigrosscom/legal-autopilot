@@ -5,6 +5,9 @@
 #     календарных дней, если иной срок не установлен договором), ст. 42-4 (ответ на претензию — 10 календарных дней),
 #     ст. 42-5 (обращение в госорган).
 # TODO(lawyer): неустойка по ст. 35 п. 5 — добавлять ли расчёт в требование (формула только в YAML); орган и канал подачи.
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.consumer.poor_service
 version: 0.1.0
 ontology: CONSUMER.SERVICE.POOR_QUALITY
@@ -35,6 +38,8 @@ claim:
   amount_field: amount
 intake:
   - respondent_name: {label: {ru: Исполнитель, kk: Орындаушы}, question: {ru: "Кто делал ремонт или оказывал услугу? Название организации или ФИО мастера.", kk: "Жөндеуді не қызметті кім жасады? Ұйымның атауы не шебердің аты-жөні."}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address
   - event_date: {type: date, label: {ru: Дата работы, kk: Жұмыс күні}, question: {ru: "Когда приняли работу или оказали услугу? (ДД.ММ.ГГГГ)", kk: "Жұмысты қашан қабылдадыңыз не қызмет қашан көрсетілді? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, question: {ru: "Сколько вы заплатили за работу или услугу, в тенге?", kk: "Жұмыс не қызмет үшін қанша төледіңіз, теңгемен?"}}
   - problem_description: {type: longtext}
@@ -45,7 +50,7 @@ intake:
   - evidence: [receipt, service_contract, photo, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: claim_to_contractor
     title: {ru: Претензия исполнителю о недостатках работы или услуги, kk: Орындаушыға жұмыстың не қызметтің кемшіліктері туралы талап-арыз}
@@ -75,6 +80,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {authority: consumer_protection}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Закон Республики Казахстан «О защите прав потребителей», статья 42-5"
     demands:

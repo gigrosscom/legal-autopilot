@@ -8,6 +8,9 @@
 #     по «другим трудовым спорам» — один год; см. нормативное постановление Конституционного Суда от 08.06.2026 № 81-НП
 #     в тексте статьи).
 # Срок ответа работодателя в законе не найден — deadline не задан. TODO(lawyer): расчёт пени (формула только в YAML).
+#   - АППК РК, ст. 63 (реквизиты обращения: ФИО, ИИН, почтовый адрес заявителя; наименование органа; суть; дата; подпись),
+#     ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации, если иное не предусмотрено законами) —
+#     https://adilet.zan.kz/rus/docs/K2000000350, открыт 28.09.2026 (срок жалобы в госорган — deadline по ст. 76).
 id: kz.labor.final_settlement
 version: 0.1.0
 ontology: LABOR.WAGES.FINAL_SETTLEMENT
@@ -38,6 +41,8 @@ claim:
   amount_field: amount
 intake:
   - respondent_name: {label: {ru: Работодатель, kk: Жұмыс беруші}, question: {ru: "Как называется работодатель (организация или ИП)?", kk: "Жұмыс берушінің (ұйымның не ЖК-ның) атауы қандай?"}}
+  - respondent_bin: {optional: true, pattern: '^\d{12}$'}
+  - respondent_address: {optional: true}
   - event_date: {type: date, label: {ru: Дата увольнения, kk: Жұмыстан шығу күні}, question: {ru: "Какого числа прекращён трудовой договор? (ДД.ММ.ГГГГ)", kk: "Еңбек шарты қай күні тоқтатылды? (КК.АА.ЖЖЖЖ)"}}
   - amount: {type: money, currency: KZT, question: {ru: "Какую сумму вам не выплатили, в тенге? Если не знаете точно — примерно.", kk: "Сізге қанша сома төленбеді, теңгемен? Нақты білмесеңіз — шамамен."}}
   - problem_description: {type: longtext}
@@ -48,7 +53,7 @@ intake:
   - evidence: [employment_contract, dismissal_order, pay_slip, correspondence]
 parties:
   applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: business, name_field: respondent_name}
+  respondent: {kind: business, name_field: respondent_name, id_field: respondent_bin, address_field: respondent_address}
 actions:
   - id: statement_to_employer
     title: {ru: Письменное требование работодателю о выплате расчёта, kk: Жұмыс берушіге есеп айырысуды төлеу туралы жазбаша талап}
@@ -74,6 +79,7 @@ actions:
     template: kz/templates/generic/complaint.docx
     channel: user_submits
     addressee: {forum: kz.labor_inspection}
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
     norm_refs:
       - "Трудовой кодекс Республики Казахстан, статья 113"
       - "Трудовой кодекс Республики Казахстан, статья 193"

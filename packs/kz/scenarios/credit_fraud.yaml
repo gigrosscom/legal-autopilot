@@ -1,3 +1,12 @@
+# Нормы и сроки проверены 28.09.2026 по официальному тексту ИПС «Әділет» (old.adilet.zan.kz, страница акта открыта):
+#   - Закон РК «О банках и банковской деятельности в РК», ст. 31, п. 2, пп. 7) — срок рассмотрения обращения клиента банком
+#     не более 15 рабочих дней со дня поступления (продление на 15 рабочих дней) — https://adilet.zan.kz/rus/docs/Z950002444_
+#   - Закон РК «О микрофинансовой деятельности», ст. 17, п. 2 — то же для МФО: 15 рабочих дней — https://adilet.zan.kz/rus/docs/Z1200000056
+#   - АППК РК, ст. 63 (реквизиты обращения), ст. 76, ч. 1 (обращение рассматривается 15 рабочих дней со дня регистрации,
+#     если иное не предусмотрено законами) — https://adilet.zan.kz/rus/docs/K2000000350
+#   - Канал подачи в АРРФР: страница «Онлайн-приемная» АРРФР на gov.kz, «Для подачи обращений: https://eotinish.kz» —
+#     https://www.gov.kz/memleket/entities/ardfm/activities/population (открыта 28.09.2026).
+# TODO(lawyer): материальные нормы об оспаривании займа без волеизъявления (ГК РК) — не проверены и не указаны.
 id: kz.money.credit_fraud
 version: 0.1.0
 ontology: MONEY.CREDIT.FRAUD
@@ -34,42 +43,49 @@ intake:
   - police_report_number: {optional: true}
   - applicant_name: {pii: person}
   - applicant_iin: {pii: id_number, pattern: '^\d{12}$'}
+  - applicant_address: {pii: address}
   - applicant_phone: {type: phone, pii: phone}
   - lender_email: {type: email, optional: true}
+  - lender_address: {optional: true}
   - evidence: [credit_report, loan_notice, police_report, correspondence]
   - identity_document: [id_document]
 parties:
-  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin}
-  respondent: {kind: business, name_field: lender_name, id_field: lender_bin, email_field: lender_email}
+  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
+  respondent: {kind: business, name_field: lender_name, id_field: lender_bin, email_field: lender_email, address_field: lender_address}
 actions:
   - id: statement_to_lender
     title: {ru: Заявление в банк / МФО о мошенническом займе, kk: Банкке / МҚҰ-ға алаяқтық қарыз туралы арыз}
     template: kz/templates/money/statement_lender.docx
     channel: email_or_user_submits
     addressee: {party: respondent}
-    deadline: {calendar_days: 15, norm_ref: TODO}
-    norm_refs: [TODO]
+    # банк — 15 рабочих дней (Закон о банках, ст. 31); МФО — тоже 15 рабочих дней (Закон о МФО, ст. 17)
+    deadline: {business_days: 15, norm_ref: "Закон Республики Казахстан «О банках и банковской деятельности в Республике Казахстан», статья 31"}
+    norm_refs:
+      - "Закон Республики Казахстан «О банках и банковской деятельности в Республике Казахстан», статья 31"
+      - "Закон Республики Казахстан «О микрофинансовой деятельности», статья 17"
     demands:
       ru: "провести служебное расследование по факту оформления займа от {loan_date} на сумму {amount} {currency} без моего волеизъявления; приостановить начисление вознаграждения, неустойки и взыскание; не передавать задолженность коллекторам; представить мне копии документов, на основании которых выдан заём, и сведения о способе идентификации заёмщика; по итогам — признать заём не оформленным мною и исключить сведения о нём из кредитной истории."
     instructions:
       ru:
         - "Если ещё не сделали — подайте заявление в полицию (102 или ближайший отдел) и сохраните номер/талон: он понадобится банку и регулятору."
-        - "Подайте заявление в {addressee}: через отделение, официальный e-mail {addressee_email} или форму обращений в приложении/на сайте. Требуйте входящий номер."
+        - "Подайте заявление в {addressee}: через отделение, официальный e-mail или форму обращений в приложении/на сайте. Требуйте входящий номер."
         - "Приложите: выписку из кредитного бюро, SMS/уведомления о займе, талон из полиции."
-        - "Нажмите «Документ подан» — мы отследим срок ответа ({deadline_days} дн.)."
+        - "Нажмите «Документ подан» — мы отследим срок ответа ({deadline_days} рабочих дн.)."
       kk:
         - "Әлі жасамасаңыз — полицияға арыз беріңіз (102 не жақын бөлім) және нөмірін/талонын сақтаңыз: ол банкке және реттеушіге керек."
-        - "Арызды {addressee} ұйымына беріңіз: бөлімше, ресми {addressee_email} e-mail мекенжайы не қосымшадағы/сайттағы өтініш формасы арқылы. Кіріс нөмірін талап етіңіз."
+        - "Арызды {addressee} ұйымына беріңіз: бөлімше, ресми e-mail мекенжайы не қосымшадағы/сайттағы өтініш формасы арқылы. Кіріс нөмірін талап етіңіз."
         - "Тіркеңіз: кредиттік бюродан үзінді көшірме, қарыз туралы SMS/хабарламалар, полиция талоны."
-        - "«Құжат тапсырылды» батырмасын басыңыз — жауап мерзімін ({deadline_days} күн) бақылаймыз."
+        - "«Құжат тапсырылды» батырмасын басыңыз — жауап мерзімін ({deadline_days} жұмыс күні) бақылаймыз."
   - id: complaint_arrf
     when: statement_to_lender.response in [none, refusal, partial]
     title: {ru: Жалоба в АРРФР, kk: ҚНРДА-ға шағым}
     template: kz/templates/money/complaint_arrf.docx
     channel: user_submits
     addressee: {authority: arrf}
-    deadline: {business_days: 15, norm_ref: TODO}
-    norm_refs: [TODO]
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
+    norm_refs:
+      - "Закон Республики Казахстан «О банках и банковской деятельности в Республике Казахстан», статья 31"
+      - "Закон Республики Казахстан «О микрофинансовой деятельности», статья 17"
     demands:
       ru: "провести проверку действий {lender_name} при выдаче займа от {loan_date} на сумму {amount} {currency}, оформленного без моего волеизъявления, и при рассмотрении моего заявления; принять меры надзорного реагирования; о результатах сообщить мне."
     instructions:

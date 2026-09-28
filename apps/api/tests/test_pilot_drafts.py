@@ -13,8 +13,9 @@ import pytest
 from konsilier.core.packs import load_pack
 
 PACKS = Path(__file__).resolve().parents[3] / "packs"
-# the first two published scenarios carry placeholder deadlines marked TODO (packs/kz/REVIEW.md, rows 2, 5, 12, 16)
-LEGACY_PLACEHOLDER_DEADLINES = {"kz.consumer.refund", "kz.money.credit_fraud"}
+# the placeholder deadlines of the first two scenarios were replaced by verified norms on 28.09.2026 (REVIEW.md rows 2, 5,
+# 12, 16): every deadline now needs a verified norm
+LEGACY_PLACEHOLDER_DEADLINES: set[str] = set()
 # fields the generic templates read (see scripts/build_kz_templates.py)
 # owner's decision 28.09.2026: documents of unsigned scenarios carry this neutral note, never the word "draft"
 NEUTRAL_NOTE_RU = "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным. Проверьте сведения перед подачей."
