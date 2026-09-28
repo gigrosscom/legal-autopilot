@@ -365,11 +365,14 @@ function NextStepBar({ c, busy, post, run, setCase }: {
         {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
     }
     return (
+      <div className="space-y-2">
+      <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
       <div className="flex gap-2">
         <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
         {last.email_allowed && last.addressee?.email && (
           <Button className={big} variant="secondary" disabled={busy} icon="mail" onClick={() => post(`/actions/${last.id}/submitted`, { via: "email" })}>{t("case.sendEmail")}</Button>
         )}
+      </div>
       </div>
     );
   }

@@ -24,7 +24,7 @@ buttons:
   confirm_facts: "✅ Верно"
   prepare: "📄 Подготовить документ"
   handoff: "👩‍⚖️ Передать юристу"
-  submitted: "✅ Я отправил(а)"
+  submitted: "✅ Документ подан"
   email: "📧 Отправить по e-mail за меня"
   got_response: "📨 Пришёл ответ"
   no_response: "🕳 Ответа нет"
