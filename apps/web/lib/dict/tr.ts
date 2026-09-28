@@ -186,7 +186,6 @@ const tr: Dict = {
     thinking: "Düşünüyorum…",
     lookingUp: "Kanunun resmî metnine bakıyorum…",
     article: "Madde {n}",
-    unchecked: "Bu yanıttaki madde atıfları resmî metinle doğrulanmadı — bir avukat teyit edecek.",
     doc: "Belge hazırla",
     docPrice: "1.990 ₸'den itibaren",
     lawyer: "Hukukçu veya avukat",

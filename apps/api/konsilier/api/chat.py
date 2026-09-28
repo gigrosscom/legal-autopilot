@@ -81,8 +81,7 @@ def _reason(provider: str, e: Exception) -> str:
 
 def _view(m: ChatMessage) -> dict[str, Any]:
     return {"id": str(m.id), "role": m.role, "text": m.text, "created_at": m.created_at.isoformat(),
-            "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", []),
-            "unchecked": bool(m.meta.get("unchecked"))}
+            "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", [])}
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -209,6 +208,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             container.engine.audit(s, c, f"user:{user_pk}", "chat_reply", tokens=result.usage,
                                    unchecked=result.unchecked)
             s.commit()
+            if result.unchecked:  # not shown to the person; the team watches how often it happens
+                log.warning("chat=unchecked_norms case=%s", case_pk)
             yield _sse({"type": "done", "message": _view(m)})
 
     return StreamingResponse(events(), media_type="text/event-stream",

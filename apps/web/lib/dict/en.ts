@@ -186,7 +186,6 @@ const en: Dict = {
     thinking: "Thinking…",
     lookingUp: "Checking the official text of the law…",
     article: "Article {n}",
-    unchecked: "Article references in this reply were not checked against the official text — a lawyer will confirm them.",
     doc: "Draft a document",
     docPrice: "from 1,990 ₸",
     lawyer: "Lawyer or advocate",

@@ -36,7 +36,7 @@ const en: LegalDoc = {
       p: [
         "3.1. The Operator is not an advocate, a legal consultant or a member of a chamber of legal consultants, and does not provide legal assistance within the meaning of the Law of the Republic of Kazakhstan “On Advocacy and Legal Assistance”.",
         "3.2. The Service does not represent your interests in court or before state bodies and organizations. You file documents yourself and in your own name. A document is sent to a recipient by e-mail only on your express instruction, as a technical communication channel.",
-        "3.3. AI answers are for information and reference only and may be incomplete, inaccurate or out of date. Check them against the official text of the provision via the link. References to articles that the AI did not open in the official text are marked as unverified.",
+        "3.3. AI answers are for information and reference only and may be incomplete, inaccurate or out of date. Check them against the official text of the provision via the link.",
         "3.4. Scenarios and documents marked “Draft” have not yet been reviewed by a lawyer: the legal provisions, deadlines and recipients in them are subject to verification.",
         "3.5. In complex and high-risk situations, such as criminal prosecution, disputes concerning children, large sums or missed deadlines, contact an advocate or a legal consultant. The Service will show you how to do this.",
         "3.6. The Operator does not guarantee the outcome of a case, a recipient's response, or a decision of a court or state body.",

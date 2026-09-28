@@ -83,6 +83,33 @@ def test_article_mentions():
     assert mentioned_articles("ст. 113-1 и статьи 22, 113-бап, article 5") == {"113-1", "22", "113", "5"}
 
 
+def test_prompt_allows_article_numbers_only_when_opened():
+    _, client = run("По статье 113 расчёт — не позднее трёх рабочих дней.")
+    system = client.calls[0]["system"]
+    assert "State an article number only if you opened that article's text" in system
+    assert "without any article number" in system
+    _, client = run("Смотрите Трудовой кодекс.", use_portal=False)
+    assert "never state article numbers" in client.calls[0]["system"]
+
+
+def test_unchecked_is_logged_not_shown(ctx, caplog):
+    from .test_e2e import web_user
+
+    ctx.container.chat_agent = ChatAgent(StreamingClient(reply_turns(
+        "Ещё есть статья 200, по ней положен штраф работодателю.")), "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    with caplog.at_level("WARNING", logger="konsilier.api.chat"):
+        done = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Какой штраф?"}))[-1]
+    assert done["type"] == "done" and "unchecked" not in done["message"]
+    assert all("unchecked" not in m for m in api.get(f"/v1/cases/{cid}/chat").json())
+    assert "chat=unchecked_norms case=" in caplog.text
+    from konsilier.core.models import ChatMessage
+    with ctx.container.session_factory() as s:
+        metas = [m.meta for m in s.query(ChatMessage).filter(ChatMessage.role == "assistant").all()]
+    assert any(m.get("unchecked") is True for m in metas)
+
+
 # ------------------------------------------------------------------ API
 def _sse(resp):
     return [json.loads(line[6:]) for line in resp.text.splitlines() if line.startswith("data: ")]
