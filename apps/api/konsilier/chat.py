@@ -115,6 +115,9 @@ class ChatAgent:
                 final = s.get_final_message()
             usage["input_tokens"] += final.usage.input_tokens
             usage["output_tokens"] += final.usage.output_tokens
+            searches = getattr(getattr(final.usage, "server_tool_use", None), "web_search_requests", 0) or 0
+            if searches:  # Claude's server web search is billed per search
+                usage["web_search_requests"] = usage.get("web_search_requests", 0) + int(searches)
             messages.append({"role": "assistant", "content": final.content})
             if final.stop_reason == "tool_use":
                 results = []

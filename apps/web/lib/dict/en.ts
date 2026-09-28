@@ -197,6 +197,7 @@ const en: Dict = {
       agent_unavailable: "The chat consultant is unavailable right now. Please try later or draft the document step by step.",
       agent_failed: "The consultant could not answer. Please try again in a minute.",
       too_many_messages: "Today's free messages are used up. Let's continue tomorrow — or draft the document step by step.",
+      busy: "We're under heavy load right now. Please try again in a minute.",
     },
   },
   home: {

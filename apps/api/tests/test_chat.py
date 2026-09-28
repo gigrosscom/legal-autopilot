@@ -127,7 +127,7 @@ def test_chat_without_agent_is_503_and_failure_is_reported(ctx):
 
     ctx.container.chat_agent = Broken()
     ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
-    assert ev[-1]["type"] == "error" and ev[-1]["code"] == "agent_failed"
+    assert ev[-1]["type"] == "error" and ev[-1]["code"] == "busy" and "нагрузка" in ev[-1]["message"]
     assert [m["role"] for m in api.get(f"/v1/cases/{cid}/chat").json()] == ["user"]
 
     # the fallback (Claude) answers when the main chat model fails before the reply starts
@@ -195,20 +195,31 @@ def test_gemini_error_is_raised_for_the_chat_to_report():
                           use_portal=False))
 
 
-def test_gemini_retries_high_demand_before_the_reply_starts(monkeypatch):
+def _ok_sse():
     import httpx
+
+    ok = "data: " + json.dumps({"candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}]})
+    return httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})
+
+
+def _ask(client, model="m1"):
+    return client.stream(model=model, max_tokens=5, system="s", tools=[],
+                         messages=[{"role": "user", "content": "?"}]).get_final_message()
+
+
+def test_gemini_retries_once_then_takes_the_next_model(monkeypatch):
+    import httpx
+    import pytest
 
     from konsilier import gemini
 
-    monkeypatch.setattr(gemini, "RETRY_DELAYS", (0, 0))
+    slept: list = []
+    monkeypatch.setattr(gemini.time, "sleep", slept.append)
     busy = httpx.Response(503, json={"error": {"message": "This model is currently experiencing high demand."}})
-    ok = "data: " + json.dumps({"candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}]})
-    answers = [busy, busy, httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
+    answers = [busy, _ok_sse()]
     http = httpx.Client(transport=httpx.MockTransport(lambda req: answers.pop(0)))
-    with gemini.GeminiClient("k", http=http).stream(model="m", max_tokens=5, system="s", tools=[],
-                                                    messages=[{"role": "user", "content": "?"}]) as st:
-        assert [b.text for b in st.get_final_message().content] == ["ok"]
-    assert answers == []
+    assert _ask(gemini.GeminiClient("k", http=http)).content[0].text == "ok"
+    assert answers == [] and slept == [gemini.RETRY_DELAY]
 
     urls: list = []
 
@@ -216,15 +227,132 @@ def test_gemini_retries_high_demand_before_the_reply_starts(monkeypatch):
         urls.append(req.url.path)
         return answers.pop(0)
 
-    answers[:] = [busy, busy, busy, httpx.Response(200, text=ok + "\r\n\r\n", headers={"content-type": "text/event-stream"})]
+    slept.clear()
+    answers[:] = [busy, busy, _ok_sse()]
     fb = gemini.GeminiClient("k", http=httpx.Client(transport=httpx.MockTransport(next_model)), fallback_models=("m2",))
-    assert fb.stream(model="m1", max_tokens=5, system="s", tools=[],
-                     messages=[{"role": "user", "content": "?"}]).get_final_message().content[0].text == "ok"
-    assert [u.split("/")[-1] for u in urls] == ["m1:streamGenerateContent"] * 3 + ["m2:streamGenerateContent"]
+    assert _ask(fb).content[0].text == "ok"
+    assert [u.split("/")[-1] for u in urls] == ["m1:streamGenerateContent"] * 2 + ["m2:streamGenerateContent"]
 
-    answers[:] = [busy, busy, busy]
-    import pytest
+    answers[:] = [busy, busy]
+    with pytest.raises(gemini.GeminiUnavailable, match="gemini 503") as err:
+        _ask(gemini.GeminiClient("k", http=http))
+    assert err.value.status_code == 503
 
-    with pytest.raises(RuntimeError, match="gemini 503"):
-        gemini.GeminiClient("k", http=http).stream(model="m", max_tokens=5, system="s", tools=[],
-                                                   messages=[{"role": "user", "content": "?"}]).get_final_message()
+
+def test_gemini_429_honours_short_retry_after_and_skips_long_waits(monkeypatch):
+    import httpx
+
+    from konsilier import gemini
+
+    slept: list = []
+    monkeypatch.setattr(gemini.time, "sleep", slept.append)
+    urls: list = []
+    quota_short = httpx.Response(429, headers={"retry-after": "2"}, json={"error": {"message": "quota"}})
+    quota_long = httpx.Response(429, json={"error": {"message": "quota", "details": [
+        {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "37s"}]}})
+    answers = [quota_short, quota_long, quota_long, _ok_sse()]
+
+    def handler(req):
+        urls.append(req.url.path.split("/")[-1].split(":")[0])
+        return answers.pop(0)
+
+    client = gemini.GeminiClient("k", http=httpx.Client(transport=httpx.MockTransport(handler)),
+                                 fallback_models=("m2", "m3"))
+    assert _ask(client).content[0].text == "ok"
+    # m1: waits the 2 s it was told, retries, gets "37s" → m2 at once (no long wait) → m3 answers
+    assert urls == ["m1", "m1", "m2", "m3"] and slept == [2.0]
+    assert gemini.retry_after(quota_long) == 37.0
+
+
+# ------------------------------------------------------------------ resilience: budget, limit, metrics
+class Busy:
+    """Gemini-like agent that is over quota."""
+
+    portal_domain = "adilet.zan.kz"
+    client = type("GeminiClient", (), {})()
+
+    def stream(self, *a, **k):
+        from konsilier.gemini import GeminiUnavailable
+
+        raise GeminiUnavailable(429, "quota")
+        yield
+
+
+def _claude(reply="Расчёт — в день увольнения.", input_tokens=50, output_tokens=10):
+    client = StreamingClient([([reply], "end_turn", [])] * 5)
+    client.stream = lambda **kw: _Stream([reply], NS(stop_reason="end_turn", content=[text(reply)], usage=NS(
+        input_tokens=input_tokens, output_tokens=output_tokens, server_tool_use=NS(web_search_requests=1))))
+    return ChatAgent(client, "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+
+
+def test_unavailable_chat_says_busy_and_keeps_the_daily_limit(ctx, caplog):
+    import logging
+
+    from .test_e2e import web_user
+
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    ctx.container.chat_agent, ctx.container.chat_fallback_agent = Busy(), None
+    ctx.container.settings.chat_daily_limit = 1
+    with caplog.at_level(logging.WARNING, logger="konsilier.api.chat"):
+        for _ in range(3):  # failed attempts do not use up the one free message
+            ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+            assert ev[-1] == {"type": "error", "code": "busy", "message": "Сейчас большая нагрузка, повторите через минуту."}
+    lines = [r.getMessage() for r in caplog.records if r.getMessage().startswith("chat=unavailable")]
+    assert len(lines) == 3 and "reason=gemini_429" in lines[0]
+
+    ctx.container.chat_fallback_agent = _claude()
+    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+    assert ev[-1]["type"] == "done"
+    r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё"})
+    assert r.status_code == 429  # the answered message counts
+
+
+def test_claude_fallback_stops_at_the_daily_budget(ctx, caplog):
+    import logging
+
+    from konsilier.api.chat import reply_cost_usd
+
+    from .test_e2e import ADMIN, web_user
+
+    s = ctx.container.settings
+    assert reply_cost_usd({"input_tokens": 1_000_000, "output_tokens": 1_000_000, "web_search_requests": 2}, s) \
+        == 1.0 + 5.0 + 0.02
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    ctx.container.chat_agent = Busy()
+    # each Claude reply: 1M in + 0.2M out + 1 search = $1 + $1 + $0.01
+    ctx.container.chat_fallback_agent = _claude(input_tokens=1_000_000, output_tokens=200_000)
+    s.chat_fallback_daily_budget_usd = 3.0
+    for _ in range(2):
+        ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+        assert ev[-1]["type"] == "done"
+    with caplog.at_level(logging.WARNING, logger="konsilier.api.chat"):
+        ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+    assert ev[-1]["code"] == "busy"
+    assert any("reason=gemini_429+anthropic_budget" in r.getMessage() for r in caplog.records)
+
+    chat = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]
+    assert chat["anthropic"] == 2 and chat["gemini"] == 0 and chat["unavailable"] == 1
+    assert chat["anthropic_cost_usd"] == 4.02 and chat["fallback_open"] is False
+
+    s.chat_fallback_daily_budget_usd = 0  # 0 → Claude is never used as the fallback
+    assert ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]["fallback_open"] is False
+
+
+def test_gemini_reply_is_counted_by_provider(ctx):
+    import httpx
+
+    from konsilier.gemini import GeminiClient
+
+    from .test_e2e import ADMIN, web_user
+
+    http = httpx.Client(transport=httpx.MockTransport(lambda req: _ok_sse()))
+    ctx.container.chat_agent = ChatAgent(GeminiClient("k", http=http), "m", Adilet(fetch=fake_fetch), web_search=False)
+    ctx.container.chat_fallback_agent = None
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
+    assert ev[-1]["type"] == "done"
+    chat = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]
+    assert chat["gemini"] >= 1 and chat["anthropic_budget_usd"] == 10.0
