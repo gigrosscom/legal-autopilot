@@ -23,7 +23,12 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
     s3_region: str | None = None  # provider region name, if the S3 endpoint requires one
 
-    llm_provider: str = "mock"  # anthropic | gemini | mock
+    llm_provider: str = "mock"  # anthropic | bedrock | gemini | mock
+    # Claude on Amazon Bedrock (LLM_PROVIDER=bedrock), e.g. paid from AWS Activate credits.
+    # Keys may be left empty to use the standard AWS credential chain.
+    bedrock_region: str = "eu-central-1"
+    bedrock_access_key: str | None = None
+    bedrock_secret_key: str | None = None
     # Main model writes the document text; the fast model does classification and extraction.
     llm_model: str = "claude-sonnet-5"
     llm_fast_model: str = "claude-haiku-4-5"

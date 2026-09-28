@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import admin, auth, chat, lawyers, questions, routes, signing
+from .api import admin, auth, chat, lawyers, metrics, questions, routes, signing
 from .config import Settings, get_settings
 from .container import Container, build_container
 from .core.engine import EngineError
@@ -49,6 +49,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
 
     app.include_router(routes.router)
     app.include_router(admin.router)
+    app.include_router(metrics.router)
     app.include_router(auth.router)
     app.include_router(signing.router)
     app.include_router(lawyers.router)

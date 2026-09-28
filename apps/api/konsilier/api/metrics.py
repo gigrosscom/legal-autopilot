@@ -1,0 +1,136 @@
+"""Investor / traction metrics for the admin: funnel, outcomes, money, weekly growth. Counted from real
+records only (cases, actions, outcomes), never estimated."""
+
+from __future__ import annotations
+
+import csv
+import io
+import statistics
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from typing import Any
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import Response
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from ..core.models import Action, Case, LawyerApplication, Outcome, User, WaitlistEntry
+from .deps import get_session, require_admin
+
+router = APIRouter(prefix="/v1/admin", dependencies=[Depends(require_admin)])
+
+POSITIVE = ("won", "partial", "settled")
+
+
+def _week(d: datetime) -> str:
+    y, w, _ = d.isocalendar()
+    return f"{y}-W{w:02d}"
+
+
+def _aware(d: datetime) -> datetime:
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+def compute(session: Session, weeks: int = 12) -> dict[str, Any]:
+    cases = session.execute(select(Case.id, Case.created_at, Case.status, Case.scenario_id, Case.coverage_level,
+                                   Case.jurisdiction, Case.amount_at_stake, Case.currency, Case.owner_id)).all()
+    actions = session.execute(select(Action.case_id, Action.created_at, Action.kind, Action.submitted_at,
+                                     Action.response_class)).all()
+    outcomes = session.execute(select(Outcome.case_id, Outcome.result, Outcome.amount_recovered, Outcome.currency,
+                                      Outcome.days_to_resolution, Outcome.scenario_id)).all()
+
+    docs = [a for a in actions if a.kind != "handoff"]
+    has_doc = {a.case_id for a in docs}
+    submitted = {a.case_id for a in docs if a.submitted_at}
+    responded = {a.case_id for a in docs if a.response_class}
+    positive = {o.case_id for o in outcomes if o.result in POSITIVE}
+    classified = {c.id for c in cases if c.scenario_id or c.coverage_level == "lawyer"}
+    past_intake = {c.id for c in cases if c.status != "intake"}
+
+    funnel = [
+        {"step": "created", "cases": len(cases)},
+        {"step": "classified", "cases": len(classified)},
+        {"step": "intake_done", "cases": len(past_intake)},
+        {"step": "document_ready", "cases": len(has_doc)},
+        {"step": "submitted", "cases": len(submitted)},
+        {"step": "response", "cases": len(responded)},
+        {"step": "resolved_positive", "cases": len(positive)},
+    ]
+
+    def money(rows: list[tuple[Any, Any]]) -> dict[str, str]:
+        out: dict[str, Decimal] = {}
+        for amount, cur in rows:
+            if amount is not None:
+                out[cur or "?"] = out.get(cur or "?", Decimal(0)) + Decimal(str(amount))
+        return {k: str(v) for k, v in out.items()}
+
+    days = [o.days_to_resolution for o in outcomes if o.days_to_resolution is not None]
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(weeks=weeks)
+    series: dict[str, Counter] = {}
+    for i in range(weeks):
+        series[_week(start + timedelta(weeks=i + 1))] = Counter()
+    def bump(when: datetime | None, key: str) -> None:
+        if when is not None and _aware(when) > start:
+            series.setdefault(_week(_aware(when)), Counter())[key] += 1
+    for c in cases:
+        bump(c.created_at, "cases")
+    for a in docs:
+        bump(a.created_at, "documents")
+        bump(a.submitted_at, "submitted")
+    for u in session.execute(select(User.created_at)).scalars():
+        bump(u, "users")
+
+    owners = {c.owner_id for c in cases}
+    repeat = sum(1 for n in Counter(c.owner_id for c in cases).values() if n > 1)
+    return {
+        "generated_at": now.isoformat(),
+        "totals": {
+            "users": session.scalar(select(func.count()).select_from(User)) or 0,
+            "users_with_case": len(owners),
+            "repeat_users": repeat,
+            "cases": len(cases),
+            "documents": len(docs),
+            "submitted": len(submitted),
+            "handed_to_lawyer": sum(1 for c in cases if c.status == "handed_to_lawyer"),
+            "lawyer_applications": session.scalar(select(func.count()).select_from(LawyerApplication)) or 0,
+            "waitlist": session.scalar(select(func.count()).select_from(WaitlistEntry)) or 0,
+        },
+        "funnel": funnel,
+        "outcomes": dict(Counter(o.result for o in outcomes)),
+        "money": {
+            "at_stake": money([(c.amount_at_stake, c.currency) for c in cases]),
+            "recovered": money([(o.amount_recovered, o.currency) for o in outcomes]),
+        },
+        "median_days_to_resolution": statistics.median(days) if days else None,
+        "levels": dict(Counter("unclassified" if not c.scenario_id and c.coverage_level == "verified"
+                               else c.coverage_level for c in cases)),
+        "countries": dict(Counter(c.jurisdiction or "—" for c in cases)),
+        "top_scenarios": Counter(c.scenario_id for c in cases if c.scenario_id).most_common(10),
+        "weekly": [{"week": w, **{k: series[w].get(k, 0) for k in ("users", "cases", "documents", "submitted")}}
+                   for w in sorted(series)][-weeks:],
+    }
+
+
+@router.get("/metrics")
+def metrics(weeks: int = 12, session: Session = Depends(get_session)) -> dict[str, Any]:
+    return compute(session, max(1, min(weeks, 104)))
+
+
+@router.get("/metrics.csv")
+def metrics_csv(weeks: int = 12, session: Session = Depends(get_session)) -> Response:
+    """Weekly series and funnel as CSV — for a data room or a spreadsheet."""
+    m = compute(session, max(1, min(weeks, 104)))
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["week", "new_users", "new_cases", "documents", "submitted"])
+    for r in m["weekly"]:
+        w.writerow([r["week"], r["users"], r["cases"], r["documents"], r["submitted"]])
+    w.writerow([])
+    w.writerow(["funnel_step", "cases"])
+    for r in m["funnel"]:
+        w.writerow([r["step"], r["cases"]])
+    return Response(buf.getvalue(), media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=konsilier-metrics.csv"})

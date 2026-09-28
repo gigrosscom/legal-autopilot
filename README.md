@@ -38,6 +38,9 @@ docker compose up --build
 
 Чтобы включить реальную модель: `LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...`,
 модели — `LLM_MODEL` (текст документа, по умолчанию `claude-sonnet-5`) и `LLM_FAST_MODEL` (классификация и извлечение данных, по умолчанию `claude-haiku-4-5`).
+Claude через Amazon Bedrock (оплата из кредитов AWS, например AWS Activate): `LLM_PROVIDER=bedrock`,
+`BEDROCK_REGION` (по умолчанию `eu-central-1`), `BEDROCK_ACCESS_KEY` / `BEDROCK_SECRET_KEY` (или стандартные
+переменные AWS). Модели те же — префикс `anthropic.` добавляется сам; в консоли Bedrock модели нужно включить.
 Telegram: создайте бота у @BotFather, укажите `TELEGRAM_BOT_TOKEN` и
 `NEXT_PUBLIC_TELEGRAM_BOT` (username бота без `@`).
 

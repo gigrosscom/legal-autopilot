@@ -20,11 +20,14 @@ _FALLBACK_MODEL_PREFIXES = ("claude-opus-5", "claude-fable-5")
 
 
 class AnthropicProvider:
-    """Claude via the official SDK, JSON guaranteed by structured outputs."""
+    """Claude via the official SDK, JSON guaranteed by structured outputs.
+
+    The same code serves the Claude API and Amazon Bedrock (``bedrock()`` below): only the client and the
+    model ids differ, requests and responses are identical."""
 
     def __init__(self, model: str, api_key: str | None = None, refusal_fallback: str | None = "default",
-                 max_tokens: int = 16000, fast_model: str | None = None):
-        self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+                 max_tokens: int = 16000, fast_model: str | None = None, client: Any = None):
+        self.client = client or (anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic())
         self.model = model
         self.fast_model = fast_model or model
         self.refusal_fallback = refusal_fallback
@@ -83,3 +86,23 @@ class AnthropicProvider:
             return json.loads(text)
         except json.JSONDecodeError as e:
             raise LLMError(f"invalid JSON from LLM for task {task}") from e
+
+
+def bedrock_model_id(model: str) -> str:
+    """Bedrock model ids carry the "anthropic." prefix: claude-sonnet-5 → anthropic.claude-sonnet-5.
+    Ids that already have a prefix (anthropic.…, or a regional profile like eu.anthropic.…) stay as they are."""
+    return model if "." in model else f"anthropic.{model}"
+
+
+def bedrock(model: str, fast_model: str | None, region: str, access_key: str | None = None,
+            secret_key: str | None = None, max_tokens: int = 16000) -> AnthropicProvider:
+    """Claude on Amazon Bedrock (paid from AWS credits, e.g. AWS Activate). Credentials: explicit keys,
+    else the standard AWS chain (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, profile, instance role).
+    Server-side refusal fallbacks are not available on Bedrock, so they are off."""
+    kw: dict[str, Any] = {"aws_region": region}
+    if access_key and secret_key:
+        kw.update(aws_access_key=access_key, aws_secret_key=secret_key)
+    client = anthropic.AnthropicBedrockMantle(**kw)
+    return AnthropicProvider(model=bedrock_model_id(model),
+                             fast_model=bedrock_model_id(fast_model) if fast_model else None,
+                             refusal_fallback=None, max_tokens=max_tokens, client=client)
