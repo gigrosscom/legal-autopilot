@@ -1,5 +1,6 @@
 "use client";
 
+import { MetricsTab } from "@/components/MetricsTab";
 import { useCallback, useEffect, useState } from "react";
 import { CaseBoard, type BoardCard } from "@/components/CaseBoard";
 import { LevelBadge, type Level } from "@/components/LevelBadge";
@@ -14,7 +15,7 @@ type Card = {
   pending_approval_action_ids: string[]; route_reasons: string[];
   tasks: { id: string; action_id: string; status: string; approval_status: string }[];
 };
-type Tab = "board" | "queue" | "holds" | "forums" | "demand" | "errors" | "lawyers";
+type Tab = "metrics" | "board" | "queue" | "holds" | "forums" | "demand" | "errors" | "lawyers";
 
 export default function AdminPage() {
   const t = useT();
@@ -136,7 +137,7 @@ export default function AdminPage() {
         </Button>
       </div>
       <div role="tablist" className="flex flex-wrap gap-1">
-        {(["queue", "board", "holds", "lawyers", "forums", "demand", "errors"] as Tab[]).map((x) => (
+        {(["queue", "board", "holds", "lawyers", "metrics", "forums", "demand", "errors"] as Tab[]).map((x) => (
           <button key={x} role="tab" aria-selected={tab === x} onClick={() => setTab(x)}
             className={`min-h-10 rounded-xl px-3 text-sm font-medium ${tab === x ? "bg-ink text-white" : "bg-surface"}`}>
             {t(`admin.tabs.${x}`)}{x === "queue" && queue.length ? ` · ${queue.length}` : ""}{x === "holds" && holds.length ? ` · ${holds.length}` : ""}
@@ -156,9 +157,10 @@ export default function AdminPage() {
         {tab === "forums" && <ForumsTab token={token} />}
         {tab === "demand" && <DemandTab token={token} />}
         {tab === "errors" && <ErrorsTab token={token} />}
+        {tab === "metrics" && <MetricsTab token={token} />}
         {tab === "lawyers" && <LawyersTab token={token} />}
 
-        {selected && tab !== "forums" && tab !== "demand" && tab !== "errors" && tab !== "lawyers" && (
+        {selected && tab !== "forums" && tab !== "demand" && tab !== "errors" && tab !== "lawyers" && tab !== "metrics" && (
           <div id="case" className="space-y-4">
             <div className="card space-y-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">

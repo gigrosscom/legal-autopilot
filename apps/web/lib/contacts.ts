@@ -5,7 +5,7 @@ import { TELEGRAM_BOT } from "@/lib/api";
 // letters, digits and "_" (no dot), so the Telegram link goes to the product bot; WhatsApp needs a phone number.
 export const CONTACTS = {
   address: "", // e.g. "Алматы, пр. Абая 1, офис 10"
-  email: "",
+  email: "info@konsilier.com",
   whatsapp: "", // digits with country code, e.g. "77001234567" → https://wa.me/77001234567
   instagram: "https://www.instagram.com/konsilier.ai",
   tiktok: "https://www.tiktok.com/@konsilier.ai",

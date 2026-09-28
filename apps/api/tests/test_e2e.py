@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 
 from konsilier.core.documents import docx_text
-from konsilier.core.models import AuditLog, Case, Deadline, Notification, Outcome
+from konsilier.core.models import AuditLog, Case, Deadline, Outcome
 
 ADMIN = {"X-Admin-Token": "adm"}
 
