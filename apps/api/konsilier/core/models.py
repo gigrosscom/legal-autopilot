@@ -372,6 +372,7 @@ class LawyerApplication(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     iin_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ecp_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    desk_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # lawyers desk: what was checked, when called
 
 
 class DemandSignal(Base):
@@ -449,4 +450,34 @@ class LawyerRequest(Base):
     phone: Mapped[str] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(16), default="new")  # new | passed | closed
+    desk_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # clients desk: to whom it was passed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class SupportTicket(Base):
+    """A client's question, complaint or suggestion to the platform (clients desk of the operations centre)."""
+
+    __tablename__ = "support_tickets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), index=True)
+    case_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cases.id"))
+    kind: Mapped[str] = mapped_column(String(16))  # question | complaint | suggestion
+    name: Mapped[str | None] = mapped_column(String(200))
+    email: Mapped[str | None] = mapped_column(String(200))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    language: Mapped[str] = mapped_column(String(8), default="ru")
+    status: Mapped[str] = mapped_column(String(16), default="new")  # new | in_progress | done
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class TicketMessage(Base):
+    """One message in a support ticket thread: from the client or from the desk operator."""
+
+    __tablename__ = "ticket_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("support_tickets.id"), index=True)
+    author: Mapped[str] = mapped_column(String(16))  # client | desk
+    operator: Mapped[str | None] = mapped_column(String(200))  # desk operator's e-mail
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

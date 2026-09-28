@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from ..core.models import Case, Identity, LoginChallenge, User
+from ..core.models import Case, Identity, LawyerApplication, LoginChallenge, User
 from . import normalize as norm
 
 CODE_TTL = timedelta(minutes=10)
@@ -119,6 +119,9 @@ class Identities:
             owner = session.get(User, ident.user_id)
             # cases started anonymously on this device move to the existing account
             session.execute(update(Case).where(Case.owner_id == user.id).values(owner_id=owner.id))
+            # so do lawyer applications sent from this device before signing in
+            session.execute(update(LawyerApplication).where(LawyerApplication.user_id == user.id)
+                            .values(user_id=owner.id))
             ident.verified_at = _now()
         else:
             ident.verified_at = _now()
