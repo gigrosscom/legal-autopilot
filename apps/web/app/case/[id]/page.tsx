@@ -220,6 +220,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <div className="rounded-2xl border border-line p-4 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>
+          <p className="mt-1">{t("legal.disclaimer")}</p>
         </div>
       </>) },
   ];
@@ -228,6 +229,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     { href: "/cases", icon: "briefcase", label: t("nav.cases") },
     { href: "/account", icon: "user", label: t("app.account") },
     { href: "/", icon: "home", label: t("app.home") },
+    { href: "/terms", icon: "scroll", label: t("legal.terms") },
   ];
 
   let bar: React.ReactNode = null;

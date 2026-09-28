@@ -7,6 +7,13 @@ const en: Dict = {
     howItWorks: "How it works", coverage: "Coverage", menu: "Menu", language: "Language",
     skip: "Skip to content", main: "Main menu",
   },
+  legal: {
+    disclaimer: "Konsiliér AI is an IT service, not legal assistance: we are not an advocate or a legal consultant. AI answers are reference information and documents are drafts; you make the decisions and file documents yourself.",
+    terms: "Terms of Use",
+    accept: "By sending a message you accept the Terms of Use and understand that Konsiliér AI is an IT service, not legal assistance.",
+    version: "version",
+    languageNote: "The Terms are made in Kazakh and Russian; this is the English translation.",
+  },
   footer: {
     said: "Konsiliér [kon-seel-YER] — your AI assistant for legal matters",
     contacts: "Contacts",
@@ -328,7 +335,7 @@ const en: Dict = {
     name: "Full name",
     phone: "Phone",
     email: "Email (optional)",
-    consent: "I agree to the processing of my personal data so that Konsiliér AI can pass the case to a lawyer.",
+    consent: "I agree to the processing of my personal data so that Konsiliér AI can pass the case to a lawyer, and I accept the",
     submit: "Send the request",
     note: "Booking a specific lawyer will become available together with payment through a payment partner. For now, the directory shows demo profiles: we will pass the case to a verified lawyer in the right field and let you know.",
     doneTitle: "Request registered",

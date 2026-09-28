@@ -7,6 +7,13 @@ const tr: Dict = {
     howItWorks: "Nasıl çalışır", coverage: "Kapsam", menu: "Menü", language: "Dil",
     skip: "İçeriğe geç", main: "Ana menü",
   },
+  legal: {
+    disclaimer: "Konsiliér AI bir BT hizmetidir, hukuki yardım değildir: avukat veya hukuk danışmanı değiliz. Yapay zekâ yanıtları bilgi amaçlıdır, belgeler taslaktır; kararları siz verir, belgeleri kendiniz sunarsınız.",
+    terms: "Kullanım Koşulları",
+    accept: "Mesaj göndererek Kullanım Koşullarını kabul etmiş ve Konsiliér AI'nin hukuki yardım değil, bir BT hizmeti olduğunu anlamış olursunuz.",
+    version: "sürüm",
+    languageNote: "Koşullar Kazakça ve Rusça hazırlanmıştır; burada İngilizce çevirisi gösterilmektedir.",
+  },
   footer: {
     said: "Konsiliér [kon-sil-YER] — hukuki konularda yapay zekâ asistanı",
     contacts: "İletişim",
@@ -328,7 +335,7 @@ const tr: Dict = {
     name: "Ad soyad",
     phone: "Telefon",
     email: "E-posta (isteğe bağlı)",
-    consent: "Konsiliér AI'nin dosyayı bir avukata aktarabilmesi için kişisel verilerimin işlenmesini kabul ediyorum.",
+    consent: "Konsiliér AI'nin dosyayı bir avukata aktarabilmesi için kişisel verilerimin işlenmesine onay veriyor ve şunu kabul ediyorum:",
     submit: "Başvuruyu gönder",
     note: "Belirli bir avukattan randevu, ödeme ortağı üzerinden ödemeyle birlikte açılacak. Dizinde şu an demo profiller var: dosyayı ilgili alanda doğrulanmış bir avukata aktarır, size haber veririz.",
     doneTitle: "Başvuru kaydedildi",

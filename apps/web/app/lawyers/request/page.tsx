@@ -6,6 +6,7 @@ import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { Alert, Button, Icon } from "@/components/ui";
 import { api, errorText, publicApi, type CaseView, type Emergency } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
+import { TERMS_VERSION } from "@/lib/legal/terms";
 
 /**
  * «Обратиться» to a lawyer: one short form registers the case (the story) and the applicant's contacts.
@@ -40,7 +41,7 @@ export default function LawyerRequestPage() {
         if (tri.emergency) { setEmergency({ message: tri.message, numbers: tri.numbers }); return; }
       }
       const out = await api<{ case: CaseView }>("/v1/cases", {
-        method: "POST", body: JSON.stringify({ text: story.trim(), language: lang, country: "KZ" }) });
+        method: "POST", body: JSON.stringify({ text: story.trim(), language: lang, country: "KZ", accept_terms: TERMS_VERSION }) });
       await api(`/v1/cases/${out.case.id}/lawyer-request`, { method: "POST", body: JSON.stringify({
         lawyer_ref: lawyer.id, full_name: name.trim(), phone: phone.trim(), email: email.trim() || null, consent }) });
       setDone(out.case.id);
@@ -92,7 +93,7 @@ export default function LawyerRequestPage() {
       </fieldset>
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>{t("request.consent")}</span>
+        <span>{t("request.consent")} <Link href="/terms" className="link">{t("legal.terms")}</Link></span>
       </label>
 
       {emergency && <EmergencyPanel info={emergency} onContinue={() => { setEmergency(null); submit(new Event("submit") as unknown as React.FormEvent, true); }} />}
