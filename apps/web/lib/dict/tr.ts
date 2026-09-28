@@ -113,7 +113,7 @@ const tr: Dict = {
   cta: {
     pickSituation: "Durum seç",
     draftDocument: "Belge hazırla",
-    title: "Başlamaya hazır mısınız?",
+    title: "Sorunuzla başlayın.",
     lead: "Durumu kendi sözlerinizle anlatın — yolu gösterip ilk belgeyi hazırlayalım.",
     start: "Durumu anlat",
     lawyer: "Avukat bul",
@@ -127,6 +127,11 @@ const tr: Dict = {
     lawyersLead: "Durumu anlatın — belgeleri hazırlarız, gerektiğinde bir avukatı dahil ederiz.",
   },
   app: {
+    tabs: { home: "Ana sayfa", chat: "Sohbet", cases: "Dosyalar", documents: "Belgeler", profile: "Profil" },
+    newQuestion: "Yeni soru",
+    toSite: "Siteye dön",
+    recent: "Son dosyalar",
+    docs: { title: "Belgeler", lead: "Dosyalarınızdaki tüm belge taslakları tek yerde.", empty: "Henüz belge yok", emptyHint: "Durumunuzu sohbette anlatın — Konsiliér AI bilgileri toplayıp bir belge taslağı hazırlar.", create: "Belge hazırla", search: "Başlığa göre ara", draft: "Taslak", ready: "Sunulmaya hazır", submitted: "Sunuldu", open: "Dosyayı aç", count: "Belgeler: {n}" },
     digits: "{n} / {total}",
     back: "Geri",
     more: "Daha fazla",
@@ -196,7 +201,7 @@ const tr: Dict = {
   },
   home: {
     eyebrow: "Konsiliér [kon-sil-YER] — hukuki konularda yapay zekâ asistanı",
-    title: "Her hukuki sorun: şikâyetten sonuca kadar",
+    title: "Hukuki sorular. Anlaşılır yanıtlar.",
     sub: "Ne olduğunu anlatın. Belgeyi hazırlarız, nereye başvuracağınızı söyleriz, süreleri takip ederiz. Avukat gerekirse doğrulanmış birini dahil ederiz.",
     promise1: "Şikâyetinizi veya dilekçenizi yasaya uygun olarak sizin için yazarız",
     promise2: "Tam olarak nereye göndereceğinizi söyleriz",
@@ -208,7 +213,7 @@ const tr: Dict = {
     mySituation: "Benim durumum",
     mySituationText: "Listede yok mu? Kendi sözlerinizle anlatın — ne yapmanız gerektiğini söyleyelim.",
     situationsEyebrow: "Hayattan durumlar",
-    situationsTitle: "Neyde yardımcı oluyoruz",
+    situationsTitle: "Nereden başlayalım?",
     situationsLead: "Hangi hukuk dalı olduğunu bilmeniz gerekmez. Benzer bir durumu seçin ya da kendinizinkini anlatın.",
     pathEyebrow: "Yol haritası",
     pathTitle: "Dosyanız nasıl ilerler",
@@ -220,7 +225,7 @@ const tr: Dict = {
     coverageTitle: "Kazakistan'da çalışıyoruz. BDT ve Orta Doğu yakında",
     coverageLead: "Özbekistan, Kırgızistan, Azerbaycan, Türkiye, BAE, Suudi Arabistan ve diğer ülkeler açılış planında.",
     coverageCta: "Ülkelere göre kapsam",
-    stepsTitle: "Nasıl çalışır",
+    stepsTitle: "Sorudan bir sonraki adıma",
     steps: {
       share: "Bunun uygun olacağı meslektaşlarınız var mı? Onlara bağlantıyı gönderin.",
       s1t: "Ne olduğunu anlatın",
@@ -467,7 +472,7 @@ const tr: Dict = {
   },
   cases: {
     title: "Dosyalarım", empty: "Henüz dosyanız yok", open: "Aç", new: "Yeni dosya",
-    lead: "Tüm dosyalarınız ve her birinin aşaması burada.",
+    lead: "Sorular, belgeler ve sonraki adımlar bir arada.",
     emptyHint: "Ne olduğunu anlatın — danışmanlık ücretsiz.",
   },
   coverage: {

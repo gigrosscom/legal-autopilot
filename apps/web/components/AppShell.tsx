@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { TabBar } from "@/components/AppNav";
 import { Icon, type IconName } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
@@ -19,6 +20,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [keyboard, setKeyboard] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
 
@@ -33,6 +35,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
     const fit = () => {
       el.style.height = `${vv.height}px`;
       el.style.transform = `translateY(${vv.offsetTop}px)`;
+      setKeyboard(window.innerHeight - vv.height > 150);  // the tab bar gives its room to the keyboard
       end.current?.scrollIntoView({ block: "end" });
     };
     fit();
@@ -42,9 +45,9 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   }, []);
 
   return (
-    <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-dvh flex-col bg-sand">
+    <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-dvh flex-col bg-surface lg:start-64">
       <header className="border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex h-14 max-w-2xl items-center gap-1 px-2">
+        <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-2 lg:h-16 lg:px-6">
           <Link href={back} aria-label={t("app.back")}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
             <Icon name="arrowRight" size={22} className="rotate-180 rtl:rotate-0" />
@@ -54,24 +57,25 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
-            className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line px-4 text-sm font-semibold hover:border-brand hover:text-brand">
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-line px-3.5 text-sm font-medium hover:bg-sand">
             <Icon name="menu" size={18} />{t("app.more")}
           </button>
         </div>
       </header>
 
       <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto max-w-2xl space-y-3 px-4 py-4">
+        <div className="mx-auto max-w-3xl space-y-3 px-5 py-5 lg:px-8">
           {children}
           <div ref={end} />
         </div>
       </main>
 
       {bar && (
-        <div className="border-t border-line bg-surface pb-[max(env(safe-area-inset-bottom),0.5rem)]">
-          <div className="mx-auto max-w-2xl px-3 pt-2">{bar}</div>
+        <div className={`bg-surface ${keyboard ? "pb-2" : "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
+          <div className="mx-auto max-w-3xl px-3 pt-2 lg:px-8">{bar}</div>
         </div>
       )}
+      {!keyboard && <TabBar inline />}
 
       {open && <MoreSheet sections={sections} links={links} onClose={() => setOpen(false)} />}
     </div>

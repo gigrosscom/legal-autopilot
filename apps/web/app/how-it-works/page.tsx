@@ -25,7 +25,7 @@ export default function HowItWorks() {
     <div className="space-y-16">
       <header className="max-w-3xl space-y-3">
         <p className="eyebrow">{t("how.eyebrow")}</p>
-        <h1 className="text-4xl font-bold tracking-tight text-balance">{t("how.title")}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-balance">{t("how.title")}</h1>
         <p className="text-lg text-muted">{t("how.lead")}</p>
       </header>
 

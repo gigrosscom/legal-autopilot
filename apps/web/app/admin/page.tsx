@@ -92,7 +92,7 @@ export default function AdminPage() {
         try { localStorage.setItem("konsilier.admin", input); } catch {}
         setToken(input);
       }}>
-        <h1 className="text-xl font-bold">{t("admin.title")}</h1>
+        <h1 className="text-xl font-semibold">{t("admin.title")}</h1>
         <label htmlFor="tok" className="sr-only">{t("admin.token")}</label>
         <input id="tok" className="input" type="password" placeholder={t("admin.token")} value={input} onChange={(e) => setInput(e.target.value)} />
         <Button>{t("admin.save")}</Button>
@@ -130,7 +130,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
+        <h1 className="text-2xl font-semibold">{t("admin.title")}</h1>
         <Button variant="secondary" icon="clock" onClick={async () =>
           setInfo(`sent: ${(await adminApi<{ sent: number }>("/v1/admin/scheduler/tick", token, { method: "POST" })).sent}`)}>
           {t("admin.tick")}

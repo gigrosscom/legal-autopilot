@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode, useCallback } from "react";
 
 import type { Dict } from "./dict/types";
 import ru from "./dict/ru";
@@ -77,7 +77,8 @@ export function translate(lang: Lang, key: string, vars?: Record<string, string 
   return text;
 }
 
+/** Stable per language, so effects that depend on `t` run again only when the language changes. */
 export function useT() {
   const { lang } = useLang();
-  return (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+  return useCallback((key: string, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
 }

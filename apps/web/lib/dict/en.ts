@@ -113,7 +113,7 @@ const en: Dict = {
   cta: {
     pickSituation: "Choose a situation",
     draftDocument: "Draft a document",
-    title: "Ready to start?",
+    title: "Start with your question.",
     lead: "Describe the situation in your own words — we will show the path and prepare the first document.",
     start: "Describe your situation",
     lawyer: "Find a lawyer",
@@ -127,6 +127,11 @@ const en: Dict = {
     lawyersLead: "Describe the situation — we prepare the documents and bring in a lawyer when you need one.",
   },
   app: {
+    tabs: { home: "Home", chat: "Chat", cases: "Cases", documents: "Documents", profile: "Profile" },
+    newQuestion: "New question",
+    toSite: "Back to the website",
+    recent: "Recent cases",
+    docs: { title: "Documents", lead: "All document drafts from your cases in one place.", empty: "No documents yet", emptyHint: "Describe your situation in the chat — Konsiliér AI will gather the facts and prepare a draft document.", create: "Prepare a document", search: "Search by title", draft: "Draft", ready: "Ready to file", submitted: "Filed", open: "Open case", count: "Documents: {n}" },
     digits: "{n} of {total}",
     back: "Back",
     more: "More",
@@ -196,7 +201,7 @@ const en: Dict = {
   },
   home: {
     eyebrow: "Konsiliér [kon-seel-YER] — your AI assistant for legal matters",
-    title: "Any legal problem, from complaint to resolution",
+    title: "Legal questions. Clear answers.",
     sub: "Describe what happened. We will prepare the document, tell you where to file it and keep track of deadlines. If you need a lawyer, we will connect a verified one.",
     promise1: "We draft your complaint or application for you, in line with the law",
     promise2: "We tell you exactly where to send it",
@@ -208,7 +213,7 @@ const en: Dict = {
     mySituation: "My situation",
     mySituationText: "Not on the list? Describe it in your own words — we'll tell you what to do.",
     situationsEyebrow: "Life situations",
-    situationsTitle: "What we help with",
+    situationsTitle: "Where shall we start?",
     situationsLead: "You do not need to know which area of law it is. Pick a similar situation or just describe yours.",
     pathEyebrow: "Path map",
     pathTitle: "How your case moves forward",
@@ -220,7 +225,7 @@ const en: Dict = {
     coverageTitle: "Kazakhstan is live. CIS and the Middle East are coming soon",
     coverageLead: "Uzbekistan, Kyrgyzstan, Azerbaijan, Turkey, the UAE, Saudi Arabia and other countries are in the launch plan.",
     coverageCta: "Coverage by country",
-    stepsTitle: "How it works",
+    stepsTitle: "From your question to the next step",
     steps: {
       share: "Know colleagues this would suit? Send them the link.",
       s1t: "Tell us what happened",
@@ -467,7 +472,7 @@ const en: Dict = {
   },
   cases: {
     title: "My cases", empty: "You have no cases yet", open: "Open", new: "New case",
-    lead: "All your cases and the stage each one is at.",
+    lead: "Questions, documents and next steps — together.",
     emptyHint: "Tell us what happened — the consultation is free.",
   },
   coverage: {

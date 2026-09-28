@@ -9,7 +9,7 @@ export default function Offline() {
   return (
     <div className="card mx-auto max-w-md space-y-3 text-center">
       <Icon name="globe" size={32} className="mx-auto text-muted" />
-      <h1 className="text-xl font-bold">{t("pwa.offlineTitle")}</h1>
+      <h1 className="text-xl font-semibold">{t("pwa.offlineTitle")}</h1>
       <p className="text-sm text-muted">{t("pwa.offlineText")}</p>
       <Button onClick={() => window.location.reload()} icon="arrowRight">{t("errors.reload")}</Button>
     </div>

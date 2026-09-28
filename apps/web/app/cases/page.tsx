@@ -42,7 +42,7 @@ export default function CasesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">{t("cases.title")}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{t("cases.title")}</h1>
           <p className="text-muted">{t("cases.lead")}</p>
         </div>
         {cases && cases.length > 0 && <Button href="/start" icon="plus">{t("cases.new")}</Button>}

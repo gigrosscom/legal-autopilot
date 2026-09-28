@@ -36,7 +36,7 @@ export default function OpsPage() {
   if (!me.desks.length) {
     return (
       <div className="mx-auto max-w-md space-y-4">
-        <h1 className="text-2xl font-bold">Оперативный центр</h1>
+        <h1 className="text-2xl font-semibold">Оперативный центр</h1>
         <p className="text-muted">
           {me.email ? <>Адрес <b>{me.email}</b> не подключён к оперативному центру. Войдите по e-mail оператора.</>
             : "Для работы войдите по e-mail оператора: на почту придёт код."}
@@ -49,7 +49,7 @@ export default function OpsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Оперативный центр</h1>
+          <h1 className="text-2xl font-semibold">Оперативный центр</h1>
           <p className="text-sm text-muted">{me.email}</p>
         </div>
       </div>

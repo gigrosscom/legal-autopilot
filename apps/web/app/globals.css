@@ -6,35 +6,45 @@
  * Layout uses logical properties (ms-/me-/ps-/pe-/start/end) so Arabic (RTL) mirrors correctly.
  */
 @theme {
-  --color-ink: #14213d;
-  --color-ink-soft: #2b3a5c;
-  --color-muted: #4d5b75;
-  --color-line: #e3ded2;
-  --color-sand: #f7f4ee;
-  --color-sand-deep: #efe9dd;
+  /* Design system 1.0 (strict, minimal): white surfaces, charcoal / dark-navy ink, restrained grey-blue accent.
+     Old token names are kept so every screen picks the new palette up: sand = canvas, sand-deep = soft. */
+  --color-ink: #0b172a;
+  --color-ink-soft: #192435;
+  --color-muted: #556174; /* secondary text: 6.3:1 on white */
+  --color-faint: #687487; /* hints and captions only: 4.8:1 on white */
+  --color-line: #e2e7ee;
+  --color-sand: #f8fafc; /* canvas */
+  --color-sand-deep: #f1f4f8; /* soft */
   --color-surface: #ffffff;
 
-  /* dark blue brand; white on brand 10.4:1, brand on sand 9.5:1 */
-  --color-brand: #1d3a8a;
-  --color-brand-dark: #152a66;
-  --color-brand-50: #eef2fb;
-  --color-brand-100: #d9e2f5;
+  /* navy: links, focus, selected states; the main button is ink */
+  --color-brand: #0e2a5a;
+  --color-brand-dark: #0b172a;
+  --color-brand-50: #f1f4f8;
+  --color-brand-100: #dfe5ee;
+  /* grey-blue accent: decoration only (logo, rules), never small text */
+  --color-accent: #8796b5;
 
-  --color-danger: #b42318;
-  --color-danger-50: #fef3f2;
-  --color-warning: #8a4b08;
-  --color-warning-50: #fff7e8;
-  --color-info: #0b5f7a;
-  --color-info-50: #e8f5f9;
-  --color-draft: #6b3fa0;
-  --color-draft-50: #f5f0fb;
+  --color-success: #17684d;
+  --color-danger: #a32e39;
+  --color-danger-50: #fbf1f2;
+  --color-warning: #865416;
+  --color-warning-50: #fbf5ec;
+  --color-info: #0e2a5a;
+  --color-info-50: #f1f4f8;
+  --color-draft: #5b4a8a;
+  --color-draft-50: #f4f2f9;
 
-  --font-sans: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    sans-serif;
+  --font-sans: var(--font-inter), var(--font-arabic), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 
-  --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(20 33 61 / 0.06), 0 1px 1px rgb(20 33 61 / 0.04);
-  --shadow-raised: 0 12px 32px -12px rgb(20 33 61 / 0.18), 0 2px 6px rgb(20 33 61 / 0.06);
+  /* radii: 7–9 px compact controls, 12–17 px cards and the composer */
+  --radius-lg: 7px;
+  --radius-xl: 9px;
+  --radius-2xl: 12px;
+  --radius-3xl: 17px;
+  --radius-card: 12px;
+  --shadow-card: 0 1px 2px rgb(11 23 42 / 0.04);
+  --shadow-raised: 0 16px 40px -20px rgb(11 23 42 / 0.22), 0 2px 6px rgb(11 23 42 / 0.05);
 }
 
 html {
@@ -42,8 +52,8 @@ html {
 }
 
 body {
-  background: var(--color-sand);
-  color: var(--color-ink);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
   font-feature-settings: "cv11", "ss01";
   text-rendering: optimizeLegibility;
 }
@@ -54,15 +64,25 @@ body {
   border-radius: 0.5rem;
 }
 
+@layer base {
+  h1, h2, h3 {
+    color: inherit;
+    letter-spacing: -0.02em;
+  }
+  h1, h2 {
+    font-weight: 600;
+  }
+}
+
 ::selection {
   background: var(--color-brand-100);
 }
 
 @utility btn {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primary {
-  @apply btn bg-brand text-white shadow-sm hover:bg-brand-dark;
+  @apply btn bg-ink text-white hover:bg-brand;
 }
 @utility btn-ghost {
   @apply btn border border-line bg-surface text-ink hover:bg-sand;
@@ -71,19 +91,19 @@ body {
   @apply btn bg-danger text-white hover:opacity-90;
 }
 @utility card {
-  @apply rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)];
+  @apply rounded-2xl border border-line bg-surface p-5;
 }
 @utility input {
-  @apply w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base text-ink outline-none placeholder:text-muted/80 focus:border-brand focus:ring-2 focus:ring-brand/20;
+  @apply w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base text-ink outline-none placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent/25;
 }
 @utility chip {
-  @apply inline-flex items-center gap-1 rounded-full bg-ink/5 px-2.5 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-md bg-sand-deep px-2 py-0.5 text-xs font-medium text-ink-soft;
 }
 @utility link {
   @apply font-medium text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand;
 }
 @utility eyebrow {
-  @apply text-xs font-semibold tracking-wide text-brand uppercase;
+  @apply text-[11px] font-semibold tracking-[0.14em] text-muted uppercase;
 }
 
 /* Only transform/opacity animate, and only when the user has not asked to reduce motion. */
