@@ -114,15 +114,15 @@ except Exception as e:
   STAMP=/run/konsilier-metrics.stamp
   if [ -z "$(find "$STAMP" -mmin -55 2>/dev/null)" ]; then
     touch "$STAMP"
-    METRICS=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+    METRICS=$(timeout 60 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 import json, os, urllib.request
 r = urllib.request.Request('http://localhost:8000/v1/admin/metrics', headers={'X-Admin-Token': os.environ.get('ADMIN_TOKEN', '')})
 m = json.load(urllib.request.urlopen(r, timeout=30))
 t, f = m['totals'], m.get('referral') or {}
 src = ','.join(f'{k}:{v}' for k, v in sorted((f.get('sources') or {}).items(), key=lambda x: -x[1])[:8])
 print(f\"users={t['users']} with_case={t['users_with_case']} cases={t['cases']} documents={t['documents']} submitted={t['submitted']} lawyer_apps={t['lawyer_applications']} referred={f.get('referred_users')} inviters={f.get('inviters')} k={f.get('k_factor')} sources=[{src}]\")
-" 2>&1 | tail -1)
-    log "metrics $METRICS"
+" </dev/null 2>&1 | tail -1) || true
+    log "metrics ${METRICS:-unavailable}"
   fi
 }
 main "$@"
