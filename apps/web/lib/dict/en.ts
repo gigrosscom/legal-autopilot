@@ -10,7 +10,7 @@ const en: Dict = {
   footer: {
     contacts: "Contacts",
     lawyerCabinet: "Lawyer's cabinet",
-    tagline: "Describe your problem — Konsilier prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
+    tagline: "Describe your problem — Konsiliér AI prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
     product: "Product", lawyers: "For lawyers", designSystem: "Design system",
   },
   level: {
@@ -35,8 +35,8 @@ const en: Dict = {
   },
   pwa: {
     install: "Install the app",
-    iosSteps: "Tap Share (the square with an arrow) at the bottom of Safari, then “Add to Home Screen” — Konsilier appears among your apps.",
-    macSteps: "In Safari open File → Add to Dock — Konsilier opens in its own window.",
+    iosSteps: "Tap Share (the square with an arrow) at the bottom of Safari, then “Add to Home Screen” — Konsiliér AI appears among your apps.",
+    macSteps: "In Safari open File → Add to Dock — Konsiliér AI opens in its own window.",
     offlineTitle: "No internet connection",
     offlineText: "Your cases are saved on the server. Reload the page once you're back online — everything will be there.",
   },
@@ -230,7 +230,7 @@ const en: Dict = {
   },
   landing: {
     promise: "Your case, from the first document to the result",
-    sub: "Describe the situation in your own words. Konsilier.AI will prepare a claim or complaint under the laws of Kazakhstan, tell you where to file it and keep track of deadlines. If that is not enough, a professional platform lawyer will see the case through.",
+    sub: "Describe the situation in your own words. Konsiliér AI will prepare a claim or complaint under the laws of Kazakhstan, tell you where to file it and keep track of deadlines. If that is not enough, a professional platform lawyer will see the case through.",
     usp1: "Ready documents, without searching for a lawyer or internet templates",
     usp2: "Deadlines under control: we remind you and prepare the next step",
     usp3: "Platform lawyers: verified and rated by real results",
@@ -332,8 +332,8 @@ const en: Dict = {
   },
   how: {
     eyebrow: "How it works",
-    title: "Konsilier — your AI assistant for legal matters",
-    lead: "Describe your problem — Konsilier prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
+    title: "Konsiliér AI — your AI assistant for legal matters",
+    lead: "Describe your problem — Konsiliér AI prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
     pathTitle: "Path map",
     pathLead: "Document → recipient → deadline → escalation → lawyer.",
     levelsTitle: "Three coverage levels",
@@ -366,10 +366,10 @@ const en: Dict = {
     },
   },
   ds: {
-    title: "Design system", lead: "Konsilier tokens and components: trust, clarity and accessibility on phone and desktop, in five languages.",
+    title: "Design system", lead: "Konsiliér AI tokens and components: trust, clarity and accessibility on phone and desktop, in five languages.",
     colors: "Colors", type: "Typography", buttons: "Buttons", badges: "Level badges", notices: "Notices",
     noticesLead: "Emergency numbers, false-report warnings, the service's legal status and \"Draft\" are components, not fine print.",
-    uplSample: "Konsilier.AI is a document preparation service and a technology intermediary with lawyers.",
+    uplSample: "Konsiliér AI is a document preparation service and a technology intermediary with lawyers.",
     draftSample: "This scenario has not yet been signed off by a lawyer. References to laws and deadlines need to be checked.",
     forms: "Input fields", progress: "Case stages", board: "Case board", icons: "Icons",
   },

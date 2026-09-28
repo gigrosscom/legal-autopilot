@@ -79,7 +79,7 @@ function ShareCard({ name, demo }: { name: string; demo: boolean }) {
   return (
     <div className="mx-auto w-full max-w-sm rounded-3xl bg-gradient-to-br from-brand to-ink p-5 text-white shadow-lg">
       <div className="text-xs uppercase tracking-widest opacity-70">
-        Konsilier.AI · {demo ? L.sample : L.partner}
+        Konsiliér AI · {demo ? L.sample : L.partner}
       </div>
       <div className="mt-3 text-xl font-bold">{demo ? "Айгерим Н." : name}</div>
       <div className="text-sm opacity-80">{L.spec}</div>

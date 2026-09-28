@@ -17,7 +17,7 @@ const tr: LawyerText = {
       ["users", "Müvekkilleriniz sizindir", "Kendi müvekkillerinizi de platformda yönetin: CRM, süreler, belgeler. Getirdiğiniz müvekkillerde komisyon yok.", false],
     ] as [string, string, string, boolean][],
     faq: [
-      ["Platform avukattan ne kadar alıyor?", "Ücretten %0. Temel paket ücretsiz. Pro (sınırsız başvuru, öncelik, yapay zekâ araçları, CRM): 15 000–25 000 ₸/ay. Konsilier.AI ortaklarına Pro 6 ay, senaryo uzmanlarına 12 ay ücretsiz."],
+      ["Platform avukattan ne kadar alıyor?", "Ücretten %0. Temel paket ücretsiz. Pro (sınırsız başvuru, öncelik, yapay zekâ araçları, CRM): 15 000–25 000 ₸/ay. Konsiliér AI ortaklarına Pro 6 ay, senaryo uzmanlarına 12 ay ücretsiz."],
       ["Kimler katılabilir?", "Avukatlar, odaya üye hukuk danışmanları, insan hakları kuruluşları. Statüyü sicillerden, kimliği e-imza ile doğruluyoruz."],
       ["Avukat-müvekkil gizliliği ve meslek etiği ne olacak?", "Müvekkilin kişisel verileri sözleşme yapılana kadar gizlidir: anonimleştirilmiş dosya kartını görürsünüz. Sözleşmeyi müvekkille doğrudan siz yaparsınız, platform teknolojik aracıdır."],
       ["İnsan hakları savunucuları da ödeyecek mi?", "Hayır. STK'lar ve pro bono için sonsuza kadar ücretsiz; bağışçılar ve hibe verenler için yardım raporlarıyla."],
@@ -48,11 +48,11 @@ const tr: LawyerText = {
       cases: "dosya",
       recovered: "geri alındı",
       mln: "mn",
-      pending: "Konsilier.AI ortağı. Kanıtlanmış sonuçlara dayalı puan, ilk dosyalar tamamlandıktan sonra görünecek.",
+      pending: "Konsiliér AI ortağı. Kanıtlanmış sonuçlara dayalı puan, ilk dosyalar tamamlandıktan sonra görünecek.",
       footer: "konsilier.com · avukattan randevu",
     },
     form: {
-      title: "Konsilier.AI ortağı olun",
+      title: "Konsiliér AI ortağı olun",
       invited: "Sizi bir meslektaşınız davet etti · +3 ay Pro",
       name: "Ad soyad",
       kind: "Mesleğiniz",
@@ -70,7 +70,7 @@ const tr: LawyerText = {
       doneTitle: "Başvurunuz alındı",
       doneText: "Statünüzü kontrol edip sizinle iletişime geçeceğiz. Bu arada kişisel bağlantınız burada. Bu bağlantıyla katılan her meslektaş hem size hem kendisine +3 ay Pro kazandırır; ilk 10 davetli sizi erken dosya dağıtımında öne çıkarır.",
       copy: "Kopyala",
-      share: "Konsilier.AI'ya katılıyorum: avukatların dosya özetiyle hazır dosyalar aldığı, ücretten %0 komisyon ve aşamalı ödeme sunan platform. «Konsilier.AI Ortağı» programı: 6 ay ücretsiz Pro. ",
+      share: "Konsiliér AI'ya katılıyorum: avukatların dosya özetiyle hazır dosyalar aldığı, ücretten %0 komisyon ve aşamalı ödeme sunan platform. «Konsiliér AI Ortağı» programı: 6 ay ücretsiz Pro. ",
     },
     hero: {
       chip: "Avukatlar, hukukçular ve insan hakları savunucuları için",
@@ -93,7 +93,7 @@ const tr: LawyerText = {
       ["receipt", "Kendi müvekkilleriniz: komisyonsuz", "Müvekkillerinizi kişisel bağlantıyla davet edin: CRM, süreler ve belgeler ücretsiz."],
     ],
     partner: {
-      title: "«Konsilier.AI Ortağı» programı",
+      title: "«Konsiliér AI Ortağı» programı",
       intro: "Platformun pilot sürecini bizimle birlikte yürüten ilk 100 doğrulanmış hukukçu, avukat ve insan hakları savunucusu. Statü kayıtla değil, katılımla kazanılır.",
       doesTitle: "Ortak ne yapar",
       does: ["Statü ve kimlik doğrulamasından geçer.", "Platformdan ayda 3–5 dosya üstlenir.", "Standartlara uyar: iş başlamadan şeffaf ücret, aşama süreleri, kartta dosyanın seyrine dair notlar.", "Ayda bir belgeler ve senaryolar hakkında geri bildirim verir: neyin düzeltilmesi, neyin eksik olduğu."],
@@ -108,7 +108,7 @@ const tr: LawyerText = {
       doesTitle: "Uzman ne yapar",
       does: ["Kendi alanındaki senaryoda mevzuatı, süreleri ve muhatapları kontrol eder.", "Belge şablonlarını kontrol eder (ihtarnameler, şikâyetler, dilekçeler).", "Mevzuat değiştiğinde senaryoyu günceller.", "Tartışmalı durumları metodolojiye göre inceler."],
       getsTitle: "Uzman ne kazanır",
-      gets: ["12 ay ücretsiz Pro.", "«Uzman» statüsü ve her doğrulanmış senaryoda adı: «Senaryoyu kontrol eden: …».", "Kendi senaryolarındaki dosyaları ilk o alır.", "Konsilier.AI materyallerinde ve sosyal medyasında anılma."],
+      gets: ["12 ay ücretsiz Pro.", "«Uzman» statüsü ve her doğrulanmış senaryoda adı: «Senaryoyu kontrol eden: …».", "Kendi senaryolarındaki dosyaları ilk o alır.", "Konsiliér AI materyallerinde ve sosyal medyasında anılma."],
     },
     pricing: {
       title: "Paketler",

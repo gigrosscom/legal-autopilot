@@ -46,10 +46,10 @@ COUNTRIES = {
 
 COMPLIANCE = {
     "ai_label": {
-        "ru": "Подготовлено с помощью ИИ (Konsilier.AI). Проверьте данные перед подачей.",
-        "en": "Prepared with AI (Konsilier.AI). Check the details before filing.",
-        "ar": "أُعدّ بمساعدة الذكاء الاصطناعي (Konsilier.AI). تحقّق من البيانات قبل التقديم.",
-        "tr": "Yapay zekâ ile hazırlandı (Konsilier.AI). Başvurmadan önce bilgileri kontrol edin.",
+        "ru": "Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей.",
+        "en": "Prepared with AI (Konsiliér AI). Check the details before filing.",
+        "ar": "أُعدّ بمساعدة الذكاء الاصطناعي (Konsiliér AI). تحقّق من البيانات قبل التقديم.",
+        "tr": "Yapay zekâ ile hazırlandı (Konsiliér AI). Başvurmadan önce bilgileri kontrol edin.",
     },
     "draft_disclaimer": {
         "ru": "ЧЕРНОВИК: сценарий ещё не подписан юристом. Ссылки на нормы и сроки подлежат проверке.",
@@ -58,13 +58,13 @@ COMPLIANCE = {
         "tr": "TASLAK: henüz bir avukat tarafından onaylanmadı. Hukuki dayanaklar ve süreler kontrol edilmelidir.",
     },
     "service_disclaimer": {
-        "ru": "Konsilier.AI помогает подготовить и подать документы и следит за сроками. Если нужно довести дело "
+        "ru": "Konsiliér AI помогает подготовить и подать документы и следит за сроками. Если нужно довести дело "
               "до результата — подключим профессионального юриста платформы. Документы подаются от вашего имени.",
-        "en": "Konsilier.AI helps you prepare and file documents and tracks deadlines. When a case needs to be "
+        "en": "Konsiliér AI helps you prepare and file documents and tracks deadlines. When a case needs to be "
               "taken further, a professional lawyer on the platform can step in. Documents are filed in your name.",
-        "ar": "يساعدك Konsilier.AI على إعداد المستندات وتقديمها ومتابعة المواعيد. وعندما تحتاج القضية إلى متابعة "
+        "ar": "يساعدك Konsiliér AI على إعداد المستندات وتقديمها ومتابعة المواعيد. وعندما تحتاج القضية إلى متابعة "
               "أبعد، يمكن لمحامٍ محترف على المنصة أن يتولاها. تُقدَّم المستندات باسمك.",
-        "tr": "Konsilier.AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri takip eder. Dava daha ileri "
+        "tr": "Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri takip eder. Dava daha ileri "
               "taşınmalıysa platformdaki profesyonel bir avukat devreye girer. Belgeler sizin adınıza sunulur.",
     },
 }

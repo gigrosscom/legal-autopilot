@@ -10,7 +10,7 @@ const tr: Dict = {
   footer: {
     contacts: "İletişim",
     lawyerCabinet: "Avukat paneli",
-    tagline: "Sorununuzu anlatın — Konsilier ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
+    tagline: "Sorununuzu anlatın — Konsiliér AI ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
     product: "Ürün", lawyers: "Avukatlara", designSystem: "Tasarım sistemi",
   },
   level: {
@@ -35,8 +35,8 @@ const tr: Dict = {
   },
   pwa: {
     install: "Uygulamayı yükle",
-    iosSteps: "Safari'nin altındaki Paylaş (oklu kare) düğmesine, ardından «Ana Ekrana Ekle»ye dokunun — Konsilier uygulamalarınız arasında görünür.",
-    macSteps: "Safari'de Dosya → Dock'a Ekle menüsünü açın — Konsilier ayrı bir pencerede açılır.",
+    iosSteps: "Safari'nin altındaki Paylaş (oklu kare) düğmesine, ardından «Ana Ekrana Ekle»ye dokunun — Konsiliér AI uygulamalarınız arasında görünür.",
+    macSteps: "Safari'de Dosya → Dock'a Ekle menüsünü açın — Konsiliér AI ayrı bir pencerede açılır.",
     offlineTitle: "İnternet bağlantısı yok",
     offlineText: "Dosyalarınız sunucuda kayıtlı. Bağlantı gelince sayfayı yenileyin — her şey yerinde olacak.",
   },
@@ -230,7 +230,7 @@ const tr: Dict = {
   },
   landing: {
     promise: "Dosyanız: ilk belgeden sonuca kadar",
-    sub: "Durumu kendi sözlerinizle anlatın. Konsilier.AI, Kazakistan yasalarına göre ihtarname veya şikâyet hazırlar, nereye başvuracağınızı söyler ve süreleri takip eder. Bu yetmezse platformun profesyonel avukatı dosyayı sonuna kadar götürür.",
+    sub: "Durumu kendi sözlerinizle anlatın. Konsiliér AI, Kazakistan yasalarına göre ihtarname veya şikâyet hazırlar, nereye başvuracağınızı söyler ve süreleri takip eder. Bu yetmezse platformun profesyonel avukatı dosyayı sonuna kadar götürür.",
     usp1: "Hazır belgeler: avukat aramadan, internetten şablon bulmadan",
     usp2: "Süreler kontrol altında: hatırlatır, sonraki adımı hazırlarız",
     usp3: "Platform avukatları: doğrulanmış, gerçek sonuçlara dayalı puanlı",
@@ -332,8 +332,8 @@ const tr: Dict = {
   },
   how: {
     eyebrow: "Nasıl çalışır",
-    title: "Konsilier — hukuki konularda yapay zekâ asistanı",
-    lead: "Sorununuzu anlatın — Konsilier ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
+    title: "Konsiliér AI — hukuki konularda yapay zekâ asistanı",
+    lead: "Sorununuzu anlatın — Konsiliér AI ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
     pathTitle: "Yol haritası",
     pathLead: "Belge → muhatap → süre → üst başvuru → avukat.",
     levelsTitle: "Üç kapsam seviyesi",
@@ -366,10 +366,10 @@ const tr: Dict = {
     },
   },
   ds: {
-    title: "Tasarım sistemi", lead: "Konsilier token'ları ve bileşenleri: telefonda ve bilgisayarda, beş dilde güven, açıklık ve erişilebilirlik.",
+    title: "Tasarım sistemi", lead: "Konsiliér AI token'ları ve bileşenleri: telefonda ve bilgisayarda, beş dilde güven, açıklık ve erişilebilirlik.",
     colors: "Renkler", type: "Tipografi", buttons: "Butonlar", badges: "Seviye rozetleri", notices: "Bildirimler",
     noticesLead: "Acil numaralar, gerçeğe aykırı ihbar, hizmetin hukuki statüsü ve «Taslak» küçük yazı değil, bileşendir.",
-    uplSample: "Konsilier.AI bir belge hazırlama hizmeti ve avukatlarla teknolojik aracıdır.",
+    uplSample: "Konsiliér AI bir belge hazırlama hizmeti ve avukatlarla teknolojik aracıdır.",
     draftSample: "Senaryo henüz avukat tarafından onaylanmadı. Mevzuat ve süre atıfları kontrol edilmelidir.",
     forms: "Giriş alanları", progress: "Dosya aşamaları", board: "Dosya panosu", icons: "İkonlar",
   },

@@ -17,7 +17,7 @@ const en: LawyerText = {
       ["users", "Your clients stay yours", "Manage your own clients on the platform too: CRM, deadlines, documents. No commission on clients you bring.", false],
     ] as [string, string, string, boolean][],
     faq: [
-      ["How much does the platform charge lawyers?", "0% of your fee. The Basic plan is free. Pro (unlimited responses, priority, AI tools, CRM) is 15,000–25,000 ₸/mo. Konsilier.AI partners get Pro free for 6 months, scenario experts for 12 months."],
+      ["How much does the platform charge lawyers?", "0% of your fee. The Basic plan is free. Pro (unlimited responses, priority, AI tools, CRM) is 15,000–25,000 ₸/mo. Konsiliér AI partners get Pro free for 6 months, scenario experts for 12 months."],
       ["Who can join?", "Advocates, legal consultants who are chamber members, and human rights organizations. We check status against registries and identity via digital signature (EDS)."],
       ["What about attorney-client privilege and ethics?", "The client's personal data is hidden until a contract is signed: you see an anonymized case card. You sign the contract directly with the client; the platform is a technology intermediary."],
       ["Do human rights defenders pay too?", "No. For NGOs and pro bono work it is free forever, with reports on assistance for donors and grant makers."],
@@ -48,11 +48,11 @@ const en: LawyerText = {
       cases: "cases",
       recovered: "recovered",
       mln: "M",
-      pending: "Konsilier.AI partner. A rating based on proven results will appear after the first completed cases.",
+      pending: "Konsiliér AI partner. A rating based on proven results will appear after the first completed cases.",
       footer: "konsilier.com · book a lawyer",
     },
     form: {
-      title: "Become a Konsilier.AI partner",
+      title: "Become a Konsiliér AI partner",
       invited: "Invited by a colleague · +3 months of Pro",
       name: "Full name",
       kind: "Who you are",
@@ -70,7 +70,7 @@ const en: LawyerText = {
       doneTitle: "Application received",
       doneText: "We will check your status and get in touch. Meanwhile, here is your personal link. Every colleague who joins through it gets +3 months of Pro for both of you, and your first 10 invites move you up in early case matching.",
       copy: "Copy",
-      share: "I'm joining Konsilier.AI, a platform where lawyers get ready cases with a case file, 0% commission on their fee and pay-per-stage. The Konsilier.AI Partner program: Pro free for 6 months. ",
+      share: "I'm joining Konsiliér AI, a platform where lawyers get ready cases with a case file, 0% commission on their fee and pay-per-stage. The Konsiliér AI Partner program: Pro free for 6 months. ",
     },
     hero: {
       chip: "For advocates, lawyers and human rights defenders",
@@ -93,7 +93,7 @@ const en: LawyerText = {
       ["receipt", "Your own clients, no commission", "Invite your clients with your personal link: CRM, deadlines and documents for free."],
     ],
     partner: {
-      title: "The Konsilier.AI Partner program",
+      title: "The Konsiliér AI Partner program",
       intro: "The first 100 verified lawyers, advocates and human rights defenders who run the platform pilot with us. The status is earned by taking part, not by signing up.",
       doesTitle: "What a partner does",
       does: ["Passes status and identity verification.", "Takes on 3–5 cases from the platform per month.", "Follows the standards: clear price before work starts, stage deadlines, progress updates on the case card.", "Once a month gives feedback on documents and scenarios: what to fix and what is missing."],
@@ -108,7 +108,7 @@ const en: LawyerText = {
       doesTitle: "What an expert does",
       does: ["Reviews the laws, deadlines and recipients in scenarios for their specialty.", "Reviews document templates (claims, complaints, applications).", "Updates the scenario when the law changes.", "Resolves disputed cases according to the methodology."],
       getsTitle: "What an expert gets",
-      gets: ["Pro free for 12 months.", "\"Expert\" status and their name in every verified scenario: \"Scenario verified by: …\".", "First access to cases in their scenarios.", "Mentions in Konsilier.AI materials and social media."],
+      gets: ["Pro free for 12 months.", "\"Expert\" status and their name in every verified scenario: \"Scenario verified by: …\".", "First access to cases in their scenarios.", "Mentions in Konsiliér AI materials and social media."],
     },
     pricing: {
       title: "Plans",

@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     report_every_days: int = 3  # next-step reminder when a case has not moved
     report_max_nudges: int = 5  # then stop reminding until something changes  # eGov Mobile fetches the document to sign from here
     resend_api_key: str | None = None  # e-mail codes via Resend; otherwise SMTP_HOST; otherwise disabled
-    email_from: str = "Konsilier.AI <no-reply@konsilier.com>"
+    email_from: str = "Konsiliér AI <no-reply@konsilier.com>"
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)
     sms_api_key: str | None = None  # Mobizon API key
     smsc_login: str | None = None
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     sms_sender: str | None = None  # registered alpha name, if any
     ncanode_url: str | None = None  # e.g. http://ncanode:14579 — enables ЭЦП and eGov Mobile checks
     egov_org_bin: str | None = None  # BIN shown in eGov Mobile; eGov Mobile sign-in is off without it
-    egov_org_name: str = "Konsilier.AI"
+    egov_org_name: str = "Konsiliér AI"
     phone_default_country_code: str = "7"  # for numbers typed without "+"
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
 
