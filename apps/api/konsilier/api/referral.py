@@ -64,8 +64,9 @@ def referral_metrics(session: Session) -> dict[str, Any]:
     inviters = session.scalar(select(func.count(func.distinct(User.referred_by)))
                               .where(User.referred_by.is_not(None))) or 0
     sharing = session.scalar(select(func.count()).select_from(User).where(User.ref_code.is_not(None))) or 0
-    sources = dict(session.execute(select(func.coalesce(User.source, "direct"), func.count())
-                                   .group_by(func.coalesce(User.source, "direct"))).all())
+    # group by the plain column (PostgreSQL rejects a GROUP BY on a separately bound coalesce expression)
+    sources = {src or "direct": n for src, n in session.execute(
+        select(User.source, func.count()).group_by(User.source)).all()}
     return {
         "users": users, "referred_users": referred, "inviters": inviters, "users_with_link": sharing,
         # invited people per existing user: the viral coefficient the team tracks
