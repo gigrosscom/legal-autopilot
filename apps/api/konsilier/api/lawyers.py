@@ -239,7 +239,7 @@ def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depen
     notify_team(container, f"Заявка клиента юристу №{req.id}",
                 f"{req.full_name}, тел. {req.phone}{', ' + req.email if req.email else ''}\n"
                 f"Дело: {case.id}\nЮрист в каталоге: {body.lawyer_ref or '—'}\n\n"
-                f"Передайте дело проверенному юристу нужной специализации и сообщите клиенту.")
+                f"Передайте дело проверенному юристу нужной специализации и сообщите клиенту.", desk="clients")
     return {"id": req.id, "case_id": str(case.id), "status": req.status}
 
 
