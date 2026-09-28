@@ -16,7 +16,9 @@ export function Brand({ size = 26, className = "" }: { size?: number; className?
   return (
     <span dir="ltr" className={`inline-flex items-center gap-2 text-ink ${className}`}>
       <Mark size={size} />
-      <span className="font-semibold tracking-[-0.03em]" style={{ fontSize: size * 0.72 }}>
+      {/* Line height 1 and a small shift so the capitals sit on the optical centre of the mark, not above it. */}
+      <span className="font-semibold leading-none tracking-[-0.03em]"
+        style={{ fontSize: size * 0.72, transform: `translateY(${(size * 0.058).toFixed(2)}px)` }}>
         Konsiliér<span className="ms-[0.2em] font-normal text-muted">AI</span>
       </span>
     </span>
