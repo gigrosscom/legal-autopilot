@@ -756,6 +756,7 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
       </div>
       {a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
       {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
+      {a.downloadable && !a.submitted_at && !["submitted", "responded"].includes(a.status) && <SubmitOnline caseId={caseId} a={a} />}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold">{t("case.instructions")}</p>
@@ -778,6 +779,74 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
       )}
       {a.response_summary && <p className="text-sm text-muted">«{a.response_summary}»</p>}
     </div>
+  );
+}
+
+type Portal = { key: "eotinish" | "court" | "site"; name: string; url: string };
+
+/** Where this document is filed online: eOtinish for state bodies, the Judicial Cabinet for courts, or the
+ *  addressee's own filing page. Null when the document goes by e-mail or on paper. */
+function portalOf(a: CaseAction): Portal | null {
+  const url = a.addressee?.submit_url ?? "";
+  if (/eotinish\.kz/.test(url)) return { key: "eotinish", name: "eOtinish", url: "https://eotinish.kz" };
+  if (a.addressee?.kind === "court" || /sud\.(gov\.)?kz/.test(url)) return { key: "court", name: "Судебный кабинет", url: "https://office.sud.kz" };
+  if (url) return { key: "site", name: new URL(url).hostname.replace(/^www\./, ""), url };
+  return null;
+}
+
+/** «Подать онлайн»: the document is filed on the state portal in the person's own name, in three steps —
+ *  take the file and the cover text, open the portal, mark it filed. The portal signs with ЭЦП / eGov Mobile. */
+function SubmitOnline({ caseId, a }: { caseId: string; a: CaseAction }) {
+  const t = useT();
+  const portal = portalOf(a);
+  const [copied, setCopied] = useState(false);
+  const [done, setDone] = useState<Set<number>>(new Set());
+  if (!portal) return null;
+  const pname = portal.key === "court" ? t("submit.courtName") : portal.name;
+  const mark = (i: number) => setDone((d) => new Set(d).add(i));
+  const pdf = `/v1/cases/${caseId}/actions/${a.id}/document?format=${a.has_pdf ? "pdf" : "docx"}`;
+  const cover = t("submit.cover", { title: a.title, to: a.addressee?.name ?? "" });
+  const step = (i: number, title: string, body: React.ReactNode) => (
+    <li className="flex gap-3">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${done.has(i) ? "bg-ink text-white" : "border border-line bg-surface text-ink"}`}>
+        {done.has(i) ? <Icon name="check" size={14} /> : i}
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="text-sm font-semibold text-ink">{title}</p>
+        {body}
+      </div>
+    </li>
+  );
+  return (
+    <section className="space-y-3 rounded-2xl border border-line bg-sand p-4" aria-labelledby={`submit-${a.id}`}>
+      <div className="space-y-1">
+        <h4 id={`submit-${a.id}`} className="flex items-center gap-2 font-semibold text-ink"><Icon name="send" size={18} />{t("submit.title", { portal: pname })}</h4>
+        <p className="text-xs text-muted">{t(`submit.lead.${portal.key}`)}</p>
+      </div>
+      <ol className="space-y-4">
+        {step(1, t("submit.s1"), (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost min-h-10" onClick={async () => { await downloadFile(pdf, `${a.action_id}.${a.has_pdf ? "pdf" : "docx"}`); mark(1); }}>
+              <Icon name="download" size={16} />{t("submit.download")}
+            </button>
+            <button type="button" className="btn-ghost min-h-10" onClick={async () => {
+              try { await navigator.clipboard.writeText(cover); setCopied(true); mark(1); setTimeout(() => setCopied(false), 2500); } catch {}
+            }}>
+              <Icon name={copied ? "check" : "document"} size={16} />{copied ? t("submit.copied") : t("submit.copy")}
+            </button>
+          </div>
+        ))}
+        {step(2, t("submit.s2", { portal: pname }), (
+          <>
+            <a href={portal.url} target="_blank" rel="noreferrer" onClick={() => mark(2)} className="btn-primary min-h-11 w-full sm:w-auto">
+              {t("submit.open", { portal: pname })}<Icon name="external" size={16} />
+            </a>
+            <p className="text-xs text-muted">{t(`submit.how.${portal.key}`, { to: a.addressee?.name ?? "" })}</p>
+          </>
+        ))}
+        {step(3, t("submit.s3"), <p className="text-xs text-muted">{t("submit.s3hint", { btn: t("case.submitted") })}</p>)}
+      </ol>
+    </section>
   );
 }
 
