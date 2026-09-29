@@ -248,7 +248,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
-      scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}`}>
+      scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}-${c.payment?.code ?? ""}-${c.payment?.status ?? ""}`}>
       {c.scenario?.beta && <BetaNotice disclaimer={c.scenario.disclaimer} />}
       {c.scenario?.draft_disclaimer && (
         <p className="flex items-start gap-2 rounded-2xl bg-draft-50 px-3 py-2 text-xs text-draft">
@@ -261,9 +261,6 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
         <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
       )}
-
-      {c.payment && c.payment.available && c.payment.code && c.payment.status !== "paid"
-        && <PaymentCard pay={c.payment} />}
 
       <div className="space-y-2" aria-live="polite">
         {log.map((m, i) => (
@@ -281,6 +278,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
       </div>
+
+      {/* right above the bar, where the page scrolls to: requisites and the payment code must be in view */}
+      {c.payment && c.payment.available && c.payment.code && c.payment.status !== "paid"
+        && <PaymentCard pay={c.payment} />}
 
       {ack && (
         <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
@@ -369,7 +370,7 @@ function NextStepBar({ c, busy, post, run, setCase }: {
   // Paying for the next document: choose one document or «Дело под ключ», then "I have paid". null when it is paid for.
   const pay = c.payment;
   const payControls = (): ReactNode => {
-    if (!pay || pay.status === "paid") return null;
+    if (!pay || pay.status === "paid" || c.safety.hold_reason) return null;
     if (!pay.available) return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="alert" size={18} className="text-warning" />{t("payment.unavailable")}</p>;
     if (pay.status === "pending" || pay.status === "not_found") {
       return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/payment/claim")} icon="check">{t("payment.paid")}</Button>;
@@ -515,7 +516,7 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
 function PaymentCard({ pay }: { pay: Payment }) {
   const t = useT();
   return (
-    <section className="card space-y-3 border-brand/40" aria-labelledby="pay-title">
+    <section id="pay-card" className="card space-y-3 border-brand/40" aria-labelledby="pay-title">
       <h2 id="pay-title" className="flex items-center gap-2 text-lg font-semibold"><Icon name="coin" className="text-brand" />{t(pay.purpose === "case" ? "payment.titleCase" : "payment.title")}</h2>
       <p className="text-sm text-muted">{t("payment.lead")}</p>
       {pay.status === "awaiting_confirmation" && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}

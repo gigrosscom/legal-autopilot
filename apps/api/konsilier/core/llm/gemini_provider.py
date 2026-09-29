@@ -34,7 +34,7 @@ def _openapi(s: Any) -> Any:
 class GeminiProvider:
     """Google Gemini (REST, free tier of AI Studio keys) with JSON constrained to the schema."""
 
-    def __init__(self, api_key: str, model: str, *, http: httpx.Client | None = None, timeout: float = 90):
+    def __init__(self, api_key: str, model: str, *, http: httpx.Client | None = None, timeout: float = 45):
         self.api_key, self.model = api_key, model
         self.http = http or httpx.Client(timeout=timeout)
         self._json_schema_field = "responseJsonSchema"  # falls back to responseSchema if the API rejects it
@@ -71,7 +71,10 @@ class GeminiProvider:
             raise LLMError("rate limited: free Gemini quota reached")
         if r.status_code >= 400:
             raise LLMError(f"LLM API error {r.status_code}: {r.text[:300]}")
-        data = r.json()
+        try:
+            data = r.json()
+        except ValueError as e:
+            raise LLMError(f"invalid response from LLM for task {task}") from e
         cand = (data.get("candidates") or [{}])[0]
         finish = cand.get("finishReason")
         if finish in ("SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "RECITATION"):
