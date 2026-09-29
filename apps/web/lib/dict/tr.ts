@@ -586,6 +586,7 @@ const tr: Dict = {
     tick: "Hatırlatmaları çalıştır",
   },
   account: {
+    bonus: "Ücretsiz belgeleriniz: {n} — arkadaş davetleri için. Herhangi bir dosyanızda ödeme yapmadan hazırlanır.",
     eyebrow: "Hesap",
     title: "Giriş ve kimlik doğrulama",
     lead: "Dosyalarınızı her cihazdan görmek için giriş yapın. E-imza (ЭЦП) veya eGov Mobile ile doğrulama kimliğinizi de teyit eder.",
@@ -691,12 +692,12 @@ const tr: Dict = {
     },
   },
   invite: {
+    offer: "Bir arkadaşınızı davet edin: o bir belgenin ücretini ödediğinde ikiniz de bir belgeyi ücretsiz alırsınız",
     title: "İhtiyacı olanları davet edin",
     lead: "Bağlantınızı benzer bir sorunu olan arkadaşlarınıza ve yakınlarınıza gönderin. Danışmanlık onlar için ücretsiz.",
     share: "Bağlantıyı paylaş",
     copied: "Bağlantı kopyalandı",
     invited: "Bağlantınızla gelenler: {n}",
-    chatAsk: "İşinize yaradı mı? Bağlantıyı benzer durumdaki birine gönderin.",
     shareText: "Konsiliér AI — hukuki konularda ücretsiz yapay zekâ danışmanlığı. Durumunuzu anlatın, ne yapmanız gerektiğini söylesin:",
   },
   submit: {
@@ -806,6 +807,11 @@ const tr: Dict = {
     hintCta: "E-postayı doğrula",
   },
   payment: {
+    contact: {
+      phone: "Telefonunuz — belgeyi göndeririz ve süreyi hatırlatırız",
+      email: "E-postanız — belgeyi göndeririz ve süreyi hatırlatırız",
+      lead: "Kodla doğrulayın — tarayıcı veya cihaz değiştirseniz de dosya sizde kalır.",
+    },
     title: "Belge ödemesi",
     lead: "Sohbetteki danışmanlık ücretsizdir; belge hazırlama ücretlidir. Tutarı aşağıdaki bilgilerle Kaspi üzerinden gönderin — belge, ödeme onaylandıktan sonra erişilebilir olur.",
     recipient: "Alıcı",

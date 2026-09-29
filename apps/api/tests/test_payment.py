@@ -11,6 +11,7 @@ from konsilier.config import Settings
 from konsilier.core.adapters.payment import (ManualTransferPaymentAdapter, StubPaymentAdapter, build_payments,
                                              new_payment_code)
 from konsilier.core.models import AuditLog, Case, Invoice
+from konsilier.identity.senders import LogSender
 
 from .test_e2e import run_intake, web_user
 from .test_lawyer_onboarding import Outbox
@@ -29,6 +30,15 @@ def manual(ctx, name: str = RECIPIENT, phone: str = PHONE) -> None:
     ctx.container.engine.payments = ManualTransferPaymentAdapter(recipient_name=name, kaspi_phone=phone,
                                                                  comment_prefix="ka")
     ctx.container.engine.config.approval_required_first_n = 0
+    ctx.container.sms_sender = LogSender("sms")  # SMS sign-in on: a phone is confirmed before paying
+
+
+def confirm(api, kind: str = "phone", target: str = "+7 701 555 00 11") -> None:
+    """The person confirms a phone (or an e-mail) by the one-time code, as in the payment window."""
+    ctx = api.ctx
+    ctx.container.settings.dev_show_codes = True
+    code = api.post(f"/v1/auth/{kind}/start", json={"target": target})["dev_code"]
+    api.post(f"/v1/auth/{kind}/verify", json={"target": target, "code": code})
 
 
 def qualified_case(ctx):
@@ -63,6 +73,11 @@ def test_manual_transfer_full_path(ctx):
     assert out["action_id"] is None and out["case"]["status"] == "qualified" and out["case"]["actions"] == []
     assert out["payment"]["status"] == "none" and out["payment"]["code"] is None
     assert out["payment"]["options"] == [{"purpose": "document", "amount": 1990}, {"purpose": "case", "amount": 9990}]
+    # a bill only once the phone is confirmed: the document and the reminders reach the person
+    r = ctx.client.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    assert r.status_code == 422 and r.json()["detail"] == {"code": "contact_required", "message": "contact_required",
+                                                           "methods": ["phone"]}
+    confirm(api)
     pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
     assert pay["amount"] == 1990 and pay["currency"] == "KZT" and pay["status"] == "pending"
     assert pay["purpose"] == "document"
@@ -155,6 +170,7 @@ def test_one_document_or_the_whole_case(ctx):
     paying cancels the first bill."""
     manual(ctx)
     api, cid = qualified_case(ctx)
+    confirm(api)
     eng = ctx.container.engine
     first = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]["code"]
     whole = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "case"})["case"]["payment"]
@@ -222,6 +238,7 @@ def test_document_prepared_by_itself_once_payment_confirmed(ctx):
     manual(ctx)
     ctx.container.settings.ops_clients_emails = "support@konsilier.com"
     api, cid = qualified_case(ctx)
+    confirm(api)
     api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})
     api.post(f"/v1/cases/{cid}/payment/claim")
     cl = operator(ctx, "support@konsilier.com")
@@ -246,6 +263,7 @@ def test_document_ready_the_moment_the_desk_confirms(ctx):
     ctx.container.settings.background_jobs = "inline"
     ctx.container.settings.ops_clients_emails = "support@konsilier.com"
     api, cid = qualified_case(ctx)
+    confirm(api)
     with ctx.container.session_factory() as s:
         assert s.get(Case, uuid.UUID(cid)).narrative  # written as soon as the interview was done
     api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})
@@ -259,3 +277,32 @@ def test_document_ready_the_moment_the_desk_confirms(ctx):
     if calls is not None:
         assert len(ctx.llm.calls) == calls  # no model call after the payment: only the file is made
     api.get(f"/v1/cases/{cid}/actions/{case['actions'][0]['id']}/document?format=docx")
+
+
+def test_contact_before_paying_falls_back_to_email_and_spares_telegram(ctx):
+    """Without SMS sign-in on the server a confirmed e-mail is enough; with it, an e-mail alone is not. Telegram
+    users are reachable in the bot and pay as before; PAYMENT_REQUIRES_CONTACT=false switches the rule off."""
+    from .test_e2e import telegram_user
+
+    manual(ctx)
+    ctx.container.sms_sender = None
+    ctx.container.email_sender = LogSender("email")
+    api, cid = qualified_case(ctx)
+    r = ctx.client.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    assert r.status_code == 422 and r.json()["detail"]["methods"] == ["email"]
+    confirm(api, "email", "owner@mail.kz")
+    assert api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]["status"] == "pending"
+
+    ctx.container.sms_sender = LogSender("sms")  # SMS on: the phone is what is asked
+    api2, cid2 = qualified_case(ctx)
+    confirm(api2, "email", "other@mail.kz")
+    r = ctx.client.post(f"/v1/cases/{cid2}/payment", headers=api2.h, json={"purpose": "case"})
+    assert r.status_code == 422 and r.json()["detail"]["methods"] == ["phone"]
+    ctx.container.settings.payment_requires_contact = False
+    assert ctx.client.post(f"/v1/cases/{cid2}/payment", headers=api2.h, json={"purpose": "case"}).status_code == 200
+    ctx.container.settings.payment_requires_contact = True
+
+    tg = telegram_user(ctx)
+    cid3 = tg.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})["case"]["id"]
+    assert run_intake(tg, cid3, ANSWERS)["status"] == "qualified"
+    assert tg.post(f"/v1/cases/{cid3}/payment", json={"purpose": "document"})["case"]["payment"]["status"] == "pending"

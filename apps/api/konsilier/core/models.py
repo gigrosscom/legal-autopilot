@@ -63,6 +63,10 @@ class User(TimestampMixin, Base):
     source: Mapped[str | None] = mapped_column(String(40))
     # a test account (production smoke checks): its cases stay out of metrics and the team is not notified
     is_test: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
+    # referral bonus: free documents for any case of the person; referral_rewarded_at is set once the invited
+    # person's first payment has credited one to them and one to the inviter (it never repeats)
+    bonus_documents: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    referral_rewarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     cases: Mapped[list["Case"]] = relationship(back_populates="owner", foreign_keys="Case.owner_id")
     identities: Mapped[list["Identity"]] = relationship(back_populates="user")
@@ -237,7 +241,7 @@ class Action(TimestampMixin, Base):
     response_class: Mapped[str | None] = mapped_column(String(16))
     response_summary: Mapped[str | None] = mapped_column(Text)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # what paid for this document: free | case | credit | subscription:<id> | legacy (prepared before 0016)
+    # what paid for this document: free | case | credit | bonus | subscription:<id> | legacy (prepared before 0016)
     unlocked_by: Mapped[str | None] = mapped_column(String(32))
 
     case: Mapped[Case] = relationship(back_populates="actions")

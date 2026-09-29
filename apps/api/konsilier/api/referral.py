@@ -1,6 +1,7 @@
 """Referral programme: every person has an invite link; new people who come by it are counted to the inviter.
 
-Only attribution and counts live here. A reward for inviting is a pricing decision and is added separately.
+Attribution and counts live here. The reward: when an invited person pays for the first time, both they and the
+inviter get one free document (users.bonus_documents; credited in CaseEngine._referral_bonus).
 """
 
 from __future__ import annotations
@@ -54,7 +55,8 @@ def my_referral(user: User = Depends(current_user), session: Session = Depends(g
     invited = session.scalar(select(func.count()).select_from(User).where(User.referred_by == user.id)) or 0
     active = session.scalar(select(func.count(func.distinct(Case.owner_id))).join(User, User.id == Case.owner_id)
                             .where(User.referred_by == user.id)) or 0
-    return {"code": code, "link": f"{SITE}/?ref={code}", "invited": invited, "active": active}
+    return {"code": code, "link": f"{SITE}/?ref={code}", "invited": invited, "active": active,
+            "bonus_documents": user.bonus_documents}
 
 
 def referral_metrics(session: Session) -> dict[str, Any]:

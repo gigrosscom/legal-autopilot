@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
-import { ApiError, api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
+import { api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
-import { NcaLayerError, signForAuth } from "@/lib/ncalayer";
+import { signForAuth } from "@/lib/ncalayer";
 
 type Method = "email" | "phone" | "ecp" | "egov";
 const METHODS: { id: Method; icon: IconName }[] = [
@@ -14,19 +15,6 @@ const METHODS: { id: Method; icon: IconName }[] = [
   { id: "ecp", icon: "key" },
   { id: "egov", icon: "smartphone" },
 ];
-
-function useAuthError() {
-  const t = useT();
-  return (e: unknown): string => {
-    if (e instanceof ApiError && e.code) {
-      const key = `account.errors.${e.code}`;
-      const text = t(key);
-      if (text !== key) return text;
-    }
-    if (e instanceof NcaLayerError) return t(`account.ecp.${e.kind}`);
-    return errorText(e);
-  };
-}
 
 export default function AccountPage() {
   const t = useT();
@@ -64,6 +52,10 @@ export default function AccountPage() {
 
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {done && <Alert tone="info" role="status">{done}</Alert>}
+
+      {me && me.bonus_documents > 0 && (
+        <Alert tone="info" icon="checkCircle" role="status">{t("account.bonus", { n: me.bonus_documents })}</Alert>
+      )}
 
       {me && me.identities.length > 0 && (
         <section className="card space-y-3" aria-labelledby="verified">
@@ -140,64 +132,6 @@ function ReportsToggle({ me, onChange }: { me: Me; onChange: (m: Me) => void }) 
         </label>
       ) : <p className="text-info">{t("reports.needEmail")}</p>}
     </section>
-  );
-}
-
-function CodeForm({ kind, onDone }: { kind: "email" | "phone"; onDone: (r: SignedIn) => void }) {
-  const t = useT();
-  const { lang } = useLang();
-  const authError = useAuthError();
-  const [target, setTarget] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const send = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    setBusy(true); setError(null);
-    try {
-      await api(`/v1/auth/${kind}/start`, { method: "POST", body: JSON.stringify({ target, language: lang }) });
-      setSent(true);
-    } catch (err) { setError(authError(err)); } finally { setBusy(false); }
-  };
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true); setError(null);
-    try {
-      onDone(await api<SignedIn>(`/v1/auth/${kind}/verify`, { method: "POST", body: JSON.stringify({ target, code }) }));
-    } catch (err) { setError(authError(err)); } finally { setBusy(false); }
-  };
-
-  return (
-    <div className="enter space-y-3 border-t border-line pt-3">
-      {!sent ? (
-        <form onSubmit={send} className="space-y-3">
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">{t(`account.${kind}.label`)}</span>
-            <input className="input" dir="ltr" required value={target} onChange={(e) => setTarget(e.target.value)}
-              type={kind === "email" ? "email" : "tel"} autoComplete={kind === "email" ? "email" : "tel"}
-              inputMode={kind === "email" ? "email" : "tel"} placeholder={kind === "email" ? "name@mail.kz" : "+7 701 123 45 67"} />
-          </label>
-          <Button disabled={busy || target.trim().length < 5} icon={busy ? "spinner" : "send"}>{t("account.sendCode")}</Button>
-        </form>
-      ) : (
-        <form onSubmit={verify} className="space-y-3">
-          <p className="text-sm text-muted">{t(`account.${kind}.sent`, { target })}</p>
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">{t("account.codeLabel")}</span>
-            <input className="input max-w-40 text-lg tracking-[0.3em]" dir="ltr" required inputMode="numeric"
-              autoComplete="one-time-code" maxLength={6} pattern="\d{6}" value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={busy || code.length !== 6} icon={busy ? "spinner" : "check"}>{t("account.confirm")}</Button>
-            <button type="button" className="btn-ghost" onClick={() => { setSent(false); setCode(""); }}>{t("account.changeTarget")}</button>
-          </div>
-        </form>
-      )}
-      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    </div>
   );
 }
 
