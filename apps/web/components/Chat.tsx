@@ -21,8 +21,9 @@ type Pending = { key: string; filename: string; file?: File; id?: string };
  * Free consultation as a chat: type or dictate, attach files, hear the answer. Without a case yet, the first
  * message runs the emergency check and opens the case; the chat then lives at /chat/<id>.
  */
-export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend = false, hint, situation }: {
+export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend = false, hint, situation, files: initialFiles }: {
   caseId: string | null; draft?: string; autoSend?: boolean; hint?: string; situation?: string;
+  files?: File[];  // attached from the start: files shared to the app from another app (/share → «Новое дело»)
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -35,7 +36,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [draft, setDraft] = useState(initialDraft);
   const [interim, setInterim] = useState("");
-  const [files, setFiles] = useState<Pending[]>([]);
+  const [files, setFiles] = useState<Pending[]>(() =>
+    (initialFiles ?? []).map((f, i) => ({ key: `shared-${i}-${f.name}`, filename: f.name, file: f })));
   const [voiceMode, setVoiceMode] = useState(false);
   const [speaking, setSpeaking] = useState<string | null>(null);
   const [tts, setTts] = useState(false);

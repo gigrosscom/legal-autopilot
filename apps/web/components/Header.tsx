@@ -13,6 +13,7 @@ const NAV = [
   { href: "/coverage", key: "nav.coverage" },
   ...(LAWYERS_PUBLIC ? [{ href: "/lawyers", key: "nav.lawyers" }, { href: "/for-lawyers", key: "nav.forLawyers" }] : []),
   { href: "/cases", key: "nav.cases" },
+  { href: "/app", key: "nav.app" },
 ];
 
 export function LangSelect() {
