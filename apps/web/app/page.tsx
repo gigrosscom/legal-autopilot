@@ -122,24 +122,21 @@ export default function Home() {
         </ol>
       </section>
 
-      {/* WHAT IT COSTS: three ways to get help, the lawyer card is the dark one */}
+      {/* WHAT IT COSTS: three ways to get help, three equal cards */}
       <section className="band section-y space-y-10">
         <SectionHead title={t("home.priceTitle")} />
         <ul className="grid gap-4 md:grid-cols-3">
-          {([["chat", "chat", "/start"], ["doc", "document", "/start"], ["lawyer", "user", "/lawyers"]] as const).map(([k, icon, href]) => {
-            const dark = k === "lawyer";
-            return (
+          {([["chat", "chat", "/start"], ["doc", "document", "/start"], ["lawyer", "user", "/lawyers"]] as const).map(([k, icon, href]) => (
               <li key={k}>
-                <Link href={href} className={`card-link flex h-full flex-col gap-3 rounded-[18px] p-7 md:p-8 ${dark ? "bg-ink text-white" : "bg-surface"}`}>
-                  <Icon name={icon} size={26} className={dark ? "text-white" : "text-ink"} />
-                  <span className={`text-[21px] font-semibold tracking-[-0.015em] ${dark ? "text-white" : "text-ink"}`}>{t(`home.price.${k}T`)}</span>
-                  <span className={`text-[32px] leading-tight font-semibold tracking-[-0.02em] ${dark ? "text-white" : "text-ink"}`}>{t(`home.price.${k}P`)}</span>
-                  <span className={`flex-1 text-[17px] leading-[1.47] ${dark ? "text-white/80" : "text-muted"}`}>{t(`home.price.${k}D`)}</span>
-                  <Icon name="arrowRight" size={20} className={`rtl:-scale-x-100 ${dark ? "text-white" : "text-brand"}`} />
+                <Link href={href} className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
+                  <Icon name={icon} size={26} className="text-ink" />
+                  <span className="text-[21px] font-semibold tracking-[-0.015em] text-ink">{t(`home.price.${k}T`)}</span>
+                  <span className="text-[32px] leading-tight font-semibold tracking-[-0.02em] text-ink">{t(`home.price.${k}P`)}</span>
+                  <span className="flex-1 text-[17px] leading-[1.47] text-muted">{t(`home.price.${k}D`)}</span>
+                  <Icon name="arrowRight" size={20} className="text-brand rtl:-scale-x-100" />
                 </Link>
               </li>
-            );
-          })}
+          ))}
         </ul>
       </section>
 
