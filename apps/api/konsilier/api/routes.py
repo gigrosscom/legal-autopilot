@@ -518,6 +518,27 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
     return {"action_id": str(action.id), "case": case_view(container.engine, session, case)}
 
 
+class TrainingConsentIn(BaseModel):
+    given: bool
+
+
+@router.put("/cases/{case_id}/training-consent")
+def training_consent(case_id: uuid.UUID, body: TrainingConsentIn, user: User = Depends(current_user),
+                     session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """The owner allows (or withdraws) the use of this case, anonymised, to teach Konsilier's own model. Off by
+    default; withdrawing removes the case from every later training export."""
+    case = load_case(case_id, session, user)
+    rows = session.scalars(select(Consent).where(Consent.case_id == case.id, Consent.kind == "training")).all()
+    if body.given and not rows:
+        session.add(Consent(case_id=case.id, kind="training"))
+    if not body.given:
+        for row in rows:
+            session.delete(row)
+    container.engine.audit(session, case, f"user:{user.id}", "training_consent", given=body.given)
+    session.flush()
+    return {"case": case_view(container.engine, session, case)}
+
+
 PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа"}
 
 
@@ -560,7 +581,7 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation":
+    if inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"дело {case.id}")
     if not case.narrative:
         prewrite_later(session, container, case.id)
@@ -608,7 +629,7 @@ def plan_claim(user: User = Depends(current_user), session: Session = Depends(ge
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation":
+    if inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     return plans_view(container, session, user)
 

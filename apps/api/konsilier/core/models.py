@@ -61,6 +61,8 @@ class User(TimestampMixin, Base):
     ref_code: Mapped[str | None] = mapped_column(String(12), unique=True, index=True)
     referred_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
     source: Mapped[str | None] = mapped_column(String(40))
+    # a test account (production smoke checks): its cases stay out of metrics and the team is not notified
+    is_test: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
 
     cases: Mapped[list["Case"]] = relationship(back_populates="owner", foreign_keys="Case.owner_id")
     identities: Mapped[list["Identity"]] = relationship(back_populates="user")

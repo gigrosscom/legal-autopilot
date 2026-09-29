@@ -104,6 +104,9 @@ class Settings(BaseSettings):
     scheduler_interval_seconds: int = 60
     # work after a request (document text ahead, paid document, PDF): thread | inline | off (tests)
     background_jobs: str = "thread"
+    # production smoke checks (deploy/smoke.py): X-Smoke-Token opens /v1/smoke/* — a marked test user and the
+    # confirmation of that user's own bills; empty = the endpoints are off
+    smoke_token: str = ""
 
     smtp_host: str | None = None
     smtp_port: int = 1025

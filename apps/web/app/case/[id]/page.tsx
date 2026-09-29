@@ -240,6 +240,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         </div>
         {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
         <ReportsHint />
+        <TrainingConsent c={c} onChange={setCase} />
         <div className="rounded-2xl border border-line p-4 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>
@@ -744,6 +745,29 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Opt-in: the case, anonymised, may teach Konsiliér's own model. Off by default; can be withdrawn any time. */
+function TrainingConsent({ c, onChange }: { c: CaseView; onChange: (c: CaseView) => void }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const toggle = async (given: boolean) => {
+    setBusy(true);
+    try {
+      onChange((await api<{ case: CaseView }>(`/v1/cases/${c.id}/training-consent`, {
+        method: "PUT", body: JSON.stringify({ given }) })).case);
+    } catch { /* the switch stays as it was */ } finally { setBusy(false); }
+  };
+  return (
+    <label className="card flex cursor-pointer items-start gap-3 text-sm">
+      <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-brand" checked={c.training_consent}
+        disabled={busy} onChange={(e) => toggle(e.target.checked)} />
+      <span className="space-y-1">
+        <span className="block font-semibold text-ink">{t("training.title")}</span>
+        <span className="block text-muted">{t("training.text")}</span>
+      </span>
+    </label>
   );
 }
 

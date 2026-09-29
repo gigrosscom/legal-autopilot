@@ -263,6 +263,7 @@ const en: Dict = {
     },
     more: "Learn more",
   },
+  training: { title: "Help make Konsiliér smarter", text: "I allow this case to be used to train Konsiliér's AI — without my name, ID number, phone or address. I can withdraw any time." },
   situations: {
     cheated: { label: "I was cheated on a purchase", hint: "Goods, services, marketplaces, refunds.", placeholder: "What you bought, from whom, when, for how much and what went wrong" , ex1: "I bought a phone online, it broke a week later and the seller refuses a refund", ex2: "My marketplace order never arrived and the money is not returned", ex3: "I paid for a repair, it was done badly and they won't redo it", ex4: "I quit a course and they won't refund the unused lessons" },
     fired: { label: "Fired or wages not paid", hint: "Dismissal, unpaid wages, discrimination.", placeholder: "Where you work, what happened and when, how much you are owed" , ex1: "My employer hasn't paid my salary for three months", ex2: "I was dismissed without notice and not paid my final settlement", ex3: "They pressure me to resign 'voluntarily'", ex4: "Unused leave and overtime were not paid when I left" },

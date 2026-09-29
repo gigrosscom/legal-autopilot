@@ -74,7 +74,7 @@ def create_ticket(body: TicketIn, user: User = Depends(current_user), session: S
     notify_team(container, f"{KIND_RU[t.kind]} №{t.id} от клиента",
                 f"{t.name or 'Без имени'} · {t.email or ''} {t.phone or ''}\n"
                 f"{'Дело: ' + str(t.case_id) if t.case_id else ''}\n\n{body.text.strip()}\n\n"
-                f"Ответьте в оперативном центре: https://konsilier.com/ops", desk="clients")
+                f"Ответьте в оперативном центре: https://konsilier.com/ops", desk="clients", test=user.is_test)
     return ticket_view(t, messages_of(session, [t.id])[t.id])
 
 
@@ -99,5 +99,6 @@ def client_reply(ticket_id: int, body: ClientReplyIn, user: User = Depends(curre
     session.add(TicketMessage(ticket_id=t.id, author="client", text=body.text.strip()))
     t.status, t.updated_at = "in_progress" if t.status == "done" else t.status, datetime.now(timezone.utc)
     session.flush()
-    notify_team(container, f"Ответ клиента по обращению №{t.id}", body.text.strip(), desk="clients")
+    notify_team(container, f"Ответ клиента по обращению №{t.id}", body.text.strip(), desk="clients",
+                test=user.is_test)
     return ticket_view(t, messages_of(session, [t.id])[t.id])

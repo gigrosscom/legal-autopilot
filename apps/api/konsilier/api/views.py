@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..core import ai, qualifier
 from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
-from ..core.models import AuditLog, Case, Deadline
+from ..core.models import AuditLog, Case, Consent, Deadline
 from ..core.roadmap import build_roadmap
 from ..core.state_machine import board_column
 
@@ -72,6 +72,9 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "roadmap": None,
         "plan": None,
         "payment": None,
+        # the owner allowed this case, anonymised, to teach Konsilier's own model (Aqyl)
+        "training_consent": session.scalar(select(Consent.id).where(Consent.case_id == case.id,
+                                                                    Consent.kind == "training")) is not None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
         "safety": {"hold_reason": case.hold_reason,

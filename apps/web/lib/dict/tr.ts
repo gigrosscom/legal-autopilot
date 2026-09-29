@@ -263,6 +263,7 @@ const tr: Dict = {
     },
     more: "Daha fazla",
   },
+  training: { title: "Konsiliér'in daha akıllı olmasına yardım edin", text: "Bu dosyanın Konsiliér yapay zekâsını eğitmek için kullanılmasına izin veriyorum — adım, kimlik numaram, telefonum ve adresim olmadan. İstediğim zaman geri alabilirim." },
   situations: {
     cheated: { label: "Alışverişte mağdur oldum", hint: "Ürün, hizmet, pazaryeri, para iadesi.", placeholder: "Ne aldınız, kimden, ne zaman, kaça ve ne ters gitti" , ex1: "İnternetten telefon aldım, bir hafta sonra bozuldu, satıcı parayı iade etmiyor", ex2: "Pazaryeri siparişim teslim edilmedi, para iade edilmiyor", ex3: "Tamir için ödeme yaptım, kötü yapıldı ve yeniden yapmıyorlar", ex4: "Kurstan ayrıldım, kullanılmayan derslerin parasını iade etmiyorlar" },
     fired: { label: "İşten çıkarıldım veya maaş ödenmiyor", hint: "İşten çıkarma, maaş alacağı, ayrımcılık.", placeholder: "Nerede çalışıyorsunuz, ne oldu ve ne zaman, ne kadar borçlular" , ex1: "İşveren üç aydır maaşımı ödemiyor", ex2: "Haber vermeden işten çıkarıldım, tazminatım ödenmedi", ex3: "İstifa dilekçesi yazmam için baskı yapıyorlar", ex4: "Ayrılırken izin ve fazla mesai ücretim ödenmedi" },

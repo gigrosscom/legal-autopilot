@@ -88,6 +88,7 @@ export type CaseView = {
   roadmap: Roadmap | null;
   plan: Plan | null;
   payment: Payment | null;
+  training_consent: boolean;
   outcome: { result: string; amount_recovered: string | null; currency: string | null; days_to_resolution: number; resolved_at_step: string | null } | null;
   // admin only
   raw_facts?: Record<string, string>;
