@@ -157,15 +157,24 @@ class _Stream:
         self._final = Message(blocks, stop, usage)
 
     def _open(self) -> httpx.Response:
-        """First model that answers. On 429/5xx a model is retried once after a short pause (Retry-After when
-        the API names one, if it is short), then the next model of the chain is tried (free-tier quotas are
-        per model). Only before any text reached the reader, so nothing is shown twice."""
+        """First model that answers. On 429/5xx or a dropped connection a model is retried once after a short pause
+        (Retry-After when the API names one, if it is short), then the next model of the chain is tried (free-tier
+        quotas are per model). Only before any text reached the reader, so nothing is shown twice."""
         waited = 0.0
         last: httpx.Response | None = None
+        dropped: Exception | None = None
         for url in self._urls:
             for attempt in (0, 1):
-                r = self._http.send(self._http.build_request("POST", url, json=self._body, headers=self._headers),
-                                    stream=True)
+                try:
+                    r = self._http.send(self._http.build_request("POST", url, json=self._body,
+                                                                 headers=self._headers), stream=True)
+                except httpx.TransportError as e:  # dropped connection under load: same as an overload answer
+                    dropped = e
+                    if attempt:
+                        break
+                    time.sleep(RETRY_DELAY)
+                    waited += RETRY_DELAY
+                    continue
                 if r.status_code < 400:
                     return r
                 r.read()
@@ -182,6 +191,8 @@ class _Stream:
                 time.sleep(wait)
                 waited += wait
         if last is None:
+            if dropped is not None:
+                raise RuntimeError(f"gemini: {dropped.__class__.__name__}: {dropped}")
             raise RuntimeError("gemini: no model configured")
         raise GeminiUnavailable(last.status_code, last.text[:300])
 
@@ -198,7 +209,7 @@ class GeminiClient:
 
     def __init__(self, api_key: str, *, http: httpx.Client | None = None, timeout: float = 60,
                  fallback_models: tuple[str, ...] = ()):
-        self.api_key, self.fallback_models = api_key, fallback_models
+        self.name, self.api_key, self.fallback_models = "gemini", api_key, fallback_models
         self.http = http or httpx.Client(timeout=timeout)
         self.messages = self
 

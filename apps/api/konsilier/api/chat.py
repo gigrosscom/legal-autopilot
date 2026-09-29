@@ -37,7 +37,9 @@ BUSY = {
 
 
 def provider_of(agent: Any) -> str:
-    return "gemini" if type(getattr(agent, "client", None)).__name__ == "GeminiClient" else "anthropic"
+    """For metrics and the Claude budget only; never shown to clients."""
+    kind = type(getattr(agent, "client", None)).__name__
+    return {"GeminiClient": "gemini", "ChainClient": "free"}.get(kind, "anthropic")
 
 
 def _day_start() -> datetime:
@@ -57,11 +59,11 @@ def chat_usage_today(session: Session, settings: Settings) -> dict[str, Any]:
     start = _day_start()
     rows = session.execute(select(ChatMessage.role, ChatMessage.meta)
                            .where(ChatMessage.created_at >= start)).all()
-    out = {"gemini": 0, "anthropic": 0, "unavailable": 0}
+    out = {"gemini": 0, "free": 0, "anthropic": 0, "unavailable": 0}
     cost = 0.0
     for role, meta in rows:
         meta = meta or {}
-        if role == "assistant" and meta.get("provider") in ("gemini", "anthropic"):
+        if role == "assistant" and meta.get("provider") in ("gemini", "free", "anthropic"):
             out[meta["provider"]] += 1
             if meta["provider"] == "anthropic":
                 cost += reply_cost_usd(meta.get("usage") or {}, settings)
@@ -92,10 +94,8 @@ def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[s
 
 @router.get("/chat/info")
 def info(container: Container = Depends(get_container)) -> dict[str, Any]:
-    """Which model answers in the chat, so the page can say who processes the messages."""
-    agent = container.chat_agent
-    provider = None if agent is None else provider_of(agent)
-    return {"provider": provider, "daily_limit": container.settings.chat_daily_limit}
+    """Whether the chat is available and its daily limit; which AI answers is not disclosed to clients."""
+    return {"available": container.chat_agent is not None, "daily_limit": container.settings.chat_daily_limit}
 
 
 @router.get("/cases/{case_id}/chat")

@@ -32,13 +32,27 @@ class Settings(BaseSettings):
     # Main model writes the document text; the fast model does classification and extraction.
     llm_model: str = "claude-sonnet-5"
     llm_fast_model: str = "claude-haiku-4-5"
-    chat_provider: str = "gemini"  # gemini (free tier) | anthropic (paid): the model behind the consultation chat
+    # The model behind the consultation chat: gemini (free tier) | anthropic (paid) | free (CHAT_FREE_PROVIDERS in turn)
+    chat_provider: str = "gemini"
+    # Free providers tried in turn when CHAT_PROVIDER=free; those without a key are skipped.
+    chat_free_providers: str = "gemini,cerebras,groq,nvidia"
+    cerebras_api_key: str = ""
+    cerebras_model: str = ""  # empty: the default in konsilier/openai_compat.py
+    groq_api_key: str = ""
+    groq_model: str = ""
+    nvidia_api_key: str = ""
+    nvidia_model: str = ""
+    mistral_api_key: str = ""
+    mistral_model: str = ""
+    openrouter_api_key: str = ""
+    openrouter_model: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
-    chat_fallback_to_anthropic: bool = True
+    # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
+    chat_fallback_to_anthropic: bool = False
     # Daily cap (UTC day) on the estimated cost of chat replies written by Claude. Once reached, the fallback is
     # off until the next day and the person is asked to retry in a minute. 0 → the fallback is never used.
     chat_fallback_daily_budget_usd: float = 10.0

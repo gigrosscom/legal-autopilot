@@ -164,10 +164,6 @@ const en: Dict = {
   },
   chat: {
     freeShort: "The consultation is free",
-    provider: {
-      gemini: "Replies come from Google's free Gemini AI. We replace names, ID numbers and phones with placeholders before sending; Google may use the conversation to improve its models — do not share unnecessary personal details.",
-      anthropic: "Replies come from Anthropic's Claude AI. We replace names, ID numbers and phones with placeholders before sending.",
-    },
     eyebrow: "Free consultation",
     title: "Tell us what happened",
     lead: "Type or speak, attach photos and documents. The consultation is free: we explain your rights and what to do next.",
@@ -178,7 +174,6 @@ const en: Dict = {
     mic: "Speak",
     micStop: "Stop recording",
     listening: "Go ahead — I'm recording…",
-    micNote: "Your browser recognizes speech; in Chrome the audio is processed by Google's service.",
     speak: "Read aloud",
     stopSpeak: "Stop",
     voiceOn: "Replies aloud: on",

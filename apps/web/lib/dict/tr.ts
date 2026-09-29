@@ -164,10 +164,6 @@ const tr: Dict = {
   },
   chat: {
     freeShort: "Danışmanlık ücretsiz",
-    provider: {
-      gemini: "Yanıtları ücretsiz Google Gemini yapay zekâsı hazırlar. Adları, kimlik numaralarını ve telefonları göndermeden önce etiketlerle değiştiririz; Google yazışmayı modellerini geliştirmek için kullanabilir — gereksiz kişisel bilgi yazmayın.",
-      anthropic: "Yanıtları Anthropic Claude yapay zekâsı hazırlar. Adları, kimlik numaralarını ve telefonları göndermeden önce etiketlerle değiştiririz.",
-    },
     eyebrow: "Ücretsiz danışmanlık",
     title: "Ne olduğunu anlatın",
     lead: "Yazın ya da sesli söyleyin, fotoğraf ve belge ekleyin. Danışmanlık ücretsiz: haklarınızı ve sonraki adımları anlatırız.",
@@ -178,7 +174,6 @@ const tr: Dict = {
     mic: "Sesli söyle",
     micStop: "Kaydı durdur",
     listening: "Konuşun — dinliyorum…",
-    micNote: "Sesi tarayıcınız tanır; Chrome'da kayıt Google hizmetinde işlenir.",
     speak: "Sesli oku",
     stopSpeak: "Durdur",
     voiceOn: "Sesli yanıtlar: açık",

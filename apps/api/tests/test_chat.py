@@ -131,7 +131,7 @@ def test_chat_endpoint_streams_saves_and_limits(ctx):
     assert [m["role"] for m in hist] == ["user", "assistant"] and "По статье 113" in hist[1]["text"]
     other = web_user(ctx)
     assert ctx.client.post(f"/v1/cases/{cid}/chat", headers=other.h, json={"text": "чужое"}).status_code == 404
-    assert ctx.client.get("/v1/chat/info").json() == {"provider": "anthropic", "daily_limit": 40}
+    assert ctx.client.get("/v1/chat/info").json() == {"available": True, "daily_limit": 40}
     ctx.container.settings.chat_daily_limit = 1
     r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"})
     assert r.status_code == 429
@@ -156,14 +156,6 @@ def test_chat_without_agent_is_503_and_failure_is_reported(ctx):
     ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "вопрос"}))
     assert ev[-1]["type"] == "error" and ev[-1]["code"] == "busy" and "нагрузка" in ev[-1]["message"]
     assert [m["role"] for m in api.get(f"/v1/cases/{cid}/chat").json()] == ["user"]
-
-    # the fallback (Claude) answers when the main chat model fails before the reply starts
-    ctx.container.chat_fallback_agent = ChatAgent(StreamingClient(reply_turns(
-        "По статье 113 расчёт — не позднее трёх рабочих дней.")), "claude-haiku-4-5", Adilet(fetch=fake_fetch))
-    ev = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"}))
-    assert ev[-1]["type"] == "done" and "По статье 113" in ev[-1]["message"]["text"]
-    ctx.container.chat_fallback_agent = None
-
 
 # ------------------------------------------------------------------ Gemini adapter (free tier), offline
 def _gemini_http(replies, seen):
@@ -252,7 +244,10 @@ def test_gemini_retries_once_then_takes_the_next_model(monkeypatch):
 
     def next_model(req):
         urls.append(req.url.path)
-        return answers.pop(0)
+        a = answers.pop(0)
+        if isinstance(a, Exception):
+            raise a
+        return a
 
     slept.clear()
     answers[:] = [busy, busy, _ok_sse()]

@@ -42,7 +42,7 @@ class Container:
     reporter: Any = None
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
-    chat_fallback_agent: Any = None  # Claude, used when the Gemini chat fails before the reply starts
+    chat_fallback_agent: Any = None  # Claude, used when the free chat fails before the reply starts (off by default)
 
     def law_agent_for(self, case: Any) -> Any:
         """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
@@ -56,6 +56,26 @@ class Container:
         ecp = self.signature_verifier is not None
         return {"email": self.email_sender is not None, "phone": self.sms_sender is not None,
                 "ecp": ecp, "egov": ecp and bool(self.settings.egov_org_bin)}
+
+
+def free_chat_clients(settings: Settings) -> list[Any]:
+    """The free chat providers of CHAT_FREE_PROVIDERS, in that order, skipping those without a key."""
+    from .gemini import GeminiClient
+    from .openai_compat import PROVIDERS, OpenAICompatClient
+
+    out: list[Any] = []
+    for name in (n.strip() for n in settings.chat_free_providers.split(",") if n.strip()):
+        if name == "gemini":
+            if settings.gemini_api_key:
+                fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
+                out.append(GeminiClient(settings.gemini_api_key, fallback_models=fallback))
+        elif name in PROVIDERS:
+            key = getattr(settings, f"{name}_api_key", "")
+            if key:
+                out.append(OpenAICompatClient(name, key, getattr(settings, f"{name}_model", "")))
+        else:
+            raise ValueError(f"unknown chat provider {name!r} in CHAT_FREE_PROVIDERS")
+    return out
 
 
 def build_container(settings: Settings, *, llm: LLMProvider | None = None, storage: Storage | None = None,
@@ -110,7 +130,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         claude_chat = ChatAgent(client, settings.llm_fast_model, adilet)
         if settings.chat_provider == "anthropic":
             container.chat_agent = claude_chat
-        elif settings.chat_fallback_to_anthropic:
+        elif settings.chat_fallback_to_anthropic:  # off by default: CHAT_FALLBACK_TO_ANTHROPIC
             container.chat_fallback_agent = claude_chat
     if settings.chat_provider == "gemini" and settings.gemini_api_key:
         from .gemini import GeminiClient
@@ -118,5 +138,11 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
         container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
                                          settings.gemini_model, adilet, web_search=False)
+    if settings.chat_provider == "free":
+        clients = free_chat_clients(settings)
+        if clients:
+            from .openai_compat import ChainClient
+
+            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False)
     scheduler.extra_jobs.append(container.reporter.tick)
     return container
