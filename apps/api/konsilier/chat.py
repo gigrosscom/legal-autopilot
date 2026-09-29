@@ -102,6 +102,17 @@ class ChatResult:
     sources: list[dict[str, str]] = field(default_factory=list)  # official pages the reply cites (url, title, domain)
 
 
+# Some open models slip a word of Chinese or Japanese into a Russian or Kazakh answer ("если 母亲 работала"). The
+# person never reads those scripts here, so such runs are dropped from the stream.
+_CJK = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]+ ?")
+
+
+def strip_foreign_script(text: str, language: str) -> str:
+    if not text or language.lower().startswith(("chinese", "japanese", "korean", "中", "日", "한")):
+        return text
+    return _CJK.sub("", text)
+
+
 def mentioned_articles(text: str) -> set[str]:
     return {m.group(1) or m.group(2) for m in ARTICLE_MENTION.finditer(text)}
 
@@ -177,6 +188,9 @@ class ChatAgent:
             with self.client.messages.stream(model=self.model, max_tokens=self.max_tokens, system=system,
                                              tools=self.tools(use_portal, use_library), messages=messages) as s:
                 for chunk in s.text_stream:
+                    chunk = strip_foreign_script(chunk, language)
+                    if not chunk:
+                        continue
                     text_parts.append(chunk)
                     yield {"type": "text", "text": chunk}
                 final = s.get_final_message()
