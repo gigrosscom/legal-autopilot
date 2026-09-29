@@ -5,10 +5,10 @@ export function Section({ eyebrow, title, lead, children, id, className = "" }: 
 }) {
   return (
     <section id={id} className={`space-y-6 ${className}`}>
-      <header className="max-w-2xl space-y-2">
+      <header className="max-w-3xl space-y-3">
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h2 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">{title}</h2>
-        {lead && <p className="text-muted text-pretty">{lead}</p>}
+        <h2 className="h-section text-balance">{title}</h2>
+        {lead && <p className="lead text-pretty">{lead}</p>}
       </header>
       {children}
     </section>

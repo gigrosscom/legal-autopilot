@@ -11,7 +11,7 @@ import { useT } from "@/lib/i18n";
 export default function Footer() {
   const t = useT();
   return (
-    <footer className="border-t border-line bg-sand">
+    <footer className="bg-sand">
       <div className="mx-auto grid max-w-[1208px] gap-6 px-5 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Brand size={26} />

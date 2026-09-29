@@ -32,7 +32,7 @@ function DossierPreview() {
       <p className="text-base font-semibold">{L.title}</p>
       <dl className="grid grid-cols-2 gap-2">
         {L.rows.map(([k, v]) => (
-          <div key={k} className="rounded-lg bg-sand p-2">
+          <div key={k} className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted">{k}</dt>
             <dd className="font-medium">{v}</dd>
           </div>
@@ -280,43 +280,43 @@ function ApplyForm() {
 export default function ForLawyers() {
   const L = useText();
   return (
-    <div className="space-y-16">
+    <div>
       {/* HERO */}
-      <section className="grid gap-8 pt-4 md:grid-cols-[1.3fr_1fr] md:items-center">
-        <div className="space-y-5">
+      <section className="grid gap-10 pt-4 pb-14 md:grid-cols-[1.3fr_1fr] md:items-center md:pt-8 md:pb-20 lg:pb-24">
+        <div className="space-y-6">
           <span className="chip bg-brand-50 text-brand-dark">{L.hero.chip}</span>
-          <h1 className="text-3xl font-semibold leading-tight md:text-4xl">{L.hero.title}</h1>
-          <p className="text-lg text-muted">{L.hero.sub}</p>
+          <h1 className="text-[36px] leading-[1.1] font-semibold tracking-[-0.02em] text-balance md:text-[48px] md:leading-[1.08]">{L.hero.title}</h1>
+          <p className="lead">{L.hero.sub}</p>
           <div className="flex flex-wrap gap-3">
-            <a href="#apply" className="btn-primary px-6 py-3 text-base">{L.hero.apply}</a>
-            <a href="/lawyers" className="btn-ghost px-6 py-3 text-base">{L.hero.rating}</a>
+            <a href="#apply" className="btn-primary btn-lg">{L.hero.apply}</a>
+            <a href="/lawyers" className="btn-ghost btn-lg">{L.hero.rating}</a>
           </div>
-          <p className="text-sm text-muted">{L.hero.perks}</p>
+          <p className="text-[15px] text-muted">{L.hero.perks}</p>
         </div>
         <DossierPreview />
       </section>
 
       {/* BENEFITS */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">{L.benefitsTitle}</h2>
+      <section className="band section-y space-y-10">
+        <h2 className="h-section text-balance">{L.benefitsTitle}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {L.benefits.map(([icon, title, text, soon]) => (
             <div key={title} className="card space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name={icon as IconName} /></span>
-                <h3 className="font-semibold">{title}</h3>
+                <h3 className="text-[19px] font-semibold tracking-[-0.012em]">{title}</h3>
                 {soon && <span className="chip bg-warning-50 text-warning">{L.soon}</span>}
               </div>
-              <p className="text-sm text-muted">{text}</p>
+              <p className="text-[17px] leading-[1.47] text-muted">{text}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* PARTNER PROGRAMME */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">{L.partner.title}</h2>
-        <p className="text-muted">{L.partner.intro}</p>
+      <section className="section-y space-y-6">
+        <h2 className="h-section text-balance">{L.partner.title}</h2>
+        <p className="lead max-w-3xl">{L.partner.intro}</p>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.partner.doesTitle}</h3>
@@ -332,7 +332,7 @@ export default function ForLawyers() {
           </div>
         </div>
         <p className="text-xs text-muted">{L.partner.lose}</p>
-        <div className="space-y-3 rounded-2xl bg-ink p-5 text-white shadow-sm">
+        <div className="space-y-3 rounded-[18px] bg-ink p-6 text-white md:p-8">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-semibold">{L.expert.title}</h3>
             <span className="chip bg-white/15 text-white">{L.expert.chip}</span>
@@ -352,9 +352,9 @@ export default function ForLawyers() {
       </section>
 
       {/* PRICING */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">{L.pricing.title}</h2>
-        <p className="rounded-2xl bg-brand-50 p-3 text-sm font-medium text-brand-dark">{L.pricing.pilot}</p>
+      <section className="band section-y space-y-6">
+        <h2 className="h-section text-balance">{L.pricing.title}</h2>
+        <p className="rounded-[18px] bg-brand-50 px-5 py-4 text-[15px] font-medium text-brand-dark">{L.pricing.pilot}</p>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.basic}</h3>
@@ -378,9 +378,9 @@ export default function ForLawyers() {
       </section>
 
       {/* FAQ + FORM */}
-      <section id="apply" className="grid gap-6 md:grid-cols-2">
+      <section id="apply" className="section-y grid scroll-mt-12 gap-8 md:grid-cols-2">
         <div className="order-2 space-y-3">
-          <h2 className="text-2xl font-semibold">{L.faqTitle}</h2>
+          <h2 className="h-section text-balance">{L.faqTitle}</h2>
           {L.faq.map(([q, a]) => (
             <details key={q} className="card">
               <summary className="cursor-pointer font-semibold">{q}</summary>

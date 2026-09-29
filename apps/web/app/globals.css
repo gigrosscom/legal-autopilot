@@ -73,9 +73,11 @@ body {
   background: var(--color-surface);
   color: var(--color-ink);
   font-feature-settings: "cv11", "ss01";
-  /* apple body copy: letter-spacing -0.022em at 17 px (SF Pro Text); sizes stay as they were, so the tracking
-     is scaled to the 14–16 px text used here */
-  letter-spacing: -0.012em;
+  /* apple body copy (.typography-body): 17 px, line-height 1.47, letter-spacing -0.022em (SF Pro Text).
+     The tracking is set in px so the 14–15 px captions that inherit it are not pinched further. */
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
   text-rendering: optimizeLegibility;
 }
 /* Arabic: Noto Sans Arabic first and no negative tracking (it breaks the joins of connected letters). */
@@ -113,9 +115,14 @@ html[lang="ar"] body * {
   background: var(--color-brand-100);
 }
 
-/* apple .button: pill (980px), #0071e3 → hover #0076df → active #006edb, weight 400, disabled opacity .42 */
+/* apple .button: pill (980px), #0071e3 → hover #0076df → active #006edb, weight 400, disabled opacity .42.
+   Default size is between apple .button (14 px, 9×16) and .button-elevated so app screens stay compact;
+   btn-lg is apple .button-elevated: 17 px, padding 12×22, letter-spacing -0.022em. */
 @utility btn {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[980px] px-4 py-2.5 text-sm font-normal tracking-[-0.016em] transition-colors focus-visible:outline-offset-[3px] disabled:cursor-not-allowed disabled:opacity-[0.42];
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[980px] px-[18px] py-2.5 text-[15px] font-normal tracking-[-0.016em] transition-colors focus-visible:outline-offset-[3px] disabled:cursor-not-allowed disabled:opacity-[0.42];
+}
+@utility btn-lg {
+  @apply min-h-12 px-[22px] py-3 text-[17px] leading-[1.18] tracking-[-0.022em];
 }
 @utility btn-primary {
   @apply btn bg-action text-white hover:bg-action-hover active:bg-action-active;
@@ -127,8 +134,13 @@ html[lang="ar"] body * {
 @utility btn-danger {
   @apply btn bg-danger text-white hover:opacity-90;
 }
+/* apple tiles: no rule, #f5f5f7 fill on white, white fill on a grey band (see .band), 18 px radius, roomy padding */
 @utility card {
-  @apply rounded-2xl border border-black/[0.06] bg-surface p-5 shadow-[var(--shadow-card)];
+  @apply rounded-[18px] bg-sand p-6 md:p-7;
+}
+/* interactive tile: apple store card shadow, lifted on hover */
+@utility card-link {
+  @apply transition-[box-shadow,background-color] duration-300 hover:shadow-[var(--shadow-card-hover)];
 }
 @utility input {
   @apply w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base text-ink outline-none placeholder:text-faint focus:border-accent focus:ring-4 focus:ring-accent/15;
@@ -140,6 +152,44 @@ html[lang="ar"] body * {
 @utility link {
   @apply text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand;
 }
+/* apple "Learn more >" link: #0066cc, 17 px, chevron after, underline on hover */
+@utility more {
+  @apply inline-flex min-h-11 items-center gap-1 text-[17px] text-brand hover:underline;
+}
+
+/* Type scale after apple.com main.built.css (.typography-headline 40/48 px 600, .typography-intro 21 px).
+   Inter is wider and looser than SF Pro Display, so the display sizes get -0.015…-0.02em (SF has it built in). */
+@utility h-hero {
+  @apply text-[40px] leading-[1.1] font-semibold tracking-[-0.02em] md:text-[56px] md:leading-[1.07];
+}
+@utility h-section {
+  @apply text-[32px] leading-[1.125] font-semibold tracking-[-0.015em] md:text-[40px] md:leading-[1.1] lg:text-[48px] lg:leading-[1.08] lg:tracking-[-0.02em];
+}
+@utility lead {
+  @apply text-[19px] leading-[1.42] tracking-[0.012em] text-muted md:text-[21px] md:leading-[1.381];
+}
+/* Section rhythm: 56 px on phones, 96 px on desktop (apple sections run 80–100 px). */
+@utility section-y {
+  @apply py-14 md:py-20 lg:py-24;
+}
+/* Full-width grey band behind a section: the section keeps its container, only the paint reaches the screen edges
+   (a spread shadow clipped to the section's own height; no wrapper, no horizontal scroll). */
+@utility band {
+  background-color: var(--color-sand);
+  box-shadow: 0 0 0 100vmax var(--color-sand);
+  clip-path: inset(0 -100vmax);
+}
+.band .card {
+  background-color: var(--color-surface);
+}
+/* grey wells inside a grey tile flip to white (and back to grey inside a white tile on a band) */
+.card .bg-sand {
+  background-color: var(--color-surface);
+}
+.band .card .bg-sand {
+  background-color: var(--color-sand);
+}
+
 @utility eyebrow {
   @apply text-[11px] font-semibold tracking-[0.08em] text-muted uppercase;
 }
