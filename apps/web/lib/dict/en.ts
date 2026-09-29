@@ -276,11 +276,13 @@ const en: Dict = {
     inheritance: { label: "Inheritance", hint: "Accepting an inheritance, disputes between heirs.", placeholder: "Who died and when, who the heirs are, what the issue is" , ex1: "My father died without a will: how do I inherit", ex2: "I missed the six-month deadline to accept an inheritance", ex3: "My brother won't let me into the flat we inherited together", ex4: "The notary refused to issue an inheritance certificate" },
     housing: { label: "Housing and neighbors", hint: "Rent, utilities, neighbors.", placeholder: "What kind of housing, who the dispute is with, what happened" , ex1: "My landlord won't return the deposit", ex2: "Neighbours flooded my flat and refuse to pay for the damage", ex3: "The management company bills for services never provided", ex4: "The developer is over a year late handing over the building" },
   },
+  inbox: { title: "Notifications", titleUnread: "Notifications, {n} new", empty: "No notifications yet. Deadline reminders, payments and ready documents will appear here.", readAll: "Mark all as read", markRead: "Mark as read", openCase: "Open case", openSupport: "Open request", new: "New" },
   board: {
     intake: "Request", qualified: "Details collected", action_ready: "Document ready", submitted: "Filed, awaiting response",
     escalated: "Appealing to a higher authority", handed_to_lawyer: "With a lawyer", resolved: "Resolved",
     empty: "Empty", stepOf: "Step {n} of {total}",
     attention: { hold: "Under review", ack: "Confirmation needed", expired: "Response deadline passed", approval: "Awaiting lawyer review", chooseForum: "Choose a recipient" },
+    deadline: { left: "{n} days left", today: "Last day today", expired: "Deadline passed" },
   },
   ack: {
     false_report: { title: "Liability for knowingly false reports", button: "I understand and confirm", text: "Knowingly filing a false report is a criminal offense. Describe only facts you know." },

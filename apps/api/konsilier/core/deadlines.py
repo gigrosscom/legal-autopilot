@@ -72,7 +72,8 @@ class DbDeadlineScheduler:
                 if days_left < 0:
                     if "expired" not in sent_marks:
                         self.notifier.notify(session, case, "deadline_expired",
-                                             pack.t(lang, "reminders.expired", action=title, date=due_s))
+                                             pack.t(lang, "reminders.expired", action=title, date=due_s),
+                                             sms="deadline_expired")
                         sent_marks.append("expired")
                         sent += 1
                     dl.status = "expired"
@@ -82,7 +83,8 @@ class DbDeadlineScheduler:
                         if days_left <= before and mark not in sent_marks:
                             key = "reminders.due_today" if before == 0 else "reminders.before"
                             self.notifier.notify(session, case, "deadline_reminder",
-                                                 pack.t(lang, key, action=title, date=due_s, days=days_left))
+                                                 pack.t(lang, key, action=title, date=due_s, days=days_left),
+                                                 sms="deadline_due_today" if days_left == 0 else None)
                             sent_marks.append(mark)
                             sent += 1
                             # only the closest reminder fires if several are overdue at once

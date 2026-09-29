@@ -102,6 +102,8 @@ export type CaseView = {
   plan: Plan | null;
   payment: Payment | null;
   training_consent: boolean;
+  /** While the case awaits an answer: the response deadline and the days left (negative once it has passed). */
+  deadline: { due_date: string; status: string; days_left: number } | null;
   outcome: { result: string; amount_recovered: string | null; currency: string | null; days_to_resolution: number; resolved_at_step: string | null } | null;
   // admin only
   raw_facts?: Record<string, string>;

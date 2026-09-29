@@ -276,11 +276,13 @@ const tr: Dict = {
     inheritance: { label: "Miras", hint: "Mirasın kabulü, mirasçılar arası uyuşmazlık.", placeholder: "Kim ve ne zaman vefat etti, mirasçılar kim, sorun ne" , ex1: "Babam vasiyetsiz vefat etti, mirası nasıl alırım", ex2: "Mirası kabul için altı aylık süreyi kaçırdım", ex3: "Kardeşim birlikte miras kalan daireye girmeme izin vermiyor", ex4: "Noter veraset belgesi vermeyi reddetti" },
     housing: { label: "Konut ve komşular", hint: "Kira, elektrik-su-doğalgaz faturaları, komşular.", placeholder: "Nasıl bir konut, uyuşmazlık kiminle, ne oldu" , ex1: "Ev sahibi depozitoyu iade etmiyor", ex2: "Komşular evimi su bastı, zararı ödemeyi reddediyor", ex3: "Yönetim verilmeyen hizmetler için fatura kesiyor", ex4: "Müteahhit daireyi bir yıldan fazla gecikmeyle teslim ediyor" },
   },
+  inbox: { title: "Bildirimler", titleUnread: "Bildirimler, {n} yeni", empty: "Henüz bildirim yok. Süre hatırlatmaları, ödemeler ve hazır belgeler burada görünecek.", readAll: "Tümünü okundu işaretle", markRead: "Okundu", openCase: "Dosyayı aç", openSupport: "Talebi aç", new: "Yeni" },
   board: {
     intake: "Başvuru", qualified: "Bilgiler toplandı", action_ready: "Belge hazır", submitted: "Sunuldu, cevap bekleniyor",
     escalated: "Üst başvuru", handed_to_lawyer: "Avukatta", resolved: "Çözüldü",
     empty: "Boş", stepOf: "Aşama {n} / {total}",
     attention: { hold: "İncelemede", ack: "Onay gerekli", expired: "Cevap süresi doldu", approval: "Avukat kontrolü bekleniyor", chooseForum: "Muhatabı seçin" },
+    deadline: { left: "{n} gün kaldı", today: "Bugün son gün", expired: "Süre doldu" },
   },
   ack: {
     false_report: { title: "Bilerek gerçeğe aykırı ihbarın sorumluluğu", button: "Anladım ve onaylıyorum", text: "Bilerek gerçeğe aykırı ihbar ve şikâyette bulunmanın cezai sorumluluğu vardır. Yalnızca bildiğiniz olguları anlatın." },

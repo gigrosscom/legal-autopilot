@@ -195,6 +195,23 @@ notifications:
   referral_bonus_invited: "Сіз досыңыздың шақыруымен келдіңіз — тағы бір құжатты тегін сыйлаймыз. Ол қажет болғанда төлемсіз дайындалады."
   referral_bonus_inviter: "Сіз шақырған адам құжатқа төледі. Рақмет! Сізге бір құжатты тегін сыйлаймыз — ол қажет болғанда төлемсіз дайындалады."
 
+# e-mail and SMS copies of key notifications (the site's bell gets the text above); {link} is the case page
+notify:
+  subject:
+    payment: "Konsiliér AI: іс бойынша төлем"
+    document: "Konsiliér AI: құжат дайын"
+    approval: "Konsiliér AI: құжатты заңгердің тексеруі"
+    deadline_reminder: "Konsiliér AI: іс бойынша жауап мерзімі"
+    deadline_expired: "Konsiliér AI: жауап мерзімі өтті"
+    handoff: "Konsiliér AI: іс заңгерге берілді"
+  open_case: "Істі ашу: {link}"
+  footer: "Konsiliér AI — құқықтық мәселелер бойынша ЖИ-көмекшісі. Поштаға хабарламаларды өшіру: {link}"
+  sms:
+    payment_confirmed: "Konsilier: төлем қабылданды, құжатты дайындап жатырмыз. {link}"
+    document_ready: "Konsilier: құжат дайын, оны істен жүктеп алыңыз: {link}"
+    deadline_due_today: "Konsilier: бүгін жауап мерзімінің соңғы күні. Жауапты белгілеңіз: {link}"
+    deadline_expired: "Konsilier: жауап мерзімі өтті. Жауап болды ма — белгілеңіз: {link}"
+
 reports:
   untitled: "Сіздің ісіңіз"
   hello: "Сәлеметсіз бе!"

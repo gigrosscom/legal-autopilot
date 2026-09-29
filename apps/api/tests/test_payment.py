@@ -107,7 +107,7 @@ def test_manual_transfer_full_path(ctx):
     ok = cl.post(f"/v1/ops/clients/payments/{rows[0]['id']}", json={"decision": "paid", "note": "Kaspi 12:05"})
     assert ok["status"] == "paid" and ok["decided_by"] == "support@konsilier.com"
     assert cl.get("/v1/ops/clients/payments").json() == []
-    note = ctx.client.get("/v1/notifications", headers=api.h).json()
+    note = ctx.client.get("/v1/notifications", headers=api.h).json()["items"]
     assert any("Оплата получена" in n["text"] for n in note)
     assert ctx.client.post(f"/v1/ops/clients/payments/{rows[0]['id']}", headers=cl.h,
                            json={"decision": "not_found"}).status_code == 409
@@ -252,7 +252,7 @@ def test_document_prepared_by_itself_once_payment_confirmed(ctx):
     case = api.get(f"/v1/cases/{cid}").json()
     assert case["status"] == "action_ready" and case["actions"][0]["downloadable"] is True
     assert case["payment"]["credits"] == 0
-    assert any("Документ готов" in n["text"] for n in ctx.client.get("/v1/notifications", headers=api.h).json())
+    assert any("Документ готов" in n["text"] for n in ctx.client.get("/v1/notifications", headers=api.h).json()["items"])
     with ctx.container.session_factory() as s:  # done once only
         assert engine.prepare_paid_documents(s, utcnow() + timedelta(minutes=3)) == 0
 
