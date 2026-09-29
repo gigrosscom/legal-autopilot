@@ -52,6 +52,7 @@ branches:
       - id: labor.discrimination
         title: {ru: Дискриминация на работе, kk: Жұмыстағы кемсітушілік, en: Discrimination at work}
         keywords: {ru: [дискриминац], kk: [кемсіту], en: [discriminat]}
+        examples: {ru: ["Не взяли на работу из-за возраста", "После декрета понизили в должности и урезали зарплату"], kk: ["Жасыма байланысты жұмысқа алмады"], en: ["I was refused a job because of my age"]}
         applicant_roles: [employee]
         counterparty_kinds: [employer]
         sensitive: [health]
@@ -62,6 +63,7 @@ branches:
       - id: family.divorce
         title: {ru: Развод, kk: Ажырасу, en: Divorce}
         keywords: {ru: [развод, развестись], kk: [ажырас], en: [divorce]}
+        examples: {ru: ["Хочу развестись, муж против, у нас двое детей", "Как развестись, если супруг живёт за границей"], kk: ["Ажырасқым келеді, күйеуім қарсы, екі баламыз бар"], en: ["I want a divorce, my husband objects, we have two children"]}
         applicant_roles: [spouse]
         counterparty_kinds: [person]
       - id: family.alimony
@@ -73,12 +75,14 @@ branches:
       - id: family.child_residence
         title: {ru: "С кем живёт ребёнок, порядок общения", kk: "Баланың тұратын жері, қарым-қатынас тәртібі", en: Child residence and contact}
         keywords: {ru: [с кем будет жить ребенок, с кем будет жить ребёнок, видеться с ребенком, видеться с ребёнком], kk: [баламен кездес], en: [custody, contact with child]}
+        examples: {ru: ["Бывшая жена не даёт видеться с ребёнком", "Хочу, чтобы ребёнок после развода жил со мной"], kk: ["Бұрынғы әйелім баламен кездесуге рұқсат бермейді"], en: ["My ex won't let me see our child"]}
         applicant_roles: [parent]
         counterparty_kinds: [person]
         sensitive: [children]
       - id: family.property_division
         title: {ru: Раздел имущества супругов, kk: Ерлі-зайыптылардың мүлкін бөлу, en: Division of marital property}
         keywords: {ru: [раздел имущества, делить квартиру], kk: [мүлікті бөлу], en: [property division]}
+        examples: {ru: ["Как разделить квартиру, купленную в браке в ипотеку", "Муж продал машину, купленную в браке, без моего согласия"], kk: ["Некеде ипотекамен алынған пәтерді қалай бөлуге болады"], en: ["How to split a flat bought on a mortgage during the marriage"]}
         applicant_roles: [spouse]
         counterparty_kinds: [person]
   - id: inheritance
@@ -88,11 +92,13 @@ branches:
       - id: inheritance.acceptance
         title: {ru: Принятие наследства, kk: Мұраны қабылдау, en: Accepting an inheritance}
         keywords: {ru: [наследств, нотариус, завещан], kk: [мұра], en: [inheritance, will]}
+        examples: {ru: ["Отец умер без завещания, как оформить наследство", "Пропустил шесть месяцев для принятия наследства"], kk: ["Әкем өсиетсіз қайтыс болды, мұраны қалай ресімдеуге болады"], en: ["My father died without a will: how do I inherit"]}
         applicant_roles: [heir]
         counterparty_kinds: [state_body, person]
       - id: inheritance.dispute
         title: {ru: Спор о наследстве, kk: Мұра туралы дау, en: Inheritance dispute}
         keywords: {ru: [оспорить завещание, спор о наследстве], kk: [мұра дауы], en: [contest the will]}
+        examples: {ru: ["Брат не пускает в квартиру, которую мы унаследовали вместе", "Нотариус отказал в выдаче свидетельства о наследстве"], kk: ["Бауырым бірге мұраға қалған пәтерге кіргізбейді"], en: ["My brother won't let me into the flat we inherited together"]}
         applicant_roles: [heir]
         counterparty_kinds: [person]
   - id: housing
@@ -121,6 +127,7 @@ branches:
       - id: administrative.state_body_inaction
         title: {ru: Бездействие или отказ госоргана, kk: Мемлекеттік органның әрекетсіздігі не бас тартуы, en: Inaction or refusal by a public body}
         keywords: {ru: [акимат, госорган, не отвечают на обращение, отказали в выдаче], kk: [әкімдік, мемлекеттік орган], en: [public body, municipality]}
+        examples: {ru: ["Госорган не отвечает на моё обращение больше месяца", "Отказали в назначении пособия, считаю отказ незаконным"], kk: ["Мемлекеттік орган өтінішіме бір айдан астам жауап бермейді"], en: ["A government office hasn't answered my request for over a month"]}
         applicant_roles: [complainant]
         counterparty_kinds: [state_body]
   - id: criminal
@@ -130,12 +137,14 @@ branches:
       - id: criminal.crime_report
         title: {ru: Заявление о преступлении, kk: Қылмыс туралы арыз, en: Reporting a crime}
         keywords: {ru: [украли, кража, ограбили, избили, мошенничество, преступлен], kk: [ұрла, тонады, алаяқтық, қылмыс], en: [stolen, theft, robbed, assault, crime]}
+        examples: {ru: ["Мошенники выманили код из SMS и сняли деньги с карты", "Перевёл предоплату продавцу из объявления, он пропал"], kk: ["Алаяқтар SMS-кодты алып, картадан ақша шешіп алды"], en: ["Scammers got my SMS code and took money from my card"]}
         applicant_roles: [victim]
         counterparty_kinds: [person, business, unknown]
         false_report_warning: true
       - id: criminal.police_inaction
         title: {ru: Жалоба на бездействие полиции или следователя, kk: Полиция не тергеушінің әрекетсіздігіне шағым, en: Complaint about police inaction}
         keywords: {ru: [полиция бездействует, полиция не принимает, следователь], kk: [полиция әрекетсіз, тергеуші], en: [police inaction, investigator]}
+        examples: {ru: ["Украли телефон, полиция не принимает заявление", "Подал заявление месяц назад, по нему ничего не делают"], kk: ["Телефонымды ұрлады, полиция арызды қабылдамайды"], en: ["My phone was stolen and the police won't take my report"]}
         applicant_roles: [victim, complainant]
         counterparty_kinds: [police]
       - id: criminal.defence
@@ -151,6 +160,7 @@ branches:
       - id: civil.debt
         title: {ru: Возврат долга от частного лица, kk: Жеке тұлғадан қарызды қайтару, en: Recovering a private debt}
         keywords: {ru: [занял и не возвращает, долг, расписк], kk: [қарыз, қолхат], en: [owes me, debt, iou]}
+        examples: {ru: ["Дал знакомому в долг по расписке, он не возвращает", "Друг занял деньги и перестал отвечать"], kk: ["Танысыма қолхатпен қарыз бердім, қайтармайды"], en: ["I lent money against a receipt and it isn't paid back"]}
         applicant_roles: [claimant]
         counterparty_kinds: [person]
       - id: civil.damages
@@ -165,11 +175,13 @@ branches:
       - id: commercial.b2b_debt
         title: {ru: Долг контрагента, kk: Контрагенттің қарызы, en: Unpaid invoice}
         keywords: {ru: [контрагент не платит, дебиторк, счёт не оплачен], kk: [контрагент төлемейді], en: [unpaid invoice]}
+        examples: {ru: ["Контрагент не оплачивает поставленный товар по акту сверки", "Заказчик не платит за выполненные работы по договору"], kk: ["Контрагент салыстыру актісі бойынша тауарды төлемейді"], en: ["A counterparty won't pay for delivered goods per the reconciliation act"]}
         applicant_roles: [business]
         counterparty_kinds: [business]
       - id: commercial.contract_breach
         title: {ru: Нарушение договора, kk: Шартты бұзу, en: Breach of contract}
         keywords: {ru: [нарушил договор поставки, поставщик, не выполнил условия договора, не выполнили условия договора, не выполнили обязательства, нарушили договор, контрагент, договор с тоо, договор с ип], kk: [жеткізуші, шартты бұзды, шарт талаптарын орындамады], en: [supplier breach, breach of contract]}
+        examples: {ru: ["Я ИП, ТОО не выполнило условия договора поставки, хочу вернуть деньги", "Поставщик недопоставил партию и не отвечает на претензию"], kk: ["Мен ЖК-мын, ЖШС жеткізу шартының талаптарын орындамады"], en: ["I'm a sole trader; a company broke our supply contract and I want my money back"]}
         applicant_roles: [business]
         counterparty_kinds: [business]
   - id: tax
@@ -179,6 +191,7 @@ branches:
       - id: tax.assessment_dispute
         title: {ru: Обжалование налогового начисления, kk: Салық есептеуіне шағымдану, en: Appealing a tax assessment}
         keywords: {ru: [налогов, доначисл], kk: [салық], en: [tax assessment]}
+        examples: {ru: ["Налоговая доначислила налог по итогам проверки, не согласен", "Пришло уведомление о недоимке, которой не было"], kk: ["Салық тексеруден кейін салық қосып есептеді, келіспеймін"], en: ["The tax office assessed extra tax after an audit and I disagree"]}
         applicant_roles: [taxpayer, business]
         counterparty_kinds: [state_body]
   - id: migration
@@ -188,6 +201,7 @@ branches:
       - id: migration.residence
         title: {ru: Разрешение на пребывание или проживание, kk: Болуға не тұруға рұқсат, en: Residence permit}
         keywords: {ru: [вид на жительство, рвп, регистрация иностранца], kk: [тұруға рұқсат], en: [residence permit]}
+        examples: {ru: ["Отказали в виде на жительство без объяснения причин"], kk: ["Себебін түсіндірмей тұруға ықтиярхат бермеді"], en: ["My residence permit was refused without explanation"]}
         applicant_roles: [migrant]
         counterparty_kinds: [state_body]
       - id: migration.removal
