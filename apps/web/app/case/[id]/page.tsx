@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { BetaNotice } from "@/components/BetaNotice";
 import { AnswerBar } from "@/components/AnswerBar";
@@ -262,8 +262,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
       )}
 
-      {c.status === "qualified" && c.payment && c.payment.available && c.payment.code
-        && c.payment.status !== "paid" && <PaymentCard pay={c.payment} />}
+      {c.payment && c.payment.available && c.payment.code && c.payment.status !== "paid"
+        && <PaymentCard pay={c.payment} />}
 
       <div className="space-y-2" aria-live="polite">
         {log.map((m, i) => (
@@ -366,10 +366,10 @@ function NextStepBar({ c, busy, post, run, setCase }: {
   const proposal = c.proposal;
   const big = "min-h-12 flex-1";
 
-  if (c.status === "qualified") {
-    const pay = c.payment;
-    const prepare = <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
-    if (!pay || pay.status === "paid") return prepare;
+  // Paying for the next document: choose one document or «Дело под ключ», then "I have paid". null when it is paid for.
+  const pay = c.payment;
+  const payControls = (): ReactNode => {
+    if (!pay || pay.status === "paid") return null;
     if (!pay.available) return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="alert" size={18} className="text-warning" />{t("payment.unavailable")}</p>;
     if (pay.status === "pending" || pay.status === "not_found") {
       return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/payment/claim")} icon="check">{t("payment.paid")}</Button>;
@@ -382,10 +382,22 @@ function NextStepBar({ c, busy, post, run, setCase }: {
     }
     return (
       <div className="space-y-2">
-        <p className="px-1 text-xs text-muted">{t("payment.price", { price: money(pay.amount, pay.currency) })}</p>
-        {prepare}
+        <p className="px-1 text-xs text-muted">{t("payment.choose")}</p>
+        {pay.options.map((o) => (
+          <Button key={o.purpose} className="min-h-12 w-full" variant={o.purpose === "case" ? "secondary" : undefined}
+            disabled={busy} icon={o.purpose === "case" ? "shieldCheck" : "document"}
+            onClick={() => post("/payment", { purpose: o.purpose })}>
+            {t(`payment.option.${o.purpose}`, { price: money(o.amount, pay.currency) })}
+          </Button>
+        ))}
+        <p className="px-1 text-xs text-muted">{t("payment.caseHint")}</p>
       </div>
     );
+  };
+
+  if (c.status === "qualified") {
+    const prepare = <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
+    return payControls() ?? prepare;
   }
   if (c.status === "action_ready" && last) {
     if (last.approval_status === "pending" || last.approval_status === "rejected") {
@@ -449,7 +461,8 @@ function NextStepBar({ c, busy, post, run, setCase }: {
     }
     return (
       <div className="space-y-2">
-        {(proposal.type === "prepare_action" || proposal.type === "handoff") && (
+        {proposal.type === "prepare_action" && payControls()}
+        {((proposal.type === "prepare_action" && !payControls()) || proposal.type === "handoff") && (
           <Button className="min-h-12 w-full" disabled={busy} icon={proposal.type === "handoff" ? "lawyer" : "document"} onClick={() => post("/actions/next")}>
             {proposal.type === "handoff" ? t("case.handoff") : proposal.title}
           </Button>
@@ -503,7 +516,7 @@ function PaymentCard({ pay }: { pay: Payment }) {
   const t = useT();
   return (
     <section className="card space-y-3 border-brand/40" aria-labelledby="pay-title">
-      <h2 id="pay-title" className="flex items-center gap-2 text-lg font-semibold"><Icon name="coin" className="text-brand" />{t("payment.title")}</h2>
+      <h2 id="pay-title" className="flex items-center gap-2 text-lg font-semibold"><Icon name="coin" className="text-brand" />{t(pay.purpose === "case" ? "payment.titleCase" : "payment.title")}</h2>
       <p className="text-sm text-muted">{t("payment.lead")}</p>
       {pay.status === "awaiting_confirmation" && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
       {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}

@@ -138,7 +138,8 @@ class Case(TimestampMixin, Base):
     narrative: Mapped[str | None] = mapped_column(Text)
     # Stable label ↔ value map for PII redaction ({"[IIN_1]": "900101300123"}).
     pii_map: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    paid: Mapped[bool] = mapped_column(Boolean, default=False)  # «Дело под ключ» (or paid before 0016): every document
+    doc_credits: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # paid single documents, unused
     # Coverage level (ADR 0001): verified scenario | universal path | lawyer handoff
     coverage_level: Mapped[str] = mapped_column(String(16), default="verified", server_default="verified",
                                                 index=True)
@@ -234,6 +235,8 @@ class Action(TimestampMixin, Base):
     response_class: Mapped[str | None] = mapped_column(String(16))
     response_summary: Mapped[str | None] = mapped_column(Text)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # what paid for this document: free | case | credit | subscription:<id> | legacy (prepared before 0016)
+    unlocked_by: Mapped[str | None] = mapped_column(String(32))
 
     case: Mapped[Case] = relationship(back_populates="actions")
     signatures: Mapped[list["DocumentSignature"]] = relationship(back_populates="action",
@@ -494,19 +497,22 @@ class TicketMessage(Base):
 
 
 class Invoice(Base):
-    """A bill for a case's documents (price from the scenario). Manual transfer: pending → the person reports
-    the transfer (awaiting_confirmation) → the clients desk confirms (paid) or does not find it (not_found,
-    the person may report it again). Paid once per case: later documents of the case need no new bill."""
+    """A bill. purpose: document (one document of the case, scenario price), case («Дело под ключ»: every document
+    of the case) or plan (a «Бизнес» / «Бизнес Про» subscription, no case). Manual transfer: pending → the person
+    reports the transfer (awaiting_confirmation) → the clients desk confirms (paid) or does not find it (not_found,
+    the person may report it again); cancelled — replaced by a bill of another purpose before it was paid."""
 
     __tablename__ = "invoices"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    case_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cases.id"), index=True)
+    purpose: Mapped[str] = mapped_column(String(16), default="case", server_default="case")
+    plan: Mapped[str | None] = mapped_column(String(16))  # biz | bizpro, for purpose=plan
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     code: Mapped[str] = mapped_column(String(24), unique=True)  # payment code for the transfer comment
     method: Mapped[str] = mapped_column(String(24))  # manual_transfer | stub
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     currency: Mapped[str | None] = mapped_column(String(3))
-    # pending | awaiting_confirmation | paid | not_found
+    # pending | awaiting_confirmation | paid | not_found | cancelled
     status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # "I have paid"
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # operator's decision
@@ -514,3 +520,18 @@ class Invoice(Base):
     desk_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class Subscription(Base):
+    """A paid «Бизнес» / «Бизнес Про» period: up to `documents` documents between starts_at and ends_at. Documents it
+    paid for carry unlocked_by = "subscription:<id>"."""
+
+    __tablename__ = "subscriptions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    plan: Mapped[str] = mapped_column(String(16))
+    documents: Mapped[int] = mapped_column(Integer)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

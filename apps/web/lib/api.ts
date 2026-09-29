@@ -96,16 +96,37 @@ export type CaseView = {
   qualification_confidence?: number | null;
 };
 
-/** Document payment by transfer: price, invoice status and, while unpaid, where to transfer (null when free). */
+/** Document payment by transfer (null when free). status "paid": the next document can be prepared now (the case
+ *  plan, a subscription or a paid document covers it); "none": choose one of `options`; otherwise the open bill. */
 export type Payment = {
   amount: number;
   currency: string | null;
   status: "none" | "pending" | "awaiting_confirmation" | "not_found" | "paid";
+  purpose: "document" | "case" | null;
   method: string;
   available: boolean;
   code: string | null;
   recipient_name: string | null;
   kaspi_phone: string | null;
+  options: { purpose: "document" | "case"; amount: number }[];
+  case_paid: boolean;
+  credits: number;
+  subscription: Subscription | null;
+};
+
+export type Subscription = { plan: string; documents: number; left: number; ends_at: string };
+
+/** /v1/plans: «Бизнес» subscriptions, the person's current period and open bill. */
+export type PlansView = {
+  plans: Record<string, { price: number; documents: number; days: number }>;
+  case_price: number;
+  currency: string;
+  available: boolean;
+  signed_in: boolean;
+  subscription: Subscription | null;
+  invoice: { id: number; code: string; purpose: string; plan: string | null; amount: number; currency: string | null;
+    status: "pending" | "awaiting_confirmation" | "not_found" | "paid" | "cancelled";
+    recipient_name: string | null; kaspi_phone: string | null } | null;
 };
 
 export type RoadmapStep = {

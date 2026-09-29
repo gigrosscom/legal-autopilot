@@ -8,17 +8,18 @@ import { Icon, type IconName } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 import { SITUATIONS } from "@/lib/situations";
 
-type Plan = { k: string; icon: IconName; unit?: string; request?: boolean };
-/** Plans on the home page. `request`: not paid online yet, the card opens a request to the clients desk. */
+type Plan = { k: string; icon: IconName; unit?: string; href: string; cta: "start" | "buy" };
+/** Plans on the home page. One document and «Дело под ключ» are bought inside a case (/start); the business plans
+ *  on /plans. */
 const PLAN_GROUPS: { key: string; cols: string; plans: Plan[] }[] = [
   { key: "people", cols: "md:grid-cols-3", plans: [
-    { k: "chat", icon: "chat" },
-    { k: "doc", icon: "document" },
-    { k: "case", icon: "shieldCheck", unit: "perCase", request: true },
+    { k: "chat", icon: "chat", href: "/start", cta: "start" },
+    { k: "doc", icon: "document", href: "/start", cta: "start" },
+    { k: "case", icon: "shieldCheck", unit: "perCase", href: "/start", cta: "start" },
   ] },
   { key: "business", cols: "md:grid-cols-2", plans: [
-    { k: "biz", icon: "briefcase", unit: "perMonth", request: true },
-    { k: "bizpro", icon: "building", unit: "perMonth", request: true },
+    { k: "biz", icon: "briefcase", unit: "perMonth", href: "/plans?plan=biz", cta: "buy" },
+    { k: "bizpro", icon: "building", unit: "perMonth", href: "/plans?plan=bizpro", cta: "buy" },
   ] },
 ];
 
@@ -136,17 +137,16 @@ export default function Home() {
         </ol>
       </section>
 
-      {/* WHAT IT COSTS: plans for people and for business. Plans that cannot be paid online yet
-          open a request to the clients desk (/support?plan=…). */}
+      {/* WHAT IT COSTS: plans for people and for business */}
       <section className="band section-y space-y-10">
         <SectionHead title={t("home.priceTitle")} />
         {PLAN_GROUPS.map(({ key, cols, plans }) => (
           <div key={key} className="space-y-4">
             <h3 className="text-[19px] font-semibold tracking-[-0.01em] text-ink">{t(`home.price.${key}`)}</h3>
             <ul className={`grid gap-4 ${cols}`}>
-              {plans.map(({ k, icon, unit, request }) => (
+              {plans.map(({ k, icon, unit, href, cta }) => (
                 <li key={k}>
-                  <Link href={request ? `/support?plan=${k}` : "/start"}
+                  <Link href={href}
                     className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
                     <Icon name={icon} size={26} className="text-ink" />
                     <span className="text-[21px] font-semibold tracking-[-0.015em] text-ink">{t(`home.price.${k}T`)}</span>
@@ -156,7 +156,7 @@ export default function Home() {
                     </span>
                     <span className="flex-1 text-[17px] leading-[1.47] text-muted">{t(`home.price.${k}D`)}</span>
                     <span className="inline-flex items-center gap-1.5 text-[17px] font-semibold text-brand">
-                      {t(request ? "home.price.request" : "home.price.start")}
+                      {t(`home.price.${cta}`)}
                       <Icon name="arrowRight" size={20} className="rtl:-scale-x-100" />
                     </span>
                   </Link>
