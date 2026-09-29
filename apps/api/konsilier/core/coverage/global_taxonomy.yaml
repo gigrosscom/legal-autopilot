@@ -127,7 +127,7 @@ branches:
       - id: administrative.state_body_inaction
         title: {ru: Бездействие или отказ госоргана, kk: Мемлекеттік органның әрекетсіздігі не бас тартуы, en: Inaction or refusal by a public body}
         keywords: {ru: [акимат, госорган, не отвечают на обращение, отказали в выдаче], kk: [әкімдік, мемлекеттік орган], en: [public body, municipality]}
-        examples: {ru: ["Госорган не отвечает на моё обращение больше месяца", "Отказали в назначении пособия, считаю отказ незаконным"], kk: ["Мемлекеттік орган өтінішіме бір айдан астам жауап бермейді"], en: ["A government office hasn't answered my request for over a month"]}
+        examples: {ru: ["Госорган не отвечает на моё обращение больше месяца", "Акимат отказал в выдаче справки без объяснения причин"], kk: ["Мемлекеттік орган өтінішіме бір айдан астам жауап бермейді"], en: ["A government office hasn't answered my request for over a month"]}
         applicant_roles: [complainant]
         counterparty_kinds: [state_body]
   - id: criminal
@@ -209,3 +209,64 @@ branches:
         keywords: {ru: [депортац, выдвор], kk: [депортац], en: [deport, removal]}
         applicant_roles: [migrant]
         counterparty_kinds: [state_body, court]
+  # Below: topics where people mostly ask how to APPLY (a benefit, a grant, a tender bid) rather than argue. Such an
+  # entry is a request for help with an application (a "service" scenario prepares a package, not a claim); the
+  # refusal / complaint entries are the disputes that follow. Bodies, forms, amounts and deadlines stay in the packs.
+  - id: social
+    title: {ru: Социальные выплаты, kk: Әлеуметтік төлемдер, en: Social benefits, ar: "الإعانات الاجتماعية", tr: "Sosyal yardımlar"}
+    situation: {ru: Пособия и выплаты, kk: Жәрдемақылар мен төлемдер, en: Benefits and allowances, ar: "الإعانات والمخصصات", tr: "Yardımlar ve ödemeler"}
+    disputes:
+      - id: social.benefit_refusal
+        title: {ru: Отказ в назначении пособия или выплаты, kk: Жәрдемақы не төлем тағайындаудан бас тарту, en: Refusal of a benefit or social payment}
+        keywords: {ru: [отказали в назначении, отказ в назначении, отказали в пособии, отказ в пособии, отказали в выплате пособия, прекратили выплату пособия, перестали выплачивать пособие, приостановили выплату пособия, обжаловать отказ], kk: [жәрдемақы тағайындаудан бас тарт, жәрдемақыдан бас тарт], en: [benefit was refused, benefit refused, benefit was stopped]}
+        examples: {ru: ["Отказали в назначении пособия по инвалидности, хочу обжаловать", "Прекратили выплату пособия по потере кормильца без объяснений", "Отказали в адресной социальной помощи, считаю отказ незаконным"], kk: ["Мүгедектік бойынша жәрдемақы тағайындаудан бас тартты, шағымданғым келеді"], en: ["My disability benefit was refused and I want to appeal"]}
+        applicant_roles: [complainant]
+        counterparty_kinds: [state_body]
+      - id: social.benefit_application
+        title: {ru: Оформление пособия или социальной выплаты, kk: Жәрдемақыны не әлеуметтік төлемді рәсімдеу, en: Applying for a benefit or social payment}
+        keywords: {ru: [пособи, соцвыплат, социальную выплату, социальной выплаты, адресную социальную помощь, адресная социальная помощь, адресной социальной помощи, потере кормильца, потерей кормильца, по уходу за ребенком, по уходу за ребёнком, декретные], kk: [жәрдемақы, әлеуметтік төлем, атаулы әлеуметтік көмек, асыраушысынан айырыл], en: [childbirth benefit, child benefit, social payment, allowance]}
+        examples: {ru: ["Как оформить пособие при рождении ребёнка и какие нужны документы", "Хочу получить пособие по уходу за ребёнком до полутора лет", "Как подать на адресную социальную помощь для семьи"], kk: ["Бала туғанда берілетін жәрдемақыны қалай рәсімдеуге болады", "Атаулы әлеуметтік көмекке қалай өтініш беремін"], en: ["How do I apply for the childbirth benefit and which documents do I need", "How can my family apply for targeted social assistance"]}
+        applicant_roles: [beneficiary]
+        counterparty_kinds: [state_body]
+  - id: education
+    title: {ru: Образование, kk: Білім беру, en: Education, ar: "التعليم", tr: "Eğitim"}
+    situation: {ru: "Учёба: грант и стипендия", kk: "Оқу: грант және стипендия", en: "Study: grants and scholarships", ar: "الدراسة: المنح الدراسية", tr: "Eğitim: hibe ve burs"}
+    disputes:
+      - id: education.grant
+        title: {ru: Образовательный грант, kk: Білім беру гранты, en: Education grant}
+        keywords: {ru: [грант на обучение, образовательный грант, образовательного гранта, грант по ент, госгрант на учеб, поступить на грант, конкурс грантов, прошел на грант, прошёл на грант], kk: [білім беру гранты, грантқа түс], en: [education grant, study grant]}
+        examples: {ru: ["Как поступить на грант по результатам ЕНТ", "Не прошёл на грант, какие есть варианты учиться бесплатно", "Какие документы нужны для конкурса на образовательный грант"], kk: ["ҰБТ нәтижесі бойынша грантқа қалай түсуге болады"], en: ["How do I get a state education grant with my UNT score"]}
+        applicant_roles: [student]
+        counterparty_kinds: [state_body, business]
+      - id: education.scholarship
+        title: {ru: Стипендия, kk: Стипендия, en: Scholarship}
+        keywords: {ru: [стипенди, болашак], kk: [стипендия, болашақ], en: [scholarship, bolashak]}
+        examples: {ru: ["Как подать документы на стипендию «Болашак» для учёбы за границей", "Какие документы нужны, чтобы получать повышенную стипендию в вузе"], kk: ["«Болашақ» стипендиясына құжаттарды қалай тапсыруға болады"], en: ["How do I apply for the Bolashak scholarship to study abroad"]}
+        applicant_roles: [student]
+        counterparty_kinds: [state_body, business]
+  - id: business
+    title: {ru: Господдержка бизнеса, kk: Бизнесті мемлекеттік қолдау, en: State support for business, ar: "الدعم الحكومي للأعمال", tr: "İşletmelere devlet desteği"}
+    situation: {ru: Гранты и финансирование для бизнеса, kk: Бизнеске гранттар мен қаржыландыру, en: Grants and funding for business, ar: "منح وتمويل للأعمال", tr: "İşletmeler için hibe ve finansman"}
+    disputes:
+      - id: business.state_grant
+        title: {ru: Государственный грант для бизнеса, kk: Бизнеске арналған мемлекеттік грант, en: State grant for a business}
+        keywords: {ru: [грант на бизнес, грант для бизнеса, грант на открытие, грант на развитие бизнеса, грант на новую бизнес, бизнес-иде, безвозмездное финансирование, безвозмездного финансирования, фонд даму, фонда даму, через даму, господдержк, бизнес-план], kk: [бизнеске грант, бизнес-идея, қайтарымсыз қаржыландыру], en: [business grant, startup grant, non-repayable funding]}
+        examples: {ru: ["Как получить грант на новую бизнес-идею и какие документы подготовить", "Хочу получить безвозмездное финансирование для своего ИП, с чего начать", "Какой бизнес-план нужен для гранта от государства", "Какие документы нужны на грант фонда Даму"], kk: ["Жаңа бизнес-идеяға грант алу үшін қандай құжаттар керек"], en: ["How do I apply for a state grant for a new business idea"]}
+        applicant_roles: [business]
+        counterparty_kinds: [state_body]
+  - id: procurement
+    title: {ru: Госзакупки, kk: Мемлекеттік сатып алу, en: Public procurement, ar: "المشتريات الحكومية", tr: "Kamu ihaleleri"}
+    situation: {ru: Тендеры и госзакупки, kk: Тендерлер және мемлекеттік сатып алу, en: Tenders and public procurement, ar: "المناقصات والمشتريات الحكومية", tr: "İhaleler ve kamu alımları"}
+    disputes:
+      - id: procurement.complaint
+        title: {ru: Обжалование итогов госзакупок, kk: Мемлекеттік сатып алу қорытындысына шағымдану, en: Challenging public procurement results}
+        keywords: {ru: [итоги госзакуп, итоги тендера, итогов тендера, итоги конкурса, итогов конкурса, отклонили заявку, отклонили нашу заявку, отклонил нашу заявку, протокол итогов, обжаловать итоги], kk: [сатып алу қорытындысына шағым, өтінімді қабылдамады], en: [tender results, bid was rejected]}
+        examples: {ru: ["Заказчик отклонил нашу заявку на тендере, хотим обжаловать итоги", "Хотим подать жалобу на протокол итогов госзакупок"], kk: ["Тапсырыс беруші тендердегі өтінімімізді қабылдамады, шағымданғымыз келеді"], en: ["Our tender bid was rejected and we want to challenge the results"]}
+        applicant_roles: [business]
+        counterparty_kinds: [state_body]
+      - id: procurement.bid
+        title: {ru: Участие в тендере (госзакупках), kk: Тендерге (мемлекеттік сатып алуға) қатысу, en: Taking part in a public tender}
+        keywords: {ru: [тендер, госзакуп, гос закуп, goszakup, конкурсная документация, конкурсную документацию, заявку на участие в конкурсе], kk: [тендер, мемлекеттік сатып алу], en: [tender, public procurement]}
+        examples: {ru: ["Как подготовить заявку на тендер на goszakup.gov.kz", "Какие документы нужны ТОО для участия в госзакупках", "Как выиграть тендер: что проверить в конкурсной документации"], kk: ["Мемлекеттік сатып алуға қатысу үшін қандай құжаттар керек"], en: ["How do I prepare a bid for a public tender"]}
+        applicant_roles: [business]
+        counterparty_kinds: [state_body]

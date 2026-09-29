@@ -14,6 +14,7 @@
 id: kz.business.procurement_complaint
 version: 0.1.0
 ontology: BUSINESS.PROCUREMENT.COMPLAINT
+taxonomy: procurement.complaint
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01

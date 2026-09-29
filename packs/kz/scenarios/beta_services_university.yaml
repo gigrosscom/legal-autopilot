@@ -12,6 +12,7 @@
 id: kz.services.university_admission
 version: 0.1.0
 ontology: SERVICES.EDUCATION.UNIVERSITY_ADMISSION_KZ
+taxonomy: education.grant
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01

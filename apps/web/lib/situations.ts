@@ -14,4 +14,8 @@ export const SITUATIONS: { key: string; icon: IconName; branch: string; topics: 
   { key: "business", icon: "handshake", branch: "commercial", topics: ["commercial", "tax"] },
   { key: "inheritance", icon: "scroll", branch: "inheritance", topics: ["inheritance"] },
   { key: "housing", icon: "home", branch: "housing", topics: ["housing", "civil.damages"] },
+  { key: "benefits", icon: "users", branch: "social", topics: ["social"] },
+  { key: "grants", icon: "chart", branch: "business", topics: ["business"] },
+  { key: "study", icon: "graduation", branch: "education", topics: ["education"] },
+  { key: "tenders", icon: "building", branch: "procurement", topics: ["procurement"] },
 ];
