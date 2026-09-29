@@ -87,6 +87,15 @@ class Settings(BaseSettings):
     plan_bizpro_documents: int = 60
     plan_period_days: int = 30
     plan_currency: str = ""  # empty: the currency of the jurisdiction pack
+    # Library of official pages (konsilier/official, docs/official-library.md): the domains and seed pages of each
+    # country pack (packs/<cc>/sources/official.yaml) are refreshed every night at OFFICIAL_CRAWL_HOUR (pack local
+    # time) for at most OFFICIAL_CRAWL_MINUTES; the chat searches what is stored. Off by default (tests, dev):
+    # production sets OFFICIAL_CRAWL_ENABLED=true. Search works whenever pages are stored.
+    official_crawl_enabled: bool = False
+    official_crawl_hour: int = 3
+    official_crawl_minutes: int = 20
+    official_crawl_max_pages: int = 400  # per domain; a pack may set lower caps
+    official_search_enabled: bool = True
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"

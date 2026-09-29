@@ -45,6 +45,8 @@ class Container:
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
     chat_fallback_agent: Any = None  # Claude, used when the free chat fails before the reply starts (off by default)
+    official_sources: dict[str, Any] = field(default_factory=dict)  # country → konsilier.official OfficialSources
+    official_library: Any = None  # konsilier.official.search.OfficialLibrary, searched by the chat
 
     def law_agent_for(self, case: Any) -> Any:
         """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
@@ -127,7 +129,19 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     container.reporter = CaseReporter(container)
     from .chat import ChatAgent
     from .lawagent.sources import Adilet
+    from .official import load_all
+    from .official.search import OfficialLibrary
 
+    container.official_sources = load_all(packs)
+    library = OfficialLibrary(factory, container.official_sources) if settings.official_search_enabled else None
+    container.official_library = library
+    if settings.official_crawl_enabled and container.official_sources:
+        from .official.job import NightlyCrawl
+
+        scheduler.extra_jobs.append(NightlyCrawl(factory, packs, container.official_sources,
+                                                 hour=settings.official_crawl_hour,
+                                                 minutes=settings.official_crawl_minutes,
+                                                 max_pages=settings.official_crawl_max_pages))
     adilet = Adilet()
     if settings.llm_provider == "anthropic":
         import anthropic
@@ -136,7 +150,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else anthropic.Anthropic()
         container.law_agent = LawAgent(client, settings.llm_model, adilet)
-        claude_chat = ChatAgent(client, settings.llm_fast_model, adilet)
+        claude_chat = ChatAgent(client, settings.llm_fast_model, adilet, library=library)
         if settings.chat_provider == "anthropic":
             container.chat_agent = claude_chat
         elif settings.chat_fallback_to_anthropic:  # off by default: CHAT_FALLBACK_TO_ANTHROPIC
@@ -146,13 +160,14 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
         container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
-                                         settings.gemini_model, adilet, web_search=False)
+                                         settings.gemini_model, adilet, web_search=False, library=library)
     if settings.chat_provider == "free":
         clients = free_chat_clients(settings)
         if clients:
             from .openai_compat import ChainClient
 
-            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False)
+            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False,
+                                             library=library)
     def approval_needed(session: Any, case: Any, action: Any) -> None:
         from .core.models import User
         from .team import notify_team
