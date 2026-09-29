@@ -11,7 +11,7 @@ type Common = { variant?: Variant; icon?: IconName; iconEnd?: IconName; size?: "
 /** Button or link that looks like one. Links render <a>; everything else is a real <button>. */
 export function Button({ href, variant = "primary", icon, iconEnd, size = "md", children, className = "", ...rest }:
   Common & { href?: string } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
-  const cls = `${CLASS[variant]} ${size === "lg" ? "px-6 py-3 text-base" : ""} ${className}`;
+  const cls = `${CLASS[variant]} ${size === "lg" ? "btn-lg" : ""} ${className}`;
   const inner = (
     <>
       {icon && <Icon name={icon} size={18} />}
