@@ -33,6 +33,7 @@ import {
   type Payment,
   saveFileAs,
 } from "@/lib/api";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
 
 type Msg = { from: "bot" | "user"; text: string };
@@ -198,14 +199,14 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
     ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
       render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}</> }] : []),
-    { key: "lawyer", icon: "lawyer", label: t("app.lawyer"), render: () => (
+    ...(LAWYERS_PUBLIC ? [{ key: "lawyer", icon: "lawyer" as IconName, label: t("app.lawyer"), render: () => (
       <>
         <LawyerBlock caseId={c.id} />
         <div className="card space-y-2 text-sm">
           <p className="text-muted">{t("cta.caseLawyerText")}</p>
           <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
         </div>
-      </>) },
+      </>) }] : []),
     ...(c.status !== "intake" ? [{ key: "gov", icon: "building" as IconName, label: t("app.gov"), render: () => <GovServices caseId={c.id} /> }] : []),
     ...(c.jurisdiction === "KZ" ? [{ key: "law", icon: "scroll" as IconName, label: t("app.law"), render: () => <LawQuestions caseId={c.id} /> }] : []),
     { key: "about", icon: "info", label: t("app.about"), render: () => (
@@ -307,7 +308,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
       {c.status === "handed_to_lawyer" && (
         <Alert tone="info" icon="lawyer" title={t("case.lawyerTitle")}
-          actions={<Button href="/lawyers" variant="secondary" iconEnd="arrowRight">{t("case.lawyerCta")}</Button>}>
+          actions={LAWYERS_PUBLIC ? <Button href="/lawyers" variant="secondary" iconEnd="arrowRight">{t("case.lawyerCta")}</Button> : undefined}>
           {proposal?.message || log.find((m) => m.from === "bot")?.text || t("case.lawyerText")}
         </Alert>
       )}

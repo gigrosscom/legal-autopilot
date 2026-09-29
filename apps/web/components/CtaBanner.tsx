@@ -1,9 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useT } from "@/lib/i18n";
 
-/** Closing call to action on information pages: describe the situation, or go to a lawyer. */
+/** Closing call to action on information pages: describe the situation (or go to a lawyer, when LAWYERS_PUBLIC). */
 export function CtaBanner({ title, lead }: { title?: string; lead?: string }) {
   const t = useT();
   return (
@@ -14,7 +15,7 @@ export function CtaBanner({ title, lead }: { title?: string; lead?: string }) {
       </div>
       <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
         <Button href="/start" size="lg" iconEnd="arrowRight" className="w-full sm:w-auto">{t("cta.start")}</Button>
-        <Button href="/lawyers" size="lg" variant="secondary" icon="lawyer" className="w-full sm:w-auto">{t("cta.lawyer")}</Button>
+        {LAWYERS_PUBLIC && <Button href="/lawyers" size="lg" variant="secondary" icon="lawyer" className="w-full sm:w-auto">{t("cta.lawyer")}</Button>}
       </div>
     </section>
   );

@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation";
 import { Brand } from "@/components/Brand";
 import { InstallApp } from "@/components/InstallApp";
 import { Icon } from "@/components/ui";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { LANGS, useLang, useT, type Lang } from "@/lib/i18n";
 
 const NAV = [
   { href: "/how-it-works", key: "nav.howItWorks" },
   { href: "/coverage", key: "nav.coverage" },
-  { href: "/lawyers", key: "nav.lawyers" },
-  { href: "/for-lawyers", key: "nav.forLawyers" },
+  ...(LAWYERS_PUBLIC ? [{ href: "/lawyers", key: "nav.lawyers" }, { href: "/for-lawyers", key: "nav.forLawyers" }] : []),
   { href: "/cases", key: "nav.cases" },
 ];
 

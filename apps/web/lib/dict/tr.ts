@@ -238,9 +238,6 @@ const tr: Dict = {
       docT: "Belge",
       docP: "1.990 ₸'den itibaren",
       docD: "İhtarname, şikâyet, dilekçe veya dava dilekçesi ve nereye, nasıl sunulacağına dair talimat.",
-      lawyerT: "Avukat gerekiyorsa",
-      lawyerP: "Ücretsiz yönlendirme",
-      lawyerD: "Ceza davaları ve karmaşık dava süreçleri kendi başınıza yürütmeye uygun değildir. Ücretsiz hukuki yardımı nerede bulacağınızı söyleriz.",
     },
     trustTitle: "Neden bize güvenebilirsiniz",
     trust: {
