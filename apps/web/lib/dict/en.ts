@@ -169,7 +169,6 @@ const en: Dict = {
     mic: "Speak",
     micStop: "Stop recording",
     listening: "Go ahead — I'm recording…",
-    micNote: "Your browser recognizes speech; in Chrome the audio is processed by Google's service.",
     speak: "Read aloud",
     stopSpeak: "Stop",
     voiceOn: "Replies aloud: on",

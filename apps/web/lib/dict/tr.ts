@@ -169,7 +169,6 @@ const tr: Dict = {
     mic: "Sesli söyle",
     micStop: "Kaydı durdur",
     listening: "Konuşun — dinliyorum…",
-    micNote: "Sesi tarayıcınız tanır; Chrome'da kayıt Google hizmetinde işlenir.",
     speak: "Sesli oku",
     stopSpeak: "Durdur",
     voiceOn: "Sesli yanıtlar: açık",

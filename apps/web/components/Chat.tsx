@@ -154,7 +154,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     <div className="space-y-3 text-sm">
       <p>{t("chat.free")}</p>
       <p className="text-muted">{t("legal.disclaimer")}</p>
-      {dictation.supported && <p className="text-muted">{t("chat.micNote")}</p>}
     </div>) }];
 
   const bar = (
@@ -207,7 +206,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             </button>
           )}
         </div>
-        {dictation.supported && dictation.listening && <p className="px-2 text-xs text-muted">{t("chat.micNote")}</p>}
         {!caseId && (
           <p className="px-2 text-xs text-muted">
             {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
