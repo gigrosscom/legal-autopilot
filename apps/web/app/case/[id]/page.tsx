@@ -21,6 +21,7 @@ import {
   errorText,
   type CaseAction,
   type CaseLawyer,
+  type Filing,
   type Me,
   type CaseView,
   type Emergency,
@@ -820,12 +821,14 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
         <h3 className="font-semibold">{a.sequence}. {a.title}</h3>
         {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
       </div>
-      {a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
+      {a.downloadable && a.filing
+        ? <FilingCard id={a.id} f={a.filing} />
+        : a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
       {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
       {a.downloadable && !a.submitted_at && !["submitted", "responded"].includes(a.status) && <SubmitOnline caseId={caseId} a={a} />}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold">{t("case.instructions")}</p>
+          <p className="text-sm font-semibold">{a.filing ? t("filing.stepByStep") : t("case.instructions")}</p>
           <ol className="space-y-2 text-sm">
             {a.instructions.map((s, i) => (
               <li key={i} className="flex gap-3">
@@ -845,6 +848,107 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
       )}
       {a.response_summary && <p className="text-sm text-muted">«{a.response_summary}»</p>}
     </div>
+  );
+}
+
+/** «Как подать»: where, until when, how long they have to answer and which ways — compact, phone first.
+ *  Anything the pack data does not hold is shown as «уточнит юрист», never guessed. */
+function FilingCard({ id, f }: { id: string; f: Filing }) {
+  const t = useT();
+  const { lang } = useLang();
+  const online = f.online && (f.online.phone || f.online.desktop) ? f.online : null;
+  const [tab, setTab] = useState<"phone" | "desktop">(online && (!online.phone_ok || !online.phone) ? "desktop" : "phone");
+  const lawyer = <span className="text-muted">{t("filing.lawyer")}</span>;
+  const within = (d: { days: number; unit: string }) => {
+    let form = "other";
+    try { form = new Intl.PluralRules(lang).select(d.days) === "one" ? "one" : "other"; } catch {}
+    return t(`filing.within.${d.unit}.${form}`, { n: d.days });
+  };
+  const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "ar" ? "ar" : "ru-RU");
+  const norm = (d: { norm_ref: string | null; verified: boolean }) => (
+    <span className="block text-xs text-muted">{d.norm_ref && d.verified ? t("filing.norm", { ref: d.norm_ref }) : <>{t("filing.norm", { ref: "" }).trim()} {t("filing.lawyer")}</>}</span>
+  );
+  const row = (icon: IconName, label: string, body: ReactNode) => (
+    <div className="flex gap-3">
+      <Icon name={icon} size={18} className="mt-0.5 shrink-0 text-brand" />
+      <div className="min-w-0 flex-1">
+        <dt className="text-xs text-muted">{label}</dt>
+        <dd className="break-words text-sm text-ink">{body}</dd>
+      </div>
+    </div>
+  );
+  const steps = online ? online[tab] : null;
+  return (
+    <section className="space-y-3 rounded-2xl border border-line bg-surface p-4" aria-labelledby={`filing-${id}`}>
+      <h4 id={`filing-${id}`} className="flex items-center gap-2 font-semibold text-ink"><Icon name="send" size={18} />{t("filing.title")}</h4>
+      <dl className="space-y-3">
+        {row("building", t("filing.to"), (
+          <>
+            {f.to.name ? <span className="block font-medium">{f.to.name}</span> : lawyer}
+            {f.to.address && <span className="block text-muted">{f.to.address}</span>}
+            {f.to.email && <a href={`mailto:${f.to.email}`} className="link block">{f.to.email}</a>}
+          </>
+        ))}
+        {row("calendar", t("filing.fileBy"), f.file_by ? (
+          <>
+            {f.file_by.date
+              ? <b className="tabular-nums">{date(f.file_by.date)}</b>
+              : <span>{within(f.file_by)}{f.file_by.since ? ` ${f.file_by.since}` : ""}</span>}
+            {f.file_by.date && <span className="block text-xs text-muted">{within(f.file_by)}{f.file_by.since ? ` ${f.file_by.since}` : ""}</span>}
+            {norm(f.file_by)}
+            {f.file_by.overdue && <span className="block text-xs text-danger">{t("filing.overdue")}</span>}
+          </>
+        ) : lawyer)}
+        {row("clock", t("case.deadline"), f.response ? (
+          <>
+            <span>{t("filing.respond", { term: within(f.response) })}</span>
+            {norm(f.response)}
+          </>
+        ) : lawyer)}
+        {row("key", t("filing.signature"), f.signature_text ?? lawyer)}
+      </dl>
+      {f.ways.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">{t("filing.ways")}</p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {f.ways.map((w) => (
+              <li key={w.kind} className="rounded-xl bg-sand px-3 py-2">
+                <span className="text-sm font-semibold text-ink">{w.label}</span>
+                <span className="block text-xs text-muted">{w.hint}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {online && (
+        <div className="space-y-3">
+          <div role="tablist" aria-label={t("filing.title")} className="grid grid-cols-2 gap-1 rounded-xl bg-sand p-1">
+            {(["phone", "desktop"] as const).map((k) => (
+              <button key={k} type="button" role="tab" id={`filing-${id}-${k}`} aria-selected={tab === k}
+                aria-controls={`filing-${id}-panel`} onClick={() => setTab(k)}
+                className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold ${tab === k ? "bg-surface text-ink shadow-sm" : "text-muted"}`}>
+                <Icon name={k === "phone" ? "smartphone" : "key"} size={16} />{t(`filing.${k}`)}
+              </button>
+            ))}
+          </div>
+          <div role="tabpanel" id={`filing-${id}-panel`} aria-labelledby={`filing-${id}-${tab}`} className="space-y-3">
+            {steps ? (
+              <ol className="space-y-2 text-sm">
+                {steps.map((s, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
+                    <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="text-sm">{lawyer}</p>}
+            <a href={online.url} target="_blank" rel="noreferrer" className="btn-ghost min-h-11 w-full sm:w-auto">
+              {t("filing.open", { portal: online.portal })}<Icon name="external" size={16} />
+            </a>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

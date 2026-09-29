@@ -13,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from ..scenario.schema import DeadlineSpec, IntakeField
+from ..scenario.schema import DeadlineSpec, FilingSpec, IntakeField
 
 Localized = dict[str, str]
 
@@ -191,6 +191,8 @@ class Forum(_Strict):
     languages: tuple[str, ...]
     fee: Fee | None = None
     response_deadline: DeadlineSpec | None = None
+    # the term and form of filing to this forum (from_field refers to the generic intake); absent → «уточнит юрист»
+    filing: FilingSpec | None = None
     appeals_to: tuple[str, ...] = ()
     instance: Literal["first", "appeal", "any"] = "any"  # "appeal" = reached only by escalation
     legal_effect: Literal["binding", "advisory", "none"]

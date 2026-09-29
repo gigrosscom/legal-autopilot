@@ -35,6 +35,19 @@ export type CaseAction = {
   response_label: string | null;
   response_summary: string | null;
   deadline: { due_date: string; status: string; norm_ref: string | null } | null;
+  filing?: Filing | null;
+};
+
+/** «Как подать»: everything comes from pack data; a null value is shown as «уточнит юрист». */
+export type FilingTerm = { days: number; unit: "calendar" | "business"; norm_ref: string | null; verified: boolean };
+export type Filing = {
+  to: { name: string | null; address: string | null; email: string | null };
+  response: FilingTerm | null;  // the term to answer, known before filing
+  file_by: (FilingTerm & { date: string | null; since: string | null; overdue: boolean }) | null;
+  ways: { kind: "in_person" | "post" | "online" | "email"; label: string; hint: string; url: string | null }[];
+  online: { portal: string; url: string; phone: string[] | null; desktop: string[] | null; phone_ok: boolean } | null;
+  signature: "handwritten" | "ecp" | "either" | null;
+  signature_text: string | null;
 };
 
 export type Proposal = {
