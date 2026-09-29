@@ -57,7 +57,7 @@ Telegram: создайте бота у @BotFather, укажите `TELEGRAM_BOT_
 ```bash
 # API (SQLite + локальные файлы по умолчанию)
 cd apps/api && pip install -e ".[dev]"
-alembic upgrade head
+alembic upgrade heads   # «heads»: parallel branches may each add a migration
 uvicorn --factory konsilier.main:app_factory --reload --port 8000
 
 # Бот

@@ -383,12 +383,13 @@ def test_packs_and_waitlist(ctx):
 
 def test_lawyer_application_with_referral(ctx):
     first = ctx.client.post("/v1/lawyer-applications", json={
-        "country": "kz", "full_name": "Адвокат Первый", "kind": "advocate", "contact": "+77010000000",
-        "specializations": ["consumer"]})
+        "country": "kz", "full_name": "Адвокат Первый", "kind": "advocate", "license_number": "12345",
+        "city": "Алматы", "phone": "+77010000000", "consent": True, "specializations": ["consumer"]})
     assert first.status_code == 201, first.text
     code = first.json()["referral_code"]
     second = ctx.client.post("/v1/lawyer-applications", json={
-        "country": "KZ", "full_name": "Коллега Второй", "kind": "legal_consultant", "contact": "@colleague",
+        "country": "KZ", "full_name": "Коллега Второй", "kind": "legal_consultant", "license_number": "ПЮК-123",
+        "city": "Астана", "phone": "8 707 111 22 33", "consent": True,
         "referred_by": code.lower(), "wants_expert": True})
     assert second.status_code == 201
     rows = ctx.client.get("/v1/admin/lawyer-applications", headers=ADMIN).json()

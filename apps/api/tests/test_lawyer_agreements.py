@@ -49,7 +49,7 @@ def world(ctx):
     ecp_login(ctx, lawyer, LAWYER_IIN)
     app = lawyer.post("/v1/lawyer-applications", expect=201, json={
         "country": "KZ", "full_name": "Адвокат Тест", "kind": "advocate", "license_number": "12345",
-        "contact": "+77010000000"})
+        "city": "Алматы", "phone": "+77010000000", "consent": True})
     assert app["ecp_verified"] is True
     return ctx, customer, lawyer, cid, app["id"]
 
@@ -60,7 +60,8 @@ def admin(ctx, method: str, url: str, **kw):
 
 def test_verification_requires_ecp_application(ctx):
     anon = ctx.client.post("/v1/lawyer-applications", json={
-        "country": "KZ", "full_name": "Без ЭЦП", "kind": "advocate", "contact": "x@y.kz"}).json()
+        "country": "KZ", "full_name": "Без Эцп", "kind": "advocate", "license_number": "777",
+        "city": "Алматы", "phone": "+77020000000", "email": "x@y.kz", "consent": True}).json()
     assert anon["ecp_verified"] is False
     r = admin(ctx, "post", f"/v1/admin/lawyer-applications/{anon['id']}/status", json={"status": "verified"})
     assert r.status_code == 409 and r.json()["detail"]["code"] == "ecp_required"

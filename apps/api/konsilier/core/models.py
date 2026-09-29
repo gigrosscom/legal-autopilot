@@ -377,6 +377,12 @@ class LawyerApplication(Base):
     iin_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ecp_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     desk_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # lawyers desk: what was checked, when called
+    # the application form (0014): a mobile number, normalized (+7XXXXXXXXXX) (also the duplicate key), an optional
+    # e-mail, the reason told to the lawyer on rejection, and a hash of the sender's IP for the rate limit
+    phone: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
 
 class DemandSignal(Base):

@@ -19,7 +19,8 @@ class Outbox:
 
 
 APP = {"full_name": "Айгерим Нурланова", "kind": "advocate", "organization": "Коллегия адвокатов г. Алматы",
-       "license_number": "12345", "city": "Алматы", "contact": "aigerim@mail.kz", "message": "",
+       "license_number": "12345", "city": "Алматы", "phone": "+7 701 555 12 34", "email": "aigerim@mail.kz",
+       "consent": True, "message": "",
        "country": "KZ", "specializations": ["consumer"], "wants_expert": True}
 
 
