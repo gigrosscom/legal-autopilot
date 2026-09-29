@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from typing import Any
 
 from sqlalchemy.engine import Engine
@@ -24,6 +25,8 @@ from .core.llm import LLMProvider, build_provider
 from .core.notify import Notifier
 from .core.push import PushSender, build_push
 from .core.packs import PackRegistry
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,6 +85,23 @@ def free_chat_clients(settings: Settings) -> list[Any]:
     return out
 
 
+def budgeted(provider: Any, settings: Settings, factory: Any) -> Any:
+    """The paid model behind the spend guard (allowed tasks, daily and monthly budgets); the free Gemini model
+    takes what the guard refuses. Free providers are returned as they are."""
+    if settings.llm_provider not in ("anthropic", "bedrock"):
+        return provider
+    from .core.llm.spend import BudgetedProvider, SpendGuard
+
+    fallback = None
+    if settings.gemini_api_key:
+        from .core.llm.gemini_provider import GeminiProvider
+
+        fallback = GeminiProvider(settings.gemini_api_key, settings.gemini_model)
+    guard = SpendGuard(factory, daily_usd=settings.llm_daily_budget_usd, monthly_usd=settings.llm_monthly_budget_usd,
+                       allowed_tasks={t.strip() for t in settings.llm_allowed_tasks.split(",") if t.strip()})
+    return BudgetedProvider(provider, guard, fallback)
+
+
 def build_container(settings: Settings, *, llm: LLMProvider | None = None, storage: Storage | None = None,
                     pdf: PdfConverter | None = None, channels: dict[str, ChannelAdapter] | None = None,
                     packs: PackRegistry | None = None, email_sender: Sender | None = None,
@@ -97,7 +117,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     scheduler = DbDeadlineScheduler(factory, packs, notifier)
     engine = CaseEngine(
         packs=packs,
-        llm=llm or build_provider(settings),
+        llm=llm or budgeted(build_provider(settings), settings, factory),
         storage=storage,
         pdf=pdf or build_pdf_converter(settings),
         scheduler=scheduler,
@@ -149,12 +169,16 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         from .lawagent.agent import LawAgent
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else anthropic.Anthropic()
-        container.law_agent = LawAgent(client, settings.llm_model, adilet)
-        claude_chat = ChatAgent(client, settings.llm_fast_model, adilet, library=library)
-        if settings.chat_provider == "anthropic":
-            container.chat_agent = claude_chat
-        elif settings.chat_fallback_to_anthropic:  # off by default: CHAT_FALLBACK_TO_ANTHROPIC
-            container.chat_fallback_agent = claude_chat
+        if settings.anthropic_for_questions:  # off by default: questions on a case go to the free chat
+            container.law_agent = LawAgent(client, settings.llm_model, adilet)
+        if settings.anthropic_for_chat:  # off by default: the chat never spends the paid model's budget
+            claude_chat = ChatAgent(client, settings.llm_fast_model, adilet, library=library)
+            if settings.chat_provider == "anthropic":
+                container.chat_agent = claude_chat
+            elif settings.chat_fallback_to_anthropic:
+                container.chat_fallback_agent = claude_chat
+        elif settings.chat_provider == "anthropic" or settings.chat_fallback_to_anthropic:
+            log.warning("chat on the paid model is off (ANTHROPIC_FOR_CHAT=false): the chat uses the free models")
     if settings.chat_provider == "gemini" and settings.gemini_api_key:
         from .gemini import GeminiClient
 
@@ -179,6 +203,13 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                     f"Проверьте и одобрите или верните: {settings.public_site_url.rstrip('/')}/admin",
                     desk="lawyers", test=bool(owner and owner.is_test))
     engine.on_approval_needed = approval_needed
+    guard = getattr(engine.llm_provider, "guard", None)
+    if guard is not None:
+        from .team import notify_team
+
+        guard.on_exhausted = lambda what: notify_team(
+            container, "Лимит Claude исчерпан", f"{what}. До конца периода документы пишет бесплатная модель.",
+            desk="lawyers")
     scheduler.extra_jobs.append(container.reporter.tick)
     scheduler.extra_jobs.append(container.engine.prepare_paid_documents)
     return container

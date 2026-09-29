@@ -44,6 +44,7 @@ const tr: Dict = {
     sample: "Şu anda hayatınız veya sağlığınız tehlikedeyse acil servisleri arayın.",
   },
   metrics: {
+    claude: { title: "Claude harcaması", lead: "Yalnızca belgeler. Bütçe dolduğunda belgeleri ücretsiz model yazar.", today: "Bugün", month: "Bu ay" },
     lead: "Yalnızca platformdaki gerçek dosyalar",
     users: "Kullanıcılar",
     cases: "Dosyalar",
@@ -980,7 +981,7 @@ const tr: Dict = {
     dropped: "Doğrulanmayan atıflar çıkarıldı: {n}",
     disclaimer: "Bu, yasaların resmî metinlerine dayanan bir bilgidir, hukuki görüş değildir. Karmaşık durumlarda bir avukatı dahil ederiz.",
     errors: {
-      agent_unavailable: "Kanunla ilgili yanıtlar henüz kullanılamıyor.",
+      agent_unavailable: "Bu soruyu ücretsiz sohbet danışmanına sorun.",
       agent_failed: "Şu anda yanıtlanamadı. Biraz sonra tekrar deneyin.",
       too_many_questions: "Bugün bu dosyada çok soru soruldu. Yarın deneyin.",
     },

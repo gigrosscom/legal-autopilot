@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import threading
 from typing import Any
 
 import anthropic
@@ -33,6 +34,15 @@ class AnthropicProvider:
         self.fast_model = fast_model or model
         self.refusal_fallback = refusal_fallback
         self.max_tokens = max_tokens
+        self._usage = threading.local()  # tokens of this thread's last call, read by the spend guard
+
+    @property
+    def last_usage(self) -> dict[str, Any] | None:
+        return getattr(self._usage, "value", None)
+
+    @last_usage.setter
+    def last_usage(self, value: dict[str, Any] | None) -> None:
+        self._usage.value = value
 
     def model_for(self, task: str) -> str:
         return self.model if task in MAIN_MODEL_TASKS else self.fast_model
@@ -76,6 +86,10 @@ class AnthropicProvider:
         except anthropic.APIConnectionError as e:
             raise LLMError(f"LLM connection error: {e}") from e
 
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            self.last_usage = {"model": model, "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+                               "output_tokens": int(getattr(usage, "output_tokens", 0) or 0)}
         if response.stop_reason == "refusal":
             raise LLMError(f"LLM refused task {task}")
         if response.stop_reason == "max_tokens":

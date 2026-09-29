@@ -102,7 +102,7 @@ class ChatResult:
     sources: list[dict[str, str]] = field(default_factory=list)  # official pages the reply cites (url, title, domain)
 
 
-# Some open models slip a word of Chinese or Japanese into a Russian or Kazakh answer ("если 母亲 работала"). The
+# Some open models slip a word of Chinese or Japanese into an answer in a Cyrillic language ("если 母亲 работала"). The
 # person never reads those scripts here, so such runs are dropped from the stream.
 _CJK = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]+ ?")
 
