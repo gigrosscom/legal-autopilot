@@ -110,7 +110,7 @@ export function Sidebar() {
 /** Phone top bar of the app list screens: brand and language. */
 export function AppTopBar() {
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+    <header className="sticky top-0 z-20 border-b border-black/[0.08] bg-[rgb(250_250_252/0.92)] pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-[rgb(250_250_252/0.8)] supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8] lg:hidden">
       <div className="flex h-14 items-center justify-between px-5">
         <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
         <LangSelect />

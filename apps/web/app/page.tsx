@@ -45,7 +45,7 @@ export default function Home() {
       <section className="grid items-center gap-8 pt-2 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-6">
         <div className="space-y-5">
           <p className="eyebrow">{t("home.eyebrow")}</p>
-          <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] text-ink text-balance md:text-[56px]">{t("home.title")}</h1>
+          <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.028em] text-ink text-balance md:text-[56px]">{t("home.title")}</h1>
           <p className="max-w-xl text-lg leading-relaxed text-muted text-pretty">{t("home.sub")}</p>
           <ul className="grid gap-2 pt-1 text-[15px] text-ink-soft sm:grid-cols-2">
             {(["promise1", "promise2", "promise3", "promise4"] as const).map((k) => (

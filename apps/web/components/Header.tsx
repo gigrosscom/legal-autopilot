@@ -35,7 +35,7 @@ export default function Header() {
   const path = usePathname();
   const active = (href: string) => (path === href || path.startsWith(href + "/") ? "text-ink" : "text-muted");
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-black/[0.08] bg-[rgb(250_250_252/0.92)] pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-[rgb(250_250_252/0.8)] supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8]">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2">
         {t("nav.skip")}
       </a>
