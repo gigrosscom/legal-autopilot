@@ -97,7 +97,7 @@ export type CaseView = {
 };
 
 /** Document payment by transfer (null when free). status "paid": the next document can be prepared now (the case
- *  plan, a subscription or a paid document covers it); "none": choose one of `options`; otherwise the open bill. */
+ *  plan, a subscription, a paid document or a referral bonus covers it); "none": choose one of `options`; otherwise the open bill. */
 export type Payment = {
   amount: number;
   currency: string | null;
@@ -111,6 +111,7 @@ export type Payment = {
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
   credits: number;
+  bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
   subscription: Subscription | null;
 };
 
@@ -196,7 +197,8 @@ export type CaseLawyer = {
 };
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
-export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[] };
+export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[];
+  bonus_documents: number };  // free documents for inviting a friend who paid (any case)
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean };
 export type SignedIn = { token: string; me: Me };
 

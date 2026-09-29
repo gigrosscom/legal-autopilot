@@ -585,6 +585,7 @@ const en: Dict = {
     tick: "Run reminders",
   },
   account: {
+    bonus: "Free documents: {n} — for inviting friends. They are prepared without payment in any of your cases.",
     eyebrow: "Account",
     title: "Sign in and verify your identity",
     lead: "Sign in to see your cases on any device. Verifying with a digital signature (EDS) or eGov Mobile also confirms who you are.",
@@ -690,12 +691,12 @@ const en: Dict = {
     },
   },
   invite: {
+    offer: "Invite a friend: when they pay for a document, you both get a document free",
     title: "Invite people who need it",
     lead: "Send your link to friends and family who have a similar problem. The consultation is free for them.",
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    chatAsk: "Did this help? Send the link to someone in a similar situation.",
     shareText: "Konsiliér AI — a free AI consultation on legal matters. Describe your situation and it tells you what to do:",
   },
   submit: {
@@ -805,6 +806,11 @@ const en: Dict = {
     hintCta: "Confirm email",
   },
   payment: {
+    contact: {
+      phone: "Your phone — we will send the document and remind you of the deadline",
+      email: "Your e-mail — we will send the document and remind you of the deadline",
+      lead: "Confirm it with a code — the case stays yours even if you switch browser or device.",
+    },
     title: "Document payment",
     lead: "The chat consultation is free; document preparation is paid. Transfer the amount via Kaspi using the details below — the document becomes available once the payment is confirmed.",
     recipient: "Recipient",

@@ -525,11 +525,29 @@ class PaymentIn(BaseModel):
     purpose: Literal["document", "case"]
 
 
+def contact_to_confirm(container: Container, owner: User) -> list[str]:
+    """How the case owner is to confirm a contact before paying: ["phone"] (SMS code), or ["email"] where SMS sign-in
+    is not configured; [] when a confirmed contact is there, the person is in Telegram or nothing can be sent."""
+    if not container.settings.payment_requires_contact or owner.channel == "telegram":
+        return []
+    methods = container.identity_methods()
+    kinds = {i.kind for i in owner.identities}
+    if methods["phone"]:
+        return [] if "phone" in kinds else ["phone"]
+    if methods["email"]:
+        return [] if kinds & {"phone", "email"} else ["email"]
+    return []
+
+
 @router.post("/cases/{case_id}/payment")
 def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(current_user),
                    session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    """A bill for one document (scenario price) or «Дело под ключ» (every document of the case)."""
+    """A bill for one document (scenario price) or «Дело под ключ» (every document of the case). The owner confirms
+    a phone first: the document and deadline reminders reach them, and the case is not lost with the browser."""
     case = load_case(case_id, session, user)
+    methods = contact_to_confirm(container, session.get(User, case.owner_id))
+    if methods:
+        raise HTTPException(422, {"code": "contact_required", "message": "contact_required", "methods": methods})
     try:
         container.engine.create_invoice(session, user_id=case.owner_id, purpose=body.purpose, case=case,
                                         actor=f"user:{user.id}")

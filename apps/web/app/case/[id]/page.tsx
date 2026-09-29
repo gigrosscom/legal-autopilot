@@ -6,6 +6,8 @@ import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { BetaNotice } from "@/components/BetaNotice";
 import { AnswerBar } from "@/components/AnswerBar";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
+import { CodeForm } from "@/components/CodeForm";
+import { Invite } from "@/components/Invite";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
@@ -16,7 +18,9 @@ import { LawQuestions } from "@/components/LawQuestions";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
+  ApiError,
   api,
+  applySignIn,
   downloadFile,
   errorText,
   type CaseAction,
@@ -31,6 +35,7 @@ import {
   shareFile,
   type Plan,
   type Payment,
+  type SignedIn,
   saveFileAs,
 } from "@/lib/api";
 import { LAWYERS_PUBLIC } from "@/lib/features";
@@ -76,6 +81,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [emergency, setEmergency] = useState<Emergency | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
+  // the server asks for a confirmed contact before the first bill: the payment window shows that step first
+  const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
 
   const push = (m: Msg) => setLog((l) => [...l, m]);
 
@@ -179,6 +186,31 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       if (out.payment) setPayOpen(true);  // the document needs paying first: the payment window opens at once
       if (path === "/actions/next" && !out.payment) setPayOpen(false);
     });
+  }
+
+  async function choosePayment(purpose: string) {
+    await run(async () => {
+      try {
+        const out = await api<{ case: CaseView }>(`/v1/cases/${id}/payment`, { method: "POST", body: JSON.stringify({ purpose }) });
+        setCase(out.case);
+      } catch (e) {
+        if (!(e instanceof ApiError && e.code === "contact_required")) throw e;
+        const methods = (e.detail as { methods?: string[] }).methods ?? [];
+        setContact({ kind: methods[0] === "email" ? "email" : "phone", purpose });
+      }
+    });
+  }
+
+  // Contact confirmed: switch to the account token (it may be an existing account the case has just moved to), then
+  // go on by itself: the bill for the chosen option, or the document at once if that account has a free one.
+  async function contactConfirmed(r: SignedIn) {
+    applySignIn(r);
+    const purpose = contact?.purpose;
+    setContact(null);
+    const view = await api<CaseView>(`/v1/cases/${id}`).catch(() => null);
+    if (view) setCase(view);
+    if (view?.payment?.status === "paid") await post("/actions/next");
+    else if (purpose) await choosePayment(purpose);
   }
 
   // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
@@ -298,8 +330,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       </div>
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
-        <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)}
-          onChoose={(purpose) => post("/payment", { purpose })} onClaim={() => post("/payment/claim")} />
+        <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
+          onContact={contactConfirmed} onChoose={choosePayment} onClaim={() => post("/payment/claim")} />
       )}
 
       {ack && (
@@ -331,6 +363,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           <p className="text-muted">{c.outcome.days_to_resolution} {t("case.days")}</p>
         </div>
       )}
+      {/* the document is ready or the case is closed: the moment to pass the service on (both get a free document) */}
+      {(c.outcome || (c.status !== "intake" && last?.downloadable)) && <Invite compact />}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
     </AppShell>
   );
@@ -498,10 +532,12 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
 }
 
 /** Payment window, opened by «Подготовить документ» while the document is not paid: choose one document or
- *  «Дело под ключ», Kaspi details and the code, "I have paid". Once the transfer is confirmed the page prepares the
+ *  «Дело под ключ», confirm a phone by SMS code if the server asks (an e-mail where SMS is not available), Kaspi
+ *  details and the code, "I have paid". Once the transfer is confirmed the page prepares the
  *  document by itself (and the server does, if the page is closed). */
-function PaymentDialog({ pay, busy, onClose, onChoose, onClaim }: {
-  pay: Payment; busy: boolean; onClose: () => void; onChoose: (purpose: string) => void; onClaim: () => void;
+function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onClaim }: {
+  pay: Payment; busy: boolean; contact: "phone" | "email" | null; onClose: () => void; onContact: (r: SignedIn) => void;
+  onChoose: (purpose: string) => void; onClaim: () => void;
 }) {
   const t = useT();
   const panel = useRef<HTMLDivElement>(null);
@@ -524,7 +560,15 @@ function PaymentDialog({ pay, busy, onClose, onChoose, onClaim }: {
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"><Icon name="x" size={22} /></button>
         </div>
         <div className="space-y-3 overflow-y-auto overscroll-contain p-4">
-          {!pay.code ? (
+          {!pay.code && contact ? (
+            <>
+              <p className="flex items-start gap-2 text-base font-semibold">
+                <Icon name={contact === "phone" ? "phone" : "mail"} className="mt-0.5 shrink-0 text-brand" />{t(`payment.contact.${contact}`)}
+              </p>
+              <p className="text-sm text-muted">{t("payment.contact.lead")}</p>
+              <CodeForm key={contact} kind={contact} onDone={onContact} wide />
+            </>
+          ) : !pay.code ? (
             <>
               <p className="text-sm text-muted">{t("payment.choose")}</p>
               {pay.options.map((o) => (

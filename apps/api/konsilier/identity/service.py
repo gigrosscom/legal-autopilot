@@ -122,6 +122,9 @@ class Identities:
             # so do lawyer applications sent from this device before signing in
             session.execute(update(LawyerApplication).where(LawyerApplication.user_id == user.id)
                             .values(user_id=owner.id))
+            # and unused referral bonus documents
+            owner.bonus_documents += user.bonus_documents
+            user.bonus_documents = 0
             ident.verified_at = _now()
         else:
             ident.verified_at = _now()
@@ -137,6 +140,6 @@ class Identities:
 
 def me_view(user: User) -> dict:
     return {"id": str(user.id), "display_name": user.display_name, "language": user.language,
-            "notify_email": user.notify_email,
+            "notify_email": user.notify_email, "bonus_documents": user.bonus_documents,
             "identities": [{"kind": i.kind, "display": i.display, "verified_at": i.verified_at.isoformat()}
                            for i in sorted(user.identities, key=lambda i: i.verified_at)]}

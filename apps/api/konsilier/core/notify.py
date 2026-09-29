@@ -17,9 +17,14 @@ class Notifier:
         self.channels = channels
 
     def notify(self, session: Session, case: Case, kind: str, text: str) -> Notification:
-        user = session.get(User, case.owner_id)
+        return self.notify_user(session, session.get(User, case.owner_id), kind, text, case=case)
+
+    def notify_user(self, session: Session, user: User, kind: str, text: str,
+                    case: Case | None = None) -> Notification:
+        """A message to a person, about one of their cases or about the account (e.g. a referral bonus)."""
         channel = self.channels.get(user.channel) or self.channels["web"]
-        n = Notification(user_id=user.id, case_id=case.id, channel=channel.name, kind=kind, text=text)
+        n = Notification(user_id=user.id, case_id=case.id if case is not None else None, channel=channel.name,
+                         kind=kind, text=text)
         try:
             channel.send(user.external_id, text)
             n.delivered = True

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import AuditLog, Case, Deadline, Outcome
 
-from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU
+from .test_pilot_drafts import NEUTRAL_NOTE_RU
 
 ADMIN = {"X-Admin-Token": "adm"}
 
