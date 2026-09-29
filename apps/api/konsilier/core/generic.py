@@ -171,9 +171,12 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
 
     title = {lang: dispute.title.get(lang) or next(iter(dispute.title.values()))
              for lang in pack.manifest.languages}
+    # a document on the universal path costs as much as the cheapest verified scenario of the country
+    priced = [s.pricing for s in pack.scenarios.values() if s.pricing.model == "fixed" and s.pricing.amount > 0]
+    pricing = min(priced, key=lambda p: p.amount) if priced else PricingSpec(model="free")
     return Scenario(
         id=ref.scenario_id, version="1.0.0", ontology=dispute.id, jurisdiction=pack.country,
         languages=pack.manifest.languages, owner="generic", reviewed_at=None, published=False,
         title=title, summary={}, claim=ClaimSpec(type="generic", amount_field="amount") if "amount" in names else None,
-        intake=[f.model_dump() for f in intake], parties=parties, actions=tuple(actions), pricing=PricingSpec(model="free"),
+        intake=[f.model_dump() for f in intake], parties=parties, actions=tuple(actions), pricing=pricing,
     )

@@ -411,9 +411,32 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
     try:
         action = container.engine.prepare_next_action(session, case, f"user:{user.id}")
     except EngineError as e:
+        if e.code == "payment_required":  # not an error: the invoice is kept and the payment screen is shown
+            session.flush()
+            view = case_view(container.engine, session, case)
+            return {"action_id": None, "payment": view["payment"], "case": view}
         raise engine_error(e) from e
     session.flush()
     return {"action_id": str(action.id), "case": case_view(container.engine, session, case)}
+
+
+@router.post("/cases/{case_id}/payment/claim")
+def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
+                  container: Container = Depends(get_container)):
+    """"I have paid": the invoice waits for the clients desk to find the transfer; the desk gets an e-mail."""
+    case = load_case(case_id, session, user)
+    try:
+        inv = container.engine.claim_payment(session, case, f"user:{user.id}")
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    if inv.status == "awaiting_confirmation":
+        notify_team(container, f"Оплата документа {inv.code}: проверьте перевод",
+                    f"Клиент сообщил о переводе {inv.amount} {inv.currency or ''} с кодом {inv.code} в комментарии.\n"
+                    f"Счёт №{inv.id}, дело {case.id}.\n\n"
+                    f"Найдите перевод в Kaspi и отметьте «Оплата получена» или «Не найдена» в оперативном центре: "
+                    f"https://konsilier.com/ops", desk="clients")
+    return {"case": case_view(container.engine, session, case)}
 
 
 def _load_action(case: Case, action_id: uuid.UUID, session: Session) -> Action:
@@ -441,6 +464,8 @@ def download_document(case_id: uuid.UUID, action_id: uuid.UUID, format: Literal[
     action = _load_action(case, action_id, session)
     if action.status not in ("ready", "submitted", "responded"):
         raise HTTPException(409, {"code": "awaiting_approval", "message": "document is awaiting lawyer approval"})
+    if not case.paid and container.engine.price(case) is not None:
+        raise HTTPException(402, {"code": "payment_required", "message": "document is available after payment"})
     return document_response(container, action, format)
 
 

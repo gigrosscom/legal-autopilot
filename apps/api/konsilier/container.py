@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .config import Settings
 from .core.adapters.channels import ChannelAdapter, TelegramChannel, WebChannel
-from .core.adapters.payment import StubPaymentAdapter
+from .core.adapters.payment import build_payments
 from .core.adapters.storage import Storage, build_storage
 from .core.adapters.submission import EmailSubmission, UserSubmits
 from .core.db import make_engine, make_session_factory
@@ -76,7 +76,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         pdf=pdf or build_pdf_converter(settings),
         scheduler=scheduler,
         notifier=notifier,
-        payments=StubPaymentAdapter(),
+        payments=build_payments(settings),
         submissions={"user_submits": UserSubmits(),
                      "email": EmailSubmission(settings.smtp_host, settings.smtp_port, settings.smtp_from)},
         config=EngineConfig(qualify_min_confidence=settings.qualify_min_confidence,

@@ -158,7 +158,15 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
             await show(bot, api, query.message.chat.id, out["case"], out["reply"]["message"] or None)
             return
         if cmd == "prep":
-            out = await api.prepare_next(tg, cid)
+            try:
+                out = await api.prepare_next(tg, cid)
+            except ApiError as e:
+                if isinstance(e.detail, dict) and e.detail.get("code") == "payment_unavailable":
+                    await bot.send_message(query.message.chat.id, t("payment_unavailable", case["language"]))
+                    return
+                raise
+        elif cmd == "paid":
+            out = await api.call(tg, "POST", f"/v1/cases/{cid}/payment/claim")
         elif cmd == "sub":
             out = await api.submitted(tg, cid, action["id"])
         elif cmd == "mail":

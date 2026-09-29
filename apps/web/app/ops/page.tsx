@@ -20,9 +20,19 @@ const APP_STATUS: Record<string, string> = { new: "Новая", verified: "По�
 const TICKET_KIND: Record<string, string> = { question: "Вопрос", complaint: "Жалоба", suggestion: "Предложение" };
 const TICKET_STATUS: Record<string, string> = { new: "Новое", in_progress: "В работе", done: "Решено" };
 const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Передана юристу", closed: "Закрыта" };
+type Pay = {
+  id: number; code: string; amount: number; currency: string | null; status: string; method: string; case_id: string;
+  case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
+  claimed_at: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
+};
+const PAY_STATUS: Record<string, string> = {
+  awaiting_confirmation: "Ждёт подтверждения", pending: "Не оплачен", not_found: "Не найдена", paid: "Оплачен",
+};
+const money = (n: number, cur: string | null) => `${n.toLocaleString("ru-RU")} ${cur === "KZT" ? "₸" : cur ?? ""}`;
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-/** Operations centre: the lawyers desk (applications) and the clients desk (questions, complaints, suggestions, requests). */
+/** Operations centre: the lawyers desk (applications) and the clients desk (questions, complaints, suggestions, requests,
+ * document payments by transfer). */
 export default function OpsPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [desk, setDesk] = useState<"lawyers" | "clients">("lawyers");
@@ -156,16 +166,16 @@ function LawyersDesk({ onChange }: { onChange: () => void }) {
 }
 
 function ClientsDesk({ onChange }: { onChange: () => void }) {
-  const [tab, setTab] = useState<"tickets" | "requests">("tickets");
+  const [tab, setTab] = useState<"tickets" | "requests" | "payments">("tickets");
   return (
     <section className="space-y-4">
       <div className="flex gap-2">
-        {([["tickets", "Вопросы, жалобы, предложения"], ["requests", "Заявки юристу"]] as const).map(([k, label]) => (
+        {([["tickets", "Вопросы, жалобы, предложения"], ["requests", "Заявки юристу"], ["payments", "Оплаты документов"]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`min-h-10 rounded-full border px-3 text-sm ${tab === k ? "border-brand bg-brand-50 font-semibold text-brand" : "border-line bg-surface"}`}>{label}</button>
         ))}
       </div>
-      {tab === "tickets" ? <Tickets onChange={onChange} /> : <Requests onChange={onChange} />}
+      {tab === "tickets" ? <Tickets onChange={onChange} /> : tab === "requests" ? <Requests onChange={onChange} /> : <Payments onChange={onChange} />}
     </section>
   );
 }
@@ -263,6 +273,66 @@ function Requests({ onChange }: { onChange: () => void }) {
             {r.status !== "closed" && <Button variant="secondary" onClick={() => update(r.id, { status: "closed" })}>Закрыть</Button>}
             {r.status !== "new" && <Button variant="secondary" onClick={() => update(r.id, { status: "new" })}>Вернуть в новые</Button>}
           </div>
+        </article>
+      ))}
+    </>
+  );
+}
+
+/** Document payments by transfer: the client pressed «Я оплатил(а)»; find the transfer in Kaspi by the code in its comment. */
+function Payments({ onChange }: { onChange: () => void }) {
+  const [status, setStatus] = useState("awaiting_confirmation");
+  const [rows, setRows] = useState<Pay[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const load = useCallback(() => api<Pay[]>(`/v1/ops/clients/payments?status=${status}`)
+    .then(setRows).catch((e) => setError(errorText(e))), [status]);
+  useEffect(() => { load(); }, [load]);
+  async function decide(id: number, decision: "paid" | "not_found", note?: string) {
+    setError(null);
+    setBusy(id);
+    try {
+      await api(`/v1/ops/clients/payments/${id}`, { method: "POST", body: JSON.stringify({ decision, note }) });
+      load(); onChange();
+    } catch (e) {
+      setError(e instanceof ApiError && e.code === "already_paid" ? "Этот счёт уже отмечен оплаченным." : errorText(e));
+    } finally { setBusy(null); }
+  }
+  return (
+    <>
+      <p className="text-sm text-muted">
+        Клиент нажал «Я оплатил(а)». Найдите в Kaspi перевод на эту сумму с кодом в комментарии и отметьте результат —
+        клиент получит уведомление. После «Оплата получена» документ можно подготовить и скачать.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(PAY_STATUS).map(([k, label]) => (
+          <button key={k} onClick={() => setStatus(k)}
+            className={`min-h-10 rounded-full border px-3 text-sm ${status === k ? "border-brand bg-brand-50 font-semibold text-brand" : "border-line bg-surface"}`}>{label}</button>
+        ))}
+      </div>
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {rows && rows.length === 0 && <p className="text-muted">Счетов нет.</p>}
+      {rows?.map((p) => (
+        <article key={p.id} className="card space-y-3 text-sm">
+          <p className="flex flex-wrap items-center gap-2">
+            <b className="text-base">Код <span dir="ltr" className="font-mono">{p.code}</span> · {money(p.amount, p.currency)}</b>
+            <span className="chip">{PAY_STATUS[p.status] ?? p.status}</span>
+            <span className="text-xs text-muted">счёт №{p.id} от {when(p.created_at)}{p.claimed_at ? ` · «оплатил(а)» ${when(p.claimed_at)}` : ""}</span>
+          </p>
+          <p>
+            {p.case_title ?? "Дело"} <span className="text-muted">· <span dir="ltr" className="font-mono">{p.case_id.slice(0, 8)}</span></span>
+            {p.client_email && <> · <a className="link" href={`mailto:${p.client_email}`}>{p.client_email}</a></>}
+            {p.client_phone && <> · <a className="link" href={`tel:${p.client_phone.replace(/[^\d+]/g, "")}`}>{p.client_phone}</a></>}
+          </p>
+          {p.decided_at && <p className="text-xs text-muted">Решение: {when(p.decided_at)} · {p.decided_by}{p.note ? ` · ${p.note}` : ""}</p>}
+          {p.status !== "paid" && (
+            <div className="flex flex-wrap gap-2">
+              <Button icon="check" disabled={busy === p.id} onClick={() => decide(p.id, "paid")}>Оплата получена</Button>
+              {p.status !== "not_found" && (
+                <Button variant="secondary" disabled={busy === p.id} onClick={() => decide(p.id, "not_found")}>Не найдена</Button>
+              )}
+            </div>
+          )}
         </article>
       ))}
     </>

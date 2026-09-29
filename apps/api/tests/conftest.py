@@ -44,7 +44,7 @@ def ctx(tmp_path: Path, packs_dir: Path):
         storage_backend="local", storage_local_dir=tmp_path / "files",
         llm_provider="mock", soffice_bin="", admin_token="adm", bot_api_secret="bot",
         approval_required_first_n=50, scheduler_interval_seconds=0, qualify_min_confidence=0.6,
-        smtp_host=None,
+        smtp_host=None, payment_mode="stub",
     )
     llm = HeuristicMockProvider()
     channels = {"web": RecordingChannel("web"), "telegram": RecordingChannel("telegram")}
