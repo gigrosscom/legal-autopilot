@@ -23,10 +23,13 @@ log = logging.getLogger(__name__)
 RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at a provider
 
 # name → (base URL, default model). Models are overridable in settings; check them at the provider's /models.
+# Chosen on a real case question in ru/kk with the portal tools (2026-09): qwen-3.8-27b on Cerebras answers best and
+# has by far the largest free quota (150k tokens/min); Groq's free tier is 8k tokens/min (about one chat reply);
+# NVIDIA's free models returned empty replies or timed out, so it is not in the default chain.
 PROVIDERS: dict[str, tuple[str, str]] = {
-    "cerebras": ("https://api.cerebras.ai/v1", "gpt-oss-120b"),
-    "groq": ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b"),
-    "nvidia": ("https://integrate.api.nvidia.com/v1", "qwen/qwen3-235b-a22b"),
+    "cerebras": ("https://api.cerebras.ai/v1", "qwen-3.8-27b"),
+    "groq": ("https://api.groq.com/openai/v1", "qwen/qwen3.8-27b"),
+    "nvidia": ("https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3-super-120b-a12b"),
     "mistral": ("https://api.mistral.ai/v1", "mistral-small-latest"),
     "openrouter": ("https://openrouter.ai/api/v1", "openai/gpt-oss-120b:free"),
 }
