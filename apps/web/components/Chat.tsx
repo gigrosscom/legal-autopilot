@@ -10,6 +10,7 @@ import { Invite } from "@/components/Invite";
 import { Alert, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
 import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal/terms";
 import { canSpeak, speak, stopSpeaking, useDictation } from "@/lib/voice";
@@ -148,7 +149,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
   const links: MoreLink[] = [
     ...(caseId ? [{ href: `/case/${caseId}`, icon: "document" as IconName, label: `${t("chat.doc")} · ${t("chat.docPrice")}` }] : []),
-    { href: "/lawyers", icon: "lawyer", label: t("chat.lawyer") },
+    ...(LAWYERS_PUBLIC ? [{ href: "/lawyers", icon: "lawyer" as IconName, label: t("chat.lawyer") }] : []),
     { href: "/cases", icon: "briefcase", label: t("nav.cases") },
     { href: "/account", icon: "user", label: t("app.account") },
     { href: "/", icon: "home", label: t("app.home") },
@@ -294,10 +295,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               <Icon name="document" size={22} className="text-brand" />
               <span className="flex-1"><span className="block font-semibold">{t("chat.doc")}</span><span className="text-xs text-muted">{t("chat.docPrice")}</span></span>
             </Link>
-            <Link href="/lawyers" className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
+            {LAWYERS_PUBLIC && <Link href="/lawyers" className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
               <Icon name="lawyer" size={22} className="text-brand" />
               <span className="flex-1"><span className="block font-semibold">{t("chat.lawyer")}</span><span className="text-xs text-muted">{t("chat.lawyerPrice")}</span></span>
-            </Link>
+            </Link>}
           </div>
         )}
         {caseId && messages.some((m) => m.role !== "user") && streaming === null && <Invite compact />}

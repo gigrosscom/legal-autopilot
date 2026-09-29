@@ -122,11 +122,11 @@ export default function Home() {
         </ol>
       </section>
 
-      {/* WHAT IT COSTS: three ways to get help, three equal cards */}
+      {/* WHAT IT COSTS: two ways to get help, two equal cards */}
       <section className="band section-y space-y-10">
         <SectionHead title={t("home.priceTitle")} />
-        <ul className="grid gap-4 md:grid-cols-3">
-          {([["chat", "chat", "/start"], ["doc", "document", "/start"], ["lawyer", "user", "/start"]] as const).map(([k, icon, href]) => (
+        <ul className="grid gap-4 md:grid-cols-2">
+          {([["chat", "chat", "/start"], ["doc", "document", "/start"]] as const).map(([k, icon, href]) => (
               <li key={k}>
                 <Link href={href} className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
                   <Icon name={icon} size={26} className="text-ink" />

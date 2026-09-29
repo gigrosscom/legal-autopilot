@@ -4,6 +4,7 @@ import { CtaBanner } from "@/components/CtaBanner";
 import { LevelAction, LevelBadge } from "@/components/LevelBadge";
 import { PathMap } from "@/components/PathMap";
 import { Alert, Button, Icon, Section, type IconName } from "@/components/ui";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useT } from "@/lib/i18n";
 
 const LEVELS = ["verified", "universal", "lawyer"] as const;
@@ -59,10 +60,10 @@ export default function HowItWorks() {
           <div className="card space-y-3">
             <h3 className="flex items-center gap-2 font-semibold"><Icon name="lawyer" className="text-brand" />{t("how.lawyer.title")}</h3>
             <List prefix="how.lawyer.does" n={4} icon="check" />
-            <div className="flex flex-wrap gap-2 pt-1">
+            {LAWYERS_PUBLIC && <div className="flex flex-wrap gap-2 pt-1">
               <Button href="/lawyers" icon="lawyer">{t("cta.lawyer")}</Button>
               <Button href="/for-lawyers" variant="secondary">{t("cta.join")}</Button>
-            </div>
+            </div>}
           </div>
         </div>
       </Section>

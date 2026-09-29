@@ -6,6 +6,7 @@ import { InstallApp } from "@/components/InstallApp";
 import { Icon } from "@/components/ui";
 import { SocialIcon } from "@/components/SocialIcon";
 import { CONTACTS, SOCIALS } from "@/lib/contacts";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useT } from "@/lib/i18n";
 
 export default function Footer() {
@@ -23,11 +24,11 @@ export default function Footer() {
           <Link href="/coverage" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.coverage")}</Link>
           <Link href="/support" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.support")}</Link>
         </nav>
-        <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">
+        {LAWYERS_PUBLIC && <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">
           <Link href="/lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.lawyers")}</Link>
           <Link href="/for-lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.forLawyers")}</Link>
           <Link href="/lawyer" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.lawyerCabinet")}</Link>
-        </nav>
+        </nav>}
         <div className="space-y-3">
           <p className="font-semibold">{t("footer.contacts")}</p>
           {CONTACTS.address && (

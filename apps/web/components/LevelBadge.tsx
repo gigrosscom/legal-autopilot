@@ -2,6 +2,7 @@
 
 import { Badge, Button, type Tone } from "@/components/ui";
 import type { IconName } from "@/components/ui/Icon";
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useT } from "@/lib/i18n";
 
 export type Level = "pending" | "verified" | "scenario_draft" | "universal" | "lawyer" | "soon";
@@ -35,7 +36,7 @@ export function LevelExplainer({ level, stacked = false }: { level: Level; stack
 /** One action per coverage level: pick a ready situation / draft a document / find a lawyer. */
 export function LevelAction({ level }: { level: "verified" | "universal" | "lawyer" }) {
   const t = useT();
-  if (level === "lawyer") return <Button className="mt-auto" variant="secondary" href="/lawyers" icon="lawyer">{t("cta.lawyer")}</Button>;
+  if (level === "lawyer") return LAWYERS_PUBLIC ? <Button className="mt-auto" variant="secondary" href="/lawyers" icon="lawyer">{t("cta.lawyer")}</Button> : null;
   if (level === "verified") return <Button className="mt-auto" variant="secondary" href="/#situations" icon="checkCircle">{t("cta.pickSituation")}</Button>;
   return <Button className="mt-auto" variant="secondary" href="/start" icon="document">{t("cta.draftDocument")}</Button>;
 }
