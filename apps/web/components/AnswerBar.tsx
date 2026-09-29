@@ -94,12 +94,17 @@ export function AnswerBar({ question, busy, currency, onSend, onFile, onSkip, on
     field = (
       <label className="relative block min-w-0 flex-1">
         <span className="sr-only">{question?.text}</span>
+        {/* The digits stay as typed (reformatting while typing moved the caret and lost digits on phones);
+            the grouped amount is shown under the box so a missing or extra zero is easy to see. */}
         <input inputMode={type === "money" ? "numeric" : "decimal"} autoComplete="off" enterKeyHint="send"
-          value={type === "money" ? groupDigits(value.replace(/\D/g, "")) : value}
-          onChange={(e) => setValue(type === "money" ? e.target.value.replace(/\D/g, "") : e.target.value.replace(/[^\d.,]/g, ""))}
+          value={value}
+          onChange={(e) => setValue(type === "money" ? e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "") : e.target.value.replace(/[^\d.,]/g, ""))}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
           placeholder={type === "money" ? "0" : ""} className={`${common} pe-14 text-lg tabular-nums`} />
         {type === "money" && <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 font-semibold text-muted">{currency === "KZT" ? "₸" : currency}</span>}
+        {type === "money" && Number(value) > 0 && (
+          <span className="mt-1 block px-1 text-sm font-semibold tabular-nums text-ink">{groupDigits(value)} {currency === "KZT" ? "₸" : currency}</span>
+        )}
       </label>
     );
   } else if (type === "text" && digitsOnly(question?.pattern)) {

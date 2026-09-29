@@ -206,7 +206,7 @@ def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPac
                                 payload={"language": lang, "facts": facts, "fields": specs,
                                          "attachments": attachments or []})
         return (out.get("narrative") or "").strip()
-    except LLMError as e:
+    except Exception as e:  # any failure: the document is still made from the facts, without the narrative
         log.warning("narrative failed: %s", e)
         return ""
 
