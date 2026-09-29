@@ -20,8 +20,8 @@ type Pending = { key: string; filename: string; file?: File; id?: string };
  * Free consultation as a chat: type or dictate, attach files, hear the answer. Without a case yet, the first
  * message runs the emergency check and opens the case; the chat then lives at /chat/<id>.
  */
-export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend = false, hint }: {
-  caseId: string | null; draft?: string; autoSend?: boolean; hint?: string;
+export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend = false, hint, situation }: {
+  caseId: string | null; draft?: string; autoSend?: boolean; hint?: string; situation?: string;
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -134,10 +134,12 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     }
   }, [autoSend, initialDraft]);
 
+  // examples of the chosen life situation (fine → fines, family → divorce and alimony…); the general ones otherwise
   const examples = useMemo(() => {
+    if (situation) return [1, 2, 3, 4].map((i) => t(`situations.${situation}.ex${i}`));
     const n = Number(t("helper.exampleCount")) || 0;
     return Array.from({ length: n }, (_, i) => t(`helper.examples.${i + 1}`)).slice(0, 4);
-  }, [t]);
+  }, [t, situation]);
 
   const addFile = (f: File) => setFiles((xs) => [...xs, { key: `${Date.now()}-${f.name}`, filename: f.name, file: f }]);
   const toggleSpeak = (m: ChatMessage) => {
