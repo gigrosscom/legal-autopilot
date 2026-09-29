@@ -31,6 +31,7 @@ const PATHS = {
   handshake: "M11 17l2 2a2 2 0 0 0 3-3M14 14l2.5 2.5a2 2 0 0 0 3-3L15 9l-2 1a2 2 0 0 1-2.5-3L13 5l-3-1-7 6 5 5M21 12l-4-4",
   scroll: "M8 21h11a2 2 0 0 0 2-2v-1H10v1a2 2 0 0 1-2 2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h12a2 2 0 0 1 2 2v13M8 7h7M8 11h7",
   home: "M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6",
+  graduation: "M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6",
   // neutral "council" pictogram: no religious symbol of any confession
   community: "M12 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 21v-3a4 4 0 0 1 8 0v3M2 17v-1a3 3 0 0 1 3-3M22 17v-1a3 3 0 0 0-3-3",
   plus: "M12 5v14M5 12h14",

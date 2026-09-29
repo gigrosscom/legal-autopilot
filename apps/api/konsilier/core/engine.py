@@ -130,6 +130,8 @@ class CaseEngine:
         self.pdf = pdf
         # PDF made after the document is handed out (ensure_pdf), so the document appears at once
         self.defer_pdf = False
+        # called when a document waits for a lawyer's check, so the lawyer learns of it at once (set by the container)
+        self.on_approval_needed: Any = None
         self.scheduler = scheduler
         self.notifier = notifier
         self.payments = payments
@@ -1204,6 +1206,11 @@ class CaseEngine:
         ]
         if self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"
+            if self.on_approval_needed is not None:
+                try:
+                    self.on_approval_needed(session, case, action)
+                except Exception:  # noqa: BLE001 — telling the lawyer must never stop the document
+                    log.warning("approval notice for case %s failed", case.id, exc_info=True)
         else:
             action.approval_status, action.status = "not_required", "ready"
         if case.status != S.ACTION_READY.value:

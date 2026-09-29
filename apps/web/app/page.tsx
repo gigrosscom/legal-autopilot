@@ -23,6 +23,17 @@ const PLAN_GROUPS: { key: string; cols: string; plans: Plan[] }[] = [
   ] },
 ];
 
+// The «my situation» card closes the grid of life situations: it takes whatever is left of the last row at each width
+// (2 / 3 / 4 columns), a full row when the tiles fill theirs. Literal class names, so Tailwind sees them.
+const SPAN: Record<number, string[]> = {
+  2: ["", "col-span-1", "col-span-2"],
+  3: ["", "md:col-span-1", "md:col-span-2", "md:col-span-3"],
+  4: ["", "lg:col-span-1", "lg:col-span-2", "lg:col-span-3", "lg:col-span-4"],
+};
+const MY_SITUATION_SPAN = [2, 3, 4].map((cols) => SPAN[cols][cols - (SITUATIONS.length % cols)]).join(" ");
+// one column wide on tablets: the card stacks like a tile, without the arrow
+const MY_SITUATION_NARROW = SITUATIONS.length % 3 === 2;
+
 function SectionHead({ title, lead, href, more }: { title: string; lead?: string; href?: string; more?: string }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -106,15 +117,16 @@ export default function Home() {
               </Link>
             </li>
           ))}
-          <li className="col-span-2">
+          <li className={MY_SITUATION_SPAN}>
             <Link href="/start"
-              className="card-link flex h-full min-h-36 items-center gap-4 rounded-[18px] bg-surface p-5 md:p-6">
+              className={`card-link flex h-full min-h-36 items-center gap-4 rounded-[18px] bg-surface p-5 md:p-6 ${
+                MY_SITUATION_NARROW ? "md:flex-col md:items-start lg:flex-row lg:items-center" : ""}`}>
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-action text-white"><Icon name="plus" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[17px] font-semibold tracking-[-0.015em] text-ink">{t("home.mySituation")}</span>
                 <span className="block text-[15px] text-muted">{t("home.mySituationText")}</span>
               </span>
-              <Icon name="arrowRight" className="shrink-0 text-muted rtl:-scale-x-100" />
+              <Icon name="arrowRight" className={`shrink-0 text-muted rtl:-scale-x-100 ${MY_SITUATION_NARROW ? "md:hidden lg:block" : ""}`} />
             </Link>
           </li>
         </ul>
