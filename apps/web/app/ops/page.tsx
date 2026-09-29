@@ -367,7 +367,7 @@ function Requests({ onChange }: { onChange: () => void }) {
   );
 }
 
-/** Document payments by transfer: the client pressed «Я оплатил(а)»; find the transfer in Kaspi by the code in its comment. */
+/** Document payments by transfer: the client pressed «Оплатить»; find the transfer in Kaspi by the code in its comment. */
 function Payments({ onChange }: { onChange: () => void }) {
   const [status, setStatus] = useState("awaiting_confirmation");
   const [rows, setRows] = useState<Pay[] | null>(null);
@@ -389,7 +389,7 @@ function Payments({ onChange }: { onChange: () => void }) {
   return (
     <>
       <p className="text-sm text-muted">
-        Клиент нажал «Я оплатил(а)». Найдите в Kaspi перевод на эту сумму с кодом в комментарии и отметьте результат —
+        Клиент нажал «Оплатить». Найдите в Kaspi перевод на эту сумму с кодом в комментарии и отметьте результат —
         клиент получит уведомление. «Один документ» открывает один документ дела, «Дело под ключ» — все документы дела,
         тариф «Бизнес» / «Бизнес Про» — подписку на 30 дней с лимитом документов.
       </p>

@@ -19,6 +19,7 @@ from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
 from ..core.scenario import RESPONSE_CLASSES
+from .background import after_commit
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
 from .views import case_view
 
@@ -218,7 +219,25 @@ def post_message(case_id: uuid.UUID, body: MessageIn, user: User = Depends(curre
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
+    if case.status == "qualified" and not case.narrative:  # the document's text is written while they look it over
+        prewrite_later(session, container, case.id)
     return {"reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
+
+
+def prewrite_later(session: Session, container: Container, case_id: uuid.UUID) -> None:
+    def job(s: Session) -> None:
+        case = s.get(Case, case_id)
+        if case is not None:
+            container.engine.prewrite(s, case)
+    after_commit(session, container, job, "prewrite")
+
+
+def pdf_later(session: Session, container: Container, action_id: uuid.UUID) -> None:
+    def job(s: Session) -> None:
+        action = s.get(Action, action_id)
+        if action is not None:
+            container.engine.ensure_pdf(s, action)
+    after_commit(session, container, job, "pdf")
 
 
 async def _read_upload(file: UploadFile) -> tuple[bytes, str]:
@@ -446,6 +465,8 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
             return {"action_id": None, "payment": view["payment"], "case": view}
         raise engine_error(e) from e
     session.flush()
+    if not action.pdf_key and action.docx_key:
+        pdf_later(session, container, action.id)
     return {"action_id": str(action.id), "case": case_view(container.engine, session, case)}
 
 
@@ -467,6 +488,8 @@ def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(cur
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
+    if not case.narrative:  # the payment window is open: the document's text is written meanwhile
+        prewrite_later(session, container, case.id)
     return {"case": case_view(container.engine, session, case)}
 
 
@@ -491,6 +514,8 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
     session.flush()
     if inv.status == "awaiting_confirmation":
         _tell_desk_claimed(container, inv, f"дело {case.id}")
+    if not case.narrative:
+        prewrite_later(session, container, case.id)
     return {"case": case_view(container.engine, session, case)}
 
 
@@ -567,6 +592,8 @@ def download_document(case_id: uuid.UUID, action_id: uuid.UUID, format: Literal[
         raise HTTPException(409, {"code": "awaiting_approval", "message": "document is awaiting lawyer approval"})
     if not container.engine.document_unlocked(case, action):
         raise HTTPException(402, {"code": "payment_required", "message": "document is available after payment"})
+    if format == "pdf" and not action.pdf_key and action.docx_key:  # made in the background; not there yet
+        container.engine.ensure_pdf(session, action)
     return document_response(container, action, format)
 
 

@@ -186,24 +186,24 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     });
   }
 
-  // While the transfer is being checked, look every 10 s; once it is confirmed, prepare the document at once.
+  // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
+  // confirmed, so it simply appears; if it has not after a few checks, the page asks for it itself.
   const payStatus = c?.payment?.status;
   const prepareRef = useRef(post);
   prepareRef.current = post;
   useEffect(() => {
     if (payStatus !== "awaiting_confirmation") return;
+    let paidChecks = 0;
     const timer = setInterval(async () => {
       try {
         const view = await api<CaseView>(`/v1/cases/${id}`);
-        setCase(view);
-        if (view.payment?.status === "paid") {
-          clearInterval(timer);
-          const next = view.status === "qualified" || (view.status === "awaiting_response" && view.proposal?.type === "prepare_action");
-          if (next) await prepareRef.current("/actions/next");
-          setPayOpen(false);
-        }
+        const waiting = view.status === "qualified" || (view.status === "awaiting_response" && view.proposal?.type === "prepare_action");
+        if (!waiting) { clearInterval(timer); setCase(view); setPayOpen(false); return; }  // the document is there
+        if (view.payment?.status !== "paid") { setCase(view); return; }
+        // paid, the document is being made: the window keeps "checking" until it is there
+        if (++paidChecks >= 3) { clearInterval(timer); await prepareRef.current("/actions/next"); setPayOpen(false); }
       } catch { /* a missed check is retried on the next tick */ }
-    }, 10000);
+    }, 2000);
     return () => clearInterval(timer);
   }, [payStatus, id]);
 
@@ -304,7 +304,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
-      {payOpen && c.payment && c.payment.status !== "paid" && (
+      {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)}
           onChoose={(purpose) => post("/payment", { purpose })} onClaim={() => post("/payment/claim")} />
       )}

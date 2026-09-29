@@ -112,6 +112,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                    "bizpro": (settings.plan_bizpro_price, settings.plan_bizpro_documents)},
                             plan_days=settings.plan_period_days, plan_currency=settings.plan_currency),
     )
+    engine.defer_pdf = settings.background_jobs == "thread"
     container = Container(settings, db, factory, packs, storage, scheduler, notifier, engine,
                      identities=Identities(settings.identity_secret),
                      email_sender=email_sender or build_email(settings),

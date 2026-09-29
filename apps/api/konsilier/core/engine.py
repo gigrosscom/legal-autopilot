@@ -127,6 +127,8 @@ class CaseEngine:
         self.llm_provider = llm
         self.storage = storage
         self.pdf = pdf
+        # PDF made after the document is handed out (ensure_pdf), so the document appears at once
+        self.defer_pdf = False
         self.scheduler = scheduler
         self.notifier = notifier
         self.payments = payments
@@ -677,6 +679,7 @@ class CaseEngine:
     def prepare_next_action(self, session: Session, case: Case, actor: str) -> Action:
         if not case.scenario_id:
             raise EngineError("no_document_path")
+        self.lock(session, case)
         sc, pack = self.scenario_of(case), self.pack_of(case)
         if case.hold_reason is None and not case.actions:
             reason = safety.abuse_reason(session, pack.coverage, case)
@@ -882,7 +885,7 @@ class CaseEngine:
         else:
             text = pack.t(lang, "notifications.payment_not_found", code=inv.code,
                           default=f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу "
-                                  f"и нажмите «Я оплатил(а)» ещё раз или напишите в поддержку.")
+                                  f"и нажмите «Оплатить» ещё раз или напишите в поддержку.")
         self.audit(session, case, f"ops:{operator}", "payment_confirmed" if received else "payment_not_found",
                    invoice=inv.code)
         self.notifier.notify(session, case, "payment", text)
@@ -896,28 +899,45 @@ class CaseEngine:
             Invoice.status == "paid", Invoice.case_id.is_not(None), Invoice.purpose.in_(("document", "case")),
             Invoice.decided_at.is_not(None), Invoice.decided_at <= now - after, Invoice.decided_at >= now - within))
         for inv in paid.all():
-            case = session.get(Case, inv.case_id)
-            decided = inv.decided_at if inv.decided_at.tzinfo else inv.decided_at.replace(tzinfo=timezone.utc)
-            if case is None or case.status != S.QUALIFIED.value or case.hold_reason is not None:
-                continue
-            if any((a.created_at if a.created_at.tzinfo else a.created_at.replace(tzinfo=timezone.utc)) >= decided
-                   for a in case.actions):
-                continue  # already prepared after this payment
-            if self.unlock_source(session, case) is None:
-                continue
             try:
                 with session.begin_nested():
-                    action = self.prepare_next_action(session, case, "system:paid")
+                    done += self.prepare_after_payment(session, inv) is not None
             except Exception:  # noqa: BLE001 — retried on the next tick
-                log.exception("auto-prepare after payment failed for case %s", case.id)
-                continue
-            pack = self.pack_of(case)
-            self.notifier.notify(session, case, "document", pack.t(
-                pack.lang(case.language), "notifications.document_ready",
-                default="Документ готов: его можно скачать в карточке дела."))
-            log.info("document %s prepared after payment %s", action.id, inv.code)
-            done += 1
+                log.exception("auto-prepare after payment %s failed", inv.code)
         return done
+
+    def prepare_after_payment(self, session: Session, inv: Invoice) -> Action | None:
+        """The document a confirmed payment is for, when it is not prepared yet (the desk's confirmation starts this
+        at once; the scheduler retries). None when there is nothing to prepare."""
+        case = session.get(Case, inv.case_id) if inv.case_id else None
+        if inv.status != "paid" or inv.decided_at is None or case is None:
+            return None
+        self.lock(session, case)
+        decided = inv.decided_at if inv.decided_at.tzinfo else inv.decided_at.replace(tzinfo=timezone.utc)
+        if case.status != S.QUALIFIED.value or case.hold_reason is not None:
+            return None
+        if any((a.created_at if a.created_at.tzinfo else a.created_at.replace(tzinfo=timezone.utc)) >= decided
+               for a in case.actions):
+            return None  # already prepared after this payment
+        if self.unlock_source(session, case) is None:
+            return None
+        action = self.prepare_next_action(session, case, "system:paid")
+        pack = self.pack_of(case)
+        self.notifier.notify(session, case, "document", pack.t(
+            pack.lang(case.language), "notifications.document_ready",
+            default="Документ готов: его можно скачать в карточке дела."))
+        log.info("document %s prepared after payment %s", action.id, inv.code)
+        return action
+
+    def lock(self, session: Session, case: Case) -> None:
+        """Row lock on the case (PostgreSQL) so the page and the background job never make the same document
+        twice; the case is re-read after waiting for the lock."""
+        if session.get_bind().dialect.name != "postgresql":
+            return
+        session.execute(select(Case.id).where(Case.id == case.id).with_for_update())
+        if case not in session.dirty:
+            session.refresh(case)
+            session.expire(case, ["actions"])
 
     def subscription_view(self, session: Session, user_id: uuid.UUID) -> dict[str, Any] | None:
         active = self.active_subscription(session, user_id)
@@ -988,6 +1008,23 @@ class CaseEngine:
         lang = case.language
         title = pack.localized(spec.title, lang)
         addressee = self._addressee(case, sc, pack, spec)
+        self._ensure_text(case, sc, pack, title)
+        ctx = self.document_context(case, sc, pack, spec, addressee)
+        docx = render_docx(pack.packs_root / spec.template, ctx,
+                           ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
+                           draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
+                           if sc.is_draft else None)
+        base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
+        action.docx_key = self.storage.put(f"{base}.docx", docx,
+                                           "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        pdf = None if self.defer_pdf else self.pdf.convert(docx)
+        action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
+        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf))
+
+    def _ensure_text(self, case: Case, sc: Scenario, pack: JurisdictionPack, title: str) -> None:
+        """The written parts of the document (statement of circumstances, demands): the slow LLM step. Kept on the
+        case, so it can be written ahead (prewrite) while the person pays."""
+        lang = case.language
         llm = self.llm_for(case)
         if not case.narrative:
             # the narrative needs no personal data: names/ids are printed in the header by the template
@@ -1003,16 +1040,35 @@ class CaseEngine:
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
             case.formal_demands = ai.write_demands(llm, pack, lang, str(case.facts["desired_outcome"]), title)
             self._save_vault(case, llm)
-        ctx = self.document_context(case, sc, pack, spec, addressee)
-        docx = render_docx(pack.packs_root / spec.template, ctx,
-                           ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
-                           draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                           if sc.is_draft else None)
-        base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
-        action.docx_key = self.storage.put(f"{base}.docx", docx,
-                                           "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-        pdf = self.pdf.convert(docx)
-        action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
+
+    def prewrite(self, session: Session, case: Case) -> bool:
+        """Write the next document's text ahead, while the person pays: after payment only the file is made."""
+        if not case.scenario_id or case.status != S.QUALIFIED.value or case.hold_reason is not None:
+            return False
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        spec = self.next_action_spec(case, sc)
+        if spec is None or spec.kind == "handoff" or (case.narrative and not (
+                is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"))):
+            return False
+        self._ensure_text(case, sc, pack, pack.localized(spec.title, case.language))
+        return True
+
+    def ensure_pdf(self, session: Session, action: Action) -> bool:
+        """The PDF of a document made without one (defer_pdf); True when there is one now."""
+        if action.pdf_key:
+            return True
+        if not action.docx_key:
+            return False
+        pdf = self.pdf.convert(self.storage.get(action.docx_key))
+        if not pdf:
+            return False
+        action.pdf_key = self.storage.put(action.docx_key.removesuffix(".docx") + ".pdf", pdf, "application/pdf")
+        return True
+
+    def _finish_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
+                       action: Action, actor: str, addressee: dict[str, Any], ctx: dict[str, Any],
+                       pdf: bool) -> Action:
+        lang = case.language
         action.addressee = addressee
         action.instructions = [
             s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
@@ -1025,7 +1081,7 @@ class CaseEngine:
         if case.status != S.ACTION_READY.value:
             self.transition(session, case, S.ACTION_READY, actor, action=spec.id)
         self.audit(session, case, actor, "document_generated", action=spec.id,
-                   approval=action.approval_status, pdf=bool(pdf))
+                   approval=action.approval_status, pdf=pdf)
         return action
 
     def document_context(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
