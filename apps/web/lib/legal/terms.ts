@@ -2,7 +2,7 @@
 // terms.en.ts). Other interface languages show the English text. A new wording gets a new TERMS_VERSION: the
 // server records which version a person accepted when they opened a case.
 //
-// The operator's legal details are filled in after the company is registered. The text must be checked by a
+// Operator: ТОО «Konsilier AI», BIN 260940036818 (registered 29.09.2026, Almaty). The text must be checked by a
 // lawyer admitted in Kazakhstan before it is relied on (see packs/kz/REVIEW.md).
 
 export const TERMS_VERSION = "2026-09-29";
@@ -31,7 +31,7 @@ const ru: LegalDoc = {
       h: "1. Термины",
       p: [
         "«Сервис», «Платформа» — программное обеспечение Konsiliér AI: сайт konsilier.com, веб-приложение и Telegram-бот.",
-        "«Оператор» — юридическое лицо, которое управляет Сервисом: ТОО «[наименование указывается после регистрации]», БИН [указывается после регистрации], адрес [указывается после регистрации].",
+        "«Оператор» — юридическое лицо, которое управляет Сервисом: ТОО «Konsilier AI», БИН 260940036818, адрес: Республика Казахстан, 050000, г. Алматы, Наурызбайский район, мкр. Курамыс, ул. Акселеу Сейдимбек, д. 222.",
         "«Пользователь», «вы» — физическое или юридическое лицо, которое пользуется Сервисом.",
         "«Юрист» — адвокат или юридический консультант, член палаты юридических консультантов, либо правозащитная организация, работающие с Пользователями через Платформу.",
         "«ИИ» — системы искусственного интеллекта, которые Сервис использует для ответов и подготовки проектов документов.",
@@ -129,7 +129,7 @@ const ru: LegalDoc = {
     {
       h: "13. Контакты",
       p: [
-        "E-mail: info@konsilier.com. Реквизиты Оператора указываются после государственной регистрации.",
+        "ТОО «Konsilier AI», БИН 260940036818, Республика Казахстан, 050000, г. Алматы, Наурызбайский район, мкр. Курамыс, ул. Акселеу Сейдимбек, д. 222. E-mail: info@konsilier.com.",
       ],
     },
   ],

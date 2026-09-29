@@ -9,10 +9,11 @@
 
 ## Company
 
-- **Company name:** Konsilier AI LLP (ТОО «Konsilier AI»), BIN 260928355366
+- **Company name:** Konsilier AI LLP (ТОО «Konsilier AI»), BIN 260940036818
+- **Registered address:** 222 Akseleu Seidimbek St., Kuramys microdistrict, Nauryzbay district, Almaty 050000, Kazakhstan
 - **Website:** https://konsilier.com
 - **Contact email:** info@konsilier.com
-- **Country of incorporation:** Kazakhstan (registered 29 September 2026)
+- **Country of incorporation:** Kazakhstan (registered 29 September 2026, Almaty; founder and sole participant: Nurlan Khabibulla)
 - **Year founded:** 2026
 - **Employees:** 1 (founder)
 - **Funding stage:** [[Pre-seed / bootstrapped]]; total raised: [[$0]]

@@ -15,6 +15,7 @@ const tr: Dict = {
     languageNote: "Koşullar Kazakça ve Rusça hazırlanmıştır; burada İngilizce çevirisi gösterilmektedir.",
   },
   footer: {
+    company: "Konsilier AI LLP · BIN 260940036818",
     said: "Konsiliér [kon-sil-YER] — hukuki konularda yapay zekâ asistanı",
     contacts: "İletişim",
     lawyerCabinet: "Avukat paneli",
