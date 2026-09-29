@@ -80,6 +80,39 @@ class DeadlineSpec(_Strict):
         return self
 
 
+class FilingDeadlineSpec(_Strict):
+    """The term to FILE the document (not the term to answer it): N days counted from a fact of the case,
+    e.g. the date a decision was handed. Filled in by a lawyer; ``verified`` marks a norm checked against
+    the official text. Without it the case card says «уточнит юрист» next to the date."""
+
+    calendar_days: int | None = Field(default=None, ge=1, le=3650)
+    business_days: int | None = Field(default=None, ge=1, le=3650)
+    from_field: str | None = None  # intake field (a date) the term is counted from; None → only described in words
+    from_text: Localized = Field(default_factory=dict)  # "со дня вручения постановления"
+    norm_ref: str = "TODO"
+    verified: bool = False
+
+    @model_validator(mode="after")
+    def _one_of(self) -> "FilingDeadlineSpec":
+        if (self.calendar_days is None) == (self.business_days is None):
+            raise ValueError("filing deadline needs exactly one of calendar_days / business_days")
+        if self.verified and "TODO" in self.norm_ref:
+            raise ValueError("a verified filing deadline needs a norm_ref")
+        return self
+
+
+FilingWay = Literal["in_person", "post", "online", "email"]
+
+
+class FilingSpec(_Strict):
+    """How and until when a document is filed. Every part is optional: what is absent is shown to the person as
+    «уточнит юрист». ``ways`` — when given — replaces the ways derived from the channel / submission kinds."""
+
+    deadline: FilingDeadlineSpec | None = None
+    signature: Literal["handwritten", "ecp", "either"] | None = None
+    ways: tuple[FilingWay, ...] = ()
+
+
 class AddresseeSpec(_Strict):
     """Who receives the document: a case party, a pack-level authority, a forum from the pack registry
     or (service scenarios) a named recipient given right in the scenario, e.g. a visa centre or a university."""
@@ -145,7 +178,8 @@ class ActionSpec(_Strict):
     template: str | None = None  # path relative to packs dir
     channel: Literal["user_submits", "email", "email_or_user_submits"] = "user_submits"
     addressee: AddresseeSpec | None = None
-    deadline: DeadlineSpec | None = None
+    deadline: DeadlineSpec | None = None  # the term for the addressee to ANSWER, counted from filing
+    filing: FilingSpec | None = None  # the term and form of FILING (see FilingSpec)
     norm_refs: tuple[str, ...] = ()
     when: str | None = None
     instructions: dict[str, tuple[str, ...]] = Field(default_factory=dict)
@@ -328,6 +362,13 @@ class Scenario(_Strict):
             seen.add(a.id)
             if a.addressee and a.addressee.party and a.addressee.party not in self.parties:
                 raise ValueError(f"action {a.id!r}: addressee party {a.addressee.party!r} not in parties")
+            fd = a.filing.deadline if a.filing else None
+            if fd and fd.from_field:
+                if fd.from_field not in names:
+                    raise ValueError(f"action {a.id!r}: filing.deadline.from_field {fd.from_field!r} "
+                                     f"is not an intake field")
+                if self.field(fd.from_field).type != "date":
+                    raise ValueError(f"action {a.id!r}: filing.deadline.from_field {fd.from_field!r} must be a date")
         field_names = set(names)
         for key, p in self.parties.items():
             for attr in ("name_field", "id_field", "email_field", "address_field"):
@@ -379,4 +420,8 @@ class Scenario(_Strict):
             if a.deadline and "TODO" in a.deadline.norm_ref:
                 days = a.deadline.calendar_days or a.deadline.business_days
                 out.append(f"{self.id}:{a.id}: deadline {days} days — norm_ref {a.deadline.norm_ref}")
+            fd = a.filing.deadline if a.filing else None
+            if fd and "TODO" in fd.norm_ref:
+                days = fd.calendar_days or fd.business_days
+                out.append(f"{self.id}:{a.id}: filing deadline {days} days — norm_ref {fd.norm_ref}")
         return out

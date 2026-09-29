@@ -655,10 +655,7 @@ class CaseEngine:
         channels: list[dict[str, Any]] = []
         attachments: list[str] = []
         cov = pack.coverage
-        forum = cov.forums.get(spec.addressee.forum) if cov and spec.addressee and spec.addressee.forum else None
-        if forum is None and is_generic(case.scenario_id) and cov:  # a claim to the other party itself
-            ref = GenericRef.parse(case.scenario_id or "")
-            forum = cov.forums.get(ref.forum_id) if ref else None
+        forum = self.action_forum(case, spec)
         if forum is not None:
             channels = [{"kind": ch.kind, "url": ch.url} for ch in forum.submission]
             doc = cov.document_for(forum) if cov else None
@@ -685,6 +682,19 @@ class CaseEngine:
                 "addressee": addressee.get("name") or None,
                 "channels": channels, "attachments": attachments,
                 "lawyer_check": self.approval_required(session, case, spec)}
+
+    def action_forum(self, case: Case, spec: ActionSpec) -> Any:
+        """The registry forum an action goes to: its addressee forum, or — for a universal-path claim to the other
+        party itself — the forum the generic scenario was built for. None for signed scenarios' own addressees."""
+        cov = self.pack_of(case).coverage
+        if cov is None:
+            return None
+        if spec.addressee and spec.addressee.forum:
+            return cov.forums.get(spec.addressee.forum)
+        if is_generic(case.scenario_id):
+            ref = GenericRef.parse(case.scenario_id or "")
+            return cov.forums.get(ref.forum_id) if ref else None
+        return None
 
     def proposal(self, case: Case) -> Proposal:
         if not case.scenario_id:

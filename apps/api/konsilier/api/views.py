@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..core import ai, qualifier
 from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
+from ..core.filing import filing_view
 from ..core.models import AuditLog, Case, Deadline
 from ..core.roadmap import build_roadmap
 from ..core.state_machine import board_column
@@ -100,9 +101,13 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
             view["question"] = q
         view["payment"] = engine.payment_view(session, case)
         deadlines = {d.action_id: d for d in session.scalars(select(Deadline).where(Deadline.case_id == case.id))}
+        today = pack.local_now().date()
         for a in case.actions:
             spec = sc.action(a.action_id)
             dl = deadlines.get(a.id)
+            filing = None if spec.kind == "handoff" else filing_view(
+                pack, sc, spec, lang=lang, addressee=a.addressee, facts=case.facts or {},
+                forum=engine.action_forum(case, spec), today=today)
             view["actions"].append({
                 "id": str(a.id), "action_id": a.action_id, "sequence": a.sequence, "kind": a.kind,
                 "title": pack.localized(spec.title, lang), "status": a.status,
@@ -124,6 +129,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "deadline": {"due_date": dl.due_date.isoformat(), "status": dl.status,
                              "norm_ref": dl.norm_ref} if dl else None,
                 "norm_refs": list(spec.norm_refs),
+                "filing": filing,
             })
         view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
         view["plan"] = engine.plan(session, case)
