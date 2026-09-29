@@ -14,11 +14,12 @@ export default function StartPage() {
   const [draft, setDraft] = useState("");
   const [autoSend, setAutoSend] = useState(false);
   const [hint, setHint] = useState<string | undefined>();
+  const [situation, setSituation] = useState<string | undefined>();
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const s = SITUATIONS.find((x) => x.key === q.get("s"));
-    if (s) setHint(t(`situations.${s.key}.hint`));
+    if (s) { setHint(t(`situations.${s.key}.hint`)); setSituation(s.key); }
     try {
       const saved = sessionStorage.getItem(DRAFT_KEY) ?? "";
       sessionStorage.removeItem(DRAFT_KEY);
@@ -28,5 +29,5 @@ export default function StartPage() {
     setReady(true);
   }, [t]);
 
-  return ready ? <Chat caseId={null} draft={draft} autoSend={autoSend} hint={hint} /> : null;
+  return ready ? <Chat caseId={null} draft={draft} autoSend={autoSend} hint={hint} situation={situation} /> : null;
 }
