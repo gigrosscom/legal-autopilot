@@ -16,6 +16,7 @@
 id: kz.services.tender_application
 version: 0.1.0
 ontology: SERVICES.PROCUREMENT.TENDER_APPLICATION
+taxonomy: procurement.bid
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01

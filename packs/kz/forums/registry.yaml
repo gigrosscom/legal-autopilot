@@ -157,7 +157,9 @@ forums:
       ru: "Органы прокуратуры по месту (уточнит юрист)"
       kk: "Жергілікті прокуратура органдары (заңгер нақтылайды)"
     accepts:
-      - dispute_types: [criminal.police_inaction, administrative.state_body_inaction]
+      # social.benefit_refusal: a refusal of a benefit is a refusal by a state body — the same route as before the
+      # social branch existed (TODO(lawyer): confirm; see docs/lawyer/new-topics.md)
+      - dispute_types: [criminal.police_inaction, administrative.state_body_inaction, social.benefit_refusal]
         applicant_roles: [victim, complainant]
     document_types: [complaint]
     submission:
@@ -245,7 +247,7 @@ forums:
       ru: "Уполномоченный по правам человека в Республике Казахстан"
       kk: "Қазақстан Республикасындағы Адам құқықтары жөніндегі уәкіл"
     accepts:
-      - dispute_types: [administrative.state_body_inaction]
+      - dispute_types: [administrative.state_body_inaction, social.benefit_refusal]
         applicant_roles: [complainant]
     document_types: [complaint]
     submission:

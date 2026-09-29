@@ -23,6 +23,7 @@ _SIMPLE = re.compile(r"^[a-z][a-z0-9_]*$")
 APPLICANT_ROLES = (
     "claimant", "victim", "complainant", "consumer", "borrower", "employee", "employer", "tenant",
     "landlord", "heir", "spouse", "parent", "taxpayer", "migrant", "business", "suspect", "accused",
+    "beneficiary", "student",
 )
 # The platform never writes defence documents: these roles are always routed to a lawyer.
 DEFENCE_ROLES = frozenset({"suspect", "accused"})
