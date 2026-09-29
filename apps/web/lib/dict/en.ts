@@ -238,9 +238,9 @@ const en: Dict = {
       docT: "Document",
       docP: "from 1,990 ₸",
       docD: "A claim, complaint, application or lawsuit with instructions on where and how to file it.",
-      lawyerT: "Lawyer or advocate",
-      lawyerP: "The lawyer sets the price",
-      lawyerD: "Human rights organizations help for free.",
+      lawyerT: "If you need a lawyer",
+      lawyerP: "Free guidance",
+      lawyerD: "Criminal cases and complex court cases are not for filing on your own. We point you to free legal aid.",
     },
     trustTitle: "Why you can trust us",
     trust: {
