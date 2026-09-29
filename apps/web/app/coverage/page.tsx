@@ -33,7 +33,7 @@ export default function CoveragePage() {
     <div className="space-y-12">
       <header className="max-w-3xl space-y-3">
         <p className="eyebrow">{t("coverage.eyebrow")}</p>
-        <h1 className="text-4xl font-bold tracking-tight text-balance">{t("coverage.title")}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-balance">{t("coverage.title")}</h1>
         <p className="text-lg text-muted">{t("coverage.lead")}</p>
       </header>
 
@@ -79,25 +79,41 @@ export default function CoveragePage() {
       {data && data.countries.some((c) => c.legal_sources?.length) && (
         <Section title={t("coverage.sourcesTitle")} lead={t("coverage.sourcesLead")}>
           <div className="space-y-2">
-            {[...live, ...planned].filter((c) => c.legal_sources?.length).map((c) => (
-              <details key={c.country} className="card">
-                <summary className="cursor-pointer font-semibold">{c.name}</summary>
-                <ul className="mt-3 space-y-2">
-                  {c.legal_sources!.map((s) => (
-                    <li key={s.id} className="text-sm">
-                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="link break-words">{s.name}</a>
-                      <span className="block text-xs text-muted">{t(`coverage.sourceKind.${s.kind}`)} · {s.operator}</span>
-                    </li>
-                  ))}
-                </ul>
+            {live.filter((c) => c.legal_sources?.length).map((c) => <Sources key={c.country} c={c} />)}
+            {/* countries that are not live yet: one folded row instead of a long list */}
+            {planned.some((c) => c.legal_sources?.length) && (
+              <details className="card">
+                <summary className="cursor-pointer font-semibold">
+                  {t("coverage.otherCountries", { n: planned.filter((c) => c.legal_sources?.length).length })}
+                </summary>
+                <div className="mt-3 space-y-2">
+                  {planned.filter((c) => c.legal_sources?.length).map((c) => <Sources key={c.country} c={c} nested />)}
+                </div>
               </details>
-            ))}
+            )}
           </div>
         </Section>
       )}
 
       <CtaBanner />
     </div>
+  );
+}
+
+function Sources({ c, nested = false }: { c: { name: string; legal_sources?: LegalSource[] }; nested?: boolean }) {
+  const t = useT();
+  return (
+    <details className={nested ? "rounded-xl border border-line px-4 py-3" : "card"}>
+      <summary className="cursor-pointer font-semibold">{c.name}</summary>
+      <ul className="mt-3 space-y-2">
+        {c.legal_sources!.map((s) => (
+          <li key={s.id} className="text-sm">
+            <a href={s.url} target="_blank" rel="noopener noreferrer" className="link break-words">{s.name}</a>
+            <span className="block text-xs text-muted">{t(`coverage.sourceKind.${s.kind}`)} · {s.operator}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

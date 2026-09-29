@@ -8,7 +8,7 @@ from types import SimpleNamespace as NS
 import httpx
 import pytest
 
-from konsilier import gemini
+from konsilier import openai_compat
 from konsilier.chat import ChatAgent
 from konsilier.config import Settings
 from konsilier.container import free_chat_clients
@@ -70,7 +70,7 @@ def test_tool_call_streamed_in_pieces_then_answer():
 
 
 def test_chain_moves_to_the_next_provider_before_the_reply_starts(monkeypatch):
-    monkeypatch.setattr(gemini, "RETRY_DELAYS", (0, 0))
+    monkeypatch.setattr(openai_compat, "RETRY_DELAYS", (0, 0))
     busy = httpx.Response(429, json={"error": {"message": "rate limit"}})
     bad = httpx.Response(401, json={"error": {"message": "invalid key"}})
     first_seen: list = []

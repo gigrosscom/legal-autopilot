@@ -15,7 +15,7 @@ export default function TermsPage() {
   return (
     <article className="mx-auto max-w-3xl space-y-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">{doc.title}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{doc.title}</h1>
         <p className="text-sm text-muted">{doc.edition} · {t("legal.version")} {TERMS_VERSION}</p>
         {!DOCS[lang] && <p className="text-sm text-muted">{t("legal.languageNote")}</p>}
       </header>

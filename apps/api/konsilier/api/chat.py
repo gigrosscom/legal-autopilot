@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
@@ -10,9 +12,10 @@ from typing import Any, Iterator
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import Settings
 from ..container import Container
 from ..core.models import Case, ChatMessage, Evidence, User
 from ..core.pii import PiiVault
@@ -20,12 +23,67 @@ from .deps import current_user, get_container, get_session
 from .questions import _case_for, _context
 
 router = APIRouter(prefix="/v1")
+log = logging.getLogger(__name__)
+
+
+# Shown when no model can answer right now (Gemini over quota, Claude off or over its daily budget).
+BUSY = {
+    "ru": "Сейчас большая нагрузка, повторите через минуту.",
+    "kk": "Қазір жүктеме көп, бір минуттан кейін қайталаңыз.",
+    "en": "We're under heavy load right now. Please try again in a minute.",
+    "tr": "Şu anda yoğunluk var, lütfen bir dakika sonra tekrar deneyin.",
+    "ar": "الضغط كبير الآن، يرجى المحاولة مرة أخرى بعد دقيقة.",
+}
+
+
+def provider_of(agent: Any) -> str:
+    """For metrics and the Claude budget only; never shown to clients."""
+    kind = type(getattr(agent, "client", None)).__name__
+    return {"GeminiClient": "gemini", "ChainClient": "free"}.get(kind, "anthropic")
+
+
+def _day_start() -> datetime:
+    return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def reply_cost_usd(usage: dict[str, Any], settings: Settings) -> float:
+    """Estimated cost of one Claude reply from the token counts the API returned."""
+    return (usage.get("input_tokens", 0) * settings.anthropic_price_input_per_mtok / 1e6
+            + usage.get("output_tokens", 0) * settings.anthropic_price_output_per_mtok / 1e6
+            + usage.get("web_search_requests", 0) * settings.anthropic_price_web_search)
+
+
+def chat_usage_today(session: Session, settings: Settings) -> dict[str, Any]:
+    """Replies by provider, refusals and the estimated Claude spend since 00:00 UTC (stored messages only, so the
+    count survives restarts and is shared by all API workers)."""
+    start = _day_start()
+    rows = session.execute(select(ChatMessage.role, ChatMessage.meta)
+                           .where(ChatMessage.created_at >= start)).all()
+    out = {"gemini": 0, "free": 0, "anthropic": 0, "unavailable": 0}
+    cost = 0.0
+    for role, meta in rows:
+        meta = meta or {}
+        if role == "assistant" and meta.get("provider") in ("gemini", "free", "anthropic"):
+            out[meta["provider"]] += 1
+            if meta["provider"] == "anthropic":
+                cost += reply_cost_usd(meta.get("usage") or {}, settings)
+        elif role == "user" and meta.get("failed"):
+            out["unavailable"] += 1
+    budget = settings.chat_fallback_daily_budget_usd
+    return {"day": start.date().isoformat(), **out, "anthropic_cost_usd": round(cost, 4),
+            "anthropic_budget_usd": budget, "fallback_open": budget > 0 and cost < budget}
+
+
+def _reason(provider: str, e: Exception) -> str:
+    status = getattr(e, "status_code", None)
+    if status is None and (m := re.match(r"gemini (\d{3})", str(e))):
+        status = m.group(1)
+    return f"{provider}_{status or type(e).__name__}"
 
 
 def _view(m: ChatMessage) -> dict[str, Any]:
     return {"id": str(m.id), "role": m.role, "text": m.text, "created_at": m.created_at.isoformat(),
-            "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", []),
-            "unchecked": bool(m.meta.get("unchecked"))}
+            "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", [])}
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -66,16 +124,20 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     if agent is None:
         raise HTTPException(503, {"code": "agent_unavailable", "message": "agent_unavailable"})
     since = datetime.now(timezone.utc) - timedelta(days=1)
-    sent = session.scalar(select(func.count()).select_from(ChatMessage).where(
-        ChatMessage.user_id == user.id, ChatMessage.role == "user", ChatMessage.created_at > since)) or 0
+    # messages nobody could answer (overload) do not use up the daily limit
+    metas = session.scalars(select(ChatMessage.meta).where(
+        ChatMessage.user_id == user.id, ChatMessage.role == "user", ChatMessage.created_at > since)).all()
+    sent = sum(1 for m in metas if not (m or {}).get("failed"))
     if sent >= container.settings.chat_daily_limit:
         raise HTTPException(429, {"code": "too_many_messages", "message": "too_many_messages"})
 
     names = {str(e.id): e.filename for e in case.evidence}
     attachments = [{"id": a, "filename": names[a]} for a in body.attachments if a in names]
-    session.add(ChatMessage(case_id=case.id, user_id=user.id, role="user", text=body.text,
-                            meta={"attachments": attachments}))
+    asked = ChatMessage(case_id=case.id, user_id=user.id, role="user", text=body.text,
+                        meta={"attachments": attachments})
+    session.add(asked)
     session.flush()
+    asked_pk = asked.id
     rows = session.scalars(select(ChatMessage).where(ChatMessage.case_id == case.id)
                            .order_by(ChatMessage.created_at, ChatMessage.id)).all()
     ctx = _context(container, case)
@@ -91,28 +153,63 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     case_pk, user_pk = case.id, user.id
     session.commit()  # the user's message is saved even if the reply fails
 
+    agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
+    settings = container.settings
+
+    def fallback_allowed() -> bool:
+        with container.session_factory() as s:
+            return chat_usage_today(s, settings)["fallback_open"]
+
+    def unavailable(reason: str, started: bool) -> Iterator[str]:
+        """No reply: say so in the person's language and give the message back to the daily limit."""
+        log.warning("chat=unavailable reason=%s case=%s started=%s", reason, case_pk, int(started))
+        with container.session_factory() as s:
+            m = s.get(ChatMessage, asked_pk)
+            if m is not None:
+                m.meta = {**(m.meta or {}), "failed": reason}
+                s.commit()
+        yield _sse({"type": "error", "code": "agent_failed" if started else "busy",
+                    "message": BUSY.get(lang, BUSY["ru"])})
+
     def events() -> Iterator[str]:
-        result = None
-        try:
-            for ev in agent.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
+        result, used, reasons, started = None, None, [], False
+        for i, a in enumerate(agents):
+            provider = provider_of(a)
+            if i > 0 and provider == "anthropic" and not fallback_allowed():
+                reasons.append("anthropic_budget")
+                break
+            started = False
+            try:
+                for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
                                    country=country, use_portal=use_portal):
-                if ev["type"] == "done":
-                    result = ev["result"]
-                else:
-                    yield _sse(ev)
-        except Exception as e:  # API down, no credits, …: the page shows a clear error
-            yield _sse({"type": "error", "code": "agent_failed", "message": str(e)[:200]})
+                    if ev["type"] == "done":
+                        result = ev["result"]
+                    else:
+                        started = started or ev["type"] == "text"
+                        yield _sse(ev)
+                used = provider
+                break
+            except Exception as e:  # quota, API down, no credits, …: the fallback agent, else "try in a minute"
+                reasons.append(_reason(provider, e))
+                if started:
+                    break
+                if i < len(agents) - 1:
+                    log.warning("chat agent failed before the reply started, trying the fallback: %s", str(e)[:200])
+        if used is None or result is None:
+            yield from unavailable("+".join(reasons) or "no_reply", started)
             return
         text = vault.restore(result.text) if result else ""
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
-                            meta={"norms": result.norms, "unchecked": result.unchecked,
+                            meta={"provider": used, "norms": result.norms, "unchecked": result.unchecked,
                                   "tool_calls": result.tool_calls, "usage": result.usage})
             s.add(m)
             c = s.get(Case, case_pk)
             container.engine.audit(s, c, f"user:{user_pk}", "chat_reply", tokens=result.usage,
                                    unchecked=result.unchecked)
             s.commit()
+            if result.unchecked:  # not shown to the person; the team watches how often it happens
+                log.warning("chat=unchecked_norms case=%s", case_pk)
             yield _sse({"type": "done", "message": _view(m)})
 
     return StreamingResponse(events(), media_type="text/event-stream",

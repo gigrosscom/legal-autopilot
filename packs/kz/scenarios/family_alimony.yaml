@@ -1,15 +1,27 @@
-# ПИЛОТНЫЙ ЧЕРНОВИК (этап 5 ADR-0001). Не опубликован. Дела с детьми по правилам маршрутизации
-# идут юристу (уровень 3); этот сценарий — заготовка для юриста, а не автопилот.
-# Размер алиментов, нормы и подсудность вносит только юрист (TODO(lawyer)).
+# Опубликован 28.09.2026 по решению владельца. reviewed_at: null → на каждом документе нейтральная пометка compliance.draft_disclaimer.
+# Дело с детьми: иск в суд выдаётся только после проверки юристом (engine.approval_required — документы в суд
+# по сценариям уровня 1 всегда проверяет юрист), далее — передача юристу. Это не автопилот.
+# Нормы проверены 28.09.2026 по официальному тексту ИПС «Әділет» (страница акта открыта, номер статьи — как в тексте):
+#   - Кодекс РК «О браке (супружестве) и семье» — https://adilet.zan.kz/rus/docs/K1100000518
+#     ст. 138 (обязанность родителей содержать несовершеннолетних детей; взыскание в судебном порядке),
+#     ст. 139 (размер алиментов: одна четверть / одна треть / половина заработка и (или) иного дохода).
+#   - ГПК РК — https://adilet.zan.kz/rus/docs/K1500000377 (проверено 28.09.2026): ст. 27, ч. 3 (споры, затрагивающие права
+#     несовершеннолетних, — специализированные межрайонные суды по делам несовершеннолетних; адресат — запись реестра
+#     kz.court.juvenile), ст. 30, ч. 4 (иск об алиментах — и по месту жительства истца), ст. 104, п. 5 (цена иска об
+#     алиментах — совокупность платежей за один год), ст. 135, пп. 4) (по алиментам, не связанным с установлением
+#     отцовства, возможен судебный приказ), ст. 148 (реквизиты иска: истец — ФИО, дата рождения, место жительства, ИИН,
+#     телефон, e-mail; ответчик — ФИО, место жительства, ИИН, если известен), ст. 149 (приложения).
+# TODO(lawyer): судебный приказ или иск; конкретный суд; госпошлина; размер в твёрдой сумме (Кодекс о браке, ст. 141);
+# цена иска (ГПК ст. 104, п. 5) — в документе «[рассчитает юрист]».
 id: kz.family.alimony
-version: 0.0.1
+version: 0.1.0
 ontology: FAMILY.ALIMONY.CHILD
 taxonomy: family.alimony
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01
 reviewed_at: null
-published: false
+published: true
 title:
   ru: Взыскание алиментов на ребёнка
   kk: Балаға алимент өндіріп алу
@@ -20,25 +32,39 @@ classification:
   keywords:
     ru: [алимент, содержание ребёнка, не платит на ребёнка]
     kk: [алимент, баланы асырау]
+  examples:
+    ru:
+      - Бывший муж не платит алименты на ребёнка
+    kk:
+      - Бұрынғы күйеуім балаға алимент төлемейді
 intake:
-  - respondent_name
+  - respondent_name: {label: {ru: Ответчик (второй родитель), kk: Жауапкер (екінші ата-ана)}, question: {ru: "ФИО второго родителя (ответчика) — как в документах?", kk: "Екінші ата-ананың (жауапкердің) аты-жөні — құжаттардағыдай?"}}
+  - respondent_address: {pii: address}
+  - respondent_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
   - problem_description: {type: longtext}
   - desired_outcome: {type: longtext}
+  # ФИО и даты рождения детей — суть требования (ГПК ст. 148 ч. 2 пп. 4)); pii — не уходят в ИИ
+  - children_info: {type: longtext, pii: person}
   - applicant_name: {pii: person}
-  - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
+  # ИИН и дата рождения истца обязательны в иске — ГПК ст. 148 ч. 2 пп. 2); pii — чтобы не уходили в ИИ
+  - applicant_iin: {pii: id_number, pattern: '^\d{12}$'}
+  - applicant_birth_date: {type: date, pii: id_number}
   - applicant_address: {pii: address}
   - applicant_phone: {type: phone, pii: phone}
+  - applicant_email: {type: email, optional: true, pii: email}
   - evidence: [birth_certificate, correspondence, other]
 parties:
-  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
-  respondent: {kind: person, name_field: respondent_name}
+  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address, email_field: applicant_email}
+  respondent: {kind: person, name_field: respondent_name, id_field: respondent_iin, address_field: respondent_address}
 actions:
   - id: lawsuit_alimony
     title: {ru: Исковое заявление о взыскании алиментов, kk: Алимент өндіріп алу туралы талап қою арызы}
     template: kz/templates/generic/lawsuit.docx
     channel: user_submits
-    addressee: {forum: kz.court.district}
-    norm_refs: [TODO]
+    addressee: {forum: kz.court.juvenile}
+    norm_refs:
+      - "Кодекс Республики Казахстан «О браке (супружестве) и семье», статья 138"
+      - "Кодекс Республики Казахстан «О браке (супружестве) и семье», статья 139"
     demands:
       ru: "взыскать с ответчика алименты на содержание несовершеннолетнего ребёнка в размере, определённом законом. [размер и порядок: уточнит юрист]"
     instructions:

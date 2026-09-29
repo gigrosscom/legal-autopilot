@@ -12,6 +12,7 @@ every block keeps the raw part it came from for that reason.
 from __future__ import annotations
 
 import json
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -21,7 +22,29 @@ import httpx
 
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 RETRY_STATUSES = (429, 500, 503)  # "high demand" and rate spikes on the free tier pass within seconds
-RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at each model
+RETRY_DELAY = 1.0  # seconds before the single retry at a model when the answer names no Retry-After
+MAX_RETRY_WAIT = 3.0  # Retry-After longer than this: go straight to the next model instead of waiting
+MAX_TOTAL_WAIT = 5.0  # all pauses of one request together; the person is waiting for the reply
+
+
+class GeminiUnavailable(RuntimeError):
+    """Every model of the chain is over quota / overloaded (the last status is kept for the logs)."""
+
+    def __init__(self, status: int, text: str):
+        super().__init__(f"gemini {status}: {text}")
+        self.status_code = status
+
+
+def retry_after(r: httpx.Response) -> float | None:
+    """Seconds the API asks to wait: the Retry-After header, else RetryInfo.retryDelay ("13s") in the body."""
+    h = r.headers.get("retry-after")
+    if h:
+        try:
+            return max(0.0, float(h))
+        except ValueError:
+            pass
+    m = re.search(r'"retryDelay"\s*:\s*"([\d.]+)s"', r.text or "")
+    return float(m.group(1)) if m else None
 
 
 @dataclass
@@ -134,29 +157,44 @@ class _Stream:
         self._final = Message(blocks, stop, usage)
 
     def _open(self) -> httpx.Response:
-        """First model that answers: each is retried on overload, then the next one (free-tier quotas are per
-        model). Only before any text reached the reader, so nothing is shown twice."""
-        for i, url in enumerate(self._urls):
-            for delay in (*RETRY_DELAYS, None):
+        """First model that answers. On 429/5xx or a dropped connection a model is retried once after a short pause
+        (Retry-After when the API names one, if it is short), then the next model of the chain is tried (free-tier
+        quotas are per model). Only before any text reached the reader, so nothing is shown twice."""
+        waited = 0.0
+        last: httpx.Response | None = None
+        dropped: Exception | None = None
+        for url in self._urls:
+            for attempt in (0, 1):
                 try:
                     r = self._http.send(self._http.build_request("POST", url, json=self._body,
                                                                  headers=self._headers), stream=True)
                 except httpx.TransportError as e:  # dropped connection under load: same as an overload answer
-                    error = f"gemini: {e.__class__.__name__}: {e}"
-                else:
-                    if r.status_code < 400:
-                        return r
-                    r.read()
-                    r.close()
-                    error = f"gemini {r.status_code}: {r.text[:300]}"
-                    if r.status_code not in RETRY_STATUSES:
-                        raise RuntimeError(error)
-                if delay is None:
-                    if i == len(self._urls) - 1:
-                        raise RuntimeError(error)
+                    dropped = e
+                    if attempt:
+                        break
+                    time.sleep(RETRY_DELAY)
+                    waited += RETRY_DELAY
+                    continue
+                if r.status_code < 400:
+                    return r
+                r.read()
+                r.close()
+                last = r
+                if r.status_code not in RETRY_STATUSES:
+                    raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
+                if attempt:
                     break
-                time.sleep(delay)
-        raise RuntimeError("gemini: no model configured")
+                wait = retry_after(r)
+                wait = RETRY_DELAY if wait is None else wait
+                if wait > MAX_RETRY_WAIT or waited + wait > MAX_TOTAL_WAIT:
+                    break  # a long wait: the next model is quicker
+                time.sleep(wait)
+                waited += wait
+        if last is None:
+            if dropped is not None:
+                raise RuntimeError(f"gemini: {dropped.__class__.__name__}: {dropped}")
+            raise RuntimeError("gemini: no model configured")
+        raise GeminiUnavailable(last.status_code, last.text[:300])
 
     def get_final_message(self) -> Message:
         if self._final is None:

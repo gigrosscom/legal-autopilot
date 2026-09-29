@@ -51,7 +51,7 @@ export default function SupportPage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">{t("support.title")}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("support.title")}</h1>
         <p className="text-muted">{t("support.lead")}</p>
       </div>
       {sent && <Alert tone="info" icon="checkCircle" title={t("support.sentTitle", { n: sent })}>{t("support.sentText")}</Alert>}

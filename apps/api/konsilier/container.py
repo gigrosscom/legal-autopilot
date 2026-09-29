@@ -42,6 +42,7 @@ class Container:
     reporter: Any = None
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
+    chat_fallback_agent: Any = None  # Claude, used when the free chat fails before the reply starts (off by default)
 
     def law_agent_for(self, case: Any) -> Any:
         """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
@@ -124,8 +125,11 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else anthropic.Anthropic()
         container.law_agent = LawAgent(client, settings.llm_model, adilet)
+        claude_chat = ChatAgent(client, settings.llm_fast_model, adilet)
         if settings.chat_provider == "anthropic":
-            container.chat_agent = ChatAgent(client, settings.llm_fast_model, adilet)
+            container.chat_agent = claude_chat
+        elif settings.chat_fallback_to_anthropic:  # off by default: CHAT_FALLBACK_TO_ANTHROPIC
+            container.chat_fallback_agent = claude_chat
     if settings.chat_provider == "gemini" and settings.gemini_api_key:
         from .gemini import GeminiClient
 

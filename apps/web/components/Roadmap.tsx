@@ -39,7 +39,7 @@ export default function RoadmapView({ roadmap }: { roadmap: Roadmap }) {
             {i < roadmap.steps.length - 1 && (
               <span className={`absolute start-[13px] top-7 h-[calc(100%-4px)] w-0.5 ${s.status === "done" ? "bg-brand" : "bg-line"}`} />
             )}
-            <span className={`z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${DOT[s.status]}`}>
+            <span className={`z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold ${DOT[s.status]}`}>
               {s.status === "done" ? <Icon name="check" size={14} /> : i + 1}
             </span>
             <div className="min-w-0 flex-1 pb-1">

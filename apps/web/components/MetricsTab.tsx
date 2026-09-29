@@ -58,7 +58,7 @@ export function MetricsTab({ token }: { token: string }) {
         {tiles.map(([label, value]) => (
           <div key={label} className="card space-y-1 p-4">
             <dt className="text-xs text-muted">{label}</dt>
-            <dd className="text-2xl font-bold tabular-nums">{value}</dd>
+            <dd className="text-2xl font-semibold tabular-nums">{value}</dd>
           </div>
         ))}
       </dl>

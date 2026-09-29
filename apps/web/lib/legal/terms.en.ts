@@ -7,7 +7,7 @@ const en: LegalDoc = {
   summaryTitle: "Key points",
   summary: [
     "Konsiliér AI is an information technology (IT) service. We are not an advocate or a legal consultant, and we do not provide legal assistance.",
-    "AI answers are reference information, and the documents prepared are drafts. Check them: AI can make mistakes. You make the decisions and file documents yourself.",
+    "AI answers are reference information, and the documents prepared are proposed texts. Check them: AI can make mistakes. You make the decisions and file documents yourself.",
     "When legal assistance is needed, it is provided by advocates and legal consultants under a separate agreement made directly with you.",
     "Names, IINs and phone numbers are replaced with tags before any text is passed to AI. The Service's servers are located in Kazakhstan.",
     "If there is a threat to life or health, call 112.",
@@ -20,14 +20,14 @@ const en: LegalDoc = {
         "“Operator” means the legal entity that operates the Service: [name to be specified after registration] LLP, BIN [to be specified after registration], address [to be specified after registration].",
         "“User”, “you” means any individual or legal entity that uses the Service.",
         "“Lawyer” means an advocate or a legal consultant who is a member of a chamber of legal consultants, or a human rights organization, working with Users through the Platform.",
-        "“AI” means the artificial intelligence systems the Service uses to answer questions and prepare draft documents.",
-        "“Case” means your matter in the Service: the description, answers, files, draft documents and history of steps.",
+        "“AI” means the artificial intelligence systems the Service uses to answer questions and prepare documents.",
+        "“Case” means your matter in the Service: the description, answers, files, prepared documents and history of steps.",
       ],
     },
     {
       h: "2. What the Service does",
       p: [
-        "The Service provides software tools: an AI-based chat consultation with links to the official texts of regulatory legal acts (Adilet legal information system), a builder of draft documents based on your answers, suggestions on possible recipients and filing methods, deadline reminders, a directory of lawyers, signing of documents with EDS, and forwarding of your requests to lawyers.",
+        "The Service provides software tools: an AI-based chat consultation with links to the official texts of regulatory legal acts (Adilet legal information system), a document builder based on your answers, suggestions on possible recipients and filing methods, deadline reminders, a directory of lawyers, signing of documents with EDS, and forwarding of your requests to lawyers.",
         "The Service is provided on an “as is” basis. Its features may change; we announce material changes on the website.",
       ],
     },
@@ -36,8 +36,8 @@ const en: LegalDoc = {
       p: [
         "3.1. The Operator is not an advocate, a legal consultant or a member of a chamber of legal consultants, and does not provide legal assistance within the meaning of the Law of the Republic of Kazakhstan “On Advocacy and Legal Assistance”.",
         "3.2. The Service does not represent your interests in court or before state bodies and organizations. You file documents yourself and in your own name. A document is sent to a recipient by e-mail only on your express instruction, as a technical communication channel.",
-        "3.3. AI answers are for information and reference only and may be incomplete, inaccurate or out of date. Check them against the official text of the provision via the link. References to articles that the AI did not open in the official text are marked as unverified.",
-        "3.4. Scenarios and documents marked “Draft” have not yet been reviewed by a lawyer: the legal provisions, deadlines and recipients in them are subject to verification.",
+        "3.3. AI answers are for information and reference only and may be incomplete, inaccurate or out of date. Check them against the official text of the provision via the link.",
+        "3.4. Scenarios and documents that have not yet been reviewed by a lawyer may contain legal provisions, deadlines and recipients that need to be checked.",
         "3.5. In complex and high-risk situations, such as criminal prosecution, disputes concerning children, large sums or missed deadlines, contact an advocate or a legal consultant. The Service will show you how to do this.",
         "3.6. The Operator does not guarantee the outcome of a case, a recipient's response, or a decision of a court or state body.",
       ],
@@ -96,7 +96,7 @@ const en: LegalDoc = {
       h: "10. Liability",
       p: [
         "10.1. The Operator is liable for the operation of the Service to the extent established by the legislation of the Republic of Kazakhstan.",
-        "10.2. The Operator is not liable for decisions you make on the basis of AI answers and draft documents, for the actions and decisions of recipients, courts and state bodies, or for legal assistance provided by Lawyers.",
+        "10.2. The Operator is not liable for decisions you make on the basis of AI answers and documents prepared by the Service, for the actions and decisions of recipients, courts and state bodies, or for legal assistance provided by Lawyers.",
         "10.3. Nothing in these Terms limits your rights as a consumer under the legislation of the Republic of Kazakhstan.",
       ],
     },

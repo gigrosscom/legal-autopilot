@@ -13,11 +13,14 @@ from sqlalchemy import select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import AuditLog, Case, Deadline, Outcome
 
+from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU
+
 ADMIN = {"X-Admin-Token": "adm"}
 
 
 class Api:
     def __init__(self, ctx, token: str):
+        self.ctx = ctx
         self.c = ctx.client
         self.h = {"Authorization": f"Bearer {token}"}
 
@@ -118,6 +121,7 @@ def test_consumer_refund_full_path(ctx):
         "seller_bin": "123456789012",
         "goods_description": "Смартфон Nova 9",
         "seller_email": "пропустить",
+        "seller_address": "г. Алматы, пр. Достык, 10",
     })
     assert body["question"]["field"] == "evidence"
     assert body["status"] == "intake"
@@ -135,6 +139,7 @@ def test_consumer_refund_full_path(ctx):
     body = run_intake(api, cid, {
         "identity_document": "пропустить",
         "applicant_name": "Иванов Иван Иванович",
+        "applicant_address": "г. Алматы, ул. Абая, 1",
         "applicant_phone": "+7 701 123 45 67",
         "applicant_iin": "900101300123",
     })
@@ -162,7 +167,9 @@ def test_consumer_refund_full_path(ctx):
     text = docx_text(docx)
     for expected in ("ПРЕТЕНЗИЯ", "ТОО «Техномир»", "БИН: 123456789012", "Иванов Иван Иванович",
                      "ИИН: 900101300123", "150 000", "Смартфон Nova 9", "Подготовлено с помощью ИИ",
-                     "ЧЕРНОВИК", "[норма уточняется юристом]", "1. Чек или квитанция об оплате (receipt.txt)"):
+                     NEUTRAL_NOTE_RU, "Закон Республики Казахстан «О защите прав потребителей», статья 42-4",
+                     "Адрес: г. Алматы, пр. Достык, 10", "Адрес: г. Алматы, ул. Абая, 1",
+                     "1. Чек или квитанция об оплате (receipt.txt)"):
         assert expected in text.replace(" ", " "), expected
     assert_no_pii_reached_llm(ctx, "Иванов", "900101300123", "701 123 45 67")
 
@@ -254,7 +261,9 @@ def test_credit_fraud_via_telegram_full_path(ctx):
         "police_report_number": "КУИ № 2026-555 от 03.09.2026",
         "applicant_name": "Сейтказиева Айгерим Болатовна",
         "applicant_iin": "950505400789",
+        "applicant_address": "г. Астана, ул. Кенесары, 5",
         "applicant_phone": "+7 777 000 11 22",
+        "lender_address": "пропустить",
         "lender_email": "support@fastmoney.example",
     })
     assert body["status"] == "qualified"
@@ -341,6 +350,7 @@ def test_approval_not_required_after_first_n(ctx):
     run_intake(api, cid, {"seller_name": "ИП Мебель", "seller_bin": "пропустить", "goods_description": "Шкаф",
                           "applicant_name": "Петров Пётр", "applicant_phone": "+7 700 000 00 00",
                           "applicant_iin": "пропустить", "seller_email": "пропустить",
+                          "seller_address": "Алматы, ул. Мебельная 1", "applicant_address": "Алматы, ул. Абая 1",
                           "evidence": "пропустить", "identity_document": "пропустить"})
     a = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
     assert a["approval_status"] == "not_required" and a["status"] == "ready"
@@ -357,7 +367,13 @@ def test_other_users_cannot_see_case(ctx):
 def test_packs_and_waitlist(ctx):
     packs = ctx.client.get("/v1/packs").json()
     assert [p["country"] for p in packs] == ["KZ"]  # test packs are hidden
-    assert {s["id"] for s in packs[0]["scenarios"]} == {"kz.consumer.refund", "kz.money.credit_fraud"}
+    assert {s["id"] for s in packs[0]["scenarios"]} == {
+        "kz.consumer.refund", "kz.money.credit_fraud", "kz.labor.unpaid_wages", "kz.administrative.fine_appeal",
+        "kz.family.alimony", "kz.consumer.non_delivery", "kz.consumer.poor_service", "kz.consumer.air_ticket",
+        "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
+        "kz.housing.deposit_return", "kz.housing.management_company", "kz.housing.utility_billing",
+        "kz.finance.debt_collectors", "kz.finance.imposed_insurance", "kz.finance.loan_restructuring",
+        "kz.finance.unauthorized_debit", "kz.civil.road_accident"}
     r = ctx.client.post("/v1/waitlist", json={"country": "uz", "contact": "@someone", "problem": "долг"})
     assert r.status_code == 201
     rows = ctx.client.get("/v1/admin/waitlist", headers=ADMIN).json()

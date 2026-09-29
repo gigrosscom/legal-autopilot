@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import type { ReactNode } from "react";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 import { PwaRegister } from "@/components/InstallApp";
+import { SiteChrome } from "@/components/SiteChrome";
 import { LangProvider } from "@/lib/i18n";
 import "./globals.css";
 
@@ -27,7 +26,7 @@ export const metadata: Metadata = {
 // viewportFit "cover": the installed app uses the whole screen; notches are handled with safe-area insets.
 // interactiveWidget: the on-screen keyboard shrinks the layout, so input bars stay above it (Android Chrome).
 export const viewport: Viewport = {
-  themeColor: "#f7f4ee", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
+  themeColor: "#ffffff", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -35,9 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="ru" dir="ltr" translate="no" className={`notranslate ${inter.variable} ${arabic.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <LangProvider>
-          <Header />
-          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:py-12">{children}</main>
-          <Footer />
+          <SiteChrome>{children}</SiteChrome>
           <PwaRegister />
         </LangProvider>
       </body>

@@ -11,7 +11,7 @@ const STYLE: Record<Exclude<Tone, "neutral" | "brand">, { box: string; icon: Ico
 
 /**
  * Notices are design-system components, not fine print: emergency, false-report liability,
- * unauthorised-practice notice and the DRAFT mark all use this.
+ * unauthorised-practice notice and the unsigned-scenario note all use this.
  */
 export function Alert({ tone = "info", title, icon, children, actions, role }: {
   tone?: keyof typeof STYLE; title?: ReactNode; icon?: IconName; children?: ReactNode; actions?: ReactNode;

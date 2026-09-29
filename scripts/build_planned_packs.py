@@ -52,10 +52,10 @@ COMPLIANCE = {
         "tr": "Yapay zekâ ile hazırlandı (Konsiliér AI). Başvurmadan önce bilgileri kontrol edin.",
     },
     "draft_disclaimer": {
-        "ru": "ЧЕРНОВИК: сценарий ещё не подписан юристом. Ссылки на нормы и сроки подлежат проверке.",
-        "en": "DRAFT: this scenario has not yet been signed off by a lawyer. Legal references and deadlines must be checked.",
-        "ar": "مسودة: لم يعتمد محامٍ هذا السيناريو بعد. يجب التحقق من الإحالات إلى النصوص القانونية والمواعيد.",
-        "tr": "TASLAK: Senaryo henüz bir avukat tarafından onaylanmadı. Mevzuat ve süre atıfları kontrol edilmelidir.",
+        "ru": "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным. Проверьте сведения перед подачей.",
+        "en": "This document was prepared by the Konsiliér AI IT service based on your data. Check the details before filing.",
+        "ar": "أعدّت خدمة Konsiliér AI التقنية هذا المستند بناءً على بياناتك. تحقّق من المعلومات قبل تقديمه.",
+        "tr": "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır. Başvurmadan önce bilgileri kontrol edin.",
     },
     "service_disclaimer": {
         "ru": "Konsiliér AI помогает подготовить и подать документы и следит за сроками. Если нужно довести дело "

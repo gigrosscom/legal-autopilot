@@ -6,7 +6,8 @@ from .test_e2e import Api, admin_approve, run_intake, web_user
 
 ANSWERS = {"seller_name": "ТОО «Техномир»", "seller_bin": "пропустить", "goods_description": "Смартфон",
            "applicant_name": "Иванов Иван", "applicant_phone": "+7 701 000 00 00", "applicant_iin": "пропустить",
-           "seller_email": "пропустить"}
+           "seller_email": "пропустить", "seller_address": "Алматы, пр. Абая 10",
+           "applicant_address": "Алматы, ул. Абая 1"}
 
 
 def steps(case):

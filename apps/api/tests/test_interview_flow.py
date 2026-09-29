@@ -1,11 +1,12 @@
 """The consultant's interview: story → evidence (several files) → identity document → personal data → document."""
 
+from tests.conftest import hide_scenarios
 from tests.test_e2e import assert_no_pii_reached_llm, run_intake, web_user
 
 REFUND = ("Купил смартфон в интернет-магазине 12.08.2026 за 150 000 тенге, через неделю он сломался, "
           "продавец отказывается вернуть деньги")
 STORY = {"seller_name": "ТОО «Техномир»", "seller_bin": "пропустить", "goods_description": "Смартфон",
-         "seller_email": "пропустить"}
+         "seller_email": "пропустить", "seller_address": "Алматы, пр. Абая 10"}
 
 
 def _upload(api, cid, kind, name, body, ctype="text/plain"):
@@ -37,7 +38,7 @@ def test_identity_document_never_reaches_the_llm_and_fills_the_iin(ctx):
     assert up["evidence"]["extracted_facts"] == {"applicant_iin": "900101300123"}
     assert conf["case"]["question"]["field"] == "identity_document"
     body = run_intake(api, cid, {"identity_document": "готово", "applicant_name": "Иванов Иван Иванович",
-                                 "applicant_phone": "+7 701 123 45 67"})
+                                 "applicant_address": "Алматы, ул. Абая 1", "applicant_phone": "+7 701 123 45 67"})
     assert body["status"] == "qualified"  # the IIN question is not asked: it came from the ID
     a = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
     assert a["approval_status"] == "not_required"
@@ -72,6 +73,7 @@ def test_motion_to_the_police_is_self_service(ctx):
 
 
 def test_motion_in_court_waits_for_a_lawyer(ctx):
+    hide_scenarios(ctx, "kz.labor.")
     api = web_user(ctx)
     created = api.post("/v1/cases", expect=201, json={
         "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге", "country": "KZ"})
@@ -99,6 +101,7 @@ def test_solution_is_proposed_right_after_the_story(ctx):
 
 
 def test_universal_plan_names_the_portal_and_the_checklist(ctx):
+    hide_scenarios(ctx, "kz.labor.")
     api = web_user(ctx)
     created = api.post("/v1/cases", expect=201, json={
         "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге", "country": "KZ"})

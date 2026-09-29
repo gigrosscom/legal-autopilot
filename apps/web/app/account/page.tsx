@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Invite } from "@/components/Invite";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -57,7 +58,7 @@ export default function AccountPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-2">
         <p className="eyebrow">{t("account.eyebrow")}</p>
-        <h1 className="text-3xl font-bold tracking-tight">{t("account.title")}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("account.title")}</h1>
         <p className="text-muted">{t("account.lead")}</p>
       </div>
 
@@ -111,6 +112,8 @@ export default function AccountPage() {
       {me && <ReportsToggle me={me} onChange={setMe} />}
 
       <p className="text-xs text-muted">{t("account.privacy")}</p>
+
+      <Invite />
     </div>
   );
 }

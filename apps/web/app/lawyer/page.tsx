@@ -28,7 +28,7 @@ export default function LawyerCabinet() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="space-y-2">
         <p className="eyebrow">{t("lawyer.eyebrow")}</p>
-        <h1 className="text-3xl font-bold tracking-tight">{t("lawyer.title")}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("lawyer.title")}</h1>
         <p className="text-muted">{t("lawyer.lead")}</p>
       </div>
       {error && <Alert tone="danger" role="alert">{error}</Alert>}

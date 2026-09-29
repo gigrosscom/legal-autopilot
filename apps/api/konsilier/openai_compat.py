@@ -17,9 +17,10 @@ from typing import Any, Iterator
 
 import httpx
 
-from .gemini import RETRY_DELAYS, RETRY_STATUSES, Block, Message, Usage
+from .gemini import RETRY_STATUSES, Block, Message, Usage
 
 log = logging.getLogger(__name__)
+RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at a provider
 
 # name → (base URL, default model). Models are overridable in settings; check them at the provider's /models.
 PROVIDERS: dict[str, tuple[str, str]] = {

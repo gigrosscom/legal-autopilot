@@ -46,12 +46,12 @@ function ShareCard({ name, demo }: { name: string; demo: boolean }) {
       <div className="text-xs uppercase tracking-widest opacity-70">
         Konsiliér AI · {demo ? L.sample : L.partner}
       </div>
-      <div className="mt-3 text-xl font-bold">{demo ? "Айгерим Н." : name}</div>
+      <div className="mt-3 text-xl font-semibold">{demo ? "Айгерим Н." : name}</div>
       <div className="text-sm opacity-80">{L.spec}</div>
       {demo ? (
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <div className="text-4xl font-bold">84</div>
+            <div className="text-4xl font-semibold">84</div>
             <div className="text-xs opacity-70">{L.score}</div>
           </div>
           <div className="text-end text-sm">
@@ -113,7 +113,7 @@ function ApplyForm() {
     return (
       <div className="space-y-4">
         <div className="card space-y-2">
-          <h3 className="text-xl font-bold">{L.doneTitle}</h3>
+          <h3 className="text-xl font-semibold">{L.doneTitle}</h3>
           <p className="text-sm text-muted">{t("lawyer.steps.doneLead")}</p>
         </div>
         <LawyerSteps s={{ applied: true, hasEcp: hasEcp === true, status: "new" }} />
@@ -140,7 +140,7 @@ function ApplyForm() {
 
   return (
     <form onSubmit={submit} className="card space-y-3">
-      <h3 className="text-xl font-bold">{L.title}</h3>
+      <h3 className="text-xl font-semibold">{L.title}</h3>
       {ref && <p className="chip bg-brand-50 text-brand-dark">{L.invited}</p>}
       {hasEcp === true && <p className="chip bg-brand-50 text-brand-dark">{t("lawyer.ecpOk")}</p>}
       {hasEcp === false && (
@@ -190,7 +190,7 @@ export default function ForLawyers() {
       <section className="grid gap-8 pt-4 md:grid-cols-[1.3fr_1fr] md:items-center">
         <div className="space-y-5">
           <span className="chip bg-brand-50 text-brand-dark">{L.hero.chip}</span>
-          <h1 className="text-3xl font-bold leading-tight md:text-4xl">{L.hero.title}</h1>
+          <h1 className="text-3xl font-semibold leading-tight md:text-4xl">{L.hero.title}</h1>
           <p className="text-lg text-muted">{L.hero.sub}</p>
           <div className="flex flex-wrap gap-3">
             <a href="#apply" className="btn-primary px-6 py-3 text-base">{L.hero.apply}</a>
@@ -203,7 +203,7 @@ export default function ForLawyers() {
 
       {/* BENEFITS */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold">{L.benefitsTitle}</h2>
+        <h2 className="text-2xl font-semibold">{L.benefitsTitle}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {L.benefits.map(([icon, title, text, soon]) => (
             <div key={title} className="card space-y-2">
@@ -220,7 +220,7 @@ export default function ForLawyers() {
 
       {/* PARTNER PROGRAMME */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold">{L.partner.title}</h2>
+        <h2 className="text-2xl font-semibold">{L.partner.title}</h2>
         <p className="text-muted">{L.partner.intro}</p>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="card space-y-2">
@@ -258,12 +258,12 @@ export default function ForLawyers() {
 
       {/* PRICING */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold">{L.pricing.title}</h2>
+        <h2 className="text-2xl font-semibold">{L.pricing.title}</h2>
         <p className="rounded-2xl bg-brand-50 p-3 text-sm font-medium text-brand-dark">{L.pricing.pilot}</p>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.basic}</h3>
-            <div className="text-2xl font-bold">0 ₸</div>
+            <div className="text-lg font-semibold">{L.pricing.basicPrice}</div>
             <p className="text-sm text-muted">{L.pricing.basicText}</p>
           </div>
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
@@ -271,12 +271,12 @@ export default function ForLawyers() {
               <h3 className="font-semibold">Pro</h3>
               <span className="chip bg-brand text-white">{L.pricing.proChip}</span>
             </div>
-            <div className="text-2xl font-bold">{L.proPrice}</div>
+            <div className="text-2xl font-semibold">{L.proPrice}</div>
             <p className="text-sm text-muted">{L.pricing.proText}</p>
           </div>
           <div className="card space-y-2">
             <h3 className="font-semibold">{L.pricing.ngo}</h3>
-            <div className="text-2xl font-bold">{L.pricing.ngoPrice}</div>
+            <div className="text-2xl font-semibold">{L.pricing.ngoPrice}</div>
             <p className="text-sm text-muted">{L.pricing.ngoText}</p>
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function ForLawyers() {
       {/* FAQ + FORM */}
       <section id="apply" className="grid gap-6 md:grid-cols-2">
         <div className="order-2 space-y-3">
-          <h2 className="text-2xl font-bold">{L.faqTitle}</h2>
+          <h2 className="text-2xl font-semibold">{L.faqTitle}</h2>
           {L.faq.map(([q, a]) => (
             <details key={q} className="card">
               <summary className="cursor-pointer font-semibold">{q}</summary>

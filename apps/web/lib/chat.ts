@@ -10,7 +10,6 @@ export type ChatMessage = {
   created_at: string;
   attachments: { id: string; filename: string }[];
   norms: ChatNorm[];
-  unchecked: boolean;
 };
 export type ChatEvent =
   | { type: "text"; text: string }

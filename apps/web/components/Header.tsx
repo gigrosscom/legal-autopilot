@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Brand } from "@/components/Brand";
 import { InstallApp } from "@/components/InstallApp";
 import { Icon } from "@/components/ui";
 import { LANGS, useLang, useT, type Lang } from "@/lib/i18n";
@@ -14,7 +15,7 @@ const NAV = [
   { href: "/cases", key: "nav.cases" },
 ];
 
-function LangSelect() {
+export function LangSelect() {
   const t = useT();
   const { lang, setLang } = useLang();
   return (
@@ -34,15 +35,15 @@ export default function Header() {
   const path = usePathname();
   const active = (href: string) => (path === href || path.startsWith(href + "/") ? "text-ink" : "text-muted");
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-sand/95">
+    <header className="sticky top-0 z-30 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2">
         {t("nav.skip")}
       </a>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 min-[360px]:gap-3 min-[360px]:px-4">
-        <Link href="/" className="flex min-h-11 items-center text-base font-bold tracking-tight min-[360px]:text-lg" dir="ltr">
-          Konsiliér<span className="ms-[0.25em] text-brand">AI</span>
+      <div className="mx-auto flex h-16 max-w-[1208px] items-center justify-between gap-2 px-3 min-[360px]:gap-3 min-[360px]:px-5">
+        <Link href="/" className="flex min-h-11 items-center" aria-label="Konsiliér AI">
+          <Brand size={26} />
         </Link>
-        <nav aria-label={t("nav.main")} className="hidden items-center gap-5 text-sm font-medium lg:flex">
+        <nav aria-label={t("nav.main")} className="hidden items-center gap-6 text-sm lg:flex">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className={`inline-flex min-h-11 items-center hover:text-ink ${active(n.href)}`}>{t(n.key)}</Link>
           ))}

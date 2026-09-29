@@ -20,10 +20,8 @@ compliance:
       edin.
     en: Prepared with AI (Konsiliér AI). Check the details before filing.
   draft_disclaimer:
-    tr: 'TASLAK: Senaryo henüz bir avukat tarafından onaylanmadı. Mevzuat ve
-      süre atıfları kontrol edilmelidir.'
-    en: 'DRAFT: this scenario has not yet been signed off by a lawyer. Legal references
-      and deadlines must be checked.'
+    tr: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır. Başvurmadan önce bilgileri kontrol edin."
+    en: "This document was prepared by the Konsiliér AI IT service based on your data. Check the details before filing."
   service_disclaimer:
     tr: Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri
       takip eder. Dosyanın sonuca ulaştırılması gerekirse platformdaki

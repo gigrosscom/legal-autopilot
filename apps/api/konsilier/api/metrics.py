@@ -16,8 +16,12 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..config import Settings
+from ..container import Container
 from ..core.models import Action, Case, LawyerApplication, Outcome, User, WaitlistEntry
-from .deps import get_session, require_admin
+from .chat import chat_usage_today
+from .deps import get_container, get_session, require_admin
+from .referral import referral_metrics
 
 router = APIRouter(prefix="/v1/admin", dependencies=[Depends(require_admin)])
 
@@ -33,7 +37,7 @@ def _aware(d: datetime) -> datetime:
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
-def compute(session: Session, weeks: int = 12) -> dict[str, Any]:
+def compute(session: Session, weeks: int = 12, settings: Settings | None = None) -> dict[str, Any]:
     cases = session.execute(select(Case.id, Case.created_at, Case.status, Case.scenario_id, Case.coverage_level,
                                    Case.jurisdiction, Case.amount_at_stake, Case.currency, Case.owner_id)).all()
     actions = session.execute(select(Action.case_id, Action.created_at, Action.kind, Action.submitted_at,
@@ -85,7 +89,7 @@ def compute(session: Session, weeks: int = 12) -> dict[str, Any]:
 
     owners = {c.owner_id for c in cases}
     repeat = sum(1 for n in Counter(c.owner_id for c in cases).values() if n > 1)
-    return {
+    out = {
         "generated_at": now.isoformat(),
         "totals": {
             "users": session.scalar(select(func.count()).select_from(User)) or 0,
@@ -109,14 +113,19 @@ def compute(session: Session, weeks: int = 12) -> dict[str, Any]:
                                else c.coverage_level for c in cases)),
         "countries": dict(Counter(c.jurisdiction or "—" for c in cases)),
         "top_scenarios": Counter(c.scenario_id for c in cases if c.scenario_id).most_common(10),
+        "referral": referral_metrics(session),
         "weekly": [{"week": w, **{k: series[w].get(k, 0) for k in ("users", "cases", "documents", "submitted")}}
                    for w in sorted(series)][-weeks:],
     }
+    if settings is not None:  # consultation chat today: who answered, refusals, Claude spend against its budget
+        out["chat"] = chat_usage_today(session, settings)
+    return out
 
 
 @router.get("/metrics")
-def metrics(weeks: int = 12, session: Session = Depends(get_session)) -> dict[str, Any]:
-    return compute(session, max(1, min(weeks, 104)))
+def metrics(weeks: int = 12, session: Session = Depends(get_session),
+            container: Container = Depends(get_container)) -> dict[str, Any]:
+    return compute(session, max(1, min(weeks, 104)), container.settings)
 
 
 @router.get("/metrics.csv")

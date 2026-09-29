@@ -50,12 +50,22 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
+    # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
+    # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
+    chat_fallback_to_anthropic: bool = False
+    # Daily cap (UTC day) on the estimated cost of chat replies written by Claude. Once reached, the fallback is
+    # off until the next day and the person is asked to retry in a minute. 0 → the fallback is never used.
+    chat_fallback_daily_budget_usd: float = 10.0
+    # Prices of the fast model (LLM_FAST_MODEL, claude-haiku-4-5) used for the estimate, USD.
+    anthropic_price_input_per_mtok: float = 1.0
+    anthropic_price_output_per_mtok: float = 5.0
+    anthropic_price_web_search: float = 0.01  # per search ($10 per 1000)
     team_email: str = "info@konsilier.com"  # fallback address for desk notifications
     # Operations centre: e-mails (comma-separated) of the operators of each desk. They sign in with an e-mail code;
     # new items of the desk are also e-mailed to these addresses.
     ops_lawyers_emails: str = "info@konsilier.com"  # lawyers desk: applications of advocates and lawyers
     ops_clients_emails: str = "info@konsilier.com"  # clients desk: questions, complaints, suggestions, lawyer requests
-    terms_version: str = "2026-09-28"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
+    terms_version: str = "2026-09-28.3"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"

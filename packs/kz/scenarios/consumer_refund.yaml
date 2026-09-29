@@ -1,3 +1,13 @@
+# Нормы и сроки проверены 28.09.2026 по официальному тексту ИПС «Әділет» (old.adilet.zan.kz, страница акта открыта):
+#   - Закон РК «О защите прав потребителей» — https://adilet.zan.kz/rus/docs/Z100000274_
+#     ст. 30 (обмен и возврат товара надлежащего и ненадлежащего качества), ст. 42-4 (претензия: вручается нарочно,
+#     заказным письмом с уведомлением или на e-mail продавца; мотивированный ответ — 10 календарных дней со дня получения),
+#     ст. 42-5 (обращение в госорган: не позднее двух месяцев; п. 3 — прилагается копия претензии и ответа; п. 4 — ФИО, ИИН,
+#     почтовый адрес потребителя; наименование, почтовый адрес, БИН продавца; требование и обстоятельства).
+#   - АППК РК, ст. 63, ст. 76, ч. 1 (15 рабочих дней со дня регистрации обращения, если иное не предусмотрено законами;
+#     ЗПП ст. 42-7 своего общего срока не устанавливает) — https://adilet.zan.kz/rus/docs/K2000000350
+#   - Адресат: «Департамент торговли и защиты прав потребителей Министерства торговли и интеграции РК по <городу/области>»
+#     — приказ Министра торговли и интеграции РК от 29.12.2022 № 508-НҚ (https://adilet.zan.kz/rus/docs/G22TI000508).
 id: kz.consumer.refund
 version: 0.1.0
 ontology: CONSUMER.GOODS.REFUND
@@ -5,7 +15,7 @@ taxonomy: consumer.refund
 jurisdiction: KZ
 languages: [ru, kk]
 owner: lawyer:kz-01
-reviewed_at: null          # no lawyer sign-off yet → DRAFT disclaimer on every document
+reviewed_at: null          # no lawyer sign-off yet → compliance.draft_disclaimer note on every document
 published: true
 title:
   ru: Возврат денег за товар или услугу
@@ -33,39 +43,43 @@ claim:
 intake:
   - seller_name
   - seller_bin: {optional: true, pattern: '^\d{12}$'}
+  - seller_address
   - goods_description
   - purchase_date: {type: date}
   - amount: {type: money, currency: KZT}
   - problem_description: {type: longtext}
   - applicant_name: {pii: person}
+  - applicant_address: {pii: address}
   - applicant_phone: {type: phone, pii: phone}
   - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
   - seller_email: {type: email, optional: true}
   - evidence: [receipt, order_screenshot, correspondence]
   - identity_document: [id_document]
 parties:
-  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin}
-  respondent: {kind: business, name_field: seller_name, id_field: seller_bin, email_field: seller_email}
+  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
+  respondent: {kind: business, name_field: seller_name, id_field: seller_bin, email_field: seller_email, address_field: seller_address}
 actions:
   - id: claim_to_seller
     title: {ru: Претензия продавцу о возврате денег, kk: Сатушыға ақшаны қайтару туралы талап-арыз}
     template: kz/templates/consumer/claim_seller.docx
     channel: email_or_user_submits
     addressee: {party: respondent}
-    deadline: {calendar_days: 10, norm_ref: TODO}
-    norm_refs: [TODO]
+    deadline: {calendar_days: 10, norm_ref: "Закон Республики Казахстан «О защите прав потребителей», статья 42-4"}
+    norm_refs:
+      - "Закон Республики Казахстан «О защите прав потребителей», статья 30"
+      - "Закон Республики Казахстан «О защите прав потребителей», статья 42-4"
     demands:
       ru: "вернуть уплаченную мной денежную сумму в размере {amount} {currency} за «{goods_description}» в установленный законом срок и сообщить о принятом решении письменно."
     instructions:
       ru:
         - "Распечатайте претензию в двух экземплярах и подпишите оба."
         - "Вручите один экземпляр продавцу ({addressee}) и попросите поставить на втором отметку о принятии: дата, ФИО, подпись. Либо отправьте заказным письмом с уведомлением о вручении."
-        - "Если продавец работает только онлайн — отправьте претензию через чат поддержки или на e-mail {addressee_email} и сохраните скриншоты."
+        - "Если продавец работает только онлайн — отправьте претензию на e-mail, который продавец сам указал (в договоре-оферте, чеке или на сайте), и продублируйте в чат поддержки; сохраните скриншоты."
         - "Нажмите «Документ подан» — мы начнём отсчёт срока ответа ({deadline_days} дн.) и напомним за 2 дня."
       kk:
         - "Талап-арызды екі данада басып шығарып, екеуіне де қол қойыңыз."
         - "Бір данасын сатушыға ({addressee}) беріп, екіншісіне қабылдағаны туралы белгі қоюын сұраңыз: күні, аты-жөні, қолы. Немесе табыс етілгені туралы хабарламасы бар тапсырыс хатпен жіберіңіз."
-        - "Сатушы тек онлайн жұмыс істесе — талап-арызды қолдау чаты арқылы не {addressee_email} e-mail мекенжайына жіберіп, скриншоттарды сақтаңыз."
+        - "Сатушы тек онлайн жұмыс істесе — талап-арызды сатушының өзі көрсеткен e-mail мекенжайына (шарт-офертада, чекте не сайтта) жіберіп, қолдау чатына да қайталаңыз; скриншоттарды сақтаңыз."
         - "«Құжат тапсырылды» батырмасын басыңыз — жауап мерзімін ({deadline_days} күн) санай бастаймыз және 2 күн бұрын еске саламыз."
   - id: complaint_consumer_authority
     when: claim_to_seller.response in [none, refusal, partial]
@@ -73,8 +87,9 @@ actions:
     template: kz/templates/consumer/complaint_authority.docx
     channel: user_submits          # the user files it on eOtinish
     addressee: {authority: consumer_protection}
-    deadline: {business_days: 15, norm_ref: TODO}
-    norm_refs: [TODO]
+    deadline: {business_days: 15, norm_ref: "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76"}
+    norm_refs:
+      - "Закон Республики Казахстан «О защите прав потребителей», статья 42-5"
     demands:
       ru: "провести проверку по изложенным фактам и принять меры в отношении продавца для восстановления моих прав потребителя, о результатах сообщить мне."
     instructions:

@@ -278,7 +278,9 @@ export async function ensureToken(): Promise<string> {
   const r = await request(`${API_URL}/v1/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru" }),
+    // who invited this person and where they came from (saved on arrival by captureReferral)
+    body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru",
+      ref: localStorage.getItem("konsilier.ref"), src: localStorage.getItem("konsilier.src") }),
   });
   if (!r.ok) throw new ApiError(r.status, await r.text());
   const { token } = await r.json();
@@ -402,4 +404,15 @@ export async function adminApi<T>(path: string, token: string, init: RequestInit
   headers.set("X-Admin-Token", token);
   if (init.body) headers.set("Content-Type", "application/json");
   return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
+}
+
+/** First touch wins: remember ?ref= (invite code) and ?src= / utm_source (channel) until the account is created. */
+export function captureReferral() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const ref = q.get("ref");
+    const src = q.get("src") ?? q.get("utm_source");
+    if (ref && !localStorage.getItem("konsilier.ref")) localStorage.setItem("konsilier.ref", ref.slice(0, 12));
+    if (src && !localStorage.getItem("konsilier.src")) localStorage.setItem("konsilier.src", src.slice(0, 40));
+  } catch {}
 }

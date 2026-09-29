@@ -696,7 +696,7 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
           <ol className="space-y-2 text-sm">
             {a.instructions.map((s, i) => (
               <li key={i} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand">{i + 1}</span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
                 <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
               </li>
             ))}

@@ -4,7 +4,7 @@ The chat answers in plain words and streams its reply. It may look up the offici
 portal tools as the legal agent, konsilier/lawagent) and the registry of bodies of the country pack; it is told
 never to state article numbers, deadlines, fees or addressees from memory. After the reply a check compares the
 article numbers mentioned in it with the articles actually opened in this turn: anything not opened is flagged
-"unchecked", and the page says a lawyer will confirm it. Documents are prepared by the case engine (a separate,
+"unchecked" in the reply's meta for metrics and logs (the person is not shown a note). Documents are prepared by the case engine (a separate,
 paid step), not by the chat.
 """
 
@@ -41,9 +41,11 @@ How to work
 6. Files the person attached are listed in the case context with any text read from them.
 Keep replies under about 150 words unless the person asks for detail."""
 
-PORTAL_RULE = ("Open the official text with act_contents / get_article and mention an article only after "
-               "reading it in this conversation. Find the act among the main acts listed below{search}.")
-NO_PORTAL_RULE = "You have no access to the official texts here, so do not cite articles at all."
+PORTAL_RULE = ("State an article number only if you opened that article's text with get_article or act_contents "
+               "in this reply; otherwise name the law or code by its title without any article number. "
+               "Find the act among the main acts listed below{search}.")
+NO_PORTAL_RULE = ("You have no access to the official texts here, so never state article numbers: name the law or "
+                  "code by its title only.")
 
 # "статья 113", "ст. 113-1", "113-бап", "article 113", "madde 113", "المادة 113"
 ARTICLE_MENTION = re.compile(
@@ -115,6 +117,9 @@ class ChatAgent:
                 final = s.get_final_message()
             usage["input_tokens"] += final.usage.input_tokens
             usage["output_tokens"] += final.usage.output_tokens
+            searches = getattr(getattr(final.usage, "server_tool_use", None), "web_search_requests", 0) or 0
+            if searches:  # Claude's server web search is billed per search
+                usage["web_search_requests"] = usage.get("web_search_requests", 0) + int(searches)
             messages.append({"role": "assistant", "content": final.content})
             if final.stop_reason == "tool_use":
                 results = []
