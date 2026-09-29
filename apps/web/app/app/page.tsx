@@ -93,7 +93,7 @@ export default function AppPage() {
 
       {platform !== "installed" && (
         <section aria-labelledby="how" className="space-y-4">
-          <h2 id="how" className="text-2xl font-semibold tracking-tight">{t("appPage.howTitle")}</h2>
+          <h2 id="how" className="scroll-mt-20 text-2xl font-semibold tracking-tight">{t("appPage.howTitle")}</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {guides.map((g, i) => {
               const own = platform !== null && g.own.includes(platform);

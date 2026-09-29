@@ -76,11 +76,11 @@ export function InstallApp({ className = "" }: { className?: string }) {
           <ol className="list-decimal space-y-1.5 ps-5">
             {t("pwa.iosSteps").split("\n").slice(0, -1).map((s) => <li key={s}>{s}</li>)}
           </ol>
-          <p className="mt-2 text-muted">{t("pwa.iosSteps").split("\n").at(-1)}</p>
+          <p className="mt-2 text-muted">{t("pwa.iosSteps").split("\n").at(-1)} <Link href="/app#how" className="link">{t("pwa.more")}</Link></p>
         </div>
       ) : (
         <p className="max-w-sm rounded-xl bg-brand-50 p-3 text-sm" aria-live="polite">
-          {t("pwa.macSteps")} <Link href="/app" className="link">{t("pwa.more")}</Link>
+          {t("pwa.macSteps")} <Link href="/app#how" className="link">{t("pwa.more")}</Link>
         </p>
       ))}
     </div>
