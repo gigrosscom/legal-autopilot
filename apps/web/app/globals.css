@@ -160,7 +160,7 @@ html[lang="ar"] body * {
 /* Type scale after apple.com main.built.css (.typography-headline 40/48 px 600, .typography-intro 21 px).
    Inter is wider and looser than SF Pro Display, so the display sizes get -0.015…-0.02em (SF has it built in). */
 @utility h-hero {
-  @apply text-[40px] leading-[1.1] font-semibold tracking-[-0.02em] md:text-[56px] md:leading-[1.07];
+  @apply text-[40px] leading-[1.1] font-semibold tracking-[-0.02em] md:text-[52px] md:leading-[1.08];
 }
 @utility h-section {
   @apply text-[32px] leading-[1.125] font-semibold tracking-[-0.015em] md:text-[40px] md:leading-[1.1] lg:text-[48px] lg:leading-[1.08] lg:tracking-[-0.02em];
