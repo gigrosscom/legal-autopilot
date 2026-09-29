@@ -42,7 +42,7 @@ def test_crime_report_requires_false_report_acknowledgement(ctx):
     api.post(f"/v1/cases/{case['id']}/acknowledge", expect=409, json={"kind": "special_category"})
     done = api.post(f"/v1/cases/{case['id']}/acknowledge", json={"kind": "false_report"})
     assert done["reply"]["ack_required"] is None
-    assert done["reply"]["question"]["field"] == "respondent_name"  # the story first, personal data last
+    assert done["reply"]["question"]["field"] == "evidence"  # documents first, personal data last
     assert done["case"]["safety"]["pending_ack"] is None
 
 
@@ -103,7 +103,10 @@ def test_labels_warning_is_given_only_once(ctx):
     answers = {"applicant_name": "Иванов Иван", "applicant_iin": "пропустить", "applicant_address": "Алматы",
                "applicant_phone": "+7 701 123 45 67", "respondent_name": "неизвестный", "event_date": "пропустить"}
     q = api.get(f"/v1/cases/{cid}").json()["question"]
-    while q and q["field"] in answers:
+    while q and (q["field"] in answers or q["type"] == "evidence"):
+        if q["type"] == "evidence":
+            q = api.answer(cid, "пропустить")["case"]["question"]
+            continue
         q = api.answer(cid, answers[q["field"]])["case"]["question"]
     assert q["field"] == "desired_outcome"  # the story was already taken from the first message
     first = api.answer(cid, "Наказать этого вора")

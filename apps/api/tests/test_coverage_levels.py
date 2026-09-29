@@ -61,7 +61,7 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
         "applicant_name": "Иванов Иван Иванович", "applicant_iin": "пропустить", "applicant_address": "Алматы, ул. Абая 1",
         "applicant_phone": "+7 701 123 45 67", "respondent_name": "ТОО «Ромашка»", "event_date": "пропустить",
         "problem_description": "Не платят зарплату с июня", "desired_outcome": "Выплатить долг по зарплате",
-        "amount": "450000",
+        "amount": "450000", "claim_amount": "пропустить",
     }
     q = case["question"]
     while q is not None:  # evidence and the identity document are skipped
@@ -151,7 +151,7 @@ def test_coverage_and_forums_endpoints(ctx):
     assert kz["cells"]["consumer"] == "scenario_draft"  # published but not signed off by a lawyer
     assert kz["cells"]["labor"] == "scenario_draft"  # published labour scenarios, not signed by a lawyer
     assert kz["cells"]["inheritance"] == "universal"
-    assert kz["cells"]["commercial"] == "lawyer"
+    assert kz["cells"]["commercial"] == "universal"  # a business claim letter to the counterparty; a lawsuit after a lawyer
     assert all(c["country"] != "XX" for c in cov["countries"])  # test packs hidden
     forums = ctx.client.get("/v1/forums?country=KZ&branch=labor").json()
     assert {f["id"] for f in forums} >= {"kz.labor_inspection", "kz.court.district"}
@@ -232,7 +232,7 @@ _ANSWERS = {
     "applicant_name": "Иванов Иван Иванович", "applicant_iin": "пропустить", "applicant_address": "Алматы, ул. Абая 1",
     "applicant_phone": "+7 701 123 45 67", "respondent_name": "ТОО «Ромашка»", "event_date": "пропустить",
     "problem_description": "Не платят зарплату с июня", "desired_outcome": "Выплатить долг по зарплате",
-    "amount": "450000",
+    "amount": "450000", "claim_amount": "пропустить",
 }
 
 
@@ -279,3 +279,36 @@ def test_court_documents_still_wait_for_a_lawyer(ctx):
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.district"})["case"]
     action = _fill_and_prepare(api, cid, case)
     assert action["approval_status"] == "pending" and action["downloadable"] is False
+
+
+B2B = ("я ип заключил договор с тоо на поставку напитков, условие было что они будут делать рекламу а мы купим у них "
+       "наличкой и продавать, но они не делали рекламу и мы не продали товар теперь мы хотим вернуть деньги за не "
+       "проданный товар, что делать?")
+
+
+def test_business_dispute_is_never_a_consumer_case(ctx):
+    """A sole trader against a company (the first real client): consumer law does not apply — a contract claim to the
+    counterparty under the Civil Code, made by the person themselves; a lawsuit only after a lawyer."""
+    ctx.container.packs.experimental = False  # production: no beta business scenarios
+    api = web_user(ctx)
+    created = api.post("/v1/cases", expect=201, json={"text": B2B, "country": "KZ"})
+    case = created["case"]
+    assert case["scenario"] is None  # not kz.consumer.refund
+    assert case["coverage"]["dispute"]["id"] == "commercial.contract_breach"
+    assert case["coverage"]["level"] == "universal"
+    options = {o["id"] for o in created["reply"]["options"]}
+    assert options == {"kz.counterparty.claim", "kz.court.economic"}
+    out = api.post(f"/v1/cases/{case['id']}/forum", json={"forum_id": "kz.counterparty.claim"})
+    assert "commercial__contract_breach.business" in out["case"]["scenario"]["id"]
+    # the same words from a shopper stay a consumer case
+    shop = api.post("/v1/cases", expect=201, json={
+        "text": "Купил телефон в магазине ТОО Мечта, сломался, продавец не возвращает деньги", "country": "KZ"})
+    assert shop["case"]["scenario"]["id"] == "kz.consumer.refund"
+
+
+def test_business_dispute_prefers_a_business_scenario_when_offered(ctx):
+    api = web_user(ctx)  # tests run with EXPERIMENTAL_SCENARIOS=true: the beta business scenarios are offered
+    case = api.post("/v1/cases", expect=201, json={
+        "text": "Я ИП, поставщик ТОО недопоставил товар по договору поставки, не хватает половины партии",
+        "country": "KZ"})["case"]
+    assert case["scenario"]["id"].startswith("kz.business.")

@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -26,7 +27,8 @@ from .views import case_view
 router = APIRouter(prefix="/v1")
 
 MAX_UPLOAD = 15 * 1024 * 1024
-ALLOWED_UPLOADS = ("image/jpeg", "image/png", "image/webp", "application/pdf", "text/plain")
+ALLOWED_UPLOADS = ("image/jpeg", "image/png", "image/webp", "application/pdf", "text/plain",
+                   "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
 def engine_error(e: EngineError) -> HTTPException:
@@ -256,12 +258,17 @@ async def upload_evidence(case_id: uuid.UUID, file: UploadFile = File(...), kind
                           container: Container = Depends(get_container)):
     case = load_case(case_id, session, user)
     data, ctype = await _read_upload(file)
-    ev = container.engine.add_evidence(session, case, kind=kind, filename=file.filename or "file",
-                                       content_type=ctype, data=data)
+
+    def read() -> tuple[Evidence, Any]:  # reading a document calls the model: off the event loop
+        ev = container.engine.add_evidence(session, case, kind=kind, filename=file.filename or "file",
+                                           content_type=ctype, data=data)
+        return ev, container.engine.evidence_reply(session, case, ev)
+    ev, reply = await run_in_threadpool(read)
     session.flush()
+    # what the document showed is already in the case; "reply" says what was taken and asks only what is missing
     return {"evidence": {"id": str(ev.id), "kind": ev.kind, "filename": ev.filename,
-                         "extracted_facts": ev.extracted_facts, "has_text": bool(ev.text)},
-            "case": case_view(container.engine, session, case)}
+                         "extracted_facts": ev.extracted_facts, "has_text": bool(ev.text), "applied": ev.confirmed},
+            "reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
 
 
 @router.get("/cases/{case_id}/gov-services")

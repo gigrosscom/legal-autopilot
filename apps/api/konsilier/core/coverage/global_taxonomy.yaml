@@ -169,7 +169,7 @@ branches:
         counterparty_kinds: [business]
       - id: commercial.contract_breach
         title: {ru: Нарушение договора, kk: Шартты бұзу, en: Breach of contract}
-        keywords: {ru: [нарушил договор поставки, поставщик], kk: [жеткізуші], en: [supplier breach]}
+        keywords: {ru: [нарушил договор поставки, поставщик, не выполнил условия договора, не выполнили условия договора, не выполнили обязательства, нарушили договор, контрагент, договор с тоо, договор с ип], kk: [жеткізуші, шартты бұзды, шарт талаптарын орындамады], en: [supplier breach, breach of contract]}
         applicant_roles: [business]
         counterparty_kinds: [business]
   - id: tax

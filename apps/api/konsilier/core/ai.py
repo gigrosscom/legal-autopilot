@@ -157,29 +157,37 @@ def extract_fields(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack
 
 
 def extract_evidence(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,
-                     text: str | None, attachments: tuple[Attachment, ...] = ()) -> tuple[dict[str, Any], str]:
+                     text: str | None, attachments: tuple[Attachment, ...] = (),
+                     kinds: list[str] | None = None) -> tuple[dict[str, Any], str, str]:
+    """Facts for the case's fields that the document shows, a one-line summary, and which of ``kinds`` it is."""
     specs = _field_specs(scenario, pack, lang)
     names = [s["name"] for s in specs]
+    kinds = list(dict.fromkeys(kinds or [])) + ["other"]
     schema = {
         "type": "object",
-        "properties": {"facts": _nullable_values_schema(names), "summary": {"type": "string"}},
-        "required": ["facts", "summary"],
+        "properties": {"facts": _nullable_values_schema(names), "summary": {"type": "string"},
+                       "kind": {"type": "string", "enum": kinds}},
+        "required": ["facts", "summary", "kind"],
         "additionalProperties": False,
     }
     system = (
-        f"{_COMMON_RULES}\nTask: the user uploaded a document (receipt, screenshot, letter, statement). "
-        "Extract only facts that are literally visible for the listed fields; null otherwise. "
-        "Dates as YYYY-MM-DD, money as a plain number. Summary: one sentence describing the document."
+        f"{_COMMON_RULES}\nTask: the user uploaded a document (contract, reconciliation act, invoice, receipt, "
+        "screenshot, letter, statement, court paper). Read it fully and extract every fact it shows for the listed "
+        "fields: the parties (names, BIN/IIN, addresses), contract number and date, goods or services, dates, "
+        "amounts, obligations. Only what is literally in the document; null otherwise. Dates as YYYY-MM-DD, money "
+        "as a plain number. 'kind': which of the listed document kinds it is. Summary: one sentence describing "
+        "the document."
     )
     try:
         out = llm.complete_json(task="extract_evidence", system=system, schema=schema,
-                                payload={"text": text or "", "language": lang, "fields": specs},
+                                payload={"text": text or "", "language": lang, "fields": specs,
+                                         "document_kinds": kinds},
                                 attachments=attachments)
     except LLMError as e:
         log.warning("extract_evidence failed: %s", e)
-        return {}, ""
+        return {}, "", "other"
     facts = {k: v for k, v in (out.get("facts") or {}).items() if v not in (None, "") and k in names}
-    return facts, out.get("summary", "")
+    return facts, out.get("summary", ""), out.get("kind") or "other"
 
 
 def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,
@@ -294,19 +302,21 @@ def _keyword_taxonomy(disputes: list[dict[str, Any]], text: str) -> dict[str, An
 
 
 def write_demands(llm: RedactingLLM, pack: JurisdictionPack, lang: str, desired_outcome: str,
-                  action_title: str) -> str:
-    """Formal wording of what the applicant asks for. No laws, amounts or deadlines are added."""
+                  action_title: str, amount: str | None = None) -> str:
+    """Formal wording of what the applicant asks for, with the amount claimed when there is one. No laws or
+    deadlines are added."""
     schema = {"type": "object", "properties": {"demands": {"type": "string"}}, "required": ["demands"],
               "additionalProperties": False}
     language_name = pack.t(lang, "language_name", default=lang)
     system = (
         f"{_COMMON_RULES}\nTask: rewrite the applicant's goal as the demands paragraph of the document "
         f"'{action_title}' in {language_name}, formal style, 1-3 short numbered demands. Keep only what the "
-        "applicant asked for; do not add legal grounds, article numbers, amounts or deadlines that are not in the text."
+        "applicant asked for; do not add legal grounds, article numbers, amounts or deadlines that are not in the text. "
+        "If 'amount_claimed' is given, the money demand states exactly that amount."
     )
     try:
         out = llm.complete_json(task="generic_demands", system=system, schema=schema,
-                                payload={"language": lang, "goal": desired_outcome})
+                                payload={"language": lang, "goal": desired_outcome, "amount_claimed": amount})
         return (out.get("demands") or "").strip() or desired_outcome
     except LLMError as e:
         log.warning("write_demands failed: %s", e)

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui";
+import { DOC_ACCEPT } from "@/components/FilePicker";
 import type { Question } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -18,9 +19,9 @@ const groupDigits = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, 
  * thousands grouping for sums, the phone / e-mail keyboards, photo and file buttons for documents, and a free
  * text box when no specific question is asked. Sends a value the server already understands.
  */
-export function AnswerBar({ question, busy, currency, onSend, onFile, onSkip, onDone, placeholder }: {
+export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, onDone, placeholder }: {
   question: Question | null; busy: boolean; currency?: string | null;
-  onSend: (text: string, shown?: string) => Promise<boolean> | void; onFile: (f: File) => void; onSkip: () => void; onDone: () => void;
+  onSend: (text: string, shown?: string) => Promise<boolean> | void; onFiles: (fs: File[]) => void; onSkip: () => void; onDone: () => void;
   placeholder?: string;
 }) {
   const t = useT();
@@ -42,10 +43,11 @@ export function AnswerBar({ question, busy, currency, onSend, onFile, onSkip, on
   const shown = type === "date" && out ? out.split("-").reverse().join(".")
     : type === "money" && out ? `${groupDigits(out)} ${currency === "KZT" ? "₸" : currency ?? ""}`.trim() : undefined;
   const send = async () => { if (out && !busy && (await onSend(out, shown)) !== false) setValue(""); };
+  // several documents at once; the camera takes one photo at a time
   const fileInput = (capture: boolean) => (
-    <input type="file" className="sr-only" disabled={busy} accept={capture ? "image/*" : "image/*,application/pdf,text/plain"}
+    <input type="file" className="sr-only" disabled={busy} accept={capture ? "image/*" : DOC_ACCEPT} multiple={!capture}
       {...(capture ? { capture: "environment" as const } : {})}
-      onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onFile(f); }} />
+      onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
   );
 
   if (type === "evidence") {
@@ -154,6 +156,10 @@ export function AnswerBar({ question, busy, currency, onSend, onFile, onSkip, on
         <label title={t("chat.attach")}
           className={`flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}>
           <Icon name="paperclip" size={22} /><span className="sr-only">{t("chat.attach")}</span>{fileInput(false)}
+        </label>
+        <label title={t("app.photo")}
+          className={`hidden h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink pointer-coarse:flex ${busy ? "pointer-events-none opacity-50" : ""}`}>
+          <Icon name="camera" size={22} /><span className="sr-only">{t("app.photo")}</span>{fileInput(true)}
         </label>
         {field}
         <button type="submit" disabled={busy || !out} aria-label={t("case.send")}

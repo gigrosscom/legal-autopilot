@@ -109,13 +109,24 @@ def test_consumer_refund_full_path(ctx):
     facts = {f["field"]: f["value"] for f in case["facts"]}
     assert facts["purchase_date"] == "12.08.2026"
     assert facts["amount"] == "150 000"
-    assert created["reply"]["question"]["field"] == "seller_name"
+    # order: documents → what happened → identity document → personal data
+    assert created["reply"]["question"]["field"] == "evidence"
+    assert created["case"]["status"] == "intake"
+
+    # a document is read at once: what it shows goes into the case, no confirmation step; more files may follow
+    receipt = "ТОО Техномир\nКассовый чек от 12.08.2026\nСмартфон Nova 9\nИТОГО: 150000"
+    up = api.post(f"/v1/cases/{cid}/evidence", expect=201, data={"kind": "receipt"},
+                  files={"file": ("receipt.txt", receipt.encode(), "text/plain")})
+    assert up["evidence"]["extracted_facts"] == {"purchase_date": "2026-08-12", "amount": "150000.00"}
+    assert up["evidence"]["applied"] is True
+    assert up["case"]["question"]["field"] == "evidence" and up["case"]["question"]["uploaded"] == 1
+    assert up["reply"]["message"].startswith("Прочитал документ «receipt.txt». Взял из него:")
+    out = api.answer(cid, "готово")
+    assert out["case"]["question"]["field"] == "seller_name"
 
     # skip is refused for a required field
     out = api.answer(cid, "пропустить")
     assert out["reply"]["error"] == "required"
-    # validation error keeps the same question
-    # order: what happened → evidence → identity document → personal data
     body = run_intake(api, cid, {
         "seller_name": "ТОО «Техномир»",
         "seller_bin": "123456789012",
@@ -123,19 +134,7 @@ def test_consumer_refund_full_path(ctx):
         "seller_email": "пропустить",
         "seller_address": "г. Алматы, пр. Достык, 10",
     })
-    assert body["question"]["field"] == "evidence"
-    assert body["status"] == "intake"
-
-    # evidence: extractor proposes facts, user confirms; the question stays open for more files
-    receipt = "ТОО Техномир\nКассовый чек от 12.08.2026\nСмартфон Nova 9\nИТОГО: 150000"
-    up = api.post(f"/v1/cases/{cid}/evidence", expect=201, data={"kind": "receipt"},
-                  files={"file": ("receipt.txt", receipt.encode(), "text/plain")})
-    assert up["evidence"]["extracted_facts"] == {"purchase_date": "2026-08-12", "amount": "150000.00"}
-    conf = api.post(f"/v1/cases/{cid}/evidence/{up['evidence']['id']}/confirm", json={})
-    assert conf["case"]["question"]["field"] == "evidence" and conf["case"]["question"]["uploaded"] == 1
-    assert conf["reply"]["message"].startswith("Файл добавлен (всего: 1)")
-    out = api.answer(cid, "готово")
-    assert out["case"]["question"]["field"] == "identity_document"
+    assert body["question"]["field"] == "identity_document"
     body = run_intake(api, cid, {
         "identity_document": "пропустить",
         "applicant_name": "Иванов Иван Иванович",
