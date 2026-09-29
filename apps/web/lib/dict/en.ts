@@ -196,7 +196,7 @@ const en: Dict = {
   },
   home: {
     eyebrow: "Konsiliér [kon-seel-YER] — your AI assistant for legal matters",
-    title: "Legal questions. Clear answers.",
+    title: "Your rights, in plain words. Documents, drafted for you.",
     sub: "Describe what happened. We will prepare the document, tell you where to file it and keep track of deadlines. If you need a lawyer, we will connect a verified one.",
     promise1: "We prepare your complaint or application for you, in line with the law",
     promise2: "We tell you exactly where to send it",
