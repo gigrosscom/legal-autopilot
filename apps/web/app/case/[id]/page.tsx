@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { BetaNotice } from "@/components/BetaNotice";
 import { AnswerBar } from "@/components/AnswerBar";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
@@ -247,6 +248,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   return (
     <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
       scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}`}>
+      {c.scenario?.beta && <BetaNotice disclaimer={c.scenario.disclaimer} />}
       {c.scenario?.draft_disclaimer && (
         <p className="flex items-start gap-2 rounded-2xl bg-draft-50 px-3 py-2 text-xs text-draft">
           <Icon name="info" size={16} className="mt-0.5" /><span><b>{t("case.draftTitle")}.</b> {c.scenario.draft_disclaimer}</span>

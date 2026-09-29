@@ -75,6 +75,9 @@ export type CaseView = {
     title: string;
     draft: boolean;
     draft_disclaimer: string | null;
+    kind?: "dispute" | "service";
+    beta?: boolean;  // experimental scenario (EXPERIMENTAL_SCENARIOS): marked «Бета»
+    disclaimer?: string | null;
     price: { amount: number; currency: string };
   } | null;
   facts: { field: string; label: string; value: string }[];

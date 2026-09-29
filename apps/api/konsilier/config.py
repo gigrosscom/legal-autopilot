@@ -103,6 +103,8 @@ class Settings(BaseSettings):
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
 
     telegram_bot_token: str | None = None
+    # Beta scenarios (tender bid, admission, visa, business…): off in production, on in dev and tests.
+    experimental_scenarios: bool = False
     cors_origins: str = "http://localhost:3000"
 
     @field_validator("database_url")

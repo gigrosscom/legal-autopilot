@@ -46,6 +46,7 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      EXPERIMENTAL_SCENARIOS: ${EXPERIMENTAL_SCENARIOS:-true}  # beta scenarios on in local dev
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-claude-opus-5}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me-admin}

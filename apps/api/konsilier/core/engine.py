@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, qualifier, safety
+from . import ai, package, qualifier, safety
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -584,6 +584,10 @@ class CaseEngine:
                              {"kind": "email", "url": None}]
             elif not channels:
                 channels = [{"kind": "in_person", "url": None}, {"kind": "post", "url": None}]
+        if spec.package:  # service scenario: the personal checklist of the package
+            fmt = self.document_context(case, sc, pack, spec, addressee)["fmt"]
+            attachments = package.checklist(spec, lang, pack.manifest.default_language, case.facts,
+                                            case.skipped_fields or [], fmt)
         for f in sc.intake:  # the evidence the interview asks for
             if f.type == "evidence":
                 attachments += [pack.t(lang, f"evidence.{k}", default=k) for k in f.evidence_kinds if k != "other"]
@@ -814,6 +818,9 @@ class CaseEngine:
             return {"kind": "forum", "key": forum.id, "name": pack.localized(forum.name, lang), "address": "",
                     "email": email, "submit_url": portal, "id": None, "type": forum.type,
                     "legal_effect": forum.legal_effect, "verified": forum.verified}
+        if spec.addressee.name:  # service scenario: a named recipient (visa centre, university, customer…)
+            return {"kind": "organization", "key": None, "name": pack.localized(spec.addressee.name, lang),
+                    "address": "", "email": None, "submit_url": spec.addressee.url, "id": None}
         if spec.addressee.authority:
             auth = pack.manifest.authorities[spec.addressee.authority]
             return {"kind": "authority", "key": spec.addressee.authority, "name": pack.localized(auth.name, lang),
@@ -837,7 +844,10 @@ class CaseEngine:
                      if fl.name in case.facts and fl.type != "evidence" and not fl.pii}
             attached = sorted({pack.t(lang, f"evidence.{e.kind}", default=e.kind) for e in case.evidence
                                if e.kind not in ("response", IDENTITY_KIND)})
-            case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached)
+            if sc.kind == "service":  # the person's own story for a cover / motivation letter
+                case.narrative = ai.write_letter(llm, sc, pack, lang, facts, title)
+            else:
+                case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached)
             self._save_vault(case, llm)
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
             case.formal_demands = ai.write_demands(llm, pack, lang, str(case.facts["desired_outcome"]), title)
@@ -890,7 +900,17 @@ class CaseEngine:
         if spec.deadline:
             fmt["deadline_days"] = spec.deadline.calendar_days or spec.deadline.business_days
         demands = pack.localized(spec.demands, lang).format_map(_Fmt(fmt)) if spec.demands else ""
-        return {
+        extra: dict[str, Any] = {}
+        if spec.package:
+            default = pack.manifest.default_language
+            fmt_pkg = {**fmt, "narrative": case.narrative or f.get("problem_description", "")}
+            extra = {"sections": package.sections(spec, lang, default, case.facts, case.skipped_fields or [], fmt_pkg),
+                     "L": package.labels(lang, default), "sources": package.sources(sc, lang, default),
+                     "disclaimer": pack.localized(sc.disclaimer, lang) if sc.disclaimer else "",
+                     "scenario_title": pack.localized(sc.title, lang),
+                     "id_label": ai.field_label(sc, pack, lang, sc.parties["applicant"].id_field)
+                     if "applicant" in sc.parties and sc.parties["applicant"].id_field else ""}
+        return {**extra,
             "title": pack.localized(spec.title, lang),
             "f": f,
             "applicant": applicant,
