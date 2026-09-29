@@ -14,6 +14,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     Numeric,
@@ -609,3 +610,19 @@ event.listen(OfficialChunk.__table__, "after_create", DDL(OFFICIAL_TSV).execute_
 event.listen(OfficialChunk.__table__, "after_create",
              DDL("CREATE INDEX ix_official_chunks_tsv ON official_chunks USING gin (tsv)").execute_if(
                  dialect="postgresql"))
+
+
+class LLMUsage(Base):
+    """One call of the paid model: what it was for, its tokens and cost — the spend guard sums these."""
+
+    __tablename__ = "llm_usage"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    day: Mapped[str] = mapped_column(String(10), index=True)  # UTC, YYYY-MM-DD
+    month: Mapped[str] = mapped_column(String(7), index=True)  # YYYY-MM
+    task: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str] = mapped_column(String(80))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+

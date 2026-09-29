@@ -44,6 +44,7 @@ const en: Dict = {
     sample: "If there is a threat to life or health right now, call emergency services.",
   },
   metrics: {
+    claude: { title: "Claude spend", lead: "Documents only. When a budget is used up, the free model writes the documents.", today: "Today", month: "This month" },
     lead: "Real cases on the platform only",
     users: "Users",
     cases: "Cases",
@@ -980,7 +981,7 @@ const en: Dict = {
     dropped: "Unconfirmed references dropped: {n}",
     disclaimer: "This is information from the official texts of the law, not a legal opinion. For complex cases we bring in a lawyer.",
     errors: {
-      agent_unavailable: "Answers about the law are not available yet.",
+      agent_unavailable: "Ask this question in the free chat consultant.",
       agent_failed: "Could not answer right now. Try again a little later.",
       too_many_questions: "You have asked many questions about this case today. Please try again tomorrow.",
     },

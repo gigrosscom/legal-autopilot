@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
     # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
     chat_fallback_to_anthropic: bool = False
+    # The paid model (Claude) is used only for what documents need; everything else stays on free models.
+    # Chat and "questions on the case" never use it unless switched on here explicitly.
+    anthropic_for_chat: bool = False
+    anthropic_for_questions: bool = False
+    # Spend guard for documents: tasks allowed on the paid model and hard budgets (USD, UTC day / month). Over a
+    # budget the free model (Gemini) takes over and the operators are e-mailed once a day.
+    llm_allowed_tasks: str = "qualify,classify_taxonomy,extract_fields,extract_evidence,narrative,generic_demands,classify_response"
+    llm_daily_budget_usd: float = 3.0
+    llm_monthly_budget_usd: float = 50.0
     # Daily cap (UTC day) on the estimated cost of chat replies written by Claude. Once reached, the fallback is
     # off until the next day and the person is asked to retry in a minute. 0 → the fallback is never used.
     chat_fallback_daily_budget_usd: float = 10.0

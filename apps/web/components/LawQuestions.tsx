@@ -18,6 +18,7 @@ export function LawQuestions({ caseId }: { caseId: string }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toChat, setToChat] = useState(false);
 
   useEffect(() => {
     api<Answer[]>(`/v1/cases/${caseId}/questions`).then(setItems).catch(() => setItems([]));
@@ -25,12 +26,13 @@ export function LawQuestions({ caseId }: { caseId: string }) {
 
   const ask = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setToChat(false);
     try {
       const a = await api<Answer>(`/v1/cases/${caseId}/questions`, { method: "POST", body: JSON.stringify({ question: q }) });
       setItems((xs) => [a, ...xs]);
       setQ("");
     } catch (err) {
+      setToChat(err instanceof ApiError && err.code === "agent_unavailable");
       const key = err instanceof ApiError && err.code ? `law.errors.${err.code}` : "";
       setError(key && t(key) !== key ? t(key) : errorText(err));
     } finally { setBusy(false); }
@@ -51,7 +53,12 @@ export function LawQuestions({ caseId }: { caseId: string }) {
           {busy && <span className="text-xs text-muted" role="status">{t("law.busyHint")}</span>}
         </div>
       </form>
-      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {error && (
+        <Alert tone={toChat ? "info" : "danger"} role="alert">
+          {error}{" "}
+          {toChat && <a className="link font-medium" href={`/chat/${caseId}`}>{t("chat.open")}</a>}
+        </Alert>
+      )}
 
       {items.map((a) => (
         <article key={a.id} className="space-y-3 border-t border-line pt-4 text-sm">
