@@ -196,7 +196,7 @@ const tr: Dict = {
   },
   home: {
     eyebrow: "Konsiliér [kon-sil-YER] — hukuki konularda yapay zekâ asistanı",
-    title: "Hukuki sorular. Anlaşılır yanıtlar.",
+    title: "Haklarınız\u00A0— sade bir dille. Belgeler\u00A0— sizin yerinize.",
     sub: "Ne olduğunu anlatın. Belgeyi hazırlarız, nereye başvuracağınızı söyleriz, süreleri takip ederiz. Avukat gerekirse doğrulanmış birini dahil ederiz.",
     promise1: "Şikâyetinizi veya dilekçenizi yasaya uygun olarak sizin için yazarız",
     promise2: "Tam olarak nereye göndereceğinizi söyleriz",
