@@ -8,12 +8,16 @@ import { useLang, useT } from "@/lib/i18n";
 type Msg = { id: number; author: "client" | "desk"; text: string; created_at: string };
 export type Ticket = { id: number; kind: string; status: string; created_at: string; case_id: string | null; messages: Msg[] };
 const KINDS = ["question", "complaint", "suggestion"] as const;
+/** Plans that are not paid online yet: the home page links here with ?plan=…, the ticket goes to the clients desk. */
+const PLANS = ["case", "biz", "bizpro"] as const;
+type Kind = (typeof KINDS)[number] | "plan";
 
 /** Write to Konsiliér AI: a question, a complaint or a suggestion. Replies come by e-mail and show here. */
 export default function SupportPage() {
   const t = useT();
   const { lang } = useLang();
-  const [kind, setKind] = useState<(typeof KINDS)[number]>("question");
+  const [kind, setKind] = useState<Kind>("question");
+  const [plan, setPlan] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,6 +35,12 @@ export default function SupportPage() {
     api<CaseView[]>("/v1/cases").then(setCases).catch(() => {});
     const k = new URLSearchParams(window.location.search).get("kind");
     if (k && (KINDS as readonly string[]).includes(k)) setKind(k as (typeof KINDS)[number]);
+    const p = new URLSearchParams(window.location.search).get("plan");
+    if (p && (PLANS as readonly string[]).includes(p)) {
+      setPlan(p);
+      setKind("plan");
+      setText(t("support.planText", { plan: t(`home.price.${p}T`) }));
+    }
     const c = new URLSearchParams(window.location.search).get("case");
     if (c) setCaseId(c);
   }, []);
@@ -57,14 +67,16 @@ export default function SupportPage() {
       {sent && <Alert tone="info" icon="checkCircle" title={t("support.sentTitle", { n: sent })}>{t("support.sentText")}</Alert>}
 
       <form onSubmit={submit} className="card space-y-4">
-        <div role="radiogroup" aria-label={t("support.kind")} className="grid grid-cols-3 gap-2">
+        {plan ? (
+          <p className="rounded-2xl bg-brand-50 px-4 py-3 font-semibold text-ink">{t("support.planTitle", { plan: t(`home.price.${plan}T`) })}</p>
+        ) : <div role="radiogroup" aria-label={t("support.kind")} className="grid grid-cols-3 gap-2">
           {KINDS.map((k) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
               className={`min-h-12 rounded-2xl border px-1 text-[13px] font-semibold sm:text-sm ${kind === k ? "border-brand bg-brand text-white" : "border-line bg-surface hover:border-brand"}`}>
               {t(`support.kinds.${k}`)}
             </button>
           ))}
-        </div>
+        </div>}
         <label className="block text-sm font-semibold">{t(`support.textLabel.${kind}`)}
           <textarea className="input mt-1 min-h-32 text-base font-normal" required minLength={5} maxLength={4000}
             value={text} onChange={(e) => setText(e.target.value)} />
