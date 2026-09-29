@@ -6,6 +6,8 @@ import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { BetaNotice } from "@/components/BetaNotice";
 import { AnswerBar } from "@/components/AnswerBar";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
+import { CodeForm } from "@/components/CodeForm";
+import { Invite } from "@/components/Invite";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
@@ -16,11 +18,14 @@ import { LawQuestions } from "@/components/LawQuestions";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
+  ApiError,
   api,
+  applySignIn,
   downloadFile,
   errorText,
   type CaseAction,
   type CaseLawyer,
+  type Filing,
   type Me,
   type CaseView,
   type Emergency,
@@ -31,6 +36,7 @@ import {
   shareFile,
   type Plan,
   type Payment,
+  type SignedIn,
   saveFileAs,
 } from "@/lib/api";
 import { LAWYERS_PUBLIC } from "@/lib/features";
@@ -76,6 +82,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [emergency, setEmergency] = useState<Emergency | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
+  // the server asks for a confirmed contact before the first bill: the payment window shows that step first
+  const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
 
   const push = (m: Msg) => setLog((l) => [...l, m]);
 
@@ -181,6 +189,31 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     });
   }
 
+  async function choosePayment(purpose: string) {
+    await run(async () => {
+      try {
+        const out = await api<{ case: CaseView }>(`/v1/cases/${id}/payment`, { method: "POST", body: JSON.stringify({ purpose }) });
+        setCase(out.case);
+      } catch (e) {
+        if (!(e instanceof ApiError && e.code === "contact_required")) throw e;
+        const methods = (e.detail as { methods?: string[] }).methods ?? [];
+        setContact({ kind: methods[0] === "email" ? "email" : "phone", purpose });
+      }
+    });
+  }
+
+  // Contact confirmed: switch to the account token (it may be an existing account the case has just moved to), then
+  // go on by itself: the bill for the chosen option, or the document at once if that account has a free one.
+  async function contactConfirmed(r: SignedIn) {
+    applySignIn(r);
+    const purpose = contact?.purpose;
+    setContact(null);
+    const view = await api<CaseView>(`/v1/cases/${id}`).catch(() => null);
+    if (view) setCase(view);
+    if (view?.payment?.status === "paid") await post("/actions/next");
+    else if (purpose) await choosePayment(purpose);
+  }
+
   // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
   // confirmed, so it simply appears; if it has not after a few checks, the page asks for it itself.
   const payStatus = c?.payment?.status;
@@ -240,6 +273,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         </div>
         {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
         <ReportsHint />
+        <TrainingConsent c={c} onChange={setCase} />
         <div className="rounded-2xl border border-line p-4 text-xs text-muted">
           <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
           <p className="mt-1">{c.service_disclaimer}</p>
@@ -298,8 +332,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       </div>
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
-        <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)}
-          onChoose={(purpose) => post("/payment", { purpose })} onClaim={() => post("/payment/claim")} />
+        <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
+          onContact={contactConfirmed} onChoose={choosePayment} onClaim={() => post("/payment/claim")} />
       )}
 
       {ack && (
@@ -331,6 +365,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           <p className="text-muted">{c.outcome.days_to_resolution} {t("case.days")}</p>
         </div>
       )}
+      {/* the document is ready or the case is closed: the moment to pass the service on (both get a free document) */}
+      {(c.outcome || (c.status !== "intake" && last?.downloadable)) && <Invite compact />}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
     </AppShell>
   );
@@ -498,10 +534,12 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
 }
 
 /** Payment window, opened by «Подготовить документ» while the document is not paid: choose one document or
- *  «Дело под ключ», Kaspi details and the code, "I have paid". Once the transfer is confirmed the page prepares the
+ *  «Дело под ключ», confirm a phone by SMS code if the server asks (an e-mail where SMS is not available), Kaspi
+ *  details and the code, "I have paid". Once the transfer is confirmed the page prepares the
  *  document by itself (and the server does, if the page is closed). */
-function PaymentDialog({ pay, busy, onClose, onChoose, onClaim }: {
-  pay: Payment; busy: boolean; onClose: () => void; onChoose: (purpose: string) => void; onClaim: () => void;
+function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onClaim }: {
+  pay: Payment; busy: boolean; contact: "phone" | "email" | null; onClose: () => void; onContact: (r: SignedIn) => void;
+  onChoose: (purpose: string) => void; onClaim: () => void;
 }) {
   const t = useT();
   const panel = useRef<HTMLDivElement>(null);
@@ -524,7 +562,15 @@ function PaymentDialog({ pay, busy, onClose, onChoose, onClaim }: {
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"><Icon name="x" size={22} /></button>
         </div>
         <div className="space-y-3 overflow-y-auto overscroll-contain p-4">
-          {!pay.code ? (
+          {!pay.code && contact ? (
+            <>
+              <p className="flex items-start gap-2 text-base font-semibold">
+                <Icon name={contact === "phone" ? "phone" : "mail"} className="mt-0.5 shrink-0 text-brand" />{t(`payment.contact.${contact}`)}
+              </p>
+              <p className="text-sm text-muted">{t("payment.contact.lead")}</p>
+              <CodeForm key={contact} kind={contact} onDone={onContact} wide />
+            </>
+          ) : !pay.code ? (
             <>
               <p className="text-sm text-muted">{t("payment.choose")}</p>
               {pay.options.map((o) => (
@@ -747,6 +793,29 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
   );
 }
 
+/** Opt-in: the case, anonymised, may teach Konsiliér's own model. Off by default; can be withdrawn any time. */
+function TrainingConsent({ c, onChange }: { c: CaseView; onChange: (c: CaseView) => void }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const toggle = async (given: boolean) => {
+    setBusy(true);
+    try {
+      onChange((await api<{ case: CaseView }>(`/v1/cases/${c.id}/training-consent`, {
+        method: "PUT", body: JSON.stringify({ given }) })).case);
+    } catch { /* the switch stays as it was */ } finally { setBusy(false); }
+  };
+  return (
+    <label className="card flex cursor-pointer items-start gap-3 text-sm">
+      <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-brand" checked={c.training_consent}
+        disabled={busy} onChange={(e) => toggle(e.target.checked)} />
+      <span className="space-y-1">
+        <span className="block font-semibold text-ink">{t("training.title")}</span>
+        <span className="block text-muted">{t("training.text")}</span>
+      </span>
+    </label>
+  );
+}
+
 function ReportsHint() {
   const t = useT();
   const [show, setShow] = useState(false);
@@ -796,12 +865,14 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
         <h3 className="font-semibold">{a.sequence}. {a.title}</h3>
         {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
       </div>
-      {a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
+      {a.downloadable && a.filing
+        ? <FilingCard id={a.id} f={a.filing} />
+        : a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
       {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
       {a.downloadable && !a.submitted_at && !["submitted", "responded"].includes(a.status) && <SubmitOnline caseId={caseId} a={a} />}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold">{t("case.instructions")}</p>
+          <p className="text-sm font-semibold">{a.filing ? t("filing.stepByStep") : t("case.instructions")}</p>
           <ol className="space-y-2 text-sm">
             {a.instructions.map((s, i) => (
               <li key={i} className="flex gap-3">
@@ -821,6 +892,107 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
       )}
       {a.response_summary && <p className="text-sm text-muted">«{a.response_summary}»</p>}
     </div>
+  );
+}
+
+/** «Как подать»: where, until when, how long they have to answer and which ways — compact, phone first.
+ *  Anything the pack data does not hold is shown as «уточнит юрист», never guessed. */
+function FilingCard({ id, f }: { id: string; f: Filing }) {
+  const t = useT();
+  const { lang } = useLang();
+  const online = f.online && (f.online.phone || f.online.desktop) ? f.online : null;
+  const [tab, setTab] = useState<"phone" | "desktop">(online && (!online.phone_ok || !online.phone) ? "desktop" : "phone");
+  const lawyer = <span className="text-muted">{t("filing.lawyer")}</span>;
+  const within = (d: { days: number; unit: string }) => {
+    let form = "other";
+    try { form = new Intl.PluralRules(lang).select(d.days) === "one" ? "one" : "other"; } catch {}
+    return t(`filing.within.${d.unit}.${form}`, { n: d.days });
+  };
+  const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "ar" ? "ar" : "ru-RU");
+  const norm = (d: { norm_ref: string | null; verified: boolean }) => (
+    <span className="block text-xs text-muted">{d.norm_ref && d.verified ? t("filing.norm", { ref: d.norm_ref }) : <>{t("filing.norm", { ref: "" }).trim()} {t("filing.lawyer")}</>}</span>
+  );
+  const row = (icon: IconName, label: string, body: ReactNode) => (
+    <div className="flex gap-3">
+      <Icon name={icon} size={18} className="mt-0.5 shrink-0 text-brand" />
+      <div className="min-w-0 flex-1">
+        <dt className="text-xs text-muted">{label}</dt>
+        <dd className="break-words text-sm text-ink">{body}</dd>
+      </div>
+    </div>
+  );
+  const steps = online ? online[tab] : null;
+  return (
+    <section className="space-y-3 rounded-2xl border border-line bg-surface p-4" aria-labelledby={`filing-${id}`}>
+      <h4 id={`filing-${id}`} className="flex items-center gap-2 font-semibold text-ink"><Icon name="send" size={18} />{t("filing.title")}</h4>
+      <dl className="space-y-3">
+        {row("building", t("filing.to"), (
+          <>
+            {f.to.name ? <span className="block font-medium">{f.to.name}</span> : lawyer}
+            {f.to.address && <span className="block text-muted">{f.to.address}</span>}
+            {f.to.email && <a href={`mailto:${f.to.email}`} className="link block">{f.to.email}</a>}
+          </>
+        ))}
+        {row("calendar", t("filing.fileBy"), f.file_by ? (
+          <>
+            {f.file_by.date
+              ? <b className="tabular-nums">{date(f.file_by.date)}</b>
+              : <span>{within(f.file_by)}{f.file_by.since ? ` ${f.file_by.since}` : ""}</span>}
+            {f.file_by.date && <span className="block text-xs text-muted">{within(f.file_by)}{f.file_by.since ? ` ${f.file_by.since}` : ""}</span>}
+            {norm(f.file_by)}
+            {f.file_by.overdue && <span className="block text-xs text-danger">{t("filing.overdue")}</span>}
+          </>
+        ) : lawyer)}
+        {row("clock", t("case.deadline"), f.response ? (
+          <>
+            <span>{t("filing.respond", { term: within(f.response) })}</span>
+            {norm(f.response)}
+          </>
+        ) : lawyer)}
+        {row("key", t("filing.signature"), f.signature_text ?? lawyer)}
+      </dl>
+      {f.ways.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">{t("filing.ways")}</p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {f.ways.map((w) => (
+              <li key={w.kind} className="rounded-xl bg-sand px-3 py-2">
+                <span className="text-sm font-semibold text-ink">{w.label}</span>
+                <span className="block text-xs text-muted">{w.hint}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {online && (
+        <div className="space-y-3">
+          <div role="tablist" aria-label={t("filing.title")} className="grid grid-cols-2 gap-1 rounded-xl bg-sand p-1">
+            {(["phone", "desktop"] as const).map((k) => (
+              <button key={k} type="button" role="tab" id={`filing-${id}-${k}`} aria-selected={tab === k}
+                aria-controls={`filing-${id}-panel`} onClick={() => setTab(k)}
+                className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold ${tab === k ? "bg-surface text-ink shadow-sm" : "text-muted"}`}>
+                <Icon name={k === "phone" ? "smartphone" : "key"} size={16} />{t(`filing.${k}`)}
+              </button>
+            ))}
+          </div>
+          <div role="tabpanel" id={`filing-${id}-panel`} aria-labelledby={`filing-${id}-${tab}`} className="space-y-3">
+            {steps ? (
+              <ol className="space-y-2 text-sm">
+                {steps.map((s, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
+                    <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="text-sm">{lawyer}</p>}
+            <a href={online.url} target="_blank" rel="noreferrer" className="btn-ghost min-h-11 w-full sm:w-auto">
+              {t("filing.open", { portal: online.portal })}<Icon name="external" size={16} />
+            </a>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

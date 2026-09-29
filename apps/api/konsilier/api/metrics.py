@@ -38,12 +38,17 @@ def _aware(d: datetime) -> datetime:
 
 
 def compute(session: Session, weeks: int = 12, settings: Settings | None = None) -> dict[str, Any]:
-    cases = session.execute(select(Case.id, Case.created_at, Case.status, Case.scenario_id, Case.coverage_level,
-                                   Case.jurisdiction, Case.amount_at_stake, Case.currency, Case.owner_id)).all()
-    actions = session.execute(select(Action.case_id, Action.created_at, Action.kind, Action.submitted_at,
-                                     Action.response_class)).all()
-    outcomes = session.execute(select(Outcome.case_id, Outcome.result, Outcome.amount_recovered, Outcome.currency,
-                                      Outcome.days_to_resolution, Outcome.scenario_id)).all()
+    # test accounts (production smoke checks) are left out of every figure
+    tests = set(session.scalars(select(User.id).where(User.is_test.is_(True))).all())
+    cases = [c for c in session.execute(select(Case.id, Case.created_at, Case.status, Case.scenario_id,
+                                                Case.coverage_level, Case.jurisdiction, Case.amount_at_stake,
+                                                Case.currency, Case.owner_id)).all() if c.owner_id not in tests]
+    real = {c.id for c in cases}
+    actions = [a for a in session.execute(select(Action.case_id, Action.created_at, Action.kind, Action.submitted_at,
+                                                 Action.response_class)).all() if a.case_id in real]
+    outcomes = [o for o in session.execute(select(Outcome.case_id, Outcome.result, Outcome.amount_recovered,
+                                                  Outcome.currency, Outcome.days_to_resolution,
+                                                  Outcome.scenario_id)).all() if o.case_id in real]
 
     docs = [a for a in actions if a.kind != "handoff"]
     has_doc = {a.case_id for a in docs}
@@ -84,7 +89,7 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
     for a in docs:
         bump(a.created_at, "documents")
         bump(a.submitted_at, "submitted")
-    for u in session.execute(select(User.created_at)).scalars():
+    for u in session.execute(select(User.created_at).where(User.is_test.is_(False))).scalars():
         bump(u, "users")
 
     owners = {c.owner_id for c in cases}
@@ -92,7 +97,7 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
     out = {
         "generated_at": now.isoformat(),
         "totals": {
-            "users": session.scalar(select(func.count()).select_from(User)) or 0,
+            "users": session.scalar(select(func.count()).select_from(User).where(User.is_test.is_(False))) or 0,
             "users_with_case": len(owners),
             "repeat_users": repeat,
             "cases": len(cases),

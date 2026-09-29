@@ -655,10 +655,7 @@ class CaseEngine:
         channels: list[dict[str, Any]] = []
         attachments: list[str] = []
         cov = pack.coverage
-        forum = cov.forums.get(spec.addressee.forum) if cov and spec.addressee and spec.addressee.forum else None
-        if forum is None and is_generic(case.scenario_id) and cov:  # a claim to the other party itself
-            ref = GenericRef.parse(case.scenario_id or "")
-            forum = cov.forums.get(ref.forum_id) if ref else None
+        forum = self.action_forum(case, spec)
         if forum is not None:
             channels = [{"kind": ch.kind, "url": ch.url} for ch in forum.submission]
             doc = cov.document_for(forum) if cov else None
@@ -685,6 +682,19 @@ class CaseEngine:
                 "addressee": addressee.get("name") or None,
                 "channels": channels, "attachments": attachments,
                 "lawyer_check": self.approval_required(session, case, spec)}
+
+    def action_forum(self, case: Case, spec: ActionSpec) -> Any:
+        """The registry forum an action goes to: its addressee forum, or — for a universal-path claim to the other
+        party itself — the forum the generic scenario was built for. None for signed scenarios' own addressees."""
+        cov = self.pack_of(case).coverage
+        if cov is None:
+            return None
+        if spec.addressee and spec.addressee.forum:
+            return cov.forums.get(spec.addressee.forum)
+        if is_generic(case.scenario_id):
+            ref = GenericRef.parse(case.scenario_id or "")
+            return cov.forums.get(ref.forum_id) if ref else None
+        return None
 
     def proposal(self, case: Case) -> Proposal:
         if not case.scenario_id:
@@ -808,6 +818,8 @@ class CaseEngine:
             action.unlocked_by = via
             if via == "credit":
                 case.doc_credits -= 1
+            elif via == "bonus":
+                session.get(User, case.owner_id).bonus_documents -= 1
         if spec.kind == "handoff":
             action.status = "done"
             self.transition(session, case, S.HANDED_TO_LAWYER, actor, action=spec.id)
@@ -855,9 +867,16 @@ class CaseEngine:
         active = self.active_subscription(session, case.owner_id)
         if active is not None:
             return f"subscription:{active[0].id}"
+        # a paid document of this case goes first: the referral bonus is kept, as it serves any case
         if case.doc_credits > 0:
             return "credit"
+        if self.bonus_documents(session, case.owner_id) > 0:
+            return "bonus"
         return None
+
+    def bonus_documents(self, session: Session, user_id: uuid.UUID) -> int:
+        owner = session.get(User, user_id)
+        return owner.bonus_documents if owner is not None else 0
 
     def document_unlocked(self, case: Case, action: Action) -> bool:
         return case.paid or action.unlocked_by is not None or self.price(case) is None
@@ -913,7 +932,9 @@ class CaseEngine:
         return inv
 
     def _apply_paid(self, session: Session, inv: Invoice) -> None:
-        """What a paid bill gives: a document credit, the whole case, or a subscription period."""
+        """What a paid bill gives: a document credit, the whole case, or a subscription period (and, for an invited
+        person's first payment, the referral bonus)."""
+        self._referral_bonus(session, inv)
         if inv.purpose == "plan":
             now = utcnow()
             latest = session.scalar(select(func.max(Subscription.ends_at)).where(
@@ -930,6 +951,30 @@ class CaseEngine:
             case.doc_credits += 1
         else:
             case.paid = True
+
+    def _referral_bonus(self, session: Session, inv: Invoice) -> None:
+        """The first payment of an invited person: one free document to them and one to whoever invited them. Once
+        per invited person (referral_rewarded_at), whatever they paid for; both are told."""
+        payer = session.get(User, inv.user_id)
+        if payer is None or payer.referred_by is None or payer.referral_rewarded_at is not None:
+            return
+        payer.referral_rewarded_at = utcnow()
+        inviter = session.get(User, payer.referred_by)
+        if inviter is None or inviter.id == payer.id:
+            return
+        payer.bonus_documents += 1
+        inviter.bonus_documents += 1
+        case = session.get(Case, inv.case_id) if inv.case_id is not None else None
+        pack = self.pack_of(case) if case is not None else next(iter(self.packs.packs.values()), None)
+        if case is not None:
+            self.audit(session, case, "system", "referral_bonus", invoice=inv.code, inviter=str(inviter.id))
+        for user, key, default in (
+                (payer, "referral_bonus_invited",
+                 "Вы пришли по приглашению друга — дарим ещё один документ бесплатно."),
+                (inviter, "referral_bonus_inviter",
+                 "Человек, которого вы пригласили, оплатил документ. Дарим вам один документ бесплатно.")):
+            text = pack.t(pack.lang(user.language), f"notifications.{key}", default=default) if pack else default
+            self.notifier.notify_user(session, user, "referral", text, case=case if user is payer else None)
 
     def claim_payment(self, session: Session, inv: Invoice | None, actor: str) -> Invoice:
         """The person reports the transfer ("I have paid"): the clients desk is to check and confirm it."""
@@ -968,7 +1013,7 @@ class CaseEngine:
                                   f"и нажмите «Оплатить» ещё раз или напишите в поддержку.")
         self.audit(session, case, f"ops:{operator}", "payment_confirmed" if received else "payment_not_found",
                    invoice=inv.code)
-        self.notifier.notify(session, case, "payment", text)
+        self.notifier.notify(session, case, "payment", text, sms="payment_confirmed" if received else None)
 
     def prepare_paid_documents(self, session: Session, now: datetime, *, after: timedelta = timedelta(seconds=90),
                                within: timedelta = timedelta(days=2)) -> int:
@@ -1005,7 +1050,7 @@ class CaseEngine:
         pack = self.pack_of(case)
         self.notifier.notify(session, case, "document", pack.t(
             pack.lang(case.language), "notifications.document_ready",
-            default="Документ готов: его можно скачать в карточке дела."))
+            default="Документ готов: его можно скачать в карточке дела."), sms="document_ready")
         log.info("document %s prepared after payment %s", action.id, inv.code)
         return action
 
@@ -1053,6 +1098,7 @@ class CaseEngine:
                 {"purpose": "document", "amount": float(price[0])},
                 {"purpose": "case", "amount": float(self.config.case_price)}],
             "case_paid": case.paid, "credits": case.doc_credits,
+            "bonus": self.bonus_documents(session, case.owner_id),
             "subscription": self.subscription_view(session, case.owner_id)}
         if inv is not None and status != "paid":
             view.update(self.payments.details())
@@ -1227,7 +1273,8 @@ class CaseEngine:
                    action=action.action_id, note=note)
         pack = self.pack_of(case)
         key = "notifications.approved" if approved else "notifications.rejected"
-        self.notifier.notify(session, case, "approval", pack.t(case.language, key))
+        self.notifier.notify(session, case, "approval", pack.t(case.language, key),
+                             sms="document_ready" if approved else None)
 
     def mark_submitted(self, session: Session, case: Case, action: Action, actor: str,
                        via: str = "user_submits") -> None:

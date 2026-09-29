@@ -59,7 +59,7 @@ def test_two_desks(ctx):
     assert outbox.sent[-1][0] == "client@mail.kz" and "Исправили" in outbox.sent[-1][2]
     mine = client.get("/v1/support").json()
     assert mine[0]["messages"][-1]["text"] == "Исправили, попробуйте ещё раз."
-    assert any("Исправили" in n["text"] for n in client.get("/v1/notifications").json())
+    assert any("Исправили" in n["text"] for n in client.get("/v1/notifications").json()["items"])
     client.post(f"/v1/support/{t['id']}/messages", expect=201, json={"text": "Спасибо, работает"})
     assert cl.post(f"/v1/ops/clients/tickets/{t['id']}/status", json={"status": "done"})["status"] == "done"
 

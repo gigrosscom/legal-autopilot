@@ -13,7 +13,7 @@ from sqlalchemy import select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import AuditLog, Case, Deadline, Outcome
 
-from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU
+from .test_pilot_drafts import NEUTRAL_NOTE_RU
 
 ADMIN = {"X-Admin-Token": "adm"}
 
@@ -187,7 +187,7 @@ def test_consumer_refund_full_path(ctx):
     sent = [t for _, t in ctx.channels["web"].sent]
     assert any("осталось 2 дн." in t for t in sent)
     assert any("последний день" in t for t in sent)
-    inbox = api.get("/v1/notifications").json()
+    inbox = api.get("/v1/notifications").json()["items"]
     assert any(n["kind"] == "deadline_reminder" for n in inbox)
 
     # counterparty refuses → engine proposes the next step from YAML

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..container import Container
@@ -518,6 +518,27 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
     return {"action_id": str(action.id), "case": case_view(container.engine, session, case)}
 
 
+class TrainingConsentIn(BaseModel):
+    given: bool
+
+
+@router.put("/cases/{case_id}/training-consent")
+def training_consent(case_id: uuid.UUID, body: TrainingConsentIn, user: User = Depends(current_user),
+                     session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """The owner allows (or withdraws) the use of this case, anonymised, to teach Konsilier's own model. Off by
+    default; withdrawing removes the case from every later training export."""
+    case = load_case(case_id, session, user)
+    rows = session.scalars(select(Consent).where(Consent.case_id == case.id, Consent.kind == "training")).all()
+    if body.given and not rows:
+        session.add(Consent(case_id=case.id, kind="training"))
+    if not body.given:
+        for row in rows:
+            session.delete(row)
+    container.engine.audit(session, case, f"user:{user.id}", "training_consent", given=body.given)
+    session.flush()
+    return {"case": case_view(container.engine, session, case)}
+
+
 PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа"}
 
 
@@ -525,11 +546,30 @@ class PaymentIn(BaseModel):
     purpose: Literal["document", "case"]
 
 
+def contact_to_confirm(container: Container, owner: User) -> list[str]:
+    """How the case owner is to confirm a contact before paying: ["phone"] (SMS code), or ["email"] where SMS sign-in
+    is not configured; [] when a confirmed contact is there, the person is in Telegram, it is a test account (smoke
+    checks) or nothing can be sent."""
+    if not container.settings.payment_requires_contact or owner.channel == "telegram" or owner.is_test:
+        return []
+    methods = container.identity_methods()
+    kinds = {i.kind for i in owner.identities}
+    if methods["phone"]:
+        return [] if "phone" in kinds else ["phone"]
+    if methods["email"]:
+        return [] if kinds & {"phone", "email"} else ["email"]
+    return []
+
+
 @router.post("/cases/{case_id}/payment")
 def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(current_user),
                    session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    """A bill for one document (scenario price) or «Дело под ключ» (every document of the case)."""
+    """A bill for one document (scenario price) or «Дело под ключ» (every document of the case). The owner confirms
+    a phone first: the document and deadline reminders reach them, and the case is not lost with the browser."""
     case = load_case(case_id, session, user)
+    methods = contact_to_confirm(container, session.get(User, case.owner_id))
+    if methods:
+        raise HTTPException(422, {"code": "contact_required", "message": "contact_required", "methods": methods})
     try:
         container.engine.create_invoice(session, user_id=case.owner_id, purpose=body.purpose, case=case,
                                         actor=f"user:{user.id}")
@@ -560,7 +600,7 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation":
+    if inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"дело {case.id}")
     if not case.narrative:
         prewrite_later(session, container, case.id)
@@ -608,7 +648,7 @@ def plan_claim(user: User = Depends(current_user), session: Session = Depends(ge
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation":
+    if inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     return plans_view(container, session, user)
 
@@ -882,9 +922,39 @@ def client_error(body: ClientErrorIn, session: Session = Depends(get_session)) -
         session.add(AuditLog(case_id=None, actor="browser", event="client_error", data=body.model_dump()))
 
 
+def _unread(session: Session, user: User) -> int:
+    return session.scalar(select(func.count()).select_from(Notification).where(
+        Notification.user_id == user.id, Notification.read_at.is_(None))) or 0
+
+
 @router.get("/notifications")
-def notifications(user: User = Depends(current_user), session: Session = Depends(get_session)):
-    rows = session.scalars(select(Notification).where(Notification.user_id == user.id)
-                           .order_by(Notification.id.desc()).limit(50)).all()
-    return [{"id": n.id, "case_id": str(n.case_id) if n.case_id else None, "kind": n.kind, "text": n.text,
-             "created_at": n.created_at.isoformat()} for n in rows]
+def notifications(unread: bool = False, user: User = Depends(current_user),
+                  session: Session = Depends(get_session)) -> dict[str, Any]:
+    """The site inbox (the bell): newest first; `unread=1` → only those not opened yet. `unread` in the answer is
+    always the count of unread ones."""
+    q = select(Notification).where(Notification.user_id == user.id)
+    if unread:
+        q = q.where(Notification.read_at.is_(None))
+    rows = session.scalars(q.order_by(Notification.id.desc()).limit(50)).all()
+    return {"items": [{"id": n.id, "case_id": str(n.case_id) if n.case_id else None, "kind": n.kind, "text": n.text,
+                       "created_at": n.created_at.isoformat(),
+                       "read_at": n.read_at.isoformat() if n.read_at else None} for n in rows],
+            "unread": _unread(session, user)}
+
+
+class ReadIn(BaseModel):
+    ids: list[int] = Field(default_factory=list, max_length=200)
+    all: bool = False
+
+
+@router.post("/notifications/read")
+def notifications_read(body: ReadIn, user: User = Depends(current_user),
+                       session: Session = Depends(get_session)) -> dict[str, int]:
+    """Marks the given notifications (or all of them) read; only the person's own ones are touched."""
+    q = update(Notification).where(Notification.user_id == user.id, Notification.read_at.is_(None))
+    if not body.all:
+        if not body.ids:
+            return {"unread": _unread(session, user)}
+        q = q.where(Notification.id.in_(body.ids))
+    session.execute(q.values(read_at=utcnow()))
+    return {"unread": _unread(session, user)}

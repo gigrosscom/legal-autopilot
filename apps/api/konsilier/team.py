@@ -21,9 +21,12 @@ def desks_of(settings: Any, email: str | None) -> list[Desk]:
     return [d for d in ("lawyers", "clients") if e in desk_emails(settings, d)]
 
 
-def notify_team(container: Any, subject: str, text: str, desk: Desk = "lawyers", also: str | None = None) -> None:
+def notify_team(container: Any, subject: str, text: str, desk: Desk = "lawyers", also: str | None = None,
+                test: bool = False) -> None:
     """E-mail the desk's operators (and `also`: extra comma-separated addresses that get the letter but no desk
-    access). Best effort: a mail outage must never lose the item itself."""
+    access). Best effort: a mail outage must never lose the item itself. Nothing is sent for a test account."""
+    if test:
+        return
     sender = container.email_sender
     to = desk_emails(container.settings, desk) or ([container.settings.team_email] if container.settings.team_email else [])
     to += [e.strip().lower() for e in (also or "").split(",") if e.strip() and e.strip().lower() not in to]

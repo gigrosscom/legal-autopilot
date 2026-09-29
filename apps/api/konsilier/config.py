@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     payment_kaspi_phone: str = ""  # Kaspi number to transfer to
     payment_comment_prefix: str = ""  # optional prefix of the payment code in the transfer comment
     payment_notify_emails: str = ""  # also get «клиент оплатил» letters (comma-separated), without access to /ops
+    # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
+    # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
+    # them. Telegram users are reachable in the bot and are not asked.
+    payment_requires_contact: bool = True
     # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
     # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
     plan_case_price: int = 9990
@@ -104,6 +108,9 @@ class Settings(BaseSettings):
     scheduler_interval_seconds: int = 60
     # work after a request (document text ahead, paid document, PDF): thread | inline | off (tests)
     background_jobs: str = "thread"
+    # production smoke checks (deploy/smoke.py): X-Smoke-Token opens /v1/smoke/* — a marked test user and the
+    # confirmation of that user's own bills; empty = the endpoints are off
+    smoke_token: str = ""
 
     smtp_host: str | None = None
     smtp_port: int = 1025

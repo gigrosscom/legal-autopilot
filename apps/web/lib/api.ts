@@ -35,6 +35,19 @@ export type CaseAction = {
   response_label: string | null;
   response_summary: string | null;
   deadline: { due_date: string; status: string; norm_ref: string | null } | null;
+  filing?: Filing | null;
+};
+
+/** «Как подать»: everything comes from pack data; a null value is shown as «уточнит юрист». */
+export type FilingTerm = { days: number; unit: "calendar" | "business"; norm_ref: string | null; verified: boolean };
+export type Filing = {
+  to: { name: string | null; address: string | null; email: string | null };
+  response: FilingTerm | null;  // the term to answer, known before filing
+  file_by: (FilingTerm & { date: string | null; since: string | null; overdue: boolean }) | null;
+  ways: { kind: "in_person" | "post" | "online" | "email"; label: string; hint: string; url: string | null }[];
+  online: { portal: string; url: string; phone: string[] | null; desktop: string[] | null; phone_ok: boolean } | null;
+  signature: "handwritten" | "ecp" | "either" | null;
+  signature_text: string | null;
 };
 
 export type Proposal = {
@@ -88,6 +101,9 @@ export type CaseView = {
   roadmap: Roadmap | null;
   plan: Plan | null;
   payment: Payment | null;
+  training_consent: boolean;
+  /** While the case awaits an answer: the response deadline and the days left (negative once it has passed). */
+  deadline: { due_date: string; status: string; days_left: number } | null;
   outcome: { result: string; amount_recovered: string | null; currency: string | null; days_to_resolution: number; resolved_at_step: string | null } | null;
   // admin only
   raw_facts?: Record<string, string>;
@@ -97,7 +113,7 @@ export type CaseView = {
 };
 
 /** Document payment by transfer (null when free). status "paid": the next document can be prepared now (the case
- *  plan, a subscription or a paid document covers it); "none": choose one of `options`; otherwise the open bill. */
+ *  plan, a subscription, a paid document or a referral bonus covers it); "none": choose one of `options`; otherwise the open bill. */
 export type Payment = {
   amount: number;
   currency: string | null;
@@ -111,6 +127,7 @@ export type Payment = {
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
   credits: number;
+  bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
   subscription: Subscription | null;
 };
 
@@ -196,7 +213,8 @@ export type CaseLawyer = {
 };
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
-export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[] };
+export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[];
+  bonus_documents: number };  // free documents for inviting a friend who paid (any case)
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean };
 export type SignedIn = { token: string; me: Me };
 

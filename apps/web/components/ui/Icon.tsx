@@ -4,6 +4,7 @@ import type { SVGProps } from "react";
 const PATHS = {
   document: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
   building: "M4 21h16M6 21V9l6-4 6 4v12M9 21v-6h6v6M9 11h.01M15 11h.01",
+  bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0",
   clock: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
   escalate: "M7 17 17 7M9 7h8v8",
   lawyer: "M12 3v18M5 7h14M7 7l-3 7a3 3 0 0 0 6 0zM17 7l-3 7a3 3 0 0 0 6 0zM8 21h8",

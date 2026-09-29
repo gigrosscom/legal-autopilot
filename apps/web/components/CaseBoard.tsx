@@ -16,6 +16,7 @@ export type BoardCard = {
   date?: string;
   meta?: string;
   attention?: string | null;
+  due?: { text: string; late: boolean } | null;
   tasks?: { label: string; done: boolean }[];
   href: string;
 };
@@ -48,6 +49,11 @@ export function CaseBoard({ cards, onlyNonEmptyOnMobile = true, onOpen }: {
                   <div className="flex flex-wrap items-center gap-1.5"><LevelBadge level={c.level as Level} /></div>
                   <p className="text-sm font-semibold leading-snug">{c.title}</p>
                   {c.meta && <p className="text-xs text-muted">{c.meta}</p>}
+                  {c.due && (
+                    <p className={`flex items-center gap-1 text-xs font-medium ${c.due.late ? "text-danger" : "text-ink-soft"}`}>
+                      <Icon name="clock" size={14} />{c.due.text}
+                    </p>
+                  )}
                   {c.attention && (
                     <p className="flex items-center gap-1 text-xs font-medium text-warning">
                       <Icon name="alert" size={14} />{c.attention}

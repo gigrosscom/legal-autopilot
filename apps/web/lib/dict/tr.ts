@@ -263,6 +263,7 @@ const tr: Dict = {
     },
     more: "Daha fazla",
   },
+  training: { title: "Konsiliér'in daha akıllı olmasına yardım edin", text: "Bu dosyanın Konsiliér yapay zekâsını eğitmek için kullanılmasına izin veriyorum — adım, kimlik numaram, telefonum ve adresim olmadan. İstediğim zaman geri alabilirim." },
   situations: {
     cheated: { label: "Alışverişte mağdur oldum", hint: "Ürün, hizmet, pazaryeri, para iadesi.", placeholder: "Ne aldınız, kimden, ne zaman, kaça ve ne ters gitti" , ex1: "İnternetten telefon aldım, bir hafta sonra bozuldu, satıcı parayı iade etmiyor", ex2: "Pazaryeri siparişim teslim edilmedi, para iade edilmiyor", ex3: "Tamir için ödeme yaptım, kötü yapıldı ve yeniden yapmıyorlar", ex4: "Kurstan ayrıldım, kullanılmayan derslerin parasını iade etmiyorlar" },
     fired: { label: "İşten çıkarıldım veya maaş ödenmiyor", hint: "İşten çıkarma, maaş alacağı, ayrımcılık.", placeholder: "Nerede çalışıyorsunuz, ne oldu ve ne zaman, ne kadar borçlular" , ex1: "İşveren üç aydır maaşımı ödemiyor", ex2: "Haber vermeden işten çıkarıldım, tazminatım ödenmedi", ex3: "İstifa dilekçesi yazmam için baskı yapıyorlar", ex4: "Ayrılırken izin ve fazla mesai ücretim ödenmedi" },
@@ -275,11 +276,13 @@ const tr: Dict = {
     inheritance: { label: "Miras", hint: "Mirasın kabulü, mirasçılar arası uyuşmazlık.", placeholder: "Kim ve ne zaman vefat etti, mirasçılar kim, sorun ne" , ex1: "Babam vasiyetsiz vefat etti, mirası nasıl alırım", ex2: "Mirası kabul için altı aylık süreyi kaçırdım", ex3: "Kardeşim birlikte miras kalan daireye girmeme izin vermiyor", ex4: "Noter veraset belgesi vermeyi reddetti" },
     housing: { label: "Konut ve komşular", hint: "Kira, elektrik-su-doğalgaz faturaları, komşular.", placeholder: "Nasıl bir konut, uyuşmazlık kiminle, ne oldu" , ex1: "Ev sahibi depozitoyu iade etmiyor", ex2: "Komşular evimi su bastı, zararı ödemeyi reddediyor", ex3: "Yönetim verilmeyen hizmetler için fatura kesiyor", ex4: "Müteahhit daireyi bir yıldan fazla gecikmeyle teslim ediyor" },
   },
+  inbox: { title: "Bildirimler", titleUnread: "Bildirimler, {n} yeni", empty: "Henüz bildirim yok. Süre hatırlatmaları, ödemeler ve hazır belgeler burada görünecek.", readAll: "Tümünü okundu işaretle", markRead: "Okundu", openCase: "Dosyayı aç", openSupport: "Talebi aç", new: "Yeni" },
   board: {
     intake: "Başvuru", qualified: "Bilgiler toplandı", action_ready: "Belge hazır", submitted: "Sunuldu, cevap bekleniyor",
     escalated: "Üst başvuru", handed_to_lawyer: "Avukatta", resolved: "Çözüldü",
     empty: "Boş", stepOf: "Aşama {n} / {total}",
     attention: { hold: "İncelemede", ack: "Onay gerekli", expired: "Cevap süresi doldu", approval: "Avukat kontrolü bekleniyor", chooseForum: "Muhatabı seçin" },
+    deadline: { left: "{n} gün kaldı", today: "Bugün son gün", expired: "Süre doldu" },
   },
   ack: {
     false_report: { title: "Bilerek gerçeğe aykırı ihbarın sorumluluğu", button: "Anladım ve onaylıyorum", text: "Bilerek gerçeğe aykırı ihbar ve şikâyette bulunmanın cezai sorumluluğu vardır. Yalnızca bildiğiniz olguları anlatın." },
@@ -585,6 +588,7 @@ const tr: Dict = {
     tick: "Hatırlatmaları çalıştır",
   },
   account: {
+    bonus: "Ücretsiz belgeleriniz: {n} — arkadaş davetleri için. Herhangi bir dosyanızda ödeme yapmadan hazırlanır.",
     eyebrow: "Hesap",
     title: "Giriş ve kimlik doğrulama",
     lead: "Dosyalarınızı her cihazdan görmek için giriş yapın. E-imza (ЭЦП) veya eGov Mobile ile doğrulama kimliğinizi de teyit eder.",
@@ -690,12 +694,12 @@ const tr: Dict = {
     },
   },
   invite: {
+    offer: "Bir arkadaşınızı davet edin: o bir belgenin ücretini ödediğinde ikiniz de bir belgeyi ücretsiz alırsınız",
     title: "İhtiyacı olanları davet edin",
     lead: "Bağlantınızı benzer bir sorunu olan arkadaşlarınıza ve yakınlarınıza gönderin. Danışmanlık onlar için ücretsiz.",
     share: "Bağlantıyı paylaş",
     copied: "Bağlantı kopyalandı",
     invited: "Bağlantınızla gelenler: {n}",
-    chatAsk: "İşinize yaradı mı? Bağlantıyı benzer durumdaki birine gönderin.",
     shareText: "Konsiliér AI — hukuki konularda ücretsiz yapay zekâ danışmanlığı. Durumunuzu anlatın, ne yapmanız gerektiğini söylesin:",
   },
   submit: {
@@ -805,6 +809,11 @@ const tr: Dict = {
     hintCta: "E-postayı doğrula",
   },
   payment: {
+    contact: {
+      phone: "Telefonunuz — belgeyi göndeririz ve süreyi hatırlatırız",
+      email: "E-postanız — belgeyi göndeririz ve süreyi hatırlatırız",
+      lead: "Kodla doğrulayın — tarayıcı veya cihaz değiştirseniz de dosya sizde kalır.",
+    },
     title: "Belge ödemesi",
     lead: "Sohbetteki danışmanlık ücretsizdir; belge hazırlama ücretlidir. Tutarı aşağıdaki bilgilerle Kaspi üzerinden gönderin — belge, ödeme onaylandıktan sonra erişilebilir olur.",
     recipient: "Alıcı",
@@ -836,6 +845,25 @@ const tr: Dict = {
     payTitle: "“{plan}” paketi ödemesi",
     forPeople: "Tek bir belgeye veya tek bir dosyada yardıma mı ihtiyacınız var?",
     forPeopleCta: "Durumunuzu anlatın",
+  },
+  filing: {
+    title: "Nasıl başvurulur",
+    to: "Nereye",
+    fileBy: "Son başvuru tarihi",
+    respond: "Yanıt süresi: {term}",
+    within: {
+      calendar: { one: "{n} takvim günü içinde", other: "{n} takvim günü içinde" },
+      business: { one: "{n} iş günü içinde", other: "{n} iş günü içinde" },
+    },
+    norm: "Dayanak: {ref}",
+    lawyer: "avukat netleştirecek",
+    overdue: "Bu tarih geçti — ne yapılacağını bir avukatla görüşün",
+    ways: "Başvuru yolları",
+    signature: "İmza",
+    phone: "Telefondan",
+    desktop: "Bilgisayardan",
+    open: "{portal} sitesini aç",
+    stepByStep: "Adım adım",
   },
   law: {
     title: "Kanun hakkında soru",

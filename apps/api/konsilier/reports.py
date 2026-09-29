@@ -17,7 +17,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .core.models import Agreement, Case, Identity, User
+from .core.models import Agreement, Case, User
+from .core.notify import verified_email
 from .core.state_machine import BOARD_COLUMNS, CaseStatus
 
 log = logging.getLogger(__name__)
@@ -34,13 +35,6 @@ def fingerprint(session: Session, case: Case) -> str:
     acts = ";".join(f"{a.action_id}:{a.status}:{a.approval_status}" for a in case.actions)
     ags = ";".join(f"{a.kind}:{a.status}" for a in session.scalars(select(Agreement).where(Agreement.case_id == case.id)))
     return f"{case.status}|{case.pending_field or ''}|{acts}|{ags}|{case.hold_reason or ''}"[:500]
-
-
-def verified_email(session: Session, user: User) -> str | None:
-    if not user.email or not user.notify_email:
-        return None
-    has = session.scalar(select(Identity.id).where(Identity.user_id == user.id, Identity.kind == "email"))
-    return user.email if has else None
 
 
 def build_report(view: dict[str, Any], pack: Any, lang: str, kind: str, site_url: str,

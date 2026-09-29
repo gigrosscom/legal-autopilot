@@ -28,6 +28,11 @@ from .deps import current_user, get_container, get_session
 from .support import messages_of, ticket_view
 
 router = APIRouter(prefix="/v1/ops")
+
+
+def _test_users():
+    """Test accounts' bills (production smoke checks) never reach the desk."""
+    return select(User.id).where(User.is_test.is_(True))
 log = logging.getLogger(__name__)
 
 
@@ -64,7 +69,8 @@ def me(user: User = Depends(current_user), session: Session = Depends(get_sessio
                             (session.scalar(select(func.count()).select_from(LawyerRequest)
                                             .where(LawyerRequest.status == "new")) or 0) + \
                             (session.scalar(select(func.count()).select_from(Invoice)
-                                            .where(Invoice.status == "awaiting_confirmation")) or 0)
+                                            .where(Invoice.status == "awaiting_confirmation",
+                                                   Invoice.user_id.not_in(_test_users()))) or 0)
     return {"email": user.email, "desks": desks, "new": counts}
 
 
@@ -259,7 +265,8 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
 def payments(status: str | None = "awaiting_confirmation", session: Session = Depends(get_session),
              container: Container = Depends(get_container),
              _: User = Depends(operator("clients"))) -> list[dict[str, Any]]:
-    q = select(Invoice).where(Invoice.method != "stub").order_by(Invoice.created_at.desc()).limit(500)
+    q = select(Invoice).where(Invoice.method != "stub", Invoice.user_id.not_in(_test_users())) \
+        .order_by(Invoice.created_at.desc()).limit(500)
     if status:
         q = q.where(Invoice.status == status)
     return [invoice_view(session, container, inv) for inv in session.scalars(q).all()]

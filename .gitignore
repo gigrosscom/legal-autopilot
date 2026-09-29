@@ -16,3 +16,4 @@ apps/web/next-env.d.ts
 konsilier-mvp-*.zip
 konsilier-mvp-*.bundle
 *.tsbuildinfo
+.claude/worktrees/

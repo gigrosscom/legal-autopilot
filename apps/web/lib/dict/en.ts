@@ -263,6 +263,7 @@ const en: Dict = {
     },
     more: "Learn more",
   },
+  training: { title: "Help make Konsiliér smarter", text: "I allow this case to be used to train Konsiliér's AI — without my name, ID number, phone or address. I can withdraw any time." },
   situations: {
     cheated: { label: "I was cheated on a purchase", hint: "Goods, services, marketplaces, refunds.", placeholder: "What you bought, from whom, when, for how much and what went wrong" , ex1: "I bought a phone online, it broke a week later and the seller refuses a refund", ex2: "My marketplace order never arrived and the money is not returned", ex3: "I paid for a repair, it was done badly and they won't redo it", ex4: "I quit a course and they won't refund the unused lessons" },
     fired: { label: "Fired or wages not paid", hint: "Dismissal, unpaid wages, discrimination.", placeholder: "Where you work, what happened and when, how much you are owed" , ex1: "My employer hasn't paid my salary for three months", ex2: "I was dismissed without notice and not paid my final settlement", ex3: "They pressure me to resign 'voluntarily'", ex4: "Unused leave and overtime were not paid when I left" },
@@ -275,11 +276,13 @@ const en: Dict = {
     inheritance: { label: "Inheritance", hint: "Accepting an inheritance, disputes between heirs.", placeholder: "Who died and when, who the heirs are, what the issue is" , ex1: "My father died without a will: how do I inherit", ex2: "I missed the six-month deadline to accept an inheritance", ex3: "My brother won't let me into the flat we inherited together", ex4: "The notary refused to issue an inheritance certificate" },
     housing: { label: "Housing and neighbors", hint: "Rent, utilities, neighbors.", placeholder: "What kind of housing, who the dispute is with, what happened" , ex1: "My landlord won't return the deposit", ex2: "Neighbours flooded my flat and refuse to pay for the damage", ex3: "The management company bills for services never provided", ex4: "The developer is over a year late handing over the building" },
   },
+  inbox: { title: "Notifications", titleUnread: "Notifications, {n} new", empty: "No notifications yet. Deadline reminders, payments and ready documents will appear here.", readAll: "Mark all as read", markRead: "Mark as read", openCase: "Open case", openSupport: "Open request", new: "New" },
   board: {
     intake: "Request", qualified: "Details collected", action_ready: "Document ready", submitted: "Filed, awaiting response",
     escalated: "Appealing to a higher authority", handed_to_lawyer: "With a lawyer", resolved: "Resolved",
     empty: "Empty", stepOf: "Step {n} of {total}",
     attention: { hold: "Under review", ack: "Confirmation needed", expired: "Response deadline passed", approval: "Awaiting lawyer review", chooseForum: "Choose a recipient" },
+    deadline: { left: "{n} days left", today: "Last day today", expired: "Deadline passed" },
   },
   ack: {
     false_report: { title: "Liability for knowingly false reports", button: "I understand and confirm", text: "Knowingly filing a false report is a criminal offense. Describe only facts you know." },
@@ -585,6 +588,7 @@ const en: Dict = {
     tick: "Run reminders",
   },
   account: {
+    bonus: "Free documents: {n} — for inviting friends. They are prepared without payment in any of your cases.",
     eyebrow: "Account",
     title: "Sign in and verify your identity",
     lead: "Sign in to see your cases on any device. Verifying with a digital signature (EDS) or eGov Mobile also confirms who you are.",
@@ -690,12 +694,12 @@ const en: Dict = {
     },
   },
   invite: {
+    offer: "Invite a friend: when they pay for a document, you both get a document free",
     title: "Invite people who need it",
     lead: "Send your link to friends and family who have a similar problem. The consultation is free for them.",
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    chatAsk: "Did this help? Send the link to someone in a similar situation.",
     shareText: "Konsiliér AI — a free AI consultation on legal matters. Describe your situation and it tells you what to do:",
   },
   submit: {
@@ -805,6 +809,11 @@ const en: Dict = {
     hintCta: "Confirm email",
   },
   payment: {
+    contact: {
+      phone: "Your phone — we will send the document and remind you of the deadline",
+      email: "Your e-mail — we will send the document and remind you of the deadline",
+      lead: "Confirm it with a code — the case stays yours even if you switch browser or device.",
+    },
     title: "Document payment",
     lead: "The chat consultation is free; document preparation is paid. Transfer the amount via Kaspi using the details below — the document becomes available once the payment is confirmed.",
     recipient: "Recipient",
@@ -836,6 +845,25 @@ const en: Dict = {
     payTitle: "Payment for the “{plan}” plan",
     forPeople: "Need one document or help with one case?",
     forPeopleCta: "Describe your situation",
+  },
+  filing: {
+    title: "How to file",
+    to: "Where",
+    fileBy: "File by",
+    respond: "They must answer {term}",
+    within: {
+      calendar: { one: "within {n} calendar day", other: "within {n} calendar days" },
+      business: { one: "within {n} business day", other: "within {n} business days" },
+    },
+    norm: "Legal basis: {ref}",
+    lawyer: "a lawyer will confirm",
+    overdue: "This date has passed — discuss the next step with a lawyer",
+    ways: "Ways to file",
+    signature: "Signature",
+    phone: "From a phone",
+    desktop: "From a computer",
+    open: "Open {portal}",
+    stepByStep: "Step by step",
   },
   law: {
     title: "Ask about the law",
