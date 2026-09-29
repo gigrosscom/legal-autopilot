@@ -1,4 +1,4 @@
-"""Aqyl-Bench: score the running system (routing and document reading) on a fixed set of cases.
+"""Zann-Bench: score the running system (routing and document reading) on a fixed set of cases.
 
 Routing items run the real intake — ``engine.start_case`` on a throw-away database, with the configured model —
 and compare the dispute it lands on (the scenario's taxonomy or the universal route) with the expected one.

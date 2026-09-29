@@ -1,4 +1,4 @@
-"""Training data for Aqyl: cases whose owners allowed it (consent "training"), anonymised.
+"""Training data for Zann: cases whose owners allowed it (consent "training"), anonymised.
 
 Each record: the story, the route the case took (scenario / dispute / forum), the facts (non-personal fields),
 the documents' text, the response classes and the outcome. Personal data is removed twice: every value the case's

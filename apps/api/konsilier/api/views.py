@@ -86,7 +86,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "roadmap": None,
         "plan": None,
         "payment": None,
-        # the owner allowed this case, anonymised, to teach Konsilier's own model (Aqyl)
+        # the owner allowed this case, anonymised, to teach Konsilier's own model (Zann)
         "training_consent": session.scalar(select(Consent.id).where(Consent.case_id == case.id,
                                                                     Consent.kind == "training")) is not None,
         "deadline": None,
