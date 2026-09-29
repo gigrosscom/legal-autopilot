@@ -8,6 +8,8 @@
     python -m konsilier.cli forums-export CC OUT.yaml  # admin drafts → YAML for a reviewed PR
     python -m konsilier.cli zann-bench [PATH] [--no-examples] [--limit N] [--out REPORT.json]  # score the system
     python -m konsilier.cli zann-export OUT.jsonl [--with-evidence]   # consented, anonymised cases for training
+    python -m konsilier.cli official-crawl [CC] [--limit N] [--minutes M]  # refresh the library of official pages
+    python -m konsilier.cli official-search "query" [CC] [--lang ru] [--limit N]
 """
 
 from __future__ import annotations
@@ -22,6 +24,10 @@ from .core.packs import PackRegistry, PackValidationError
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "backup":
         return backup()
+    if argv and argv[0] == "official-crawl":
+        return official_crawl(argv[1:])
+    if argv and argv[0] == "official-search" and len(argv) > 1:
+        return official_search(argv[1:])
     if argv and argv[0] == "zann-bench":
         return zann_bench(argv[1:])
     if argv and argv[0] == "zann-export" and len(argv) > 1:
@@ -138,10 +144,6 @@ def review(country: str, packs_dir: Path) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
-
-
 def zann_bench(args: list[str]) -> int:
     import json
 
@@ -178,3 +180,55 @@ def zann_export(out: Path, with_evidence: bool) -> int:
             n += 1
     print(f"{n} cases → {out}")
     return 0
+
+
+def _opt(args: list[str], name: str) -> str | None:
+    return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
+
+
+def _positional(args: list[str], with_value: tuple[str, ...]) -> list[str]:
+    return [a for i, a in enumerate(args) if not a.startswith("--") and (i == 0 or args[i - 1] not in with_value)]
+
+
+def official_crawl(args: list[str]) -> int:
+    """Refresh the library of official pages now (the nightly job does the same, time-boxed)."""
+    from .container import build_container
+    from .official.crawler import Crawler
+
+    settings = get_settings()
+    container = build_container(settings)
+    names = [a.upper() for a in _positional(args, ("--limit", "--minutes"))]
+    limit, minutes = _opt(args, "--limit"), _opt(args, "--minutes")
+    for cc in names or sorted(container.official_sources):
+        src = container.official_sources.get(cc)
+        if src is None:
+            print(f"{cc}: the pack has no sources/official.yaml", file=sys.stderr)
+            return 1
+        stats = Crawler(container.session_factory, src, max_pages=settings.official_crawl_max_pages).run(
+            limit=int(limit) if limit else None, budget_seconds=float(minutes) * 60 if minutes else None)
+        for domain, s in sorted(stats.items()):
+            print(f"{cc} {domain:<24} " + " ".join(f"{k}={v}" for k, v in vars(s).items()))
+    return 0
+
+
+def official_search(args: list[str]) -> int:
+    import time
+
+    from .container import build_container
+    from .official.search import search
+
+    container = build_container(get_settings())
+    pos = _positional(args, ("--lang", "--limit"))
+    cc = pos[1].upper() if len(pos) > 1 else next(iter(sorted(container.official_sources)), "")
+    with container.session_factory() as s:
+        t0 = time.perf_counter()
+        hits = search(s, pos[0], cc, _opt(args, "--lang"), int(_opt(args, "--limit") or 5))
+        ms = (time.perf_counter() - t0) * 1000
+    for h in hits:
+        print(f"{h.score:6.1f}  {h.url}\n        {h.title} — {h.heading}\n        {h.snippet}\n")
+    print(f"{len(hits)} hit(s) in {ms:.0f} ms")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
