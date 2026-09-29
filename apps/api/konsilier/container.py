@@ -153,6 +153,17 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
             from .openai_compat import ChainClient
 
             container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False)
+    def approval_needed(session: Any, case: Any, action: Any) -> None:
+        from .core.models import User
+        from .team import notify_team
+
+        owner = session.get(User, case.owner_id)
+        notify_team(container, f"Документ ждёт проверки: {action.action_id}",
+                    f"Клиент ждёт документ по делу {case.id} (сценарий {case.scenario_id}). "
+                    f"Уверенность классификации: {case.qualification_confidence}.\n\n"
+                    f"Проверьте и одобрите или верните: {settings.public_site_url.rstrip('/')}/admin",
+                    desk="lawyers", test=bool(owner and owner.is_test))
+    engine.on_approval_needed = approval_needed
     scheduler.extra_jobs.append(container.reporter.tick)
     scheduler.extra_jobs.append(container.engine.prepare_paid_documents)
     return container

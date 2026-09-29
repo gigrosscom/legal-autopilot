@@ -60,3 +60,23 @@ def test_real_users_are_not_test_users(ctx):
     with ctx.container.session_factory() as s:
         assert s.scalars(select(User.is_test)).all() == [False]
     assert api
+
+
+def test_the_lawyer_is_told_when_a_document_waits_for_a_check(ctx):
+    """A paid document that needs a lawyer's check must not wait unnoticed: the lawyers desk gets an e-mail."""
+    from .test_e2e import run_intake
+    from .test_payment import ANSWERS, STORY
+
+    st = ctx.container.settings
+    st.ops_lawyers_emails = "lawyer@konsilier.com"
+    ctx.container.engine.config.approval_required_first_n = 50  # the first cases of a scenario are checked
+    outbox = Outbox()
+    ctx.container.email_sender = outbox
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})["case"]["id"]
+    run_intake(api, cid, ANSWERS)
+    ctx.container.engine.config.self_service = False
+    action = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
+    assert action["approval_status"] == "pending"
+    to, subject, body = outbox.sent[-1]
+    assert to == "lawyer@konsilier.com" and "ждёт проверки" in subject and cid in body and "/admin" in body

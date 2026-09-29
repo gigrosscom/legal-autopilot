@@ -140,6 +140,12 @@ def main() -> int:
         case = api.call("GET", f"/v1/cases/{cid}")
 
     action = case["actions"][0]
+    if action.get("approval_status") == "pending":
+        # the path works; this case waits for the lawyer's check (low classification confidence or a court document)
+        print(f"WARN the document waits for a lawyer's check · needs_review={case.get('needs_review')} · "
+              f"confidence={case.get('qualification_confidence')} · scenario={(case.get('scenario') or {}).get('id')}")
+        print(f"PASS with a lawyer check · whole path {time.monotonic() - start:.1f} s · case {cid}")
+        return 0
     if not action.get("downloadable"):
         raise SystemExit(f"FAIL the document is not downloadable: {action.get('status')} {action.get('approval_status')}")
     docx = api.call("GET", f"/v1/cases/{cid}/actions/{action['id']}/document?format=docx", raw=True)
