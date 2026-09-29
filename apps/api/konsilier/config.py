@@ -136,6 +136,11 @@ class Settings(BaseSettings):
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
 
     telegram_bot_token: str | None = None
+    # Web push (notifications on the phone / computer, the installed app included): a VAPID key pair printed by
+    # deploy/vapid_keys.py. Empty → push is off (GET /v1/push/key answers 404 and nothing is sent).
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:support@konsilier.com"  # the push services' contact for this sender
     # Beta scenarios (tender bid, admission, visa, business…): off in production, on in dev and tests.
     experimental_scenarios: bool = False
     cors_origins: str = "http://localhost:3000"

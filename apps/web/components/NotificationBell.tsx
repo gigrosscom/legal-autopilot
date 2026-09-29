@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PushToggle } from "@/components/PushToggle";
 import { Icon } from "@/components/ui";
 import { markRead, useInbox, type InboxItem } from "@/lib/inbox";
 import { useLang, useT } from "@/lib/i18n";
@@ -67,6 +68,7 @@ function InboxPanel({ items, unread, loading, onClose }: {
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"><Icon name="x" size={22} /></button>
         </div>
         <div className="overflow-y-auto overscroll-contain">
+          <PushToggle compact className="border-b border-line" />
           {loading && <p className="p-5 text-sm text-muted">{t("common.loading")}</p>}
           {!loading && items.length === 0 && (
             <div className="flex flex-col items-center gap-2 p-8 text-center">

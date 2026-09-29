@@ -221,7 +221,23 @@ export type SignedIn = { token: string; me: Me };
 /** After a verified sign-in the account may be a different one (the identifier was already known). */
 export function applySignIn(r: SignedIn): Me {
   localStorage.setItem("konsilier.token", r.token);
+  signedIn = Promise.resolve(r.me.identities.length > 0);
+  window.dispatchEvent(new Event(SIGNED_IN_EVENT));  // the app navigation drops its «Войти»
+  import("@/lib/push").then((m) => m.resyncPush()).catch(() => {});  // this device's notifications follow the account
   return r.me;
+}
+
+export const SIGNED_IN_EVENT = "konsilier:signin";
+
+let signedIn: Promise<boolean> | null = null;
+/** Whether this device is signed in (a verified phone, e-mail or ЭЦП), not just an anonymous visitor. Never creates an
+ *  account: without a token the answer is false at once. When the API is away, «signed in» is assumed (no nagging). */
+export function isSignedIn(): Promise<boolean> {
+  let token: string | null = null;
+  try { token = localStorage.getItem("konsilier.token"); } catch {}
+  if (!token) return Promise.resolve(false);
+  signedIn ??= api<Me>("/v1/me").then((m) => m.identities.length > 0).catch(() => { signedIn = null; return true; });
+  return signedIn;
 }
 
 export class ApiError extends Error {

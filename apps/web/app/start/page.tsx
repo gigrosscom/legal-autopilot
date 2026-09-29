@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Chat } from "@/components/Chat";
 import { useT } from "@/lib/i18n";
+import { clearShared, sharedFiles } from "@/lib/share";
 import { SITUATIONS } from "@/lib/situations";
 
 const DRAFT_KEY = "konsilier.chat.draft";
@@ -15,6 +16,8 @@ export default function StartPage() {
   const [autoSend, setAutoSend] = useState(false);
   const [hint, setHint] = useState<string | undefined>();
   const [situation, setSituation] = useState<string | undefined>();
+  const [files, setFiles] = useState<File[]>([]);
+  const shared = useRef(false);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -26,8 +29,12 @@ export default function StartPage() {
       setDraft(saved);
       setAutoSend(q.get("send") === "1" && saved.trim().length > 0);
     } catch {}
-    setReady(true);
+    if (q.get("shared") !== "1") { setReady(true); return; }
+    // «Новое дело» from /share: the shared files come attached to the first message (read once)
+    if (shared.current) return;
+    shared.current = true;
+    sharedFiles().then((fs) => { setFiles(fs); clearShared(); }).finally(() => setReady(true));
   }, [t]);
 
-  return ready ? <Chat caseId={null} draft={draft} autoSend={autoSend} hint={hint} situation={situation} /> : null;
+  return ready ? <Chat caseId={null} draft={draft} autoSend={autoSend} hint={hint} situation={situation} files={files} /> : null;
 }
