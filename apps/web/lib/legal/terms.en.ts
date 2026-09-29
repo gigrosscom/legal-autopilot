@@ -17,7 +17,7 @@ const en: LegalDoc = {
       h: "1. Definitions",
       p: [
         "“Service”, “Platform” means the Konsiliér AI software: the konsilier.com website, the web application and the Telegram bot.",
-        "“Operator” means the legal entity that operates the Service: [name to be specified after registration] LLP, BIN [to be specified after registration], address [to be specified after registration].",
+        "“Operator” means the legal entity that operates the Service: Konsilier AI LLP, BIN 260940036818, address: 222 Akseleu Seidimbek St., Kuramys microdistrict, Nauryzbay district, Almaty 050000, Republic of Kazakhstan.",
         "“User”, “you” means any individual or legal entity that uses the Service.",
         "“Lawyer” means an advocate or a legal consultant who is a member of a chamber of legal consultants, or a human rights organization, working with Users through the Platform.",
         "“AI” means the artificial intelligence systems the Service uses to answer questions and prepare documents.",
@@ -115,7 +115,7 @@ const en: LegalDoc = {
     {
       h: "13. Contacts",
       p: [
-        "E-mail: info@konsilier.com. The Operator's details will be specified after state registration.",
+        "Konsilier AI LLP, BIN 260940036818, 222 Akseleu Seidimbek St., Kuramys microdistrict, Nauryzbay district, Almaty 050000, Republic of Kazakhstan. E-mail: info@konsilier.com.",
       ],
     },
   ],

@@ -15,6 +15,7 @@ const en: Dict = {
     languageNote: "The Terms are made in Kazakh and Russian; this is the English translation.",
   },
   footer: {
+    company: "Konsilier AI LLP · BIN 260940036818",
     said: "Konsiliér [kon-seel-YER] — your AI assistant for legal matters",
     contacts: "Contacts",
     lawyerCabinet: "Lawyer dashboard",

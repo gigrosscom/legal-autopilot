@@ -56,7 +56,7 @@ export default function Footer() {
         <p className="max-w-3xl">{t("legal.disclaimer")}</p>
         <p className="flex flex-wrap gap-x-3 gap-y-1">
           <Link href="/terms" className="link">{t("legal.terms")}</Link>
-          <span dir="ltr">© Konsiliér AI · konsilier.com</span>
+          <span dir="ltr">© {t("footer.company")} · konsilier.com</span>
         </p>
       </div>
     </footer>
