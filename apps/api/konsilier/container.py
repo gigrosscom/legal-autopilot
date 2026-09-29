@@ -149,4 +149,5 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
             container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False)
     scheduler.extra_jobs.append(container.reporter.tick)
+    scheduler.extra_jobs.append(container.engine.prepare_paid_documents)
     return container

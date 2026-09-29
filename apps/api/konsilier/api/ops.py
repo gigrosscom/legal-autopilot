@@ -285,8 +285,8 @@ def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = De
         where = (f"https://konsilier.com/case/{inv.case_id}" if inv.case_id else "https://konsilier.com/plans")
         if body.decision == "paid":
             text = (f"Оплата получена. Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}» подключён: {where}"
-                    if inv.purpose == "plan" else f"Оплата получена. Документ можно подготовить и скачать в карточке "
-                                                  f"дела: {where}")
+                    if inv.purpose == "plan" else f"Оплата получена. Документ готовится автоматически и появится в "
+                                                  f"карточке дела: {where}")
         else:
             text = (f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
                     f"«Я оплатил(а)» ещё раз: {where}")

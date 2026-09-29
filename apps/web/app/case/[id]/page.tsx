@@ -76,6 +76,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [pendingEvidence, setPendingEvidence] = useState<{ id: string; facts: Record<string, string> } | null>(null);
 
+  const [payOpen, setPayOpen] = useState(false);
+
   const push = (m: Msg) => setLog((l) => [...l, m]);
 
   useEffect(() => {
@@ -175,12 +177,35 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   async function post(path: string, body: unknown = {}) {
     await run(async () => {
-      const out = await api<{ case: CaseView; proposal?: Proposal }>(`/v1/cases/${id}${path}`, {
+      const out = await api<{ case: CaseView; proposal?: Proposal; payment?: unknown }>(`/v1/cases/${id}${path}`, {
         method: "POST", body: JSON.stringify(body),
       });
       setCase(out.case);
+      if (out.payment) setPayOpen(true);  // the document needs paying first: the payment window opens at once
+      if (path === "/actions/next" && !out.payment) setPayOpen(false);
     });
   }
+
+  // While the transfer is being checked, look every 10 s; once it is confirmed, prepare the document at once.
+  const payStatus = c?.payment?.status;
+  const prepareRef = useRef(post);
+  prepareRef.current = post;
+  useEffect(() => {
+    if (payStatus !== "awaiting_confirmation") return;
+    const timer = setInterval(async () => {
+      try {
+        const view = await api<CaseView>(`/v1/cases/${id}`);
+        setCase(view);
+        if (view.payment?.status === "paid") {
+          clearInterval(timer);
+          const next = view.status === "qualified" || (view.status === "awaiting_response" && view.proposal?.type === "prepare_action");
+          if (next) await prepareRef.current("/actions/next");
+          setPayOpen(false);
+        }
+      } catch { /* a missed check is retried on the next tick */ }
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [payStatus, id]);
 
   if (error && !c) return <div className="mx-auto max-w-2xl p-4"><Alert tone="danger" role="alert">{error}</Alert></div>;
   if (!c) return <p className="p-4 text-muted">{t("common.loading")}</p>;
@@ -243,7 +268,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFile={upload}
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
-    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} />;
+    bar = <NextStepBar c={c} busy={busy} post={post} openPay={() => setPayOpen(true)} run={run} setCase={setCase} />;
   }
 
   return (
@@ -279,9 +304,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
-      {/* right above the bar, where the page scrolls to: requisites and the payment code must be in view */}
-      {c.payment && c.payment.available && c.payment.code && c.payment.status !== "paid"
-        && <PaymentCard pay={c.payment} />}
+      {payOpen && c.payment && c.payment.status !== "paid" && (
+        <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)}
+          onChoose={(purpose) => post("/payment", { purpose })} onClaim={() => post("/payment/claim")} />
+      )}
 
       {ack && (
         <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
@@ -355,8 +381,8 @@ function FactsPanel({ c }: { c: CaseView }) {
 }
 
 /** What to do now once the document stage has started: submitted? got a reply? close the case. */
-function NextStepBar({ c, busy, post, run, setCase }: {
-  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>;
+function NextStepBar({ c, busy, post, openPay, run, setCase }: {
+  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>; openPay: () => void;
   run: (fn: () => Promise<void>) => Promise<boolean>; setCase: (c: CaseView) => void;
 }) {
   const t = useT();
@@ -367,38 +393,20 @@ function NextStepBar({ c, busy, post, run, setCase }: {
   const proposal = c.proposal;
   const big = "min-h-12 flex-1";
 
-  // Paying for the next document: choose one document or «Дело под ключ», then "I have paid". null when it is paid for.
+  // Not paid yet: the button opens the payment window (the document is then prepared by itself once paid).
   const pay = c.payment;
-  const payControls = (): ReactNode => {
-    if (!pay || pay.status === "paid" || c.safety.hold_reason) return null;
-    if (!pay.available) return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="alert" size={18} className="text-warning" />{t("payment.unavailable")}</p>;
-    if (pay.status === "pending" || pay.status === "not_found") {
-      return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/payment/claim")} icon="check">{t("payment.paid")}</Button>;
-    }
-    if (pay.status === "awaiting_confirmation") {
-      return (
-        <Button className="min-h-12 w-full" variant="secondary" disabled={busy} icon="hourglass"
-          onClick={() => run(async () => setCase(await api<CaseView>(`/v1/cases/${c.id}`)))}>{t("payment.refresh")}</Button>
-      );
-    }
-    return (
-      <div className="space-y-2">
-        <p className="px-1 text-xs text-muted">{t("payment.choose")}</p>
-        {pay.options.map((o) => (
-          <Button key={o.purpose} className="min-h-12 w-full" variant={o.purpose === "case" ? "secondary" : undefined}
-            disabled={busy} icon={o.purpose === "case" ? "shieldCheck" : "document"}
-            onClick={() => post("/payment", { purpose: o.purpose })}>
-            {t(`payment.option.${o.purpose}`, { price: money(o.amount, pay.currency) })}
-          </Button>
-        ))}
-        <p className="px-1 text-xs text-muted">{t("payment.caseHint")}</p>
-      </div>
-    );
-  };
+  const needsPay = !!pay && pay.status !== "paid" && !c.safety.hold_reason;
+  const prepareOrPay = (label: string, icon: IconName = "document") => (
+    needsPay && !pay!.available
+      ? <p className="flex items-center gap-2 py-2 text-sm"><Icon name="alert" size={18} className="text-warning" />{t("payment.unavailable")}</p>
+      : <Button className="min-h-12 w-full" disabled={busy} icon={needsPay && pay!.status === "awaiting_confirmation" ? "hourglass" : icon}
+          onClick={() => (needsPay ? openPay() : post("/actions/next"))}>
+          {needsPay && pay!.status === "awaiting_confirmation" ? t("payment.checking") : label}
+        </Button>
+  );
 
   if (c.status === "qualified") {
-    const prepare = <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
-    return payControls() ?? prepare;
+    return prepareOrPay(t("case.prepare"));
   }
   if (c.status === "action_ready" && last) {
     if (last.approval_status === "pending" || last.approval_status === "rejected") {
@@ -462,8 +470,8 @@ function NextStepBar({ c, busy, post, run, setCase }: {
     }
     return (
       <div className="space-y-2">
-        {proposal.type === "prepare_action" && payControls()}
-        {((proposal.type === "prepare_action" && !payControls()) || proposal.type === "handoff") && (
+        {proposal.type === "prepare_action" && prepareOrPay(proposal.title ?? t("case.prepare"))}
+        {proposal.type === "handoff" && (
           <Button className="min-h-12 w-full" disabled={busy} icon={proposal.type === "handoff" ? "lawyer" : "document"} onClick={() => post("/actions/next")}>
             {proposal.type === "handoff" ? t("case.handoff") : proposal.title}
           </Button>
@@ -511,24 +519,65 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
   );
 }
 
-/** Payment screen for the document: amount, Kaspi transfer details and the code for the transfer comment.
- *  The document is prepared and handed out once the operations centre confirms the transfer. */
-function PaymentCard({ pay }: { pay: Payment }) {
+/** Payment window, opened by «Подготовить документ» while the document is not paid: choose one document or
+ *  «Дело под ключ», Kaspi details and the code, "I have paid". Once the transfer is confirmed the page prepares the
+ *  document by itself (and the server does, if the page is closed). */
+function PaymentDialog({ pay, busy, onClose, onChoose, onClaim }: {
+  pay: Payment; busy: boolean; onClose: () => void; onChoose: (purpose: string) => void; onClaim: () => void;
+}) {
   const t = useT();
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", esc);
+    panel.current?.focus();
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose]);
+  const waiting = pay.status === "awaiting_confirmation";
   return (
-    <section id="pay-card" className="card space-y-3 border-brand/40" aria-labelledby="pay-title">
-      <h2 id="pay-title" className="flex items-center gap-2 text-lg font-semibold"><Icon name="coin" className="text-brand" />{t(pay.purpose === "case" ? "payment.titleCase" : "payment.title")}</h2>
-      <p className="text-sm text-muted">{t("payment.lead")}</p>
-      {pay.status === "awaiting_confirmation" && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
-      {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
-      <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
-      <div className="space-y-2">
-        {pay.recipient_name && <CopyValue label={t("payment.recipient")} value={pay.recipient_name} />}
-        {pay.kaspi_phone && <CopyValue label={t("payment.kaspi")} value={pay.kaspi_phone} />}
-        {pay.code && <CopyValue label={t("payment.code")} value={pay.code} mono />}
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="pay-title">
+      <button type="button" aria-label={t("app.close")} onClick={onClose} className="absolute inset-0 bg-ink/40" />
+      <div ref={panel} tabIndex={-1}
+        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-raised)] outline-none sm:rounded-3xl">
+        <div className="flex items-center gap-2 border-b border-line py-2 ps-4 pe-2">
+          <Icon name="coin" className="text-brand" />
+          <h2 id="pay-title" className="flex-1 truncate text-lg font-semibold">{t(pay.purpose === "case" && pay.code ? "payment.titleCase" : "payment.title")}</h2>
+          <button type="button" onClick={onClose} aria-label={t("app.close")}
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"><Icon name="x" size={22} /></button>
+        </div>
+        <div className="space-y-3 overflow-y-auto overscroll-contain p-4">
+          {!pay.code ? (
+            <>
+              <p className="text-sm text-muted">{t("payment.choose")}</p>
+              {pay.options.map((o) => (
+                <Button key={o.purpose} className="min-h-12 w-full" variant={o.purpose === "case" ? "secondary" : undefined}
+                  disabled={busy} icon={o.purpose === "case" ? "shieldCheck" : "document"} onClick={() => onChoose(o.purpose)}>
+                  {t(`payment.option.${o.purpose}`, { price: money(o.amount, pay.currency) })}
+                </Button>
+              ))}
+              <p className="text-xs text-muted">{t("payment.caseHint")}</p>
+            </>
+          ) : (
+            <>
+              {waiting && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
+              {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
+              <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
+              <div className="space-y-2">
+                {pay.recipient_name && <CopyValue label={t("payment.recipient")} value={pay.recipient_name} />}
+                {pay.kaspi_phone && <CopyValue label={t("payment.kaspi")} value={pay.kaspi_phone} />}
+                <CopyValue label={t("payment.code")} value={pay.code} mono />
+              </div>
+              <p className="text-sm">{t("payment.steps")}</p>
+              {waiting ? (
+                <Button className="min-h-12 w-full" variant="secondary" onClick={onClose}>{t("app.close")}</Button>
+              ) : (
+                <Button className="min-h-12 w-full" disabled={busy} icon="check" onClick={onClaim}>{t("payment.paid")}</Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
-      <p className="text-sm">{t("payment.steps")}</p>
-    </section>
+    </div>
   );
 }
 

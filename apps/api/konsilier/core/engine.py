@@ -887,6 +887,38 @@ class CaseEngine:
                    invoice=inv.code)
         self.notifier.notify(session, case, "payment", text)
 
+    def prepare_paid_documents(self, session: Session, now: datetime, *, after: timedelta = timedelta(seconds=90),
+                               within: timedelta = timedelta(days=2)) -> int:
+        """Scheduler job: once the desk confirms a transfer, the document is prepared without the person pressing
+        the button again. The page does it at once while it is open; this picks up the rest after ``after``."""
+        done = 0
+        paid = session.scalars(select(Invoice).where(
+            Invoice.status == "paid", Invoice.case_id.is_not(None), Invoice.purpose.in_(("document", "case")),
+            Invoice.decided_at.is_not(None), Invoice.decided_at <= now - after, Invoice.decided_at >= now - within))
+        for inv in paid.all():
+            case = session.get(Case, inv.case_id)
+            decided = inv.decided_at if inv.decided_at.tzinfo else inv.decided_at.replace(tzinfo=timezone.utc)
+            if case is None or case.status != S.QUALIFIED.value or case.hold_reason is not None:
+                continue
+            if any((a.created_at if a.created_at.tzinfo else a.created_at.replace(tzinfo=timezone.utc)) >= decided
+                   for a in case.actions):
+                continue  # already prepared after this payment
+            if self.unlock_source(session, case) is None:
+                continue
+            try:
+                with session.begin_nested():
+                    action = self.prepare_next_action(session, case, "system:paid")
+            except Exception:  # noqa: BLE001 — retried on the next tick
+                log.exception("auto-prepare after payment failed for case %s", case.id)
+                continue
+            pack = self.pack_of(case)
+            self.notifier.notify(session, case, "document", pack.t(
+                pack.lang(case.language), "notifications.document_ready",
+                default="Документ готов: его можно скачать в карточке дела."))
+            log.info("document %s prepared after payment %s", action.id, inv.code)
+            done += 1
+        return done
+
     def subscription_view(self, session: Session, user_id: uuid.UUID) -> dict[str, Any] | None:
         active = self.active_subscription(session, user_id)
         if active is None:

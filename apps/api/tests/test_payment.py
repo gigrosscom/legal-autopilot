@@ -211,3 +211,30 @@ def test_business_plan_subscription(ctx):
     case = api.post(f"/v1/cases/{cid}/actions/next")["case"]
     assert case["actions"][0]["downloadable"] is True
     assert api.get("/v1/plans").json()["subscription"]["left"] == 19
+
+
+def test_document_prepared_by_itself_once_payment_confirmed(ctx):
+    """The person does not press "prepare" again: after the desk confirms, the scheduler prepares the document."""
+    from datetime import timedelta
+
+    from konsilier.core.models import utcnow
+
+    manual(ctx)
+    ctx.container.settings.ops_clients_emails = "support@konsilier.com"
+    api, cid = qualified_case(ctx)
+    api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})
+    api.post(f"/v1/cases/{cid}/payment/claim")
+    cl = operator(ctx, "support@konsilier.com")
+    inv_id = cl.get("/v1/ops/clients/payments").json()[0]["id"]
+    cl.post(f"/v1/ops/clients/payments/{inv_id}", json={"decision": "paid"})
+    engine = ctx.container.engine
+    with ctx.container.session_factory() as s:
+        assert engine.prepare_paid_documents(s, utcnow()) == 0  # the open page gets its chance first
+        assert engine.prepare_paid_documents(s, utcnow() + timedelta(minutes=2)) == 1
+        s.commit()
+    case = api.get(f"/v1/cases/{cid}").json()
+    assert case["status"] == "action_ready" and case["actions"][0]["downloadable"] is True
+    assert case["payment"]["credits"] == 0
+    assert any("Документ готов" in n["text"] for n in ctx.client.get("/v1/notifications", headers=api.h).json())
+    with ctx.container.session_factory() as s:  # done once only
+        assert engine.prepare_paid_documents(s, utcnow() + timedelta(minutes=3)) == 0
