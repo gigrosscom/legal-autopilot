@@ -2,7 +2,8 @@
 
 Core guarantees, independent of the template:
   * the AI label from the pack is appended to the body and to every page footer;
-  * a DRAFT disclaimer is appended when the scenario is not reviewed by a lawyer.
+  * a neutral note (compliance.draft_disclaimer, no "draft" wording) is appended when the scenario is not
+    reviewed by a lawyer.
 """
 
 from __future__ import annotations

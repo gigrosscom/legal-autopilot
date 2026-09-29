@@ -19,10 +19,8 @@ compliance:
     ar: أُعدّ بمساعدة الذكاء الاصطناعي (Konsiliér AI). تحقّق من البيانات قبل التقديم.
     en: Prepared with AI (Konsiliér AI). Check the details before filing.
   draft_disclaimer:
-    ar: 'مسودة: لم يعتمد محامٍ هذا السيناريو بعد. يجب التحقق من الإحالات إلى النصوص القانونية
-      والمواعيد.'
-    en: 'DRAFT: this scenario has not yet been signed off by a lawyer. Legal references
-      and deadlines must be checked.'
+    ar: "أعدّت خدمة Konsiliér AI التقنية هذا المستند بناءً على بياناتك. تحقّق من المعلومات قبل تقديمه."
+    en: "This document was prepared by the Konsiliér AI IT service based on your data. Check the details before filing."
   service_disclaimer:
     ar: يساعدك Konsiliér AI على إعداد المستندات وتقديمها ويتابع المواعيد. وإذا لزم
       إيصال القضية إلى نتيجة، نُشرك محاميًا محترفًا من المنصة. تُقدَّم المستندات باسمك.

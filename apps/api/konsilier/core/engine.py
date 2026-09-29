@@ -651,7 +651,9 @@ class CaseEngine:
     def approval_required(self, session: Session, case: Case, spec: ActionSpec | None = None) -> bool:
         if self.config.self_service and not case.needs_review and case.hold_reason is None:
             if not is_generic(case.scenario_id):
-                return False  # signed / draft level-1 scenarios contain pre-trial documents only
+                # level-1 scenarios: pre-trial documents go out directly; a lawsuit to a court
+                # (e.g. kz.family.alimony) is filed only after a lawyer's check, as on the universal path
+                return spec is not None and self._to_court(case, spec)
             if spec is not None and self.document_type(case, spec) in self.config.self_service_documents \
                     and not self._to_court(case, spec):
                 return False
@@ -869,11 +871,12 @@ class CaseEngine:
                          addressee: dict[str, Any]) -> dict[str, Any]:
         lang = case.language
         f = {fl.name: display(fl, case.facts.get(fl.name)) for fl in sc.intake if fl.type != "evidence"}
-        applicant = {}
-        if "applicant" in sc.parties:
-            p = sc.parties["applicant"]
-            applicant = {"name": f.get(p.name_field, ""), "id": f.get(p.id_field or "", ""),
-                         "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", "")}
+        # requisites of every party (the header, "whose actions are complained of", the defendant of a lawsuit)
+        parties = {role: {"name": f.get(p.name_field, ""), "id": f.get(p.id_field or "", ""),
+                          "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", ""),
+                          "kind": p.kind}
+                   for role, p in sc.parties.items()}
+        applicant = parties.get("applicant", {})
         evidence = [pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
                     for e in case.evidence if e.kind != "response"]
         previous = [{"title": pack.localized(sc.action(a.action_id).title, lang),
@@ -891,6 +894,8 @@ class CaseEngine:
             "title": pack.localized(spec.title, lang),
             "f": f,
             "applicant": applicant,
+            "respondent": parties.get("respondent", {}),
+            "labels": {fl.name: ai.field_label(sc, pack, lang, fl.name) for fl in sc.intake},
             "addressee": addressee,
             "narrative": case.narrative or f.get("problem_description", ""),
             "demands": demands,

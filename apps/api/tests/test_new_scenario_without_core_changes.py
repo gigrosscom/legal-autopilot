@@ -27,7 +27,7 @@ def test_dummy_scenario_full_lifecycle(ctx):
     case = created["case"]
     cid = case["id"]
     assert case["scenario"]["id"] == "xx.test.dummy"
-    assert case["scenario"]["draft"] is False  # reviewed_at is set → no DRAFT disclaimer
+    assert case["scenario"]["draft"] is False  # reviewed_at is set → no unsigned-scenario note
     assert case["currency"] == "TST"
     assert created["reply"]["question"] == {"field": "counterparty", "text": "Who owes you?", "type": "text",
                                             "optional": False, "evidence_kinds": [], "uploaded": 0, "pattern": None}
@@ -39,7 +39,7 @@ def test_dummy_scenario_full_lifecycle(ctx):
     assert a1["status"] == "ready" and a1["instructions"] == ["Send it to Widget Corp."]
     text = docx_text(api.get(f"/v1/cases/{cid}/actions/{a1['id']}/document?format=docx").content)
     assert "To: Widget Corp" in text and "I demand: pay 1 200 TST" in text
-    assert "Basis: Test Code s.1" in text and "Prepared with AI" in text and "DRAFT" not in text
+    assert "Basis: Test Code s.1" in text and "Prepared with AI" in text and "Unsigned-scenario note" not in text
 
     sub = api.post(f"/v1/cases/{cid}/actions/{a1['id']}/submitted", json={})
     due = date.fromisoformat(sub["case"]["actions"][0]["deadline"]["due_date"])
