@@ -89,7 +89,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         packs.experimental = True
     storage = storage or build_storage(settings)
     channels = channels or {"web": WebChannel(), "telegram": TelegramChannel(settings.telegram_bot_token)}
-    notifier = Notifier(channels)
+    notifier = Notifier(channels, packs)
     scheduler = DbDeadlineScheduler(factory, packs, notifier)
     engine = CaseEngine(
         packs=packs,
@@ -118,6 +118,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                      email_sender=email_sender or build_email(settings),
                      sms_sender=sms_sender or build_sms(settings),
                      signature_verifier=signature_verifier or (NcaNode(settings.ncanode_url) if settings.ncanode_url else None))
+    notifier.outbound = container  # e-mail and SMS for key events go through the container's senders
     from .reports import CaseReporter
 
     container.reporter = CaseReporter(container)

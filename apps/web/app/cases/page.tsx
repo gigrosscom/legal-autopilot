@@ -16,7 +16,13 @@ export default function CasesPage() {
 
   const cards: BoardCard[] = (cases ?? []).map((c) => {
     const pendingApproval = c.actions.some((a) => a.approval_status === "pending");
-    const expired = c.actions.some((a) => a.deadline?.status === "expired");
+    const dl = c.deadline;
+    const due = !dl ? null
+      : dl.days_left < 0 || dl.status === "expired" ? { text: t("board.deadline.expired"), late: true }
+      : dl.days_left === 0 ? { text: t("board.deadline.today"), late: true }
+      : { text: t("board.deadline.left", { n: dl.days_left }), late: false };
+    // the card already says «срок истёк» when it is the running wait
+    const expired = !due && c.actions.some((a) => a.deadline?.status === "expired");
     const attention = c.safety?.hold_reason ? t("board.attention.hold")
       : c.safety?.pending_ack ? t("board.attention.ack")
       : expired ? t("board.attention.expired")
@@ -32,6 +38,7 @@ export default function CasesPage() {
       date: new Date(c.created_at).toLocaleDateString("ru-RU"),
       meta: c.coverage?.forum?.name,
       attention,
+      due,
       tasks: c.actions.filter((a) => a.kind !== "handoff").map((a) => ({
         label: a.title, done: ["submitted", "responded"].includes(a.status),
       })),

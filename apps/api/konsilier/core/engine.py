@@ -968,7 +968,7 @@ class CaseEngine:
                                   f"и нажмите «Оплатить» ещё раз или напишите в поддержку.")
         self.audit(session, case, f"ops:{operator}", "payment_confirmed" if received else "payment_not_found",
                    invoice=inv.code)
-        self.notifier.notify(session, case, "payment", text)
+        self.notifier.notify(session, case, "payment", text, sms="payment_confirmed" if received else None)
 
     def prepare_paid_documents(self, session: Session, now: datetime, *, after: timedelta = timedelta(seconds=90),
                                within: timedelta = timedelta(days=2)) -> int:
@@ -1005,7 +1005,7 @@ class CaseEngine:
         pack = self.pack_of(case)
         self.notifier.notify(session, case, "document", pack.t(
             pack.lang(case.language), "notifications.document_ready",
-            default="Документ готов: его можно скачать в карточке дела."))
+            default="Документ готов: его можно скачать в карточке дела."), sms="document_ready")
         log.info("document %s prepared after payment %s", action.id, inv.code)
         return action
 
@@ -1227,7 +1227,8 @@ class CaseEngine:
                    action=action.action_id, note=note)
         pack = self.pack_of(case)
         key = "notifications.approved" if approved else "notifications.rejected"
-        self.notifier.notify(session, case, "approval", pack.t(case.language, key))
+        self.notifier.notify(session, case, "approval", pack.t(case.language, key),
+                             sms="document_ready" if approved else None)
 
     def mark_submitted(self, session: Session, case: Case, action: Action, actor: str,
                        via: str = "user_submits") -> None:

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Brand } from "@/components/Brand";
 import { LangSelect } from "@/components/Header";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Icon, type IconName } from "@/components/ui";
 import { api, type CaseView } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -55,7 +56,7 @@ export function TabBar({ inline = false }: { inline?: boolean }) {
   );
 }
 
-/** Desktop sidebar: brand, «Новый вопрос», the five sections, recent cases, language and the way back to the site. */
+/** Desktop sidebar: brand and notifications, «Новый вопрос», the five sections, recent cases, language and the way back to the site. */
 export function Sidebar() {
   const t = useT();
   const path = usePathname();
@@ -66,7 +67,10 @@ export function Sidebar() {
   const recent = cases.slice(0, 5).map((c) => ({ id: c.id, title: c.scenario?.title ?? c.coverage?.dispute?.title ?? t("case.untitled") }));
   return (
     <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-line bg-sand px-4 py-6 lg:flex">
-      <Link href="/" className="px-2" aria-label="Konsiliér AI"><Brand size={28} /></Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/" className="px-2" aria-label="Konsiliér AI"><Brand size={28} /></Link>
+        <NotificationBell />
+      </div>
       <Link href="/start" className="btn-primary mt-8 min-h-12 justify-between px-4 text-base">
         {t("app.newQuestion")}<Icon name="plus" size={20} />
       </Link>
@@ -107,13 +111,16 @@ export function Sidebar() {
   );
 }
 
-/** Phone top bar of the app list screens: brand and language. */
+/** Phone top bar of the app list screens: brand, notifications and language. */
 export function AppTopBar() {
   return (
     <header className="sticky top-0 z-20 border-b border-black/[0.08] bg-[rgb(250_250_252/0.92)] pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-[rgb(250_250_252/0.8)] supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8] lg:hidden">
       <div className="flex h-14 items-center justify-between px-5">
         <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
-        <LangSelect />
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <LangSelect />
+        </div>
       </div>
     </header>
   );

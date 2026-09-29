@@ -13,7 +13,7 @@ from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
 from ..core.models import AuditLog, Case, Deadline
 from ..core.roadmap import build_roadmap
-from ..core.state_machine import board_column
+from ..core.state_machine import CaseStatus, board_column
 
 
 def _scenario_is_draft(engine: CaseEngine, case: Case) -> bool:
@@ -45,6 +45,19 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
     return out
 
 
+def response_deadline(case: Case, deadlines: dict[Any, Deadline], pack: Any) -> dict[str, Any] | None:
+    """While the case awaits an answer: the running (or just expired) response deadline of the latest document and
+    the days left in the pack's local calendar (negative once it has passed)."""
+    if case.status != CaseStatus.AWAITING_RESPONSE.value:
+        return None
+    for a in reversed(case.actions):
+        dl = deadlines.get(a.id)
+        if dl is not None and dl.status in ("active", "expired"):
+            return {"due_date": dl.due_date.isoformat(), "status": dl.status,
+                    "days_left": (dl.due_date - pack.local_now().date()).days}
+    return None
+
+
 def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool = False) -> dict[str, Any]:
     pack = engine.pack_of(case)
     lang = pack.lang(case.language)
@@ -72,6 +85,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "roadmap": None,
         "plan": None,
         "payment": None,
+        "deadline": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
         "safety": {"hold_reason": case.hold_reason,
@@ -126,6 +140,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "norm_refs": list(spec.norm_refs),
             })
         view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
+        view["deadline"] = response_deadline(case, deadlines, pack)
         view["plan"] = engine.plan(session, case)
         try:
             view["proposal"] = asdict(engine.proposal(case))

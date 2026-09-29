@@ -191,6 +191,23 @@ notifications:
   document_ready: "Документ готов — скачайте его в карточке дела."
   payment_not_found: "Перевод с кодом {code} не найден. Проверьте сумму и комментарий к переводу и нажмите «Оплатить» ещё раз или напишите в поддержку."
 
+# e-mail and SMS copies of key notifications (the site's bell gets the text above); {link} is the case page
+notify:
+  subject:
+    payment: "Konsiliér AI: оплата по делу"
+    document: "Konsiliér AI: документ готов"
+    approval: "Konsiliér AI: проверка документа юристом"
+    deadline_reminder: "Konsiliér AI: срок ответа по делу"
+    deadline_expired: "Konsiliér AI: срок ответа истёк"
+    handoff: "Konsiliér AI: дело передано юристу"
+  open_case: "Открыть дело: {link}"
+  footer: "Konsiliér AI — ИИ-помощник по юридическим вопросам. Отключить уведомления на почту: {link}"
+  sms:
+    payment_confirmed: "Konsilier: оплата получена, готовим документ. {link}"
+    document_ready: "Konsilier: документ готов, скачайте его в деле: {link}"
+    deadline_due_today: "Konsilier: сегодня последний день срока ответа. Отметьте ответ: {link}"
+    deadline_expired: "Konsilier: срок ответа истёк. Отметьте, был ли ответ: {link}"
+
 reports:
   untitled: "Ваше дело"
   hello: "Здравствуйте!"

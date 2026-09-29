@@ -343,6 +343,8 @@ class Notification(Base):
     text: Mapped[str] = mapped_column(Text)
     delivered: Mapped[bool] = mapped_column(Boolean, default=False)
     error: Mapped[str | None] = mapped_column(Text)
+    sent_via: Mapped[str | None] = mapped_column(String(64))  # channels that delivered it, e.g. "web,email,sms"
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # opened in the site's bell
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

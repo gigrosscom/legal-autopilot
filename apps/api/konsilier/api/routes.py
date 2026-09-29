@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..container import Container
@@ -882,9 +882,39 @@ def client_error(body: ClientErrorIn, session: Session = Depends(get_session)) -
         session.add(AuditLog(case_id=None, actor="browser", event="client_error", data=body.model_dump()))
 
 
+def _unread(session: Session, user: User) -> int:
+    return session.scalar(select(func.count()).select_from(Notification).where(
+        Notification.user_id == user.id, Notification.read_at.is_(None))) or 0
+
+
 @router.get("/notifications")
-def notifications(user: User = Depends(current_user), session: Session = Depends(get_session)):
-    rows = session.scalars(select(Notification).where(Notification.user_id == user.id)
-                           .order_by(Notification.id.desc()).limit(50)).all()
-    return [{"id": n.id, "case_id": str(n.case_id) if n.case_id else None, "kind": n.kind, "text": n.text,
-             "created_at": n.created_at.isoformat()} for n in rows]
+def notifications(unread: bool = False, user: User = Depends(current_user),
+                  session: Session = Depends(get_session)) -> dict[str, Any]:
+    """The site inbox (the bell): newest first; `unread=1` → only those not opened yet. `unread` in the answer is
+    always the count of unread ones."""
+    q = select(Notification).where(Notification.user_id == user.id)
+    if unread:
+        q = q.where(Notification.read_at.is_(None))
+    rows = session.scalars(q.order_by(Notification.id.desc()).limit(50)).all()
+    return {"items": [{"id": n.id, "case_id": str(n.case_id) if n.case_id else None, "kind": n.kind, "text": n.text,
+                       "created_at": n.created_at.isoformat(),
+                       "read_at": n.read_at.isoformat() if n.read_at else None} for n in rows],
+            "unread": _unread(session, user)}
+
+
+class ReadIn(BaseModel):
+    ids: list[int] = Field(default_factory=list, max_length=200)
+    all: bool = False
+
+
+@router.post("/notifications/read")
+def notifications_read(body: ReadIn, user: User = Depends(current_user),
+                       session: Session = Depends(get_session)) -> dict[str, int]:
+    """Marks the given notifications (or all of them) read; only the person's own ones are touched."""
+    q = update(Notification).where(Notification.user_id == user.id, Notification.read_at.is_(None))
+    if not body.all:
+        if not body.ids:
+            return {"unread": _unread(session, user)}
+        q = q.where(Notification.id.in_(body.ids))
+    session.execute(q.values(read_at=utcnow()))
+    return {"unread": _unread(session, user)}

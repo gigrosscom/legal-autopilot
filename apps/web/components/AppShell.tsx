@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { TabBar } from "@/components/AppNav";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Icon, type IconName } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
@@ -10,8 +11,8 @@ export type MoreSection = { key: string; icon: IconName; label: string; render: 
 export type MoreLink = { href: string; icon: IconName; label: string };
 
 /**
- * Full-screen app layout for a case: a fixed top bar (back · title · «Ещё»), the conversation in the middle
- * (the only part that scrolls) and a fixed input bar at the bottom. Everything secondary lives in the «Ещё»
+ * Full-screen app layout for a case: a fixed top bar (back · title · bell · «Ещё»; on desktop the bell is in the
+ * sidebar), the conversation in the middle (the only part that scrolls) and a fixed input bar at the bottom. Everything secondary lives in the «Ещё»
  * sheet, so the screen never grows panels under the conversation.
  */
 export function AppShell({ title, subtitle, back = "/cases", sections = [], links = [], children, bar, scrollKey }: {
@@ -56,6 +57,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
             <h1 className="truncate text-base font-semibold leading-tight">{title}</h1>
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
+          <NotificationBell className="lg:hidden" />
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
             className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-line px-3.5 text-sm font-medium hover:bg-sand">
             <Icon name="menu" size={18} />{t("app.more")}
