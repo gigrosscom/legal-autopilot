@@ -68,7 +68,7 @@ const en: Dict = {
   },
   pwa: {
     install: "Install the app",
-    iosSteps: "Tap “Share” (the square with an arrow) at the bottom of the Safari screen, then “Add to Home Screen” — Konsiliér AI will appear among your apps.",
+    iosSteps: "Tap “Share” — the square with an up arrow. In Safari it is at the bottom of the screen or next to the address bar; if you don't see it, tap “…”.\nChoose “Add to Home Screen”. If it isn't there, scroll the list down.\nTap “Add” — the Konsiliér AI icon appears on your Home Screen. No App Store needed.\nIf the site is open inside Telegram, Instagram or another app, open it in Safari first.",
     macSteps: "In Safari, open the “File” menu → “Add to Dock” — Konsiliér AI will open in its own window.",
     offlineTitle: "No internet connection",
     offlineText: "Your cases are saved on the server. Reload the page once you're back online — everything will be there.",
@@ -139,7 +139,7 @@ const en: Dict = {
       ios: {
         title: "iPhone and iPad (Safari)",
         "1": "Open konsilier.com/app in Safari.",
-        "2": "Tap “Share” — the square with an arrow at the bottom of the screen (at the top on iPad).",
+        "2": "Tap “Share” — the square with an up arrow, at the bottom of the screen or next to the address bar. Can't see it? Tap “…”.",
         "3": "Choose “Add to Home Screen” and tap “Add”. Konsiliér AI will appear among your apps.",
         note: "On iPhone and iPad, notifications work from iOS 16.4 in the app opened from the Home Screen.",
       },

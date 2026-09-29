@@ -68,7 +68,7 @@ const tr: Dict = {
   },
   pwa: {
     install: "Uygulamayı yükle",
-    iosSteps: "Safari'nin altındaki «Paylaş» (oklu kare) düğmesine, ardından «Ana Ekrana Ekle»ye dokunun — Konsiliér AI uygulamalarınız arasında görünür.",
+    iosSteps: "«Paylaş» düğmesine dokunun — yukarı oklu kare. Safari'de ekranın altında veya adres çubuğunun yanındadır; görmüyorsanız «…» düğmesine dokunun.\n«Ana Ekrana Ekle»yi seçin. Listede yoksa aşağı kaydırın.\n«Ekle»ye dokunun — Konsiliér AI simgesi ana ekranda görünür. App Store gerekmez.\nSite Telegram, Instagram veya başka bir uygulamanın içinde açıksa, önce Safari'de açın.",
     macSteps: "Safari'de «Dosya» → «Dock'a Ekle» menüsünü açın — Konsiliér AI ayrı bir pencerede açılır.",
     offlineTitle: "İnternet bağlantısı yok",
     offlineText: "Dosyalarınız sunucuda kayıtlı. Bağlantı gelince sayfayı yenileyin — her şey yerinde olacak.",
@@ -139,7 +139,7 @@ const tr: Dict = {
       ios: {
         title: "iPhone ve iPad (Safari)",
         "1": "konsilier.com/app adresini Safari'de açın.",
-        "2": "«Paylaş»a dokunun — ekranın altındaki oklu kare (iPad'de üstte).",
+        "2": "«Paylaş»a dokunun — yukarı oklu kare, ekranın altında veya adres çubuğunun yanında. Görünmüyorsa «…» düğmesine dokunun.",
         "3": "«Ana Ekrana Ekle»yi seçip «Ekle»ye dokunun. Konsiliér AI uygulamalarınız arasında görünür.",
         note: "iPhone ve iPad'de bildirimler iOS 16.4'ten itibaren ana ekrandan açılan uygulamada çalışır.",
       },

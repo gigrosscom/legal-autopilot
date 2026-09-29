@@ -71,11 +71,18 @@ export function InstallApp({ className = "" }: { className?: string }) {
         className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand">
         <Icon name="smartphone" size={18} className="text-brand" />{t("pwa.install")}
       </button>
-      {help && (
+      {help && (platform === "ios" ? (
+        <div className="max-w-sm rounded-xl bg-brand-50 p-3 text-sm" aria-live="polite">
+          <ol className="list-decimal space-y-1.5 ps-5">
+            {t("pwa.iosSteps").split("\n").slice(0, -1).map((s) => <li key={s}>{s}</li>)}
+          </ol>
+          <p className="mt-2 text-muted">{t("pwa.iosSteps").split("\n").at(-1)}</p>
+        </div>
+      ) : (
         <p className="max-w-sm rounded-xl bg-brand-50 p-3 text-sm" aria-live="polite">
-          {platform === "ios" ? t("pwa.iosSteps") : t("pwa.macSteps")} <Link href="/app" className="link">{t("pwa.more")}</Link>
+          {t("pwa.macSteps")} <Link href="/app" className="link">{t("pwa.more")}</Link>
         </p>
-      )}
+      ))}
     </div>
   );
 }
