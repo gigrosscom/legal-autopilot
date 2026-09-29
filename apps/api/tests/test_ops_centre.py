@@ -76,3 +76,15 @@ def test_extra_notification_addresses_get_letters_but_no_desk():
     notify_team(container, "s", "t", desk="clients", also="info@konsilier.com, owner@x.kz")
     assert sent == ["owner@x.kz", "info@konsilier.com"]
     assert desks_of(settings, "info@konsilier.com") == []
+
+
+def test_plan_request_goes_to_the_clients_desk(ctx):
+    """A plan that is not paid online yet (e.g. «Бизнес») is requested through the support form."""
+    ctx.container.settings.ops_clients_emails = "support@konsilier.com"
+    outbox = Outbox()
+    ctx.container.email_sender = outbox
+    client = web_user(ctx)
+    t = client.post("/v1/support", expect=201, json={"kind": "plan", "text": "Хочу подключить тариф «Бизнес».",
+                                                     "email": "client@mail.kz"})
+    assert t["kind"] == "plan"
+    assert outbox.sent[-1][0] == "support@konsilier.com" and "Заявка на тариф" in outbox.sent[-1][1]

@@ -471,7 +471,7 @@ class SupportTicket(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), index=True)
     case_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cases.id"))
-    kind: Mapped[str] = mapped_column(String(16))  # question | complaint | suggestion
+    kind: Mapped[str] = mapped_column(String(16))  # question | complaint | suggestion | plan
     name: Mapped[str | None] = mapped_column(String(200))
     email: Mapped[str | None] = mapped_column(String(200))
     phone: Mapped[str | None] = mapped_column(String(40))

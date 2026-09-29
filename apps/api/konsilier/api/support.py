@@ -19,7 +19,7 @@ from .deps import current_user, get_container, get_session
 
 router = APIRouter(prefix="/v1")
 
-KIND_RU = {"question": "Вопрос", "complaint": "Жалоба", "suggestion": "Предложение"}
+KIND_RU = {"question": "Вопрос", "complaint": "Жалоба", "suggestion": "Предложение", "plan": "Заявка на тариф"}
 PER_DAY = 10
 
 
@@ -41,7 +41,7 @@ def messages_of(session: Session, ticket_ids: list[int]) -> dict[int, list[Ticke
 
 
 class TicketIn(BaseModel):
-    kind: Literal["question", "complaint", "suggestion"]
+    kind: Literal["question", "complaint", "suggestion", "plan"]  # plan: a request for a plan not paid online yet
     text: str = Field(min_length=5, max_length=4000)
     name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=200)

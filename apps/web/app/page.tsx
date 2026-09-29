@@ -4,9 +4,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CtaBanner } from "@/components/CtaBanner";
-import { Icon } from "@/components/ui";
+import { Icon, type IconName } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 import { SITUATIONS } from "@/lib/situations";
+
+type Plan = { k: string; icon: IconName; unit?: string; request?: boolean };
+/** Plans on the home page. `request`: not paid online yet, the card opens a request to the clients desk. */
+const PLAN_GROUPS: { key: string; cols: string; plans: Plan[] }[] = [
+  { key: "people", cols: "md:grid-cols-3", plans: [
+    { k: "chat", icon: "chat" },
+    { k: "doc", icon: "document" },
+    { k: "case", icon: "shieldCheck", unit: "perCase", request: true },
+  ] },
+  { key: "business", cols: "md:grid-cols-2", plans: [
+    { k: "biz", icon: "briefcase", unit: "perMonth", request: true },
+    { k: "bizpro", icon: "building", unit: "perMonth", request: true },
+  ] },
+];
 
 function SectionHead({ title, lead, href, more }: { title: string; lead?: string; href?: string; more?: string }) {
   return (
@@ -122,22 +136,35 @@ export default function Home() {
         </ol>
       </section>
 
-      {/* WHAT IT COSTS: two ways to get help, two equal cards */}
+      {/* WHAT IT COSTS: plans for people and for business. Plans that cannot be paid online yet
+          open a request to the clients desk (/support?plan=…). */}
       <section className="band section-y space-y-10">
         <SectionHead title={t("home.priceTitle")} />
-        <ul className="grid gap-4 md:grid-cols-2">
-          {([["chat", "chat", "/start"], ["doc", "document", "/start"]] as const).map(([k, icon, href]) => (
-              <li key={k}>
-                <Link href={href} className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
-                  <Icon name={icon} size={26} className="text-ink" />
-                  <span className="text-[21px] font-semibold tracking-[-0.015em] text-ink">{t(`home.price.${k}T`)}</span>
-                  <span className="text-[32px] leading-tight font-semibold tracking-[-0.02em] text-ink">{t(`home.price.${k}P`)}</span>
-                  <span className="flex-1 text-[17px] leading-[1.47] text-muted">{t(`home.price.${k}D`)}</span>
-                  <Icon name="arrowRight" size={20} className="text-brand rtl:-scale-x-100" />
-                </Link>
-              </li>
-          ))}
-        </ul>
+        {PLAN_GROUPS.map(({ key, cols, plans }) => (
+          <div key={key} className="space-y-4">
+            <h3 className="text-[19px] font-semibold tracking-[-0.01em] text-ink">{t(`home.price.${key}`)}</h3>
+            <ul className={`grid gap-4 ${cols}`}>
+              {plans.map(({ k, icon, unit, request }) => (
+                <li key={k}>
+                  <Link href={request ? `/support?plan=${k}` : "/start"}
+                    className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
+                    <Icon name={icon} size={26} className="text-ink" />
+                    <span className="text-[21px] font-semibold tracking-[-0.015em] text-ink">{t(`home.price.${k}T`)}</span>
+                    <span className="text-[32px] leading-tight font-semibold tracking-[-0.02em] text-ink">
+                      {t(`home.price.${k}P`)}
+                      {unit && <span className="text-[17px] font-normal tracking-normal text-muted"> {t(`home.price.${unit}`)}</span>}
+                    </span>
+                    <span className="flex-1 text-[17px] leading-[1.47] text-muted">{t(`home.price.${k}D`)}</span>
+                    <span className="inline-flex items-center gap-1.5 text-[17px] font-semibold text-brand">
+                      {t(request ? "home.price.request" : "home.price.start")}
+                      <Icon name="arrowRight" size={20} className="rtl:-scale-x-100" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       {/* TRUST: only what is true today */}
