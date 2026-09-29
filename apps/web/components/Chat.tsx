@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
-import { Mark } from "@/components/Brand";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { Invite } from "@/components/Invite";
 import { Alert, Icon, type IconName } from "@/components/ui";
@@ -227,7 +226,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {empty && (
           <div className="space-y-4 py-6 sm:py-12">
-            <Mark size={40} className="text-ink" />
             <p className="eyebrow">{t("chat.eyebrow")}</p>
             <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">{t("chat.title")}</h1>
             <p className="max-w-xl text-muted">{hint ?? t("chat.lead")}</p>
@@ -251,7 +249,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           </div>
         ) : (
           <div key={m.id} className="space-y-2">
-            <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Mark size={18} />Konsiliér AI</p>
+            <p className="text-sm font-semibold text-ink"><bdi>Konsiliér AI</bdi></p>
             <div className="min-w-0 space-y-2 lg:ps-7">
               <p className="whitespace-pre-line text-[16px] leading-[1.7]">{m.text}</p>
               {m.norms.length > 0 && (
@@ -277,7 +275,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {streaming !== null && (
           <div className="space-y-2">
-            <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Mark size={18} />Konsiliér AI</p>
+            <p className="text-sm font-semibold text-ink"><bdi>Konsiliér AI</bdi></p>
             <div className="min-w-0 lg:ps-7">
               {streaming && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{streaming}</p>}
               <p className="flex items-center gap-2 text-sm text-muted" role="status">
