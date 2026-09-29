@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui";
 import { useT } from "@/lib/i18n";
@@ -57,32 +57,25 @@ export function useInstall() {
   return { platform, install };
 }
 
-/** "Install the app": the browser's own dialog where it exists (Android, Windows, Chrome / Edge on Mac),
- *  otherwise the steps for Safari on iPhone / iPad / Mac. Hidden inside the installed app. */
+/** "Install the app": one tap opens the browser's own install dialog where there is one (Android, Windows,
+ *  Chrome / Edge on Mac); elsewhere it goes straight to /app, where the device is picked. Hidden inside the installed app. */
 export function InstallApp({ className = "" }: { className?: string }) {
   const t = useT();
+  const router = useRouter();
   const { platform, install } = useInstall();
-  const [help, setHelp] = useState(false);
 
-  if (platform !== "prompt" && platform !== "ios" && platform !== "macSafari") return null;
+  if (platform === null || platform === "installed") return null;
+  const go = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.closest("details")?.removeAttribute("open"); // the header menu closes
+    if (platform === "prompt") { await install(); return; }
+    router.push("/app#install");
+  };
   return (
-    <div className={`space-y-2 ${className}`}>
-      <button type="button" onClick={() => (platform === "prompt" ? install() : setHelp((x) => !x))}
+    <div className={className}>
+      <button type="button" onClick={go}
         className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand">
         <Icon name="smartphone" size={18} className="text-brand" />{t("pwa.install")}
       </button>
-      {help && (platform === "ios" ? (
-        <div className="max-w-sm rounded-xl bg-brand-50 p-3 text-sm" aria-live="polite">
-          <ol className="list-decimal space-y-1.5 ps-5">
-            {t("pwa.iosSteps").split("\n").slice(0, -1).map((s) => <li key={s}>{s}</li>)}
-          </ol>
-          <p className="mt-2 text-muted">{t("pwa.iosSteps").split("\n").at(-1)} <Link href="/app#how" className="link">{t("pwa.more")}</Link></p>
-        </div>
-      ) : (
-        <p className="max-w-sm rounded-xl bg-brand-50 p-3 text-sm" aria-live="polite">
-          {t("pwa.macSteps")} <Link href="/app#how" className="link">{t("pwa.more")}</Link>
-        </p>
-      ))}
     </div>
   );
 }
