@@ -26,7 +26,7 @@ def _case(**kw):
 
 def test_intake_screen_shows_question_and_skip_for_optional():
     s = case_screen(_case(question={"field": "seller_bin", "text": "БИН?", "optional": True}))
-    assert s.text == "БИН?" and s.buttons == [[("⏭ Пропустить", "skip:c1")]]
+    assert s.text == "БИН?" and s.buttons == [[("Пропустить", "skip:c1")]]
 
 
 def test_ready_document_screen():
@@ -101,7 +101,7 @@ def test_client_drives_a_case(api_app):
         out = await api.response("42", cid, action["id"], no_response=True)
         assert out["proposal"]["action_id"] == "complaint_arrf"
         screen = case_screen(out["case"])
-        assert ("📄 Подготовить документ", f"prep:{cid}") in screen.buttons[0]
+        assert ("Подготовить документ", f"prep:{cid}") in screen.buttons[0]
         await api.close()
 
     asyncio.run(scenario())
@@ -138,7 +138,64 @@ def test_unpaid_document_shows_transfer_details_and_paid_button():
                         "recipient_name": "Получатель", "kaspi_phone": "+7 700 000 00 00"}}
     screen = case_screen(case)
     assert "1 990 KZT" in screen.text and "KA-7F3K2Q" in screen.text and "+7 700 000 00 00" in screen.text
-    assert ("✅ Оплатить", "paid:c1") in screen.buttons[0]
+    assert ("Оплатить", "paid:c1") in screen.buttons[0]
     case["payment"]["status"] = "awaiting_confirmation"
     screen = case_screen(case)
     assert "Проверяем перевод" in screen.text and all(b[1] != "paid:c1" for row in screen.buttons for b in row)
+
+
+LANGS = ("ru", "kk")
+
+
+def _all_strings(node):
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for v in node.values():
+            yield from _all_strings(v)
+
+
+def test_locales_have_no_emoji():
+    import re
+
+    from konsilier_bot.i18n import _load
+
+    emoji = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\u23E9-\u23FA\uFE0F\u200D]")
+    for lang in LANGS:
+        bad = [s for s in _all_strings(_load(lang)) if emoji.search(s)]
+        assert not bad, (lang, bad)
+
+
+def test_start_and_help_name_the_real_scenario_count_and_support():
+    from konsilier_bot.i18n import t
+
+    scenarios = [p for p in (ROOT / "packs" / "kz" / "scenarios").glob("*.yaml") if not p.name.startswith("beta_")]
+    for lang in LANGS:
+        start, help_ = t("start", lang), t("help", lang)
+        assert f"{len(scenarios)} " in start and f"{len(scenarios)} " in help_
+        assert "konsilier.com/support" in start and "/help" in start
+        assert "konsilier.com/support" in help_ and "info@konsilier.com" in help_
+        assert "/new" in help_ and "/status" in help_
+
+
+def test_errors_are_human_and_localized_without_codes():
+    from konsilier_bot.api import ApiError
+    from konsilier_bot.i18n import t
+    from konsilier_bot.main import ERROR_CODES, error_text
+
+    for lang in LANGS:
+        for code in ERROR_CODES:
+            text = error_text(ApiError(409, {"code": code, "message": code}), lang)
+            assert text != f"errors.{code}" and code not in text and "(" not in text
+        assert error_text(ApiError(429, {"code": "rate_limited"}), lang) == t("errors.too_many", lang)
+        assert error_text(ApiError(502, "Bad Gateway"), lang) == t("errors.unavailable", lang)
+        assert error_text(httpx.ConnectError("down"), lang) == t("errors.unavailable", lang)
+        assert error_text(RuntimeError("boom"), lang) == t("error", lang)
+    assert error_text(ApiError(429, {"code": "too_many_messages"}), "kk") != \
+        error_text(ApiError(429, {"code": "too_many_messages"}), "ru")
+
+
+def test_help_is_a_menu_command():
+    from konsilier_bot.main import BOT_COMMANDS
+
+    assert "help" in BOT_COMMANDS

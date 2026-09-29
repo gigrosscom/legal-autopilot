@@ -112,7 +112,25 @@ print(s.chat_provider + '[' + ','.join(out) + ']' if clients else s.chat_provide
       HTTPS=$(for u in "https://$SITE_DOMAIN/" "https://www.$SITE_DOMAIN/" "https://$API_DOMAIN/health"; do
         printf '%s=%s ' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$u")"; done)
       CACHE=$(curl -sI --max-time 20 "https://$SITE_DOMAIN/" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2-)
-      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT $HTTPS cache=[$CACHE]"
+      # Telegram bot: container state and the HTTP code of getMe (200 = token works; 401 = Telegram reached, token
+      # is a placeholder or revoked). Only the code or an exception class is printed, never the token.
+      BOT_STATE=$(timeout 20 docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.State}}' bot \
+        2>/dev/null | head -1) || true
+      BOT_TG=$(timeout 40 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T bot python -c "
+import os, urllib.error, urllib.request
+tok = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
+if not tok:
+    print('no-token'); raise SystemExit
+try:
+    print(urllib.request.urlopen('https://api.telegram.org/bot' + tok + '/getMe', timeout=20).status)
+except urllib.error.HTTPError as e:
+    print(e.code)
+except Exception as e:
+    print(e.__class__.__name__)" </dev/null 2>/dev/null | tail -1 | cut -c1-40) || true
+      # «Написать нам»: the API route answers 401 without sign-in (route alive), the page on the site answers 200.
+      SUP_API=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$API_DOMAIN/v1/support") || true
+      SUP_WEB=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE_DOMAIN/support") || true
+      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
       log "deploy of ${REMOTE:0:7} FAILED"
