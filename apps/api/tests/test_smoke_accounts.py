@@ -6,7 +6,7 @@ from __future__ import annotations
 from .test_e2e import Api, web_user
 from .test_lawyer_onboarding import Outbox
 from .test_ops_centre import operator
-from .test_payment import manual, qualified_case
+from .test_payment import confirm, manual, qualified_case
 
 HDR = {"X-Smoke-Token": "smoke-secret"}
 
@@ -44,6 +44,7 @@ def test_test_user_path_stays_invisible_to_the_team(ctx):
     case = api.get(f"/v1/cases/{cid}").json()
     assert case["actions"] and case["actions"][0]["downloadable"] is True
     # …but never a real client's bill
+    confirm(real_api)
     real_api.post(f"/v1/cases/{real_case}/payment", json={"purpose": "document"})
     assert ctx.client.post(f"/v1/smoke/cases/{real_case}/payment/confirm", headers=HDR).status_code == 404
 

@@ -5,7 +5,7 @@
 - existing notifications count as read, so the bell does not light up with old news
 
 Revision ID: 0019
-Revises: 0016
+Revises: 0018
 Create Date: 2026-09-29
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0019"
-down_revision = "0016"
+down_revision = "0018"
 branch_labels = None
 depends_on = None
 

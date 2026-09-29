@@ -67,7 +67,7 @@ def test_invited_person_pays_and_both_get_one_free_document(ctx):
     assert bob.get("/v1/me").json()["bonus_documents"] == 1
     assert alice.get("/v1/referral").json()["bonus_documents"] == 1
     for who in (alice, bob):
-        assert any(n["kind"] == "referral" for n in who.get("/v1/notifications").json())
+        assert any(n["kind"] == "referral" for n in who.get("/v1/notifications").json()["items"])
 
     # Bob's paid document is made from his payment; the bonus stays for later
     case = bob.post(f"/v1/cases/{cid}/actions/next")["case"]
@@ -104,4 +104,4 @@ def test_no_bonus_without_an_inviter(ctx):
     confirm(carol)
     _pay_document(desk, carol, cid)
     assert carol.get("/v1/me").json()["bonus_documents"] == 0
-    assert not any(n["kind"] == "referral" for n in carol.get("/v1/notifications").json())
+    assert not any(n["kind"] == "referral" for n in carol.get("/v1/notifications").json()["items"])

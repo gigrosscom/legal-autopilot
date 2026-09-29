@@ -548,8 +548,9 @@ class PaymentIn(BaseModel):
 
 def contact_to_confirm(container: Container, owner: User) -> list[str]:
     """How the case owner is to confirm a contact before paying: ["phone"] (SMS code), or ["email"] where SMS sign-in
-    is not configured; [] when a confirmed contact is there, the person is in Telegram or nothing can be sent."""
-    if not container.settings.payment_requires_contact or owner.channel == "telegram":
+    is not configured; [] when a confirmed contact is there, the person is in Telegram, it is a test account (smoke
+    checks) or nothing can be sent."""
+    if not container.settings.payment_requires_contact or owner.channel == "telegram" or owner.is_test:
         return []
     methods = container.identity_methods()
     kinds = {i.kind for i in owner.identities}
