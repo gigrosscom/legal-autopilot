@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "ИИ-помощник по юридическим вопросам: опишите проблему — подготовим документ, подскажем, куда подать, и проследим за сроками.",
     lang: "ru",
     dir: "ltr",
-    start_url: "/start?source=app",
+    start_url: "/?source=app",
     scope: "/",
     display: "standalone",
     orientation: "any",
