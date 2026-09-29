@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { Alert, Button, Icon } from "@/components/ui";
-import { api, errorText, publicApi, type CaseView, type Emergency } from "@/lib/api";
+import { ApiError, api, errorText, publicApi, type CaseView, type Emergency } from "@/lib/api";
+import { FieldError } from "@/components/FieldError";
+import { apiFieldErrors, checkEmail, checkFullName, clean, normalizeKzPhone, only } from "@/lib/formRules";
 import { useLang, useT } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal/terms";
 
@@ -25,6 +27,14 @@ export default function LawyerRequestPage() {
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // the case is created once: a retry after a wrong phone must not register the story twice
+  const [caseId, setCaseId] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+  const errors = { ...only({ full_name: checkFullName(name), phone: normalizeKzPhone(phone)[1], email: checkEmail(email) }),
+    ...serverErrors };
+  const shown = (k: string) => (touched[k] && errors[k]) || null;
+  const blur = (k: string) => () => setTouched((x) => ({ ...x, [k]: true }));
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -33,6 +43,8 @@ export default function LawyerRequestPage() {
 
   async function submit(e: React.FormEvent, skipTriage = false) {
     e.preventDefault();
+    setTouched({ full_name: true, phone: true, email: true });
+    if (Object.keys(errors).length) return;
     setBusy(true); setError(null);
     try {
       if (!skipTriage) {
@@ -40,14 +52,25 @@ export default function LawyerRequestPage() {
           "/v1/triage", { method: "POST", body: JSON.stringify({ text: story, country: "KZ", language: lang }) });
         if (tri.emergency) { setEmergency({ message: tri.message, numbers: tri.numbers }); return; }
       }
-      const out = await api<{ case: CaseView }>("/v1/cases", {
-        method: "POST", body: JSON.stringify({ text: story.trim(), language: lang, country: "KZ", accept_terms: TERMS_VERSION }) });
-      await api(`/v1/cases/${out.case.id}/lawyer-request`, { method: "POST", body: JSON.stringify({
-        lawyer_ref: lawyer.id, full_name: name.trim(), phone: phone.trim(), email: email.trim() || null, consent }) });
-      setDone(out.case.id);
+      let id = caseId;
+      if (!id) {
+        const out = await api<{ case: CaseView }>("/v1/cases", {
+          method: "POST", body: JSON.stringify({ text: story.trim(), language: lang, country: "KZ", accept_terms: TERMS_VERSION }) });
+        id = out.case.id;
+        setCaseId(id);
+      }
+      await api(`/v1/cases/${id}/lawyer-request`, { method: "POST", body: JSON.stringify({
+        lawyer_ref: lawyer.id, full_name: clean(name), phone: normalizeKzPhone(phone)[0] ?? phone.trim(),
+        email: email.trim() || null, consent }) });
+      setDone(id);
       window.scrollTo({ top: 0 });
     } catch (err) {
-      setError(errorText(err));
+      const fields = err instanceof ApiError ? apiFieldErrors(err.detail) : null;
+      if (fields && Object.keys(fields).length) {
+        setServerErrors(fields);
+        setTouched({ full_name: true, phone: true, email: true });
+        setError(t("formErrors.fix"));
+      } else setError(errorText(err));
     } finally { setBusy(false); }
   }
 
@@ -61,10 +84,18 @@ export default function LawyerRequestPage() {
     );
   }
 
-  const ready = story.trim().length >= 10 && name.trim().length >= 2 && phone.replace(/\D/g, "").length >= 10 && consent;
+  const ready = story.trim().length >= 10 && name.trim().length >= 2 && phone.trim().length > 0 && consent;
+  const input = (k: string, set: (v: string) => void) => ({
+    className: `${field} ${shown(k) ? "border-danger" : ""}`, onBlur: blur(k), "aria-invalid": !!shown(k),
+    "aria-describedby": shown(k) ? `rq-${k}-err` : undefined,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      set(e.target.value);
+      if (serverErrors[k]) setServerErrors((x) => Object.fromEntries(Object.entries(x).filter(([f]) => f !== k)));
+    },
+  });
   const field = "input mt-1 min-h-12 text-base";
   return (
-    <form onSubmit={submit} className="mx-auto max-w-xl space-y-5">
+    <form onSubmit={submit} noValidate className="mx-auto max-w-xl space-y-5">
       <Link href="/lawyers" className="inline-flex items-center gap-1 text-sm text-muted hover:text-brand">
         <Icon name="arrowRight" size={16} className="rotate-180 rtl:rotate-0" />{t("request.back")}
       </Link>
@@ -81,14 +112,17 @@ export default function LawyerRequestPage() {
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">{t("request.contacts")}</legend>
         <label className="block text-sm">{t("request.name")}
-          <input className={field} required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input required autoComplete="name" value={name} {...input("full_name", setName)} />
+          <FieldError id="rq-full_name-err" field="full_name" code={shown("full_name")} />
         </label>
         <label className="block text-sm">{t("request.phone")}
-          <input className={field} required type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 700 000 00 00"
-            value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input required type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 700 000 00 00"
+            value={phone} {...input("phone", setPhone)} />
+          <FieldError id="rq-phone-err" field="phone" code={shown("phone")} />
         </label>
         <label className="block text-sm">{t("request.email")}
-          <input className={field} type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" inputMode="email" autoComplete="email" value={email} {...input("email", setEmail)} />
+          <FieldError id="rq-email-err" field="email" code={shown("email")} />
         </label>
       </fieldset>
       <label className="flex items-start gap-3 text-sm">

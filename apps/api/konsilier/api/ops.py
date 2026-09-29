@@ -1,7 +1,8 @@
 """Operations centre: two desks, each opened by its operators' verified e-mail (sign in with an e-mail code).
 
 - lawyers desk: every application of an advocate, legal consultant or human-rights organisation;
-- clients desk: every client question, complaint or suggestion, and every client request to a lawyer.
+- clients desk: every client question, complaint or suggestion, every client request to a lawyer, and document
+  payments by transfer waiting for confirmation.
 
 Which e-mails operate which desk: settings OPS_LAWYERS_EMAILS / OPS_CLIENTS_EMAILS (konsilier/team.py).
 """
@@ -18,7 +19,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..core.models import LawyerApplication, LawyerRequest, Notification, SupportTicket, TicketMessage, User
+from ..core.engine import EngineError
+from ..core.models import (Case, Invoice, LawyerApplication, LawyerRequest, Notification, SupportTicket,
+                           TicketMessage, User)
 from ..team import Desk, desks_of
 from .deps import current_user, get_container, get_session
 from .support import messages_of, ticket_view
@@ -58,27 +61,68 @@ def me(user: User = Depends(current_user), session: Session = Depends(get_sessio
         counts["clients"] = (session.scalar(select(func.count()).select_from(SupportTicket)
                                             .where(SupportTicket.status == "new")) or 0) + \
                             (session.scalar(select(func.count()).select_from(LawyerRequest)
-                                            .where(LawyerRequest.status == "new")) or 0)
+                                            .where(LawyerRequest.status == "new")) or 0) + \
+                            (session.scalar(select(func.count()).select_from(Invoice)
+                                            .where(Invoice.status == "awaiting_confirmation")) or 0)
     return {"email": user.email, "desks": desks, "new": counts}
 
 
 # ------------------------------------------------------------------ lawyers desk
+# Official registries for the operator's manual check (opened and checked 28.09.2026). «Заң көмегі» is the
+# Ministry of Justice portal with the search of advocates and legal consultants; e-licensing holds advocates'
+# licences. Legal consultants' chambers also keep their own member registries.
+REGISTRIES: dict[str, list[dict[str, str]]] = {
+    "advocate": [
+        {"title": "«Заң көмегі» (Минюст РК): поиск адвоката", "url": "https://eup.adilet.gov.kz/#/lawyers/advocate"},
+        {"title": "Е-лицензирование: реестр лицензий (адвокатская деятельность)",
+         "url": "https://elicense.kz/Licenses/Index?documentType=License"},
+        {"title": "Республиканская коллегия адвокатов", "url": "https://advokatura.kz/ru/"},
+    ],
+    "legal_consultant": [
+        {"title": "«Заң көмегі» (Минюст РК): поиск юридического консультанта",
+         "url": "https://eup.adilet.gov.kz/#/lawyers/consultant"},
+    ],
+    "human_rights": [],
+}
+
+
+def _checks(a: LawyerApplication) -> dict[str, Any]:
+    """What the form rules say about this application now (older applications were accepted without them)."""
+    from ..identity import form_rules as R
+
+    phone, phone_err = R.normalize_kz_phone(a.phone or a.contact)
+    return {
+        "full_name": R.check_full_name(a.full_name),
+        "phone": phone_err, "phone_normalized": phone,
+        "license_number": R.check_license(a.license_number, a.kind),
+        "city": R.check_city(a.city),
+        "kind": None if a.kind in R.LAWYER_KINDS else "required",
+        "ecp": None if a.iin_hash else "missing",
+    }
+
+
+def application_view(a: LawyerApplication) -> dict[str, Any]:
+    return {"id": a.id, "created_at": a.created_at.isoformat(), "full_name": a.full_name, "kind": a.kind,
+            "organization": a.organization, "license_number": a.license_number, "city": a.city,
+            "specializations": a.specializations, "contact": a.contact, "phone": a.phone, "email": a.email,
+            "message": a.message, "wants_expert": a.wants_expert, "status": a.status, "ecp_verified": bool(a.iin_hash),
+            "ecp_name": a.ecp_name, "note": a.desk_note, "reject_reason": a.reject_reason,
+            "checks": _checks(a), "registries": REGISTRIES.get(a.kind, [])}
+
+
 @router.get("/lawyers/applications")
 def applications(status: str | None = None, session: Session = Depends(get_session),
                  _: User = Depends(operator("lawyers"))) -> list[dict[str, Any]]:
     q = select(LawyerApplication).order_by(LawyerApplication.id.desc()).limit(500)
     if status:
         q = q.where(LawyerApplication.status == status)
-    return [{"id": a.id, "created_at": a.created_at.isoformat(), "full_name": a.full_name, "kind": a.kind,
-             "organization": a.organization, "license_number": a.license_number, "city": a.city,
-             "specializations": a.specializations, "contact": a.contact, "message": a.message,
-             "wants_expert": a.wants_expert, "status": a.status, "ecp_verified": bool(a.iin_hash),
-             "ecp_name": a.ecp_name, "note": a.desk_note} for a in session.scalars(q).all()]
+    return [application_view(a) for a in session.scalars(q).all()]
 
 
 class AppUpdate(BaseModel):
     status: Literal["new", "verified", "rejected"] | None = None
     note: str | None = Field(default=None, max_length=4000)
+    reason: str | None = Field(default=None, max_length=2000)  # required to reject: the lawyer is told it
 
 
 @router.post("/lawyers/applications/{app_id}")
@@ -94,15 +138,23 @@ def update_application(app_id: int, body: AppUpdate, session: Session = Depends(
         if body.status == "verified" and not a.iin_hash:
             # who signs papers with clients is known only from the ЭЦП certificate
             raise HTTPException(409, {"code": "ecp_required", "message": "ecp_required"})
+        reason = (body.reason or "").strip()
+        if body.status == "rejected" and len(reason) < 5:
+            raise HTTPException(422, {"code": "reason_required", "message": "reason_required",
+                                      "fields": {"reason": "required"}})
         a.status = body.status
+        a.reject_reason = reason if body.status == "rejected" else None
+        email = a.email or (a.contact if "@" in (a.contact or "") else None)
         if body.status == "verified":
-            _tell(session, container, a.user_id, a.contact, "Konsiliér AI: заявка юриста подтверждена",
-                  f"{a.full_name}, ваш статус проверен, доступ к кабинету юриста открыт: https://konsilier.com/lawyer")
+            _tell(session, container, a.user_id, email, "Konsiliér AI: заявка юриста подтверждена",
+                  f"{a.full_name}, ваш статус проверен, доступ к кабинету юриста открыт, профиль появился в каталоге "
+                  f"юристов: https://konsilier.com/lawyer")
         elif body.status == "rejected":
-            _tell(session, container, a.user_id, a.contact, "Konsiliér AI: заявка юриста",
-                  f"{a.full_name}, подтвердить статус по заявке не удалось. Если это ошибка, ответьте на это письмо "
-                  f"или напишите на info@konsilier.com.")
-    return {"id": a.id, "status": a.status, "note": a.desk_note}
+            _tell(session, container, a.user_id, email, "Konsiliér AI: заявка юриста",
+                  f"{a.full_name}, подтвердить статус по заявке не удалось.\nПричина: {reason}\n\n"
+                  f"Исправьте данные и подайте заявку заново на https://konsilier.com/for-lawyers или ответьте на это "
+                  f"письмо (info@konsilier.com).")
+    return application_view(a)
 
 
 # ------------------------------------------------------------------ clients desk
@@ -176,3 +228,61 @@ def update_request(req_id: int, body: RequestUpdate, session: Session = Depends(
     if body.status:
         r.status = body.status
     return {"id": r.id, "status": r.status, "note": r.desk_note}
+
+
+# ------------------------------------------------------------------ clients desk: document payments
+def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[str, Any]:
+    case = session.get(Case, inv.case_id)
+    owner = session.get(User, inv.user_id)
+    title = None
+    if case is not None and case.scenario_id:
+        try:
+            title = container.engine.pack_of(case).localized(container.engine.scenario_of(case).title, "ru")
+        except Exception:  # noqa: BLE001 — a removed scenario must not hide the payment
+            title = case.scenario_id
+    return {"id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
+            "status": inv.status, "method": inv.method, "case_id": str(inv.case_id), "case_title": title,
+            "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,
+            "created_at": inv.created_at.isoformat(), "claimed_at": inv.claimed_at.isoformat() if inv.claimed_at else None,
+            "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
+            "note": inv.desk_note}
+
+
+@router.get("/clients/payments")
+def payments(status: str | None = "awaiting_confirmation", session: Session = Depends(get_session),
+             container: Container = Depends(get_container),
+             _: User = Depends(operator("clients"))) -> list[dict[str, Any]]:
+    q = select(Invoice).where(Invoice.method != "stub").order_by(Invoice.created_at.desc()).limit(500)
+    if status:
+        q = q.where(Invoice.status == status)
+    return [invoice_view(session, container, inv) for inv in session.scalars(q).all()]
+
+
+class PaymentDecision(BaseModel):
+    decision: Literal["paid", "not_found"]
+    note: str | None = Field(default=None, max_length=4000)
+
+
+@router.post("/clients/payments/{invoice_id}")
+def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = Depends(get_session),
+                   container: Container = Depends(get_container),
+                   op: User = Depends(operator("clients"))) -> dict[str, Any]:
+    inv = session.get(Invoice, invoice_id)
+    if inv is None:
+        raise HTTPException(404, "invoice not found")
+    try:
+        container.engine.decide_payment(session, inv, op.email or "operator", body.decision == "paid", body.note)
+    except EngineError as e:
+        raise HTTPException(409, {"code": e.code, "message": e.code}) from e
+    owner = session.get(User, inv.user_id)
+    if owner is not None and owner.email and container.email_sender is not None:
+        text = ("Оплата получена. Документ можно подготовить и скачать в карточке дела: "
+                f"https://konsilier.com/case/{inv.case_id}") if body.decision == "paid" else (
+            f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
+            f"«Я оплатил(а)» ещё раз: https://konsilier.com/case/{inv.case_id}")
+        try:
+            container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}", text)
+        except Exception:  # noqa: BLE001
+            log.warning("payment e-mail to a client failed", exc_info=True)
+    session.flush()
+    return invoice_view(session, container, inv)

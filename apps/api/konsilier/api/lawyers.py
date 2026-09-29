@@ -128,7 +128,8 @@ def lawyer_me(user: User = Depends(current_user), session: Session = Depends(get
     for a in apps:  # applied first, confirmed ЭЦП later: the application now carries who they are
         if ident is not None and not a.iin_hash:
             a.iin_hash, a.ecp_name = ident.subject_hash, user.display_name
-    return {"applications": [{"id": a.id, "status": a.status, "name": a.ecp_name or a.full_name, "kind": a.kind}
+    return {"applications": [{"id": a.id, "status": a.status, "name": a.ecp_name or a.full_name, "kind": a.kind,
+                              "reject_reason": a.reject_reason if a.status == "rejected" else None}
                              for a in apps],
             "verified": any(a.status == "verified" for a in apps),
             "has_ecp": ident is not None}
@@ -213,10 +214,10 @@ __all__ = ["router", "admin_router", "signature_view"]
 
 class LawyerRequestIn(BaseModel):
     lawyer_ref: str | None = Field(default=None, max_length=100)
-    full_name: str = Field(min_length=2, max_length=200)
-    phone: str = Field(min_length=6, max_length=40)
-    email: str | None = Field(default=None, max_length=200)
-    consent: bool
+    full_name: str | None = Field(default=None, max_length=300)
+    phone: str | None = Field(default=None, max_length=60)
+    email: str | None = Field(default=None, max_length=300)
+    consent: bool = False
 
 
 @router.post("/cases/{case_id}/lawyer-request", status_code=201)
@@ -224,14 +225,17 @@ def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depen
                    session: Session = Depends(get_session), container: Container = Depends(get_container)) -> dict[str, Any]:
     """«Обратиться»: register the case and the applicant's contacts for a lawyer. Direct booking opens later;
     until then the team passes the request to a verified lawyer of the right field."""
+    from ..identity import form_rules as R
+
     case = load_case(case_id, session, user)
-    if not body.consent:
-        raise HTTPException(422, {"code": "consent_required", "message": "consent_required"})
-    digits = "".join(ch for ch in body.phone if ch.isdigit())
-    if len(digits) < 10:
-        raise HTTPException(422, {"code": "phone", "message": "phone"})
-    req = LawyerRequest(case_id=case.id, user_id=user.id, lawyer_ref=body.lawyer_ref, full_name=body.full_name.strip(),
-                        phone=("+" if body.phone.strip().startswith("+") else "") + digits,
+    phone, phone_err = R.normalize_kz_phone(body.phone)
+    errors = {k: v for k, v in {"full_name": R.check_full_name(body.full_name), "phone": phone_err,
+                                "email": R.check_email(body.email),
+                                "consent": None if body.consent else "required"}.items() if v}
+    if errors:
+        raise HTTPException(422, {"code": "invalid_request", "message": "invalid_request", "fields": errors})
+    req = LawyerRequest(case_id=case.id, user_id=user.id, lawyer_ref=body.lawyer_ref, full_name=R.clean(body.full_name),
+                        phone=phone,
                         email=(body.email or "").strip() or None)
     session.add(req)
     session.flush()

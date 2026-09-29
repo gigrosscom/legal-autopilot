@@ -18,4 +18,4 @@ RUN [ -f /app/packs/kz/templates/consumer/claim_seller.docx ] && [ -f /app/packs
     || python /app/scripts/build_kz_templates.py
 ENV PACKS_DIR=/app/packs
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && uvicorn --factory konsilier.main:app_factory --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "alembic upgrade heads && uvicorn --factory konsilier.main:app_factory --host 0.0.0.0 --port ${PORT:-8000}"]

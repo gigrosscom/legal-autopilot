@@ -62,3 +62,17 @@ def test_two_desks(ctx):
     assert any("Исправили" in n["text"] for n in client.get("/v1/notifications").json())
     client.post(f"/v1/support/{t['id']}/messages", expect=201, json={"text": "Спасибо, работает"})
     assert cl.post(f"/v1/ops/clients/tickets/{t['id']}/status", json={"status": "done"})["status"] == "done"
+
+
+def test_extra_notification_addresses_get_letters_but_no_desk():
+    from types import SimpleNamespace
+
+    from konsilier.team import desks_of, notify_team
+
+    sent: list[str] = []
+    settings = SimpleNamespace(ops_clients_emails="owner@x.kz", ops_lawyers_emails="owner@x.kz", team_email="")
+    container = SimpleNamespace(settings=settings,
+                                email_sender=SimpleNamespace(send=lambda to, subject, text: sent.append(to)))
+    notify_team(container, "s", "t", desk="clients", also="info@konsilier.com, owner@x.kz")
+    assert sent == ["owner@x.kz", "info@konsilier.com"]
+    assert desks_of(settings, "info@konsilier.com") == []

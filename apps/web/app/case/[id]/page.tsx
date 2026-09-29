@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { BetaNotice } from "@/components/BetaNotice";
 import { AnswerBar } from "@/components/AnswerBar";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
@@ -29,6 +30,7 @@ import {
   printFile,
   shareFile,
   type Plan,
+  type Payment,
   saveFileAs,
 } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -246,6 +248,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   return (
     <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
       scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}`}>
+      {c.scenario?.beta && <BetaNotice disclaimer={c.scenario.disclaimer} />}
       {c.scenario?.draft_disclaimer && (
         <p className="flex items-start gap-2 rounded-2xl bg-draft-50 px-3 py-2 text-xs text-draft">
           <Icon name="info" size={16} className="mt-0.5" /><span><b>{t("case.draftTitle")}.</b> {c.scenario.draft_disclaimer}</span>
@@ -257,6 +260,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
         <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
       )}
+
+      {c.status === "qualified" && c.payment && c.payment.available && c.payment.code
+        && c.payment.status !== "paid" && <PaymentCard pay={c.payment} />}
 
       <div className="space-y-2" aria-live="polite">
         {log.map((m, i) => (
@@ -360,7 +366,25 @@ function NextStepBar({ c, busy, post, run, setCase }: {
   const big = "min-h-12 flex-1";
 
   if (c.status === "qualified") {
-    return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
+    const pay = c.payment;
+    const prepare = <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
+    if (!pay || pay.status === "paid") return prepare;
+    if (!pay.available) return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="alert" size={18} className="text-warning" />{t("payment.unavailable")}</p>;
+    if (pay.status === "pending" || pay.status === "not_found") {
+      return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/payment/claim")} icon="check">{t("payment.paid")}</Button>;
+    }
+    if (pay.status === "awaiting_confirmation") {
+      return (
+        <Button className="min-h-12 w-full" variant="secondary" disabled={busy} icon="hourglass"
+          onClick={() => run(async () => setCase(await api<CaseView>(`/v1/cases/${c.id}`)))}>{t("payment.refresh")}</Button>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <p className="px-1 text-xs text-muted">{t("payment.price", { price: money(pay.amount, pay.currency) })}</p>
+        {prepare}
+      </div>
+    );
   }
   if (c.status === "action_ready" && last) {
     if (last.approval_status === "pending" || last.approval_status === "rejected") {
@@ -449,6 +473,48 @@ function NextStepBar({ c, busy, post, run, setCase }: {
     );
   }
   return null;
+}
+
+function money(amount: number, currency: string | null): string {
+  return `${amount.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${currency === "KZT" ? "₸" : currency ?? ""}`.trim();
+}
+
+function CopyValue({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-sand px-3 py-2">
+      <div className="min-w-0">
+        <p className="text-xs text-muted">{label}</p>
+        <p dir="ltr" className={`break-all text-base font-semibold ${mono ? "font-mono tracking-wider" : ""}`}>{value}</p>
+      </div>
+      <button type="button" className="btn-ghost shrink-0 text-sm"
+        onClick={async () => { try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {} }}>
+        {copied ? t("payment.copied") : t("payment.copy")}
+      </button>
+    </div>
+  );
+}
+
+/** Payment screen for the document: amount, Kaspi transfer details and the code for the transfer comment.
+ *  The document is prepared and handed out once the operations centre confirms the transfer. */
+function PaymentCard({ pay }: { pay: Payment }) {
+  const t = useT();
+  return (
+    <section className="card space-y-3 border-brand/40" aria-labelledby="pay-title">
+      <h2 id="pay-title" className="flex items-center gap-2 text-lg font-semibold"><Icon name="coin" className="text-brand" />{t("payment.title")}</h2>
+      <p className="text-sm text-muted">{t("payment.lead")}</p>
+      {pay.status === "awaiting_confirmation" && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
+      {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
+      <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
+      <div className="space-y-2">
+        {pay.recipient_name && <CopyValue label={t("payment.recipient")} value={pay.recipient_name} />}
+        {pay.kaspi_phone && <CopyValue label={t("payment.kaspi")} value={pay.kaspi_phone} />}
+        {pay.code && <CopyValue label={t("payment.code")} value={pay.code} mono />}
+      </div>
+      <p className="text-sm">{t("payment.steps")}</p>
+    </section>
+  );
 }
 
 /** The proposed solution right after the story: document → addressee → how to file → what to attach. */

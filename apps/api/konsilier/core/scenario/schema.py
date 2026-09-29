@@ -81,17 +81,61 @@ class DeadlineSpec(_Strict):
 
 
 class AddresseeSpec(_Strict):
-    """Who receives the document: a case party, a pack-level authority or a forum from the pack registry."""
+    """Who receives the document: a case party, a pack-level authority, a forum from the pack registry
+    or (service scenarios) a named recipient given right in the scenario, e.g. a visa centre or a university."""
 
     party: str | None = None  # e.g. "respondent"
     authority: str | None = None  # key in pack.authorities
     forum: str | None = None  # forum id in the pack's coverage registry (universal path)
+    name: Localized | None = None  # a named recipient kept in the scenario itself
+    url: str | None = None  # with ``name``: the official page where the package is filed
 
     @model_validator(mode="after")
     def _one_of(self) -> "AddresseeSpec":
-        if sum(x is not None for x in (self.party, self.authority, self.forum)) != 1:
-            raise ValueError("addressee needs exactly one of party / authority / forum")
+        if sum(x is not None for x in (self.party, self.authority, self.forum, self.name)) != 1:
+            raise ValueError("addressee needs exactly one of party / authority / forum / name")
+        if self.url is not None and self.name is None:
+            raise ValueError("addressee url is only allowed with name")
         return self
+
+
+class PackageLine(_Strict):
+    """One paragraph or checklist item of a document package. ``if``: shown only when that intake field
+    was answered (not skipped); ``unless``: shown only when it was not."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+    t: Localized
+    if_: str | None = Field(default=None, alias="if")
+    unless: str | None = None
+    source: str | None = None  # official page the line is based on (shown in the document)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _short(cls, v: Any) -> Any:
+        # compact form: {ru: "...", kk: "..."} → {t: {...}}
+        if isinstance(v, dict) and "t" not in v:
+            meta = {k: v[k] for k in ("if", "unless", "source") if k in v}
+            return {"t": {k: x for k, x in v.items() if k not in meta}, **meta}
+        return v
+
+
+class PackageSection(_Strict):
+    """A document inside a service package (cover letter, checklist, inventory, instruction…)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+    id: str
+    title: Localized
+    if_: str | None = Field(default=None, alias="if")
+    text: tuple[PackageLine, ...] = ()  # paragraphs; {field}, {narrative}, {today}, {addressee} are filled in
+    check: tuple[PackageLine, ...] = ()  # checklist items (☐), personalised by if/unless
+    signature: bool = False  # date + signature line at the end of the section
+
+    @field_validator("id")
+    @classmethod
+    def _id(cls, v: str) -> str:
+        if not _ID.match(v):
+            raise ValueError(f"package section id {v!r} must be snake_case")
+        return v
 
 
 class ActionSpec(_Strict):
@@ -106,6 +150,7 @@ class ActionSpec(_Strict):
     when: str | None = None
     instructions: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     demands: Localized = Field(default_factory=dict)  # "requirement" paragraph of the document
+    package: tuple[PackageSection, ...] = ()  # service scenarios: the documents of the package, in order
 
     @field_validator("id")
     @classmethod
@@ -156,6 +201,21 @@ class ClassificationSpec(_Strict):
     examples: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 
 
+class SourceRef(_Strict):
+    """An official page the scenario's requirements come from, and when it was last opened and checked."""
+
+    title: Localized
+    url: str
+    checked_on: date | None = None
+
+    @field_validator("url")
+    @classmethod
+    def _https(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            raise ValueError("source url must be https")
+        return v
+
+
 class Scenario(_Strict):
     id: str
     version: str
@@ -174,6 +234,12 @@ class Scenario(_Strict):
     parties: dict[str, PartySpec] = Field(default_factory=dict)
     actions: tuple[ActionSpec, ...]
     pricing: PricingSpec = Field(default_factory=PricingSpec)
+    # dispute: a claim and escalation steps; service: help to prepare a package of documents (tender bid,
+    # university application, visa…), filed by the person; the result depends on the receiving body.
+    kind: Literal["dispute", "service"] = "dispute"
+    beta: bool = False  # experimental: offered only with EXPERIMENTAL_SCENARIOS=true, marked «Бета»
+    disclaimer: Localized = Field(default_factory=dict)  # shown on the case screen and in the documents
+    sources: tuple[SourceRef, ...] = ()
 
     @field_validator("intake", mode="before")
     @classmethod
@@ -273,6 +339,16 @@ class Scenario(_Strict):
         for lang in self.languages:
             if lang not in self.title:
                 raise ValueError(f"title missing language {lang!r}")
+        for a in self.actions:
+            for sec in a.package:
+                lines = (sec, *sec.text, *sec.check)
+                for ref in {x for ln in lines for x in (ln.if_, getattr(ln, "unless", None)) if x}:
+                    if ref not in field_names:
+                        raise ValueError(f"action {a.id!r}: package {sec.id!r} refers to unknown intake field {ref!r}")
+                for ln in (*sec.text, *sec.check):
+                    for lang in self.languages:
+                        if lang not in ln.t:
+                            raise ValueError(f"action {a.id!r}: package {sec.id!r} line missing language {lang!r}")
         return self
 
     # ---- helpers -------------------------------------------------------

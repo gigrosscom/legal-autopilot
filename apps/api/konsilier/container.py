@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .config import Settings
 from .core.adapters.channels import ChannelAdapter, TelegramChannel, WebChannel
-from .core.adapters.payment import StubPaymentAdapter
+from .core.adapters.payment import build_payments
 from .core.adapters.storage import Storage, build_storage
 from .core.adapters.submission import EmailSubmission, UserSubmits
 from .core.db import make_engine, make_session_factory
@@ -65,6 +65,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     db = make_engine(settings.database_url)
     factory = make_session_factory(db)
     packs = packs or PackRegistry.load(settings.packs_dir)
+    if settings.experimental_scenarios:
+        packs.experimental = True
     storage = storage or build_storage(settings)
     channels = channels or {"web": WebChannel(), "telegram": TelegramChannel(settings.telegram_bot_token)}
     notifier = Notifier(channels)
@@ -76,7 +78,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         pdf=pdf or build_pdf_converter(settings),
         scheduler=scheduler,
         notifier=notifier,
-        payments=StubPaymentAdapter(),
+        payments=build_payments(settings),
         submissions={"user_submits": UserSubmits(),
                      "email": EmailSubmission(settings.smtp_host, settings.smtp_port, settings.smtp_from)},
         config=EngineConfig(qualify_min_confidence=settings.qualify_min_confidence,

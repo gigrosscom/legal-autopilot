@@ -11,18 +11,43 @@ type App = {
   id: number; created_at: string; full_name: string; kind: string; organization: string | null; license_number: string | null;
   city: string | null; specializations: string[] | null; contact: string; message: string | null; wants_expert: boolean;
   status: string; ecp_verified: boolean; ecp_name: string | null; note: string | null;
+  phone: string | null; email: string | null; reject_reason: string | null;
+  checks: { full_name: string | null; phone: string | null; phone_normalized: string | null; license_number: string | null;
+    city: string | null; kind: string | null; ecp: string | null };
+  registries: { title: string; url: string }[];
 };
 type OpsTicket = Ticket & { name: string | null; email: string | null; phone: string | null; language: string };
 type Req = { id: number; case_id: string; lawyer_ref: string | null; full_name: string; phone: string; email: string | null; status: string; note: string | null; created_at: string };
 
-const KIND: Record<string, string> = { advocate: "Адвокат", consultant: "Юридический консультант", ngo: "Правозащитная организация" };
+const KIND: Record<string, string> = {
+  advocate: "Адвокат", legal_consultant: "Юридический консультант", human_rights: "Правозащитник / правозащитная организация",
+  other: "Другое (старая форма)",
+};
+// What a failed automatic check means, for the operator.
+const CHECK: Record<string, string> = {
+  required: "не заполнено", name_words: "нет фамилии и имени полностью", name_chars: "недопустимые символы (цифры, точки…)",
+  name_length: "длина не 2–100 символов", phone_format: "не номер Казахстана (+7 и 10 цифр)",
+  phone_operator: "не казахстанский номер (после +7 не 7xx)", license_format: "мусор вместо номера (нет цифр / лишние знаки)",
+  city_format: "город не буквами", missing: "юрист ещё не вошёл по ЭЦП",
+};
+const norm = (s: string) => s.toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е").split(/\s+/).filter(Boolean).sort().join(" ");
 const APP_STATUS: Record<string, string> = { new: "Новая", verified: "Подтверждена", rejected: "Отклонена" };
 const TICKET_KIND: Record<string, string> = { question: "Вопрос", complaint: "Жалоба", suggestion: "Предложение" };
 const TICKET_STATUS: Record<string, string> = { new: "Новое", in_progress: "В работе", done: "Решено" };
 const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Передана юристу", closed: "Закрыта" };
+type Pay = {
+  id: number; code: string; amount: number; currency: string | null; status: string; method: string; case_id: string;
+  case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
+  claimed_at: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
+};
+const PAY_STATUS: Record<string, string> = {
+  awaiting_confirmation: "Ждёт подтверждения", pending: "Не оплачен", not_found: "Не найдена", paid: "Оплачен",
+};
+const money = (n: number, cur: string | null) => `${n.toLocaleString("ru-RU")} ${cur === "KZT" ? "₸" : cur ?? ""}`;
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-/** Operations centre: the lawyers desk (applications) and the clients desk (questions, complaints, suggestions, requests). */
+/** Operations centre: the lawyers desk (applications) and the clients desk (questions, complaints, suggestions, requests,
+ * document payments by transfer). */
 export default function OpsPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [desk, setDesk] = useState<"lawyers" | "clients">("lawyers");
@@ -102,15 +127,18 @@ function LawyersDesk({ onChange }: { onChange: () => void }) {
     .then(setRows).catch((e) => setError(errorText(e))), [status]);
   useEffect(() => { load(); }, [load]);
 
-  async function update(id: number, body: { status?: string; note?: string }) {
+  async function update(id: number, body: { status?: string; note?: string; reason?: string }) {
     setError(null);
     try {
       await api(`/v1/ops/lawyers/applications/${id}`, { method: "POST", body: JSON.stringify(body) });
       if (body.status) { load(); onChange(); }
+      return true;
     } catch (e) {
       setError(e instanceof ApiError && e.code === "ecp_required"
         ? "Подтвердить можно только после входа юриста по ЭЦП: ФИО и ИИН известны только из сертификата. Попросите юриста войти по ЭЦП в кабинете юриста."
+        : e instanceof ApiError && e.code === "reason_required" ? "Укажите причину отказа — её получит юрист."
         : errorText(e));
+      return false;
     }
   }
 
@@ -133,19 +161,16 @@ function LawyersDesk({ onChange }: { onChange: () => void }) {
             {a.license_number && <><dt className="text-muted">Лицензия / членство</dt><dd>{a.license_number}</dd></>}
             {a.city && <><dt className="text-muted">Город</dt><dd>{a.city}</dd></>}
             {!!a.specializations?.length && <><dt className="text-muted">Специализации</dt><dd>{a.specializations.join(", ")}</dd></>}
-            <dt className="text-muted">Контакт</dt><dd><a className="link" href={a.contact.includes("@") ? `mailto:${a.contact}` : `tel:${a.contact.replace(/[^\d+]/g, "")}`}>{a.contact}</a></dd>
+            {a.phone && <><dt className="text-muted">Телефон</dt><dd><a className="link" href={`tel:${a.phone}`}>{a.phone}</a></dd></>}
+            {a.email && <><dt className="text-muted">E-mail</dt><dd><a className="link" href={`mailto:${a.email}`}>{a.email}</a></dd></>}
+            {!a.phone && <><dt className="text-muted">Контакт</dt><dd><a className="link" href={a.contact.includes("@") ? `mailto:${a.contact}` : `tel:${a.contact.replace(/[^\d+]/g, "")}`}>{a.contact}</a></dd></>}
             {a.wants_expert && <><dt className="text-muted">Эксперт</dt><dd>Готов проверять сценарии</dd></>}
           </dl>
           {a.message && <p className="whitespace-pre-line rounded-xl bg-sand px-3 py-2">{a.message}</p>}
-          <Note value={a.note} onSave={(note) => update(a.id, { note })} />
-          <div className="flex flex-wrap gap-2">
-            {a.status !== "verified" && (
-              <Button icon="check" disabled={!a.ecp_verified} onClick={() => update(a.id, { status: "verified" })}
-                title={a.ecp_verified ? undefined : "Нужен вход юриста по ЭЦП"}>Подтвердить и открыть доступ</Button>
-            )}
-            {a.status !== "rejected" && <Button variant="secondary" onClick={() => update(a.id, { status: "rejected" })}>Отклонить</Button>}
-            {a.status !== "new" && <Button variant="secondary" onClick={() => update(a.id, { status: "new" })}>Вернуть в новые</Button>}
-          </div>
+          <Checklist a={a} />
+          {a.reject_reason && a.status === "rejected" && <p className="text-danger">Причина отказа: {a.reject_reason}</p>}
+          <Note value={a.note} onSave={async (note) => { await update(a.id, { note }); }} />
+          <Decision a={a} update={update} />
           {!a.ecp_verified && a.status === "new" && (
             <p className="text-xs text-muted">Подтверждение станет доступно, когда юрист войдёт по ЭЦП в кабинете юриста — ему приходит эта подсказка на экране заявки.</p>
           )}
@@ -155,17 +180,88 @@ function LawyersDesk({ onChange }: { onChange: () => void }) {
   );
 }
 
+/** The operator's checklist: automatic checks of the form, then the manual comparison with the official registry. */
+function Checklist({ a }: { a: App }) {
+  const c = a.checks;
+  const ecpMatch = a.ecp_name ? norm(a.ecp_name) === norm(a.full_name) : null;
+  const rows: [string, string | null, string][] = [
+    ["ФИО: фамилия и имя полностью", c.full_name, a.full_name],
+    ["ФИО по ЭЦП совпадает с заявкой", a.ecp_verified ? (ecpMatch ? null : "mismatch") : "missing",
+      a.ecp_name ? `ЭЦП: ${a.ecp_name}` : ""],
+    ["Телефон Казахстана", c.phone, c.phone_normalized ?? a.phone ?? a.contact],
+    ["Статус выбран", c.kind, KIND[a.kind] ?? a.kind],
+    ["Номер лицензии / членства", c.license_number, a.license_number ?? (a.kind === "human_rights" ? "не требуется" : "—")],
+    ["Город", c.city, a.city ?? "—"],
+  ];
+  return (
+    <div className="space-y-2 rounded-xl border border-line p-3">
+      <p className="font-semibold">Чек-лист проверки</p>
+      <ul className="space-y-1">
+        {rows.map(([label, err, value]) => (
+          <li key={label} className="flex flex-wrap gap-x-2">
+            <span className={err ? "text-danger" : "text-brand"}>{err ? "✗" : "✓"}</span>
+            <span>{label}</span>
+            {value && <span className="text-muted">— {value}</span>}
+            {err && <span className="text-danger">({err === "mismatch" ? "ФИО по ЭЦП отличается — сверьте вручную" : CHECK[err] ?? err})</span>}
+          </li>
+        ))}
+      </ul>
+      {a.registries.length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-muted">Сверьте ФИО и номер {a.license_number ? <b className="text-ink">{a.license_number}</b> : null} в официальном реестре:</p>
+          <ul className="list-inside list-disc">
+            {a.registries.map((r) => <li key={r.url}><a className="link" href={r.url} target="_blank" rel="noreferrer">{r.title}</a></li>)}
+          </ul>
+          <p className="text-xs text-muted">Позвоните по телефону из заявки и убедитесь, что отвечает заявитель. Результат сверки запишите в заметку.</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">Для правозащитников единого реестра нет: проверьте организацию и полномочия по документам, личность — по ЭЦП. Результат запишите в заметку.</p>
+      )}
+    </div>
+  );
+}
+
+function Decision({ a, update }: { a: App; update: (id: number, body: { status?: string; reason?: string }) => Promise<boolean> }) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {a.status !== "verified" && (
+          <Button icon="check" disabled={!a.ecp_verified} onClick={() => update(a.id, { status: "verified" })}
+            title={a.ecp_verified ? undefined : "Нужен вход юриста по ЭЦП"}>Одобрить: открыть кабинет и каталог</Button>
+        )}
+        {a.status !== "rejected" && !rejecting && <Button variant="secondary" onClick={() => setRejecting(true)}>Отклонить с причиной</Button>}
+        {a.status !== "new" && <Button variant="secondary" onClick={() => update(a.id, { status: "new" })}>Вернуть в новые</Button>}
+      </div>
+      {rejecting && (
+        <div className="space-y-2 rounded-xl border border-line p-3">
+          <label className="block text-xs text-muted">Причина отказа (придёт юристу на e-mail и в кабинет)
+            <textarea className="input mt-1 min-h-20 text-sm text-ink" value={reason} onChange={(e) => setReason(e.target.value)}
+              placeholder="Например: номер лицензии не найден в реестре адвокатов; укажите номер из лицензии и подайте заявку заново." />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" disabled={reason.trim().length < 5}
+              onClick={async () => { if (await update(a.id, { status: "rejected", reason })) { setRejecting(false); setReason(""); } }}>Отклонить</Button>
+            <Button variant="secondary" onClick={() => setRejecting(false)}>Отмена</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientsDesk({ onChange }: { onChange: () => void }) {
-  const [tab, setTab] = useState<"tickets" | "requests">("tickets");
+  const [tab, setTab] = useState<"tickets" | "requests" | "payments">("tickets");
   return (
     <section className="space-y-4">
       <div className="flex gap-2">
-        {([["tickets", "Вопросы, жалобы, предложения"], ["requests", "Заявки юристу"]] as const).map(([k, label]) => (
+        {([["tickets", "Вопросы, жалобы, предложения"], ["requests", "Заявки юристу"], ["payments", "Оплаты документов"]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`min-h-10 rounded-full border px-3 text-sm ${tab === k ? "border-brand bg-brand-50 font-semibold text-brand" : "border-line bg-surface"}`}>{label}</button>
         ))}
       </div>
-      {tab === "tickets" ? <Tickets onChange={onChange} /> : <Requests onChange={onChange} />}
+      {tab === "tickets" ? <Tickets onChange={onChange} /> : tab === "requests" ? <Requests onChange={onChange} /> : <Payments onChange={onChange} />}
     </section>
   );
 }
@@ -263,6 +359,66 @@ function Requests({ onChange }: { onChange: () => void }) {
             {r.status !== "closed" && <Button variant="secondary" onClick={() => update(r.id, { status: "closed" })}>Закрыть</Button>}
             {r.status !== "new" && <Button variant="secondary" onClick={() => update(r.id, { status: "new" })}>Вернуть в новые</Button>}
           </div>
+        </article>
+      ))}
+    </>
+  );
+}
+
+/** Document payments by transfer: the client pressed «Я оплатил(а)»; find the transfer in Kaspi by the code in its comment. */
+function Payments({ onChange }: { onChange: () => void }) {
+  const [status, setStatus] = useState("awaiting_confirmation");
+  const [rows, setRows] = useState<Pay[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const load = useCallback(() => api<Pay[]>(`/v1/ops/clients/payments?status=${status}`)
+    .then(setRows).catch((e) => setError(errorText(e))), [status]);
+  useEffect(() => { load(); }, [load]);
+  async function decide(id: number, decision: "paid" | "not_found", note?: string) {
+    setError(null);
+    setBusy(id);
+    try {
+      await api(`/v1/ops/clients/payments/${id}`, { method: "POST", body: JSON.stringify({ decision, note }) });
+      load(); onChange();
+    } catch (e) {
+      setError(e instanceof ApiError && e.code === "already_paid" ? "Этот счёт уже отмечен оплаченным." : errorText(e));
+    } finally { setBusy(null); }
+  }
+  return (
+    <>
+      <p className="text-sm text-muted">
+        Клиент нажал «Я оплатил(а)». Найдите в Kaspi перевод на эту сумму с кодом в комментарии и отметьте результат —
+        клиент получит уведомление. После «Оплата получена» документ можно подготовить и скачать.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(PAY_STATUS).map(([k, label]) => (
+          <button key={k} onClick={() => setStatus(k)}
+            className={`min-h-10 rounded-full border px-3 text-sm ${status === k ? "border-brand bg-brand-50 font-semibold text-brand" : "border-line bg-surface"}`}>{label}</button>
+        ))}
+      </div>
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+      {rows && rows.length === 0 && <p className="text-muted">Счетов нет.</p>}
+      {rows?.map((p) => (
+        <article key={p.id} className="card space-y-3 text-sm">
+          <p className="flex flex-wrap items-center gap-2">
+            <b className="text-base">Код <span dir="ltr" className="font-mono">{p.code}</span> · {money(p.amount, p.currency)}</b>
+            <span className="chip">{PAY_STATUS[p.status] ?? p.status}</span>
+            <span className="text-xs text-muted">счёт №{p.id} от {when(p.created_at)}{p.claimed_at ? ` · «оплатил(а)» ${when(p.claimed_at)}` : ""}</span>
+          </p>
+          <p>
+            {p.case_title ?? "Дело"} <span className="text-muted">· <span dir="ltr" className="font-mono">{p.case_id.slice(0, 8)}</span></span>
+            {p.client_email && <> · <a className="link" href={`mailto:${p.client_email}`}>{p.client_email}</a></>}
+            {p.client_phone && <> · <a className="link" href={`tel:${p.client_phone.replace(/[^\d+]/g, "")}`}>{p.client_phone}</a></>}
+          </p>
+          {p.decided_at && <p className="text-xs text-muted">Решение: {when(p.decided_at)} · {p.decided_by}{p.note ? ` · ${p.note}` : ""}</p>}
+          {p.status !== "paid" && (
+            <div className="flex flex-wrap gap-2">
+              <Button icon="check" disabled={busy === p.id} onClick={() => decide(p.id, "paid")}>Оплата получена</Button>
+              {p.status !== "not_found" && (
+                <Button variant="secondary" disabled={busy === p.id} onClick={() => decide(p.id, "not_found")}>Не найдена</Button>
+              )}
+            </div>
+          )}
         </article>
       ))}
     </>

@@ -8,7 +8,7 @@ import { Alert, Badge, Button, Icon } from "@/components/ui";
 import { ApiError, api, downloadFile, errorText, type CaseLawyer, type CaseView } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
-type LawyerMe = { applications: { id: number; status: string; name: string; kind: string }[]; verified: boolean; has_ecp: boolean };
+type LawyerMe = { applications: { id: number; status: string; name: string; kind: string; reject_reason?: string | null }[]; verified: boolean; has_ecp: boolean };
 type LawyerCase = CaseView & CaseLawyer;
 
 export default function LawyerCabinet() {
@@ -35,7 +35,8 @@ export default function LawyerCabinet() {
 
       {me && !(me.verified && me.has_ecp) && (
         <LawyerSteps s={{ applied: me.applications.length > 0, hasEcp: me.has_ecp,
-          status: (me.applications[0]?.status as LawyerStatus["status"]) ?? null }} />
+          status: (me.applications[0]?.status as LawyerStatus["status"]) ?? null,
+          rejectReason: me.applications[0]?.reject_reason ?? null }} />
       )}
 
       {cases && cases.length === 0 && <p className="text-muted">{t("lawyer.noCases")}</p>}

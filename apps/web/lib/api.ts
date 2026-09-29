@@ -75,6 +75,9 @@ export type CaseView = {
     title: string;
     draft: boolean;
     draft_disclaimer: string | null;
+    kind?: "dispute" | "service";
+    beta?: boolean;  // experimental scenario (EXPERIMENTAL_SCENARIOS): marked «Бета»
+    disclaimer?: string | null;
     price: { amount: number; currency: string };
   } | null;
   facts: { field: string; label: string; value: string }[];
@@ -84,12 +87,25 @@ export type CaseView = {
   proposal: Proposal | null;
   roadmap: Roadmap | null;
   plan: Plan | null;
+  payment: Payment | null;
   outcome: { result: string; amount_recovered: string | null; currency: string | null; days_to_resolution: number; resolved_at_step: string | null } | null;
   // admin only
   raw_facts?: Record<string, string>;
   audit?: { at: string; actor: string; event: string; from: string | null; to: string | null; data: Record<string, unknown> }[];
   initial_text?: string;
   qualification_confidence?: number | null;
+};
+
+/** Document payment by transfer: price, invoice status and, while unpaid, where to transfer (null when free). */
+export type Payment = {
+  amount: number;
+  currency: string | null;
+  status: "none" | "pending" | "awaiting_confirmation" | "not_found" | "paid";
+  method: string;
+  available: boolean;
+  code: string | null;
+  recipient_name: string | null;
+  kaspi_phone: string | null;
 };
 
 export type RoadmapStep = {

@@ -57,7 +57,7 @@ Telegram: создайте бота у @BotFather, укажите `TELEGRAM_BOT_
 ```bash
 # API (SQLite + локальные файлы по умолчанию)
 cd apps/api && pip install -e ".[dev]"
-alembic upgrade head
+alembic upgrade heads   # «heads»: parallel branches may each add a migration
 uvicorn --factory konsilier.main:app_factory --reload --port 8000
 
 # Бот
@@ -215,7 +215,9 @@ POST /v1/cases/{id}/close {result, amount_recovered}
 
 ## Что заглушено в v0.1
 
-* **Оплата** — `StubPaymentAdapter` сразу помечает счёт оплаченным.
+* **Оплата** — вручную: перевод на Kaspi по реквизитам из `.env` (`PAYMENT_MODE=manual_transfer`,
+  `PAYMENT_RECIPIENT_NAME`, `PAYMENT_KASPI_PHONE`), оператор клиентского стола подтверждает его в `/ops`;
+  документ готовится и скачивается после подтверждения. `PAYMENT_MODE=stub` (тесты, разработка) оплачивает сразу.
 * **Голос** — нет (заготовка на уровне каналов: сообщение → текст).
 * **Авторизация** — анонимный токен в браузере, Telegram ID в боте; админка по одному токену.
 * **Фото** — сохраняются, но без OCR; в LLM не отправляются по умолчанию.

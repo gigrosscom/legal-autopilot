@@ -51,7 +51,15 @@ class Settings(BaseSettings):
     # new items of the desk are also e-mailed to these addresses.
     ops_lawyers_emails: str = "info@konsilier.com"  # lawyers desk: applications of advocates and lawyers
     ops_clients_emails: str = "info@konsilier.com"  # clients desk: questions, complaints, suggestions, lawyer requests
-    terms_version: str = "2026-09-28.3"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
+    terms_version: str = "2026-09-29"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
+    # Document payment (konsilier/core/adapters/payment.py): manual_transfer — a transfer to the Kaspi number below,
+    # confirmed by the clients desk in /ops; stub — every invoice is paid at once (tests, development only).
+    # Recipient and number live only in the server's .env; while either is empty, documents are not issued.
+    payment_mode: str = "manual_transfer"
+    payment_recipient_name: str = ""  # recipient's name as the payer's banking app shows it
+    payment_kaspi_phone: str = ""  # Kaspi number to transfer to
+    payment_comment_prefix: str = ""  # optional prefix of the payment code in the transfer comment
+    payment_notify_emails: str = ""  # also get «клиент оплатил» letters (comma-separated), without access to /ops
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
@@ -96,6 +104,8 @@ class Settings(BaseSettings):
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
 
     telegram_bot_token: str | None = None
+    # Beta scenarios (tender bid, admission, visa, business…): off in production, on in dev and tests.
+    experimental_scenarios: bool = False
     cors_origins: str = "http://localhost:3000"
 
     @field_validator("database_url")

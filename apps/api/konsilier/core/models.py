@@ -377,6 +377,12 @@ class LawyerApplication(Base):
     iin_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ecp_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     desk_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # lawyers desk: what was checked, when called
+    # the application form (0014): a mobile number, normalized (+7XXXXXXXXXX) (also the duplicate key), an optional
+    # e-mail, the reason told to the lawyer on rejection, and a hash of the sender's IP for the rate limit
+    phone: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
 
 class DemandSignal(Base):
@@ -485,3 +491,26 @@ class TicketMessage(Base):
     operator: Mapped[str | None] = mapped_column(String(200))  # desk operator's e-mail
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Invoice(Base):
+    """A bill for a case's documents (price from the scenario). Manual transfer: pending → the person reports
+    the transfer (awaiting_confirmation) → the clients desk confirms (paid) or does not find it (not_found,
+    the person may report it again). Paid once per case: later documents of the case need no new bill."""
+
+    __tablename__ = "invoices"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    code: Mapped[str] = mapped_column(String(24), unique=True)  # payment code for the transfer comment
+    method: Mapped[str] = mapped_column(String(24))  # manual_transfer | stub
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    # pending | awaiting_confirmation | paid | not_found
+    status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # "I have paid"
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # operator's decision
+    decided_by: Mapped[str | None] = mapped_column(String(200))  # operator's e-mail
+    desk_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
