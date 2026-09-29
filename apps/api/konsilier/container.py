@@ -22,6 +22,7 @@ from .identity.senders import Sender, build_email, build_sms
 from .identity.service import Identities
 from .core.llm import LLMProvider, build_provider
 from .core.notify import Notifier
+from .core.push import PushSender, build_push
 from .core.packs import PackRegistry
 
 
@@ -38,6 +39,7 @@ class Container:
     identities: Identities = field(default_factory=lambda: Identities("change-me-identity"))
     email_sender: Sender | None = None
     sms_sender: Sender | None = None
+    push_sender: PushSender | None = None  # web push, when VAPID keys are set
     signature_verifier: SignatureVerifier | None = None
     reporter: Any = None
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
@@ -117,8 +119,9 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                      identities=Identities(settings.identity_secret),
                      email_sender=email_sender or build_email(settings),
                      sms_sender=sms_sender or build_sms(settings),
+                     push_sender=build_push(settings),
                      signature_verifier=signature_verifier or (NcaNode(settings.ncanode_url) if settings.ncanode_url else None))
-    notifier.outbound = container  # e-mail and SMS for key events go through the container's senders
+    notifier.outbound = container  # e-mail, SMS and push go through the container's senders
     from .reports import CaseReporter
 
     container.reporter = CaseReporter(container)

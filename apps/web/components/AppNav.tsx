@@ -7,16 +7,37 @@ import { Brand } from "@/components/Brand";
 import { LangSelect } from "@/components/Header";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Icon, type IconName } from "@/components/ui";
-import { api, type CaseView } from "@/lib/api";
+import { api, isSignedIn, SIGNED_IN_EVENT, type CaseView } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 /** Routes that are the app (not the website): they get the sidebar on desktop and the tab bar on phones. */
-const APP_ROUTES = ["/start", "/chat", "/cases", "/case", "/documents", "/account"];
+const APP_ROUTES = ["/start", "/chat", "/cases", "/case", "/documents", "/account", "/share"];
 export const isAppRoute = (path: string) => APP_ROUTES.some((r) => path === r || path.startsWith(r + "/"));
 
 export const LAST_CASE_KEY = "konsilier.lastCase";
 
 type Tab = { key: string; href: string; icon: IconName; match: (p: string) => boolean };
+
+/** false while this device is not signed in (the app then offers «Войти»); null until known. */
+export function useSignedIn(): boolean | null {
+  const [value, setValue] = useState<boolean | null>(null);
+  useEffect(() => {
+    const check = () => { isSignedIn().then(setValue); };
+    check();
+    window.addEventListener(SIGNED_IN_EVENT, check);
+    return () => window.removeEventListener(SIGNED_IN_EVENT, check);
+  }, []);
+  return value;
+}
+
+function SignInLink({ className }: { className: string }) {
+  const t = useT();
+  return (
+    <Link href="/account" className={className} aria-label={t("app.signIn")}>
+      <Icon name="login" size={18} /><span className="max-[359px]:sr-only">{t("app.signIn")}</span>
+    </Link>
+  );
+}
 
 function useTabs(): Tab[] {
   const [last, setLast] = useState<string | null>(null);
@@ -35,6 +56,7 @@ export function TabBar({ inline = false }: { inline?: boolean }) {
   const t = useT();
   const path = usePathname();
   const tabs = useTabs();
+  const signed = useSignedIn();
   return (
     <nav aria-label={t("nav.main")}
       className={`${inline ? "" : "fixed inset-x-0 bottom-0 z-30"} border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden`}>
@@ -46,7 +68,7 @@ export function TabBar({ inline = false }: { inline?: boolean }) {
               <Link href={tab.href} aria-current={on ? "page" : undefined}
                 className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] ${on ? "font-semibold text-ink" : "text-muted hover:text-ink"}`}>
                 <Icon name={tab.icon} size={22} strokeWidth={on ? 2.1 : 1.6} />
-                <span className="max-w-full truncate px-0.5">{t(`app.tabs.${tab.key}`)}</span>
+                <span className="max-w-full truncate px-0.5">{t(tab.key === "profile" && signed === false ? "app.signIn" : `app.tabs.${tab.key}`)}</span>
               </Link>
             </li>
           );
@@ -61,6 +83,7 @@ export function Sidebar() {
   const t = useT();
   const path = usePathname();
   const tabs = useTabs();
+  const signed = useSignedIn();
   const [cases, setCases] = useState<CaseView[]>([]);
   // once per page: the list only feeds the «recent cases» links
   useEffect(() => { api<CaseView[]>("/v1/cases").then(setCases).catch(() => {}); }, []);
@@ -102,6 +125,9 @@ export function Sidebar() {
         </div>
       )}
       <div className="mt-auto space-y-3 border-t border-line pt-4">
+        {signed === false && (
+          <SignInLink className="btn-ghost min-h-10 w-full justify-center gap-2 text-sm" />
+        )}
         <LangSelect />
         <Link href="/" className="flex min-h-10 items-center justify-between rounded-xl px-3 text-sm text-ink-soft hover:bg-sand-deep">
           {t("app.toSite")}<Icon name="external" size={18} className="text-muted" />
@@ -111,13 +137,17 @@ export function Sidebar() {
   );
 }
 
-/** Phone top bar of the app list screens: brand, notifications and language. */
+/** Phone top bar of the app list screens: brand, «Войти» while not signed in, notifications and language. */
 export function AppTopBar() {
+  const signed = useSignedIn();
   return (
     <header className="sticky top-0 z-20 border-b border-black/[0.08] bg-[rgb(250_250_252/0.92)] pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-[rgb(250_250_252/0.8)] supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8] lg:hidden">
       <div className="flex h-14 items-center justify-between px-5">
         <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
         <div className="flex items-center gap-1">
+          {signed === false && (
+            <SignInLink className="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-brand hover:bg-black/[0.05]" />
+          )}
           <NotificationBell />
           <LangSelect />
         </div>

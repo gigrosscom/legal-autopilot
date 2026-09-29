@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
+import { PushToggle } from "@/components/PushToggle";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -100,6 +101,8 @@ export default function AccountPage() {
           );
         })}
       </section>
+
+      <PushToggle />
 
       {me && <ReportsToggle me={me} onChange={setMe} />}
 
@@ -213,8 +216,10 @@ function EgovForm({ onDone }: { onDone: (r: SignedIn) => void }) {
             <p className="text-muted">{t("account.egov.scan")}</p>
             <p className="text-muted">{t("account.egov.onPhone")}</p>
             <div className="flex flex-wrap gap-2">
-              <a className="btn-ghost" href={start.links.egov_mobile}>eGov Mobile</a>
-              <a className="btn-ghost" href={start.links.egov_business}>eGov Business</a>
+              {/* a new window: from the installed app the link leaves for the browser, which hands it to eGov Mobile;
+                  the app keeps waiting for the signature here */}
+              <a className="btn-ghost" href={start.links.egov_mobile} target="_blank" rel="noopener noreferrer">eGov Mobile</a>
+              <a className="btn-ghost" href={start.links.egov_business} target="_blank" rel="noopener noreferrer">eGov Business</a>
             </div>
             <p className="flex items-center gap-2 text-muted" role="status"><Icon name="spinner" size={16} />{t("account.egov.waiting")}</p>
           </div>

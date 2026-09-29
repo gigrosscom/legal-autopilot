@@ -46,6 +46,10 @@ services:
         NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
         NEXT_PUBLIC_TELEGRAM_BOT: ${TELEGRAM_BOT_USERNAME:-}
     restart: unless-stopped
+    environment:
+      # /.well-known/assetlinks.json for the Google Play app (docs/app-stores.md); empty → nothing is claimed
+      ANDROID_PACKAGE: ${ANDROID_PACKAGE:-com.konsilier.app}
+      ANDROID_CERT_SHA256: ${ANDROID_CERT_SHA256:-}
 
   bot:
     build: {context: .., dockerfile: apps/bot/Dockerfile}

@@ -17,3 +17,7 @@ Target: Yandex Cloud region `kz1` (or any Ubuntu 24.04 server in Kazakhstan).
 5. Backups: `konsilier-backup.timer` daily at 03:30 → `backups/` in the bucket.
 
 Restore: download a dump from the bucket, `gunzip -c dump.sql.gz | psql "$DATABASE_URL"`.
+
+Push notifications (the site and the installed app): run `python deploy/vapid_keys.py` once, put the three printed
+`VAPID_*` lines into the env (e.g. `python deploy/yc_set_env.py VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=@VAR`). Keep the
+pair: a new one drops every subscription. Store apps (Google Play assetlinks: `ANDROID_CERT_SHA256`): `docs/app-stores.md`.

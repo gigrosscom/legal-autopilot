@@ -22,6 +22,7 @@ export default function Footer() {
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
           <Link href="/how-it-works" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.howItWorks")}</Link>
           <Link href="/coverage" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.coverage")}</Link>
+          <Link href="/app" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.app")}</Link>
           <Link href="/support" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.support")}</Link>
         </nav>
         {LAWYERS_PUBLIC && <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">

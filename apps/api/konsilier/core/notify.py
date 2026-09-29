@@ -5,6 +5,8 @@ Key events also go further:
 - e-mail, for `EMAIL_KINDS`, to a verified address while the person keeps e-mail on;
 - SMS, only when the caller marks the event critical (document ready, payment confirmed, the response deadline
   due today or expired), to a verified phone, and never at night in the pack's local time (`QUIET_HOURS`).
+Every notification also goes as a web push to each device the person turned notifications on for (see core/push);
+a device the push service reports gone is forgotten.
 A failed delivery never breaks the case flow: it is logged and written to the row.
 """
 
@@ -18,7 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .adapters.channels import ChannelAdapter
-from .models import Case, Identity, Notification, User
+from .models import Case, Identity, Notification, PushSubscription, User, utcnow
+from .push import MAX_FAILURES, PushGone, payload
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +55,8 @@ class Notifier:
     def __init__(self, channels: dict[str, ChannelAdapter], packs: Any = None):
         self.channels = channels
         self.packs = packs
-        # what e-mail and SMS go through: the container (email_sender, sms_sender, settings), set once it is built;
+        # what e-mail, SMS and push go through: the container (email_sender, sms_sender, push_sender, settings), set
+        # once it is built;
         # read on every send, so tests can swap the senders
         self.outbound: Any = None
         self.clock: Callable[[], datetime] | None = None  # tests: fixed "now" for quiet hours
@@ -64,7 +68,7 @@ class Notifier:
     def notify_user(self, session: Session, user: User, kind: str, text: str, case: Case | None = None, *,
                     sms: str | None = None) -> Notification:
         """A message to a person, about one of their cases or about the account (e.g. a referral bonus). E-mail and
-        SMS go out only for a case (their texts and link come from its pack)."""
+        SMS go out only for a case (their texts and link come from its pack); push goes out for every message."""
         channel = self.channels.get(user.channel) or self.channels["web"]
         n = Notification(user_id=user.id, case_id=case.id if case is not None else None, channel=channel.name,
                          kind=kind, text=text)
@@ -84,10 +88,44 @@ class Notifier:
             except Exception as e:  # noqa: BLE001 — same: logged and kept on the row
                 log.warning("notification %s via %s failed: %s", kind, name, e)
                 errors.append(f"{name}: {e}")
+        try:
+            if self._push(session, user, text, case):
+                via.append("push")
+        except Exception as e:  # noqa: BLE001 — same
+            log.warning("notification %s via push failed: %s", kind, e)
+            errors.append(f"push: {e}")
         n.sent_via = ",".join(via) or None
         n.error = "; ".join(errors) or None
         session.add(n)
         return n
+
+    # ---- web push -----------------------------------------------------
+    def _push(self, session: Session, user: User, text: str, case: Case | None) -> bool:
+        """Sends to every device of the person; True when at least one push service took it. Devices the service
+        reports gone, or failing MAX_FAILURES times in a row, are dropped; other failures raise after the loop."""
+        sender = getattr(self.outbound, "push_sender", None)
+        if sender is None:
+            return False
+        subs = session.scalars(select(PushSubscription).where(PushSubscription.user_id == user.id)).all()
+        body = payload(text, case.id if case is not None else None)
+        sent, failures = False, []
+        for sub in subs:
+            try:
+                sender.send({"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}}, body)
+            except PushGone:
+                session.delete(sub)
+                continue
+            except Exception as e:  # noqa: BLE001 — one device failing never stops the others
+                sub.failed_count = (sub.failed_count or 0) + 1
+                if sub.failed_count >= MAX_FAILURES:
+                    session.delete(sub)
+                failures.append(str(e))
+                continue
+            sub.last_ok_at, sub.failed_count = utcnow(), 0
+            sent = True
+        if failures and not sent:
+            raise RuntimeError(failures[-1])
+        return sent
 
     # ---- e-mail and SMS ---------------------------------------------
     def _pack(self, case: Case) -> Any:

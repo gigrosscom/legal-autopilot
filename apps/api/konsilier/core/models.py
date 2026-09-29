@@ -354,6 +354,21 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PushSubscription(Base):
+    """A browser or installed app that receives web push notifications for a person (one row per device)."""
+
+    __tablename__ = "push_subscriptions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(1024), unique=True)  # the push service URL of this device
+    p256dh: Mapped[str] = mapped_column(String(255))  # the device's public key (base64url)
+    auth: Mapped[str] = mapped_column(String(64))  # the device's auth secret (base64url)
+    user_agent: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # last delivery the service took
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)  # failures in a row; reset on success
+
+
 class WaitlistEntry(Base):
     __tablename__ = "waitlist"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

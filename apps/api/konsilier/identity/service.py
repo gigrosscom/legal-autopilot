@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from ..core.models import Case, Identity, LawyerApplication, LoginChallenge, User
+from ..core.models import Case, Identity, LawyerApplication, LoginChallenge, PushSubscription, User
 from . import normalize as norm
 
 CODE_TTL = timedelta(minutes=10)
@@ -121,6 +121,9 @@ class Identities:
             session.execute(update(Case).where(Case.owner_id == user.id).values(owner_id=owner.id))
             # so do lawyer applications sent from this device before signing in
             session.execute(update(LawyerApplication).where(LawyerApplication.user_id == user.id)
+                            .values(user_id=owner.id))
+            # and this device's push notifications
+            session.execute(update(PushSubscription).where(PushSubscription.user_id == user.id)
                             .values(user_id=owner.id))
             # and unused referral bonus documents
             owner.bonus_documents += user.bonus_documents
