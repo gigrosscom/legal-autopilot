@@ -4,7 +4,7 @@ const tr: Dict = {
   nav: {
     account: "Giriş",
     start: "Başla", cases: "Dosyalarım", admin: "Yönetim", lawyers: "Avukatlar", forLawyers: "Avukatlar için",
-    howItWorks: "Nasıl çalışır", coverage: "Kapsam", menu: "Menü", language: "Dil",
+    howItWorks: "Nasıl çalışır", coverage: "Hizmetler", menu: "Menü", language: "Dil",
     skip: "İçeriğe geç", main: "Ana menü",
   },
   legal: {
@@ -214,13 +214,13 @@ const tr: Dict = {
     pathEyebrow: "Yol haritası",
     pathTitle: "Dosyanız nasıl ilerler",
     pathLead: "Her adımda kimin kontrol ettiği ve avukatın ne zaman devreye girdiği görünür.",
-    levelsEyebrow: "Kapsam konusunda şeffafız",
+    levelsEyebrow: "Neler yapabildiğimiz konusunda şeffafız",
     levelsTitle: "Üç seviye: dosyanızın hangisinde olduğunu hep bilirsiniz",
     levelsLead: "Tüm yol boyunca yanınızdayız: belge, başvuru, süre takibi ve gerektiğinde avukat.",
     howLink: "Nasıl çalıştığı hakkında daha fazla",
     coverageTitle: "Kazakistan'da çalışıyoruz. BDT ve Orta Doğu yakında",
     coverageLead: "Özbekistan, Kırgızistan, Azerbaycan, Türkiye, BAE, Suudi Arabistan ve diğer ülkeler açılış planında.",
-    coverageCta: "Ülkelere göre kapsam",
+    coverageCta: "Tüm hizmetler",
     stepsTitle: "Sorudan bir sonraki adıma",
     steps: {
       share: "Bunun uygun olacağı meslektaşlarınız var mı? Onlara bağlantıyı gönderin.",
@@ -489,7 +489,7 @@ const tr: Dict = {
     emptyHint: "Ne olduğunu anlatın — danışmanlık ücretsiz.",
   },
   coverage: {
-    eyebrow: "Kapsam",
+    eyebrow: "Hizmetler",
     title: "Nerede ve hangi konularda yardım ediyoruz",
     lead: "Ülkelere ve hukuk dallarına göre neler çalışıyor: hazır senaryolar nerede, belgeyi nerede size özel hazırlarız ve neler yakında geliyor.",
     legend: "Durumlar ne anlama gelir",
@@ -508,7 +508,7 @@ const tr: Dict = {
     lead: "Sorununuzu anlatın — Konsiliér AI ülkenizin yasalarına göre belgeyi hazırlar, nereye başvuracağınızı söyler, süreleri takip eder ve gerektiğinde doğrulanmış bir avukatı dahil eder.",
     pathTitle: "Dosyanız nasıl ilerler",
     pathLead: "Belge → nereye başvurulur → cevap süresi → sonraki adım → avukat.",
-    levelsTitle: "Üç kapsam seviyesi",
+    levelsTitle: "Üç yardım seviyesi",
     levelsLead: "Seviye otomatik belirlenir ve dosyada her zaman gösterilir.",
     level: {
       verified: { title: "Doğrulanmış senaryo", when: "Avukatın mevzuatı, süreleri ve muhatapları onayladığı sık durumlar için.", get: { 1: "Doğrulanmış şablona göre belge", 2: "Yasadan cevap süreleri ve hatırlatmalar", 3: "Önceden bilinen zincire göre sonraki adım" } },
