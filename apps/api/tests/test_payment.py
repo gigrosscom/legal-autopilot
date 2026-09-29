@@ -58,14 +58,17 @@ def test_manual_transfer_full_path(ctx):
     ctx.container.email_sender = outbox
     api, cid = qualified_case(ctx)
 
-    # first try: no document, an invoice with the price, requisites and a payment code
+    # first try: no document; the person chooses one document (1 990 ₸) or «Дело под ключ» (9 990 ₸)
     out = api.post(f"/v1/cases/{cid}/actions/next")
     assert out["action_id"] is None and out["case"]["status"] == "qualified" and out["case"]["actions"] == []
-    pay = out["payment"]
+    assert out["payment"]["status"] == "none" and out["payment"]["code"] is None
+    assert out["payment"]["options"] == [{"purpose": "document", "amount": 1990}, {"purpose": "case", "amount": 9990}]
+    pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
     assert pay["amount"] == 1990 and pay["currency"] == "KZT" and pay["status"] == "pending"
+    assert pay["purpose"] == "document"
     assert pay["recipient_name"] == RECIPIENT and pay["kaspi_phone"] == PHONE and pay["code"].startswith("KA-")
-    # pressing again keeps the same invoice
-    again = api.post(f"/v1/cases/{cid}/actions/next")["payment"]
+    # asking again keeps the same invoice
+    again = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
     assert again["code"] == pay["code"]
 
     # "I have paid" → awaiting confirmation, the clients desk is e-mailed with the code
@@ -94,10 +97,11 @@ def test_manual_transfer_full_path(ctx):
     assert ctx.client.post(f"/v1/ops/clients/payments/{rows[0]['id']}", headers=cl.h,
                            json={"decision": "not_found"}).status_code == 409
 
-    # now the document is prepared and downloadable
+    # now the document is prepared and downloadable; the paid document is used up
+    assert api.get(f"/v1/cases/{cid}").json()["payment"]["credits"] == 1
     case = api.post(f"/v1/cases/{cid}/actions/next")["case"]
     a = case["actions"][0]
-    assert case["payment"]["status"] == "paid" and a["downloadable"] is True
+    assert a["downloadable"] is True and case["payment"]["credits"] == 0
     api.get(f"/v1/cases/{cid}/actions/{a['id']}/document?format=docx")
     with ctx.container.session_factory() as s:
         events = [e.event for e in s.scalars(select(AuditLog).where(AuditLog.case_id == uuid.UUID(cid)))]
@@ -123,6 +127,8 @@ def test_download_is_locked_until_paid(ctx):
     with ctx.container.session_factory() as s:
         c = s.get(Case, uuid.UUID(cid))
         c.paid = False
+        for act in c.actions:
+            act.unlocked_by = None
         s.query(Invoice).delete()
         s.commit()
     manual(ctx)
@@ -134,7 +140,7 @@ def test_download_is_locked_until_paid(ctx):
 def test_stub_mode_pays_at_once_and_universal_path_is_priced(ctx):
     api, cid = qualified_case(ctx)
     case = api.post(f"/v1/cases/{cid}/actions/next")["case"]
-    assert case["status"] == "action_ready" and case["payment"]["status"] == "paid"
+    assert case["status"] == "action_ready" and case["actions"][0]["downloadable"] is True
     # universal path documents cost as much as the cheapest verified scenario of the country
     from .test_coverage_levels import _universal_case
 
@@ -142,3 +148,66 @@ def test_stub_mode_pays_at_once_and_universal_path_is_priced(ctx):
     case2 = api.post(f"/v1/cases/{cid2}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
     assert case2["scenario"]["id"].startswith("kz.generic.")
     assert case2["scenario"]["price"] == {"amount": 1990, "currency": "KZT", "model": "fixed"}
+
+
+def test_one_document_or_the_whole_case(ctx):
+    """1 990 ₸ pays for one document; «Дело под ключ» for every document of the case; switching the choice before
+    paying cancels the first bill."""
+    manual(ctx)
+    api, cid = qualified_case(ctx)
+    eng = ctx.container.engine
+    first = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]["code"]
+    whole = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "case"})["case"]["payment"]
+    assert whole["purpose"] == "case" and whole["amount"] == 9990 and whole["code"] != first
+    with ctx.container.session_factory() as s:
+        assert s.scalar(select(Invoice).where(Invoice.code == first)).status == "cancelled"
+        case = s.get(Case, uuid.UUID(cid))
+        # a paid single document is spent on one document only
+        case.doc_credits = 1
+        assert eng.unlock_source(s, case) == "credit"
+        case.doc_credits = 0
+        assert eng.unlock_source(s, case) is None
+        inv = s.scalar(select(Invoice).where(Invoice.code == whole["code"]))
+        eng.decide_payment(s, inv, "support@konsilier.com", True)
+        assert case.paid and eng.unlock_source(s, case) == "case"
+        s.commit()
+    view = api.get(f"/v1/cases/{cid}").json()["payment"]
+    assert view["status"] == "paid" and view["case_paid"] is True and view["options"] == []
+    r = ctx.client.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "case"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "already_paid"
+
+
+def test_business_plan_subscription(ctx):
+    """«Бизнес»: a bill without a case, confirmed by the clients desk, gives 30 days with 20 documents."""
+    manual(ctx)
+    st = ctx.container.settings
+    st.ops_clients_emails = "support@konsilier.com"
+    ctx.container.email_sender = Outbox()
+    api, cid = qualified_case(ctx)
+    r = ctx.client.post("/v1/plans/biz/invoice", headers=api.h)
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "contact_required"  # not signed in
+    with ctx.container.session_factory() as s:
+        owner = s.get(Case, uuid.UUID(cid)).owner
+        owner.email = "owner@firm.kz"
+        s.commit()
+    view = api.post("/v1/plans/biz/invoice")
+    assert view["plans"]["biz"] == {"price": 29990, "documents": 20, "days": 30}
+    inv = view["invoice"]
+    assert inv["purpose"] == "plan" and inv["plan"] == "biz" and inv["amount"] == 29990
+    assert inv["kaspi_phone"] == PHONE and inv["status"] == "pending"
+    assert ctx.client.post("/v1/plans/nope/invoice", headers=api.h).status_code == 409
+    assert api.post("/v1/plans/invoice/claim")["invoice"]["status"] == "awaiting_confirmation"
+
+    cl = operator(ctx, "support@konsilier.com")
+    row = cl.get("/v1/ops/clients/payments").json()[0]
+    assert row["case_id"] is None and row["case_title"] == "Тариф «Бизнес»" and row["purpose"] == "plan"
+    cl.post(f"/v1/ops/clients/payments/{row['id']}", json={"decision": "paid"})
+
+    plans = api.get("/v1/plans").json()
+    assert plans["invoice"] is None
+    assert {k: plans["subscription"][k] for k in ("plan", "documents", "left")} == {"plan": "biz", "documents": 20,
+                                                                                   "left": 20}
+    # the subscription pays for the owner's documents
+    case = api.post(f"/v1/cases/{cid}/actions/next")["case"]
+    assert case["actions"][0]["downloadable"] is True
+    assert api.get("/v1/plans").json()["subscription"]["left"] == 19

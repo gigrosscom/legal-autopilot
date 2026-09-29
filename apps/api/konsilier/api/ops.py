@@ -231,8 +231,11 @@ def update_request(req_id: int, body: RequestUpdate, session: Session = Depends(
 
 
 # ------------------------------------------------------------------ clients desk: document payments
+PLAN_RU = {"biz": "Бизнес", "bizpro": "Бизнес Про"}
+
+
 def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[str, Any]:
-    case = session.get(Case, inv.case_id)
+    case = session.get(Case, inv.case_id) if inv.case_id else None
     owner = session.get(User, inv.user_id)
     title = None
     if case is not None and case.scenario_id:
@@ -240,8 +243,11 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
             title = container.engine.pack_of(case).localized(container.engine.scenario_of(case).title, "ru")
         except Exception:  # noqa: BLE001 — a removed scenario must not hide the payment
             title = case.scenario_id
+    if inv.purpose == "plan":
+        title = f"Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}»"
     return {"id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
-            "status": inv.status, "method": inv.method, "case_id": str(inv.case_id), "case_title": title,
+            "status": inv.status, "method": inv.method, "purpose": inv.purpose, "plan": inv.plan,
+            "case_id": str(inv.case_id) if inv.case_id else None, "case_title": title,
             "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,
             "created_at": inv.created_at.isoformat(), "claimed_at": inv.claimed_at.isoformat() if inv.claimed_at else None,
             "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
@@ -276,10 +282,14 @@ def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = De
         raise HTTPException(409, {"code": e.code, "message": e.code}) from e
     owner = session.get(User, inv.user_id)
     if owner is not None and owner.email and container.email_sender is not None:
-        text = ("Оплата получена. Документ можно подготовить и скачать в карточке дела: "
-                f"https://konsilier.com/case/{inv.case_id}") if body.decision == "paid" else (
-            f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
-            f"«Я оплатил(а)» ещё раз: https://konsilier.com/case/{inv.case_id}")
+        where = (f"https://konsilier.com/case/{inv.case_id}" if inv.case_id else "https://konsilier.com/plans")
+        if body.decision == "paid":
+            text = (f"Оплата получена. Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}» подключён: {where}"
+                    if inv.purpose == "plan" else f"Оплата получена. Документ можно подготовить и скачать в карточке "
+                                                  f"дела: {where}")
+        else:
+            text = (f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
+                    f"«Я оплатил(а)» ещё раз: {where}")
         try:
             container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}", text)
         except Exception:  # noqa: BLE001

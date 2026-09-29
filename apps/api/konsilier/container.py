@@ -106,7 +106,11 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                             self_service=settings.self_service,
                             self_service_documents=tuple(d.strip() for d in settings.self_service_documents.split(",")
                                                          if d.strip()),
-                            extract_images_with_llm=settings.extract_images_with_llm),
+                            extract_images_with_llm=settings.extract_images_with_llm,
+                            case_price=settings.plan_case_price,
+                            plans={"biz": (settings.plan_biz_price, settings.plan_biz_documents),
+                                   "bizpro": (settings.plan_bizpro_price, settings.plan_bizpro_documents)},
+                            plan_days=settings.plan_period_days, plan_currency=settings.plan_currency),
     )
     container = Container(settings, db, factory, packs, storage, scheduler, notifier, engine,
                      identities=Identities(settings.identity_secret),

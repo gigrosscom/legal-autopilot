@@ -36,12 +36,14 @@ const TICKET_KIND: Record<string, string> = { question: "Вопрос", complain
 const TICKET_STATUS: Record<string, string> = { new: "Новое", in_progress: "В работе", done: "Решено" };
 const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Передана юристу", closed: "Закрыта" };
 type Pay = {
-  id: number; code: string; amount: number; currency: string | null; status: string; method: string; case_id: string;
-  case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
+  id: number; code: string; amount: number; currency: string | null; status: string; method: string;
+  purpose: string | null; plan: string | null; case_id: string | null; case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
   claimed_at: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
 };
+const PAY_PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ" };
 const PAY_STATUS: Record<string, string> = {
   awaiting_confirmation: "Ждёт подтверждения", pending: "Не оплачен", not_found: "Не найдена", paid: "Оплачен",
+  cancelled: "Отменён",
 };
 const money = (n: number, cur: string | null) => `${n.toLocaleString("ru-RU")} ${cur === "KZT" ? "₸" : cur ?? ""}`;
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -388,7 +390,8 @@ function Payments({ onChange }: { onChange: () => void }) {
     <>
       <p className="text-sm text-muted">
         Клиент нажал «Я оплатил(а)». Найдите в Kaspi перевод на эту сумму с кодом в комментарии и отметьте результат —
-        клиент получит уведомление. После «Оплата получена» документ можно подготовить и скачать.
+        клиент получит уведомление. «Один документ» открывает один документ дела, «Дело под ключ» — все документы дела,
+        тариф «Бизнес» / «Бизнес Про» — подписку на 30 дней с лимитом документов.
       </p>
       <div className="flex flex-wrap gap-2">
         {Object.entries(PAY_STATUS).map(([k, label]) => (
@@ -406,7 +409,8 @@ function Payments({ onChange }: { onChange: () => void }) {
             <span className="text-xs text-muted">счёт №{p.id} от {when(p.created_at)}{p.claimed_at ? ` · «оплатил(а)» ${when(p.claimed_at)}` : ""}</span>
           </p>
           <p>
-            {p.case_title ?? "Дело"} <span className="text-muted">· <span dir="ltr" className="font-mono">{p.case_id.slice(0, 8)}</span></span>
+            {p.case_title ?? "Дело"}{p.case_id && <span className="text-muted"> · <span dir="ltr" className="font-mono">{p.case_id.slice(0, 8)}</span></span>}
+            {p.purpose && p.purpose !== "plan" && <span className="text-muted"> · {PAY_PURPOSE[p.purpose] ?? p.purpose}</span>}
             {p.client_email && <> · <a className="link" href={`mailto:${p.client_email}`}>{p.client_email}</a></>}
             {p.client_phone && <> · <a className="link" href={`tel:${p.client_phone.replace(/[^\d+]/g, "")}`}>{p.client_phone}</a></>}
           </p>

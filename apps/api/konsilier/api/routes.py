@@ -440,7 +440,7 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
     try:
         action = container.engine.prepare_next_action(session, case, f"user:{user.id}")
     except EngineError as e:
-        if e.code == "payment_required":  # not an error: the invoice is kept and the payment screen is shown
+        if e.code == "payment_required":  # not an error: the payment screen is shown
             session.flush()
             view = case_view(container.engine, session, case)
             return {"action_id": None, "payment": view["payment"], "case": view}
@@ -449,24 +449,95 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
     return {"action_id": str(action.id), "case": case_view(container.engine, session, case)}
 
 
+PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа"}
+
+
+class PaymentIn(BaseModel):
+    purpose: Literal["document", "case"]
+
+
+@router.post("/cases/{case_id}/payment")
+def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(current_user),
+                   session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """A bill for one document (scenario price) or «Дело под ключ» (every document of the case)."""
+    case = load_case(case_id, session, user)
+    try:
+        container.engine.create_invoice(session, user_id=case.owner_id, purpose=body.purpose, case=case,
+                                        actor=f"user:{user.id}")
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    return {"case": case_view(container.engine, session, case)}
+
+
+def _tell_desk_claimed(container: Container, inv, where: str) -> None:
+    notify_team(container, f"{PURPOSE_RU.get(inv.purpose, 'Оплата')} {inv.code}: проверьте перевод",
+                f"Клиент сообщил о переводе {inv.amount} {inv.currency or ''} с кодом {inv.code} в комментарии.\n"
+                f"Счёт №{inv.id}, {where}.\n\n"
+                f"Найдите перевод в Kaspi и отметьте «Оплата получена» или «Не найдена» в оперативном центре: "
+                f"https://konsilier.com/ops", desk="clients",
+                also=container.settings.payment_notify_emails)
+
+
 @router.post("/cases/{case_id}/payment/claim")
 def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
                   container: Container = Depends(get_container)):
     """"I have paid": the invoice waits for the clients desk to find the transfer; the desk gets an e-mail."""
     case = load_case(case_id, session, user)
     try:
-        inv = container.engine.claim_payment(session, case, f"user:{user.id}")
+        inv = container.engine.claim_payment(session, container.engine.invoice_of(session, case), f"user:{user.id}")
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
     if inv.status == "awaiting_confirmation":
-        notify_team(container, f"Оплата документа {inv.code}: проверьте перевод",
-                    f"Клиент сообщил о переводе {inv.amount} {inv.currency or ''} с кодом {inv.code} в комментарии.\n"
-                    f"Счёт №{inv.id}, дело {case.id}.\n\n"
-                    f"Найдите перевод в Kaspi и отметьте «Оплата получена» или «Не найдена» в оперативном центре: "
-                    f"https://konsilier.com/ops", desk="clients",
-                    also=container.settings.payment_notify_emails)
+        _tell_desk_claimed(container, inv, f"дело {case.id}")
     return {"case": case_view(container.engine, session, case)}
+
+
+# ------------------------------------------------------------------ plans («Бизнес», «Бизнес Про»)
+def plans_view(container: Container, session: Session, user: User) -> dict[str, Any]:
+    eng = container.engine
+    cfg = eng.config
+    return {"plans": {k: {"price": v[0], "documents": v[1], "days": cfg.plan_days} for k, v in cfg.plans.items()},
+            "case_price": cfg.case_price, "currency": eng.plan_currency(), "available": eng.payments.available(),
+            "signed_in": bool(user.email or user.phone),
+            "subscription": eng.subscription_view(session, user.id),
+            "invoice": eng.invoice_details(eng.plan_invoice_of(session, user.id))}
+
+
+@router.get("/plans")
+def plans(user: User = Depends(current_user), session: Session = Depends(get_session),
+          container: Container = Depends(get_container)) -> dict[str, Any]:
+    return plans_view(container, session, user)
+
+
+@router.post("/plans/{plan}/invoice")
+def plan_invoice(plan: str, user: User = Depends(current_user), session: Session = Depends(get_session),
+                 container: Container = Depends(get_container)) -> dict[str, Any]:
+    """A bill for a subscription. The person must be signed in: the desk contacts them and the period is theirs."""
+    if not (user.email or user.phone):
+        raise HTTPException(422, {"code": "contact_required", "message": "contact_required"})
+    try:
+        container.engine.create_invoice(session, user_id=user.id, purpose="plan", plan=plan,
+                                        actor=f"user:{user.id}")
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    return plans_view(container, session, user)
+
+
+@router.post("/plans/invoice/claim")
+def plan_claim(user: User = Depends(current_user), session: Session = Depends(get_session),
+               container: Container = Depends(get_container)) -> dict[str, Any]:
+    try:
+        inv = container.engine.claim_payment(session, container.engine.plan_invoice_of(session, user.id),
+                                             f"user:{user.id}")
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    if inv.status == "awaiting_confirmation":
+        _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
+    return plans_view(container, session, user)
 
 
 def _load_action(case: Case, action_id: uuid.UUID, session: Session) -> Action:
@@ -494,7 +565,7 @@ def download_document(case_id: uuid.UUID, action_id: uuid.UUID, format: Literal[
     action = _load_action(case, action_id, session)
     if action.status not in ("ready", "submitted", "responded"):
         raise HTTPException(409, {"code": "awaiting_approval", "message": "document is awaiting lawyer approval"})
-    if not case.paid and container.engine.price(case) is not None:
+    if not container.engine.document_unlocked(case, action):
         raise HTTPException(402, {"code": "payment_required", "message": "document is available after payment"})
     return document_response(container, action, format)
 

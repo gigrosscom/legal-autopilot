@@ -220,7 +220,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   );
 
   return (
-    <AppShell title={t("app.chat")} subtitle="Konsiliér AI" back={caseId ? "/cases" : "/"} sections={sections}
+    <AppShell title={t("app.chat")} subtitle={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections}
       links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}`}>
       <div className="space-y-4" aria-live="polite">
 
@@ -249,7 +249,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           </div>
         ) : (
           <div key={m.id} className="space-y-2">
-            <p className="text-sm font-semibold text-ink"><bdi>Konsiliér AI</bdi></p>
+            <p className="text-sm font-semibold text-ink"><bdi>{t("chat.brand")}</bdi></p>
             <div className="min-w-0 space-y-2 lg:ps-7">
               <p className="whitespace-pre-line text-[16px] leading-[1.7]">{m.text}</p>
               {m.norms.length > 0 && (
@@ -275,7 +275,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {streaming !== null && (
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-ink"><bdi>Konsiliér AI</bdi></p>
+            <p className="text-sm font-semibold text-ink"><bdi>{t("chat.brand")}</bdi></p>
             <div className="min-w-0 lg:ps-7">
               {streaming && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{streaming}</p>}
               <p className="flex items-center gap-2 text-sm text-muted" role="status">

@@ -13,7 +13,7 @@ import logging
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -41,6 +41,7 @@ from .models import (
     Organization,
     Outcome,
     Party,
+    Subscription,
     User,
     utcnow,
 )
@@ -111,6 +112,11 @@ class EngineConfig:
     self_service: bool = True
     self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement", "motion")
     extract_images_with_llm: bool = False
+    case_price: int = 9990  # «Дело под ключ»: every document of one case
+    # subscriptions: plan → (price, documents per period)
+    plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
+    plan_days: int = 30
+    plan_currency: str = ""  # empty: the currency of the jurisdiction pack
 
 
 class CaseEngine:
@@ -700,15 +706,25 @@ class CaseEngine:
         spec = self.next_action_spec(case, sc)
         if spec is None:
             raise EngineError("no_next_action")
-        # a document is prepared only once the case is paid for (the invoice is created here on the first try)
-        if spec.kind != "handoff" and self.payment_due(session, case) is not None:
-            raise EngineError("payment_required")
+        # a document is prepared only once something pays for it: the case plan, a subscription or a paid document
+        via = None
+        if spec.kind != "handoff":
+            via = self.unlock_source(session, case)
+            if via is None and self.payments.method == "stub":  # tests, development: one document, paid at once
+                self.create_invoice(session, user_id=case.owner_id, purpose="document", case=case, actor=actor)
+                via = self.unlock_source(session, case)
+            if via is None:
+                raise EngineError("payment_required" if self.payments.available() else "payment_unavailable")
         if status == S.AWAITING_RESPONSE:
             self.transition(session, case, S.ESCALATED, actor, reason=case.actions[-1].response_class)
         action = Action(case_id=case.id, sequence=len(case.actions) + 1, action_id=spec.id, kind=spec.kind,
                         channel=spec.channel, is_draft_scenario=sc.is_draft)
         session.add(action)
         case.actions.append(action)
+        if via is not None:
+            action.unlocked_by = via
+            if via == "credit":
+                case.doc_credits -= 1
         if spec.kind == "handoff":
             action.status = "done"
             self.transition(session, case, S.HANDED_TO_LAWYER, actor, action=spec.id)
@@ -717,8 +733,10 @@ class CaseEngine:
         return self._render_action(session, case, sc, pack, spec, action, actor)
 
     # ================================================================ payment
+    OPEN = ("pending", "awaiting_confirmation", "not_found")
+
     def price(self, case: Case) -> tuple[Decimal, str | None] | None:
-        """What the case's documents cost (scenario price, paid once per case); None when they are free."""
+        """What one document of the case costs (scenario price); None when the case's documents are free."""
         if not case.scenario_id:
             return None
         sc, pack = self.scenario_of(case), self.pack_of(case)
@@ -726,62 +744,139 @@ class CaseEngine:
             return None
         return Decimal(str(sc.pricing.amount)), sc.pricing.currency or pack.currency
 
-    def invoice_of(self, session: Session, case: Case) -> Invoice | None:
-        return session.scalar(select(Invoice).where(Invoice.case_id == case.id).order_by(Invoice.id.desc()).limit(1))
+    def plan_currency(self) -> str | None:
+        """Currency of subscription bills: PLAN_CURRENCY, else the pack's (plans are sold where one pack runs)."""
+        if self.config.plan_currency:
+            return self.config.plan_currency
+        pack = next(iter(self.packs.packs.values()), None)
+        return pack.currency if pack is not None else None
 
-    def payment_due(self, session: Session, case: Case) -> Invoice | None:
-        """None when documents of the case may be prepared now; otherwise the unpaid invoice (created on the first
-        call). Raises ``payment_unavailable`` when payment cannot be accepted (requisites not configured)."""
+    def active_subscription(self, session: Session, user_id: uuid.UUID) -> tuple[Subscription, int] | None:
+        """The user's current «Бизнес» period with documents left, and how many are left."""
+        now = utcnow()
+        for sub in session.scalars(select(Subscription).where(
+                Subscription.user_id == user_id, Subscription.starts_at <= now, Subscription.ends_at > now)
+                .order_by(Subscription.ends_at)).all():
+            used = session.scalar(select(func.count()).select_from(Action)
+                                  .where(Action.unlocked_by == f"subscription:{sub.id}")) or 0
+            if used < sub.documents:
+                return sub, sub.documents - used
+        return None
+
+    def unlock_source(self, session: Session, case: Case) -> str | None:
+        """What will pay for the next document of the case, or None when payment is needed first."""
+        if self.price(case) is None:
+            return "free"
         if case.paid:
-            return None
-        price = self.price(case)
-        if price is None:
-            return None
-        inv = self.invoice_of(session, case)
-        if inv is not None and inv.status == "paid":
-            case.paid = True
-            return None
+            return "case"
+        active = self.active_subscription(session, case.owner_id)
+        if active is not None:
+            return f"subscription:{active[0].id}"
+        if case.doc_credits > 0:
+            return "credit"
+        return None
+
+    def document_unlocked(self, case: Case, action: Action) -> bool:
+        return case.paid or action.unlocked_by is not None or self.price(case) is None
+
+    def invoice_of(self, session: Session, case: Case) -> Invoice | None:
+        """The case's open bill (not paid yet), if any."""
+        return session.scalar(select(Invoice).where(Invoice.case_id == case.id, Invoice.status.in_(self.OPEN))
+                              .order_by(Invoice.id.desc()).limit(1))
+
+    def plan_invoice_of(self, session: Session, user_id: uuid.UUID) -> Invoice | None:
+        return session.scalar(select(Invoice).where(Invoice.user_id == user_id, Invoice.purpose == "plan",
+                                                    Invoice.status.in_(self.OPEN)).order_by(Invoice.id.desc()).limit(1))
+
+    def create_invoice(self, session: Session, *, user_id: uuid.UUID, purpose: str, case: Case | None = None,
+                       plan: str | None = None, actor: str = "system") -> Invoice:
+        """A bill for one document or the whole case (purpose document | case) or a subscription (plan). An open
+        bill of the same kind is reused; an unclaimed bill of another kind for the same case is cancelled."""
+        if purpose == "plan":
+            if plan not in self.config.plans:
+                raise EngineError("unknown_plan")
+            amount, currency = Decimal(self.config.plans[plan][0]), self.plan_currency()
+            open_inv = self.plan_invoice_of(session, user_id)
+        else:
+            if case is None or purpose not in ("document", "case"):
+                raise EngineError("unknown_purpose")
+            price = self.price(case)
+            if price is None:
+                raise EngineError("free")
+            if purpose == "case" and case.paid:
+                raise EngineError("already_paid")
+            amount = price[0] if purpose == "document" else Decimal(self.config.case_price)
+            currency = price[1]
+            open_inv = self.invoice_of(session, case)
+        if open_inv is not None:
+            if open_inv.purpose == purpose and open_inv.plan == plan:
+                return open_inv
+            if open_inv.status == "awaiting_confirmation":
+                raise EngineError("invoice_awaiting_confirmation")
+            open_inv.status = "cancelled"
         if not self.payments.available():
             raise EngineError("payment_unavailable")
-        if inv is None:
-            bill = self.payments.create_invoice(case_id=str(case.id), amount=price[0], currency=price[1])
-            inv = Invoice(case_id=case.id, user_id=case.owner_id, code=bill.id, method=self.payments.method,
-                          amount=bill.amount, currency=bill.currency, status=bill.status)
-            if bill.status == "paid":
-                inv.decided_at = utcnow()
-            session.add(inv)
-            session.flush()
-            self.audit(session, case, "system", "invoice_created", invoice=inv.code, status=inv.status,
-                       amount=str(inv.amount), currency=inv.currency)
-        if inv.status == "paid":
-            case.paid = True
-            return None
+        bill = self.payments.create_invoice(case_id=str(case.id) if case else "", amount=amount, currency=currency)
+        inv = Invoice(case_id=case.id if case else None, user_id=user_id, purpose=purpose, plan=plan, code=bill.id,
+                      method=self.payments.method, amount=bill.amount, currency=bill.currency, status=bill.status)
+        session.add(inv)
+        session.flush()
+        if case is not None:
+            self.audit(session, case, actor, "invoice_created", invoice=inv.code, purpose=purpose,
+                       status=inv.status, amount=str(inv.amount), currency=inv.currency)
+        if bill.status == "paid":
+            inv.decided_at = utcnow()
+            self._apply_paid(session, inv)
         return inv
 
-    def claim_payment(self, session: Session, case: Case, actor: str) -> Invoice:
+    def _apply_paid(self, session: Session, inv: Invoice) -> None:
+        """What a paid bill gives: a document credit, the whole case, or a subscription period."""
+        if inv.purpose == "plan":
+            now = utcnow()
+            latest = session.scalar(select(func.max(Subscription.ends_at)).where(
+                Subscription.user_id == inv.user_id, Subscription.plan == inv.plan, Subscription.ends_at > now))
+            if latest is not None and latest.tzinfo is None:
+                latest = latest.replace(tzinfo=timezone.utc)
+            start = max(now, latest) if latest is not None else now
+            session.add(Subscription(user_id=inv.user_id, plan=inv.plan, documents=self.config.plans[inv.plan][1],
+                                     starts_at=start, ends_at=start + timedelta(days=self.config.plan_days),
+                                     invoice_id=inv.id))
+            return
+        case = session.get(Case, inv.case_id)
+        if inv.purpose == "document":
+            case.doc_credits += 1
+        else:
+            case.paid = True
+
+    def claim_payment(self, session: Session, inv: Invoice | None, actor: str) -> Invoice:
         """The person reports the transfer ("I have paid"): the clients desk is to check and confirm it."""
-        inv = self.invoice_of(session, case)
-        if inv is None or case.paid:
+        if inv is None or inv.status not in self.OPEN:
             raise EngineError("no_open_invoice")
         if inv.status in ("pending", "not_found"):
             inv.status, inv.claimed_at = "awaiting_confirmation", utcnow()
-            self.audit(session, case, actor, "payment_claimed", invoice=inv.code)
+            if inv.case_id is not None:
+                self.audit(session, session.get(Case, inv.case_id), actor, "payment_claimed", invoice=inv.code)
         return inv
 
     def decide_payment(self, session: Session, inv: Invoice, operator: str, received: bool,
                        note: str | None = None) -> None:
         """The clients desk found the transfer (→ paid) or did not (→ not_found); the person is told either way."""
-        case = session.get(Case, inv.case_id)
         if inv.status == "paid":
             raise EngineError("already_paid")
+        if inv.status == "cancelled":
+            raise EngineError("cancelled")
         inv.status = "paid" if received else "not_found"
         inv.decided_at, inv.decided_by = utcnow(), operator
         if note is not None:
             inv.desk_note = note
+        if received:
+            self._apply_paid(session, inv)
+        if inv.case_id is None:  # a subscription: the desk's e-mail tells the person
+            return
+        case = session.get(Case, inv.case_id)
         pack = self.pack_of(case)
         lang = pack.lang(case.language)
         if received:
-            case.paid = True
             text = pack.t(lang, "notifications.payment_confirmed",
                           default="Оплата получена. Документ можно подготовить и скачать в карточке дела.")
         else:
@@ -792,18 +887,42 @@ class CaseEngine:
                    invoice=inv.code)
         self.notifier.notify(session, case, "payment", text)
 
+    def subscription_view(self, session: Session, user_id: uuid.UUID) -> dict[str, Any] | None:
+        active = self.active_subscription(session, user_id)
+        if active is None:
+            return None
+        sub, left = active
+        return {"plan": sub.plan, "documents": sub.documents, "left": left, "ends_at": sub.ends_at.isoformat()}
+
+    def invoice_details(self, inv: Invoice | None) -> dict[str, Any] | None:
+        if inv is None:
+            return None
+        view = {"id": inv.id, "code": inv.code, "purpose": inv.purpose, "plan": inv.plan, "amount": float(inv.amount),
+                "currency": inv.currency, "status": inv.status, "recipient_name": None, "kaspi_phone": None}
+        if inv.status in self.OPEN:
+            view.update(self.payments.details())
+        return view
+
     def payment_view(self, session: Session, case: Case) -> dict[str, Any] | None:
-        """What the payment screen shows: price, invoice status and, while unpaid, where to transfer."""
+        """What the payment screen shows: whether the next document is paid for, what can be bought, the open bill
+        and, while it is unpaid, where to transfer. status "paid" = the next document can be prepared now."""
         price = self.price(case)
         if price is None:
             return None
         inv = self.invoice_of(session, case)
-        status = "paid" if case.paid else (inv.status if inv else "none")
-        view: dict[str, Any] = {"amount": float(price[0]), "currency": price[1], "status": status,
-                                "method": self.payments.method, "available": self.payments.available(),
-                                "code": inv.code if inv is not None else None,
-                                "recipient_name": None, "kaspi_phone": None}
-        if status not in ("paid", "none"):
+        via = self.unlock_source(session, case)
+        status = "paid" if via is not None else (inv.status if inv is not None else "none")
+        view: dict[str, Any] = {
+            "amount": float(inv.amount if inv is not None else price[0]), "currency": price[1], "status": status,
+            "purpose": inv.purpose if inv is not None else None, "method": self.payments.method,
+            "available": self.payments.available(), "code": inv.code if inv is not None else None,
+            "recipient_name": None, "kaspi_phone": None,
+            "options": [] if case.paid else [
+                {"purpose": "document", "amount": float(price[0])},
+                {"purpose": "case", "amount": float(self.config.case_price)}],
+            "case_paid": case.paid, "credits": case.doc_credits,
+            "subscription": self.subscription_view(session, case.owner_id)}
+        if inv is not None and status != "paid":
             view.update(self.payments.details())
         return view
 

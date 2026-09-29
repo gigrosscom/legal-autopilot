@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     payment_kaspi_phone: str = ""  # Kaspi number to transfer to
     payment_comment_prefix: str = ""  # optional prefix of the payment code in the transfer comment
     payment_notify_emails: str = ""  # also get «клиент оплатил» letters (comma-separated), without access to /ops
+    # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
+    # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
+    plan_case_price: int = 9990
+    plan_biz_price: int = 29990
+    plan_biz_documents: int = 20
+    plan_bizpro_price: int = 59990
+    plan_bizpro_documents: int = 60
+    plan_period_days: int = 30
+    plan_currency: str = ""  # empty: the currency of the jurisdiction pack
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
