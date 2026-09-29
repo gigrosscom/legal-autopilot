@@ -238,3 +238,24 @@ def test_document_prepared_by_itself_once_payment_confirmed(ctx):
     assert any("Документ готов" in n["text"] for n in ctx.client.get("/v1/notifications", headers=api.h).json())
     with ctx.container.session_factory() as s:  # done once only
         assert engine.prepare_paid_documents(s, utcnow() + timedelta(minutes=3)) == 0
+
+
+def test_document_ready_the_moment_the_desk_confirms(ctx):
+    """The text is written while the person pays; the desk's confirmation makes the document at once."""
+    manual(ctx)
+    ctx.container.settings.background_jobs = "inline"
+    ctx.container.settings.ops_clients_emails = "support@konsilier.com"
+    api, cid = qualified_case(ctx)
+    with ctx.container.session_factory() as s:
+        assert s.get(Case, uuid.UUID(cid)).narrative  # written as soon as the interview was done
+    api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})
+    api.post(f"/v1/cases/{cid}/payment/claim")
+    cl = operator(ctx, "support@konsilier.com")
+    inv_id = cl.get("/v1/ops/clients/payments").json()[0]["id"]
+    calls = len(ctx.llm.calls) if hasattr(ctx.llm, "calls") else None
+    cl.post(f"/v1/ops/clients/payments/{inv_id}", json={"decision": "paid"})
+    case = api.get(f"/v1/cases/{cid}").json()
+    assert case["status"] == "action_ready" and case["actions"][0]["downloadable"] is True
+    if calls is not None:
+        assert len(ctx.llm.calls) == calls  # no model call after the payment: only the file is made
+    api.get(f"/v1/cases/{cid}/actions/{case['actions'][0]['id']}/document?format=docx")

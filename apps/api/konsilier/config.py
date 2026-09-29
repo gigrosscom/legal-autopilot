@@ -102,6 +102,8 @@ class Settings(BaseSettings):
 
     soffice_bin: str = "soffice"
     scheduler_interval_seconds: int = 60
+    # work after a request (document text ahead, paid document, PDF): thread | inline | off (tests)
+    background_jobs: str = "thread"
 
     smtp_host: str | None = None
     smtp_port: int = 1025

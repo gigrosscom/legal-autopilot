@@ -23,6 +23,7 @@ from ..core.engine import EngineError
 from ..core.models import (Case, Invoice, LawyerApplication, LawyerRequest, Notification, SupportTicket,
                            TicketMessage, User)
 from ..team import Desk, desks_of
+from .background import after_commit
 from .deps import current_user, get_container, get_session
 from .support import messages_of, ticket_view
 
@@ -280,6 +281,13 @@ def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = De
         container.engine.decide_payment(session, inv, op.email or "operator", body.decision == "paid", body.note)
     except EngineError as e:
         raise HTTPException(409, {"code": e.code, "message": e.code}) from e
+    if body.decision == "paid" and inv.case_id is not None:  # the document is made right away, not on the next visit
+        def prepare(s: Session) -> None:
+            action = container.engine.prepare_after_payment(s, s.get(Invoice, invoice_id))
+            if action is not None and not action.pdf_key and action.docx_key:
+                s.commit()  # the document is shown now; the PDF follows
+                container.engine.ensure_pdf(s, action)
+        after_commit(session, container, prepare, "paid-document")
     owner = session.get(User, inv.user_id)
     if owner is not None and owner.email and container.email_sender is not None:
         where = (f"https://konsilier.com/case/{inv.case_id}" if inv.case_id else "https://konsilier.com/plans")
@@ -289,7 +297,7 @@ def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = De
                                                   f"карточке дела: {where}")
         else:
             text = (f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
-                    f"«Я оплатил(а)» ещё раз: {where}")
+                    f"«Оплатить» ещё раз: {where}")
         try:
             container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}", text)
         except Exception:  # noqa: BLE001

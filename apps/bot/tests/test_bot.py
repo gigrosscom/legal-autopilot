@@ -138,7 +138,7 @@ def test_unpaid_document_shows_transfer_details_and_paid_button():
                         "recipient_name": "Получатель", "kaspi_phone": "+7 700 000 00 00"}}
     screen = case_screen(case)
     assert "1 990 KZT" in screen.text and "KA-7F3K2Q" in screen.text and "+7 700 000 00 00" in screen.text
-    assert ("✅ Я оплатил(а)", "paid:c1") in screen.buttons[0]
+    assert ("✅ Оплатить", "paid:c1") in screen.buttons[0]
     case["payment"]["status"] = "awaiting_confirmation"
     screen = case_screen(case)
     assert "Проверяем перевод" in screen.text and all(b[1] != "paid:c1" for row in screen.buttons for b in row)
