@@ -126,7 +126,7 @@ export default function Home() {
       <section className="band section-y space-y-10">
         <SectionHead title={t("home.priceTitle")} />
         <ul className="grid gap-4 md:grid-cols-3">
-          {([["chat", "chat", "/start"], ["doc", "document", "/start"], ["lawyer", "user", "/lawyers"]] as const).map(([k, icon, href]) => (
+          {([["chat", "chat", "/start"], ["doc", "document", "/start"], ["lawyer", "user", "/start"]] as const).map(([k, icon, href]) => (
               <li key={k}>
                 <Link href={href} className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
                   <Icon name={icon} size={26} className="text-ink" />

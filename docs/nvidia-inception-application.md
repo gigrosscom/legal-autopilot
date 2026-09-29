@@ -1,6 +1,7 @@
 # NVIDIA Inception — application draft (English)
 
-> Fill the `[[…]]` placeholders before submitting. Inception requires an **incorporated
+> Pitch deck (English): https://claude.ai/artifact/28BuTXeCpWdW4yqyVb2ZN5 — download as PDF to upload.
+> Fill the remaining `[[…]]` placeholders before submitting. Inception requires an **incorporated
 > company** (ТОО in Kazakhstan or a Delaware C-corp), a working website on the company
 > domain and a corporate email — apply from **info@konsilier.com**, not a personal mailbox.
 
@@ -8,12 +9,12 @@
 
 ## Company
 
-- **Company name:** [[Legal entity name, e.g. Konsilier AI LLP / Konsilier AI, Inc.]]
+- **Company name:** Konsilier AI LLP (ТОО «Konsilier AI»), BIN 260928355366
 - **Website:** https://konsilier.com
 - **Contact email:** info@konsilier.com
-- **Country of incorporation:** [[Kazakhstan / USA (Delaware)]]
-- **Year founded:** [[2026]]
-- **Employees:** [[N]]
+- **Country of incorporation:** Kazakhstan (registered 29 September 2026)
+- **Year founded:** 2026
+- **Employees:** 1 (founder)
 - **Funding stage:** [[Pre-seed / bootstrapped]]; total raised: [[$0]]
 - **Industry:** Legal Tech / GovTech; AI for consumer legal self-help
 - **Social:** Instagram, LinkedIn, Telegram, TikTok — @konsilier.ai
@@ -63,12 +64,13 @@ The product is live as a web app and an installable PWA (iOS/Android/desktop).
 
 ## Technology & AI usage
 
-- **LLM core:** Anthropic Claude.
-  - A larger model drafts the documents; a fast model handles classification and the
-    interview.
+- **LLM core:** one switchable provider layer.
+  - Anthropic Claude (direct API or Amazon Bedrock) and Google Gemini for drafting and
+    classification.
+  - Open-weight models (Qwen, Kimi) through OpenAI-compatible APIs (Cerebras, Groq,
+    NVIDIA NIM) for the free consultation chat, tried in turn when one is overloaded.
   - We use strict JSON-schema structured outputs, so every model answer is validated
     before it reaches the user.
-  - The provider layer is switchable (direct API or Amazon Bedrock).
 - **Grounding:** scenario packs plus a registry of legal forums and document types.
   Generation is constrained by statute references that are checked against official
   legal texts (a retrieval step over the legislation corpus).
@@ -108,7 +110,7 @@ The product is live as a web app and an installable PWA (iOS/Android/desktop).
 - [[N]] registered users, [[N]] cases opened, [[N]] documents generated,
   [[N]] filed, [[N]] resolved in the user's favour, [[₸ amount]] recovered.
   These numbers come from the admin panel: Admin → Metrics → CSV.
-- Coverage: Kazakhstan, [[N]] legal situations with dedicated scenarios, plus a universal
+- Coverage: Kazakhstan, 20 legal situations with dedicated scenarios, plus a universal
   path for any complaint to a state body. Waitlist open for other countries.
 - [[Pilots / partners / press, if any]]
 
@@ -124,8 +126,8 @@ The product is live as a web app and an installable PWA (iOS/Android/desktop).
 
 ## Team
 
-- **[[Founder name]]** — Founder & CEO. [[Background: 1–2 lines]]. LinkedIn: [[url]]
-- **[[Name]]** — [[Role]]. [[Background]]
+- **Nurlan Khabibulla** — Founder, developer, entrepreneur. Background in law, business and
+  management; designed and built the product end to end. LinkedIn: [[url]]
 - Legal advisors: [[licensed lawyers in Kazakhstan, if any]]
 
 ## Why now
