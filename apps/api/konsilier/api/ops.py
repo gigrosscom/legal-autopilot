@@ -176,6 +176,21 @@ def tickets(status: str | None = None, session: Session = Depends(get_session),
     return [ticket_view(t, msgs[t.id]) for t in rows]
 
 
+# The desk's reply reaches the client in the language the ticket was written in (SupportTicket.language).
+REPLY_MAIL = {
+    "ru": ("Konsiliér AI: ответ на обращение №{n}",
+           "{text}\n\nОбращение №{n}. Ответить можно на странице https://konsilier.com/support"),
+    "kk": ("Konsiliér AI: №{n} өтінішке жауап",
+           "{text}\n\n№{n} өтініш. Жауап беруге болады: https://konsilier.com/support"),
+    "en": ("Konsiliér AI: reply to your request No. {n}",
+           "{text}\n\nRequest No. {n}. You can reply at https://konsilier.com/support"),
+    "tr": ("Konsiliér AI: {n} numaralı başvurunuza yanıt",
+           "{text}\n\nBaşvuru No. {n}. Yanıtlamak için: https://konsilier.com/support"),
+    "ar": ("Konsiliér AI: الرد على طلبك رقم {n}",
+           "{text}\n\nالطلب رقم {n}. يمكنك الرد على الصفحة https://konsilier.com/support"),
+}
+
+
 class DeskReply(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
 
@@ -188,8 +203,8 @@ def reply(ticket_id: int, body: DeskReply, session: Session = Depends(get_sessio
         raise HTTPException(404, "ticket not found")
     session.add(TicketMessage(ticket_id=t.id, author="desk", operator=op.email, text=body.text.strip()))
     t.status, t.updated_at = "in_progress", datetime.now(timezone.utc)
-    _tell(session, container, t.user_id, t.email, f"Konsiliér AI: ответ на обращение №{t.id}",
-          f"{body.text.strip()}\n\nОбращение №{t.id}. Ответить можно на странице https://konsilier.com/support")
+    subject, text = REPLY_MAIL.get((t.language or "ru")[:2], REPLY_MAIL["ru"])
+    _tell(session, container, t.user_id, t.email, subject.format(n=t.id), text.format(n=t.id, text=body.text.strip()))
     session.flush()
     return ticket_view(t, messages_of(session, [t.id])[t.id])
 

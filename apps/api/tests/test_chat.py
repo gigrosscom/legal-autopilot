@@ -127,6 +127,7 @@ def test_chat_endpoint_streams_saves_and_limits(ctx):
     events = _sse(r)
     done = events[-1]
     assert done["type"] == "done" and done["message"]["norms"][0]["article"] == "113"
+    assert (done["limit"], done["remaining"], done["window_hours"]) == (40, 39, 24)  # «Осталось N из 40»
     hist = api.get(f"/v1/cases/{cid}/chat").json()
     assert [m["role"] for m in hist] == ["user", "assistant"] and "По статье 113" in hist[1]["text"]
     other = web_user(ctx)
@@ -135,6 +136,8 @@ def test_chat_endpoint_streams_saves_and_limits(ctx):
     ctx.container.settings.chat_daily_limit = 1
     r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "ещё вопрос"})
     assert r.status_code == 429
+    assert r.json()["detail"] == {"code": "too_many_messages", "message": "too_many_messages", "limit": 1,
+                                  "remaining": 0, "window_hours": 24}
 
 
 def test_chat_without_agent_is_503_and_failure_is_reported(ctx):

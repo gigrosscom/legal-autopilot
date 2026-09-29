@@ -1,4 +1,4 @@
-"""Clients write to the platform: a question, a complaint or a suggestion. The clients desk answers
+"""Clients write to the platform: a question, a complaint, a suggestion or a personal data request. The clients desk answers
 (konsilier/api/ops.py); the reply comes to the client's e-mail and shows on the site."""
 
 from __future__ import annotations
@@ -19,7 +19,9 @@ from .deps import current_user, get_container, get_session
 
 router = APIRouter(prefix="/v1")
 
-KIND_RU = {"question": "Вопрос", "complaint": "Жалоба", "suggestion": "Предложение", "plan": "Заявка на тариф"}
+# data: a request about the client's personal data (what is kept, correct it, delete it)
+KIND_RU = {"question": "Вопрос", "complaint": "Жалоба", "suggestion": "Предложение", "data": "Мои данные",
+           "plan": "Заявка на тариф"}
 PER_DAY = 10
 
 
@@ -41,7 +43,8 @@ def messages_of(session: Session, ticket_ids: list[int]) -> dict[int, list[Ticke
 
 
 class TicketIn(BaseModel):
-    kind: Literal["question", "complaint", "suggestion", "plan"]  # plan: a request for a plan not paid online yet
+    # plan: a request for a plan not paid online yet; data: a personal data request
+    kind: Literal["question", "complaint", "suggestion", "data", "plan"]
     text: str = Field(min_length=5, max_length=4000)
     name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=200)

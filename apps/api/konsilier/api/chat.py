@@ -128,8 +128,10 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     metas = session.scalars(select(ChatMessage.meta).where(
         ChatMessage.user_id == user.id, ChatMessage.role == "user", ChatMessage.created_at > since)).all()
     sent = sum(1 for m in metas if not (m or {}).get("failed"))
-    if sent >= container.settings.chat_daily_limit:
-        raise HTTPException(429, {"code": "too_many_messages", "message": "too_many_messages"})
+    daily_limit = container.settings.chat_daily_limit
+    if sent >= daily_limit:
+        raise HTTPException(429, {"code": "too_many_messages", "message": "too_many_messages",
+                                  "limit": daily_limit, "remaining": 0, "window_hours": 24})
 
     names = {str(e.id): e.filename for e in case.evidence}
     attachments = [{"id": a, "filename": names[a]} for a in body.attachments if a in names]
@@ -210,7 +212,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             s.commit()
             if result.unchecked:  # not shown to the person; the team watches how often it happens
                 log.warning("chat=unchecked_norms case=%s", case_pk)
-            yield _sse({"type": "done", "message": _view(m)})
+            # what is left of the daily limit (a rolling 24-hour window) after this answered message
+            yield _sse({"type": "done", "message": _view(m), "limit": daily_limit,
+                        "remaining": max(daily_limit - sent - 1, 0), "window_hours": 24})
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

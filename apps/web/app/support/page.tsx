@@ -7,12 +7,12 @@ import { useLang, useT } from "@/lib/i18n";
 
 type Msg = { id: number; author: "client" | "desk"; text: string; created_at: string };
 export type Ticket = { id: number; kind: string; status: string; created_at: string; case_id: string | null; messages: Msg[] };
-const KINDS = ["question", "complaint", "suggestion"] as const;
+const KINDS = ["question", "complaint", "suggestion", "data"] as const;  // data: a personal data request
 /** Plans that are not paid online yet: the home page links here with ?plan=…, the ticket goes to the clients desk. */
 const PLANS = ["case", "biz", "bizpro"] as const;
 type Kind = (typeof KINDS)[number] | "plan";
 
-/** Write to Konsiliér AI: a question, a complaint or a suggestion. Replies come by e-mail and show here. */
+/** Write to Konsiliér AI: a question, a complaint, a suggestion or a personal data request. Replies come by e-mail and show here. */
 export default function SupportPage() {
   const t = useT();
   const { lang } = useLang();
@@ -69,7 +69,7 @@ export default function SupportPage() {
       <form onSubmit={submit} className="card space-y-4">
         {plan ? (
           <p className="rounded-2xl bg-brand-50 px-4 py-3 font-semibold text-ink">{t("support.planTitle", { plan: t(`home.price.${plan}T`) })}</p>
-        ) : <div role="radiogroup" aria-label={t("support.kind")} className="grid grid-cols-3 gap-2">
+        ) : <div role="radiogroup" aria-label={t("support.kind")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {KINDS.map((k) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
               className={`min-h-12 rounded-2xl border px-1 text-[13px] font-semibold sm:text-sm ${kind === k ? "border-brand bg-brand text-white" : "border-line bg-surface hover:border-brand"}`}>
@@ -100,7 +100,9 @@ export default function SupportPage() {
           <label className="block text-sm">{t("request.phone")}
             <input className={field} type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 700 000 00 00" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </label>
-          <p className="text-xs text-muted">{t("support.contactHint")}</p>
+          {phone.trim() && !email.trim()
+            ? <p className="text-xs text-warning" role="status">{t("support.phoneOnly")}</p>
+            : <p className="text-xs text-muted">{t("support.contactHint")}</p>}
         </fieldset>
         {error && <Alert tone="danger" role="alert">{error}</Alert>}
         <Button size="lg" className="w-full" disabled={busy || text.trim().length < 5 || !(email.trim() || phone.trim())} icon={busy ? "spinner" : "send"}>

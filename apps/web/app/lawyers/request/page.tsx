@@ -12,7 +12,7 @@ import { TERMS_VERSION } from "@/lib/legal/terms";
 
 /**
  * «Обратиться» to a lawyer: one short form registers the case (the story) and the applicant's contacts.
- * Direct booking opens with payments; until then the team passes the case to a verified lawyer.
+ * Direct booking opens with payments; until then the team passes the case to a lawyer from the directory.
  */
 export default function LawyerRequestPage() {
   const t = useT();
