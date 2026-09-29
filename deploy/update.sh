@@ -83,20 +83,29 @@ for p in PackRegistry.load(get_settings().packs_dir).packs.values():
             except Exception as e:
                 bad.append(k.code)
 print(str(ok) + 'ok' + ('' if not bad else ',bad:' + '/'.join(bad)))" 2>&1 | tail -1)
-      # Chat model: only the free Gemini tier is called (one short request); a paid model is never called here.
+      # Chat model: only free models are called (one short request each); a paid model is never called here.
+      # CHAT_PROVIDER=free: every provider of the chain separately, e.g. cerebras:ok,gemini:503,groq:ok
       CHAT=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 from konsilier.config import get_settings
-s = get_settings()
-if s.chat_provider != 'gemini' or not s.gemini_api_key:
-    print(s.chat_provider + ':not-called'); raise SystemExit
+from konsilier.container import free_chat_clients
 from konsilier.gemini import GeminiClient
-try:
-    with GeminiClient(s.gemini_api_key).messages.stream(model=s.gemini_model, max_tokens=5, system='Reply: ok',
-                                                        tools=[], messages=[{'role': 'user', 'content': 'ok?'}]) as st:
-        st.get_final_message()
-    print('gemini:' + s.gemini_model + ':ok')
-except Exception as e:
-    print('gemini:' + str(e)[:120].replace(' ', '_'))" 2>&1 | tail -1)
+s = get_settings()
+if s.chat_provider == 'free':
+    clients = free_chat_clients(s)
+elif s.chat_provider == 'gemini' and s.gemini_api_key:
+    clients = [GeminiClient(s.gemini_api_key)]
+else:
+    print(s.chat_provider + ':not-called'); raise SystemExit
+out = []
+for c in clients:
+    try:
+        with c.messages.stream(model=s.gemini_model, max_tokens=5, system='Reply: ok', tools=[],
+                               messages=[{'role': 'user', 'content': 'ok?'}]) as st:
+            st.get_final_message()
+        out.append(c.name + ':ok')
+    except Exception as e:
+        out.append(c.name + ':' + str(e)[:60].replace(' ', '_'))
+print(s.chat_provider + '[' + ','.join(out) + ']' if clients else s.chat_provider + ':no-keys')" 2>&1 | tail -1)
       # Read only what we need: .env holds values bash must not execute (e.g. "Name <a@b>").
       SITE_DOMAIN=$(grep -E '^SITE_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"'')
       API_DOMAIN=$(grep -E '^API_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d '"'"'"'')

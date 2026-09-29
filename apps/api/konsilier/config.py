@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # The model behind the consultation chat: gemini (free tier) | anthropic (paid) | free (CHAT_FREE_PROVIDERS in turn)
     chat_provider: str = "gemini"
     # Free providers tried in turn when CHAT_PROVIDER=free; those without a key are skipped.
-    chat_free_providers: str = "gemini,cerebras,groq,nvidia"
+    chat_free_providers: str = "cerebras,gemini,groq"
     cerebras_api_key: str = ""
     cerebras_model: str = ""  # empty: the default in konsilier/openai_compat.py
     groq_api_key: str = ""

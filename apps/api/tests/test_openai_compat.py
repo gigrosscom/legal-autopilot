@@ -60,7 +60,7 @@ def test_tool_call_streamed_in_pieces_then_answer():
     assert "".join(e["text"] for e in events if e["type"] == "text").endswith("не позднее трёх рабочих дней.")
     assert res.unchecked is False and res.norms[0]["article"] == "113" and res.usage["input_tokens"] == 80
     first, second = seen
-    assert first["model"] == "openai/gpt-oss-120b" and first["stream"] is True
+    assert first["model"] == "qwen/qwen3.8-27b" and first["stream"] is True
     assert first["messages"][0]["role"] == "system" and TK in first["messages"][0]["content"]
     assert {t["function"]["name"] for t in first["tools"]} >= {"get_article", "act_contents"}
     call, result = second["messages"][2], second["messages"][3]
