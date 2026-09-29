@@ -14,17 +14,47 @@ def _upload(api, cid, kind, name, body, ctype="text/plain"):
     return up, api.post(f"/v1/cases/{cid}/evidence/{up['evidence']['id']}/confirm", json={})
 
 
-def test_evidence_comes_before_personal_data_and_takes_several_files(ctx):
+def test_documents_come_first_and_take_several_files(ctx):
     api = web_user(ctx)
-    cid = api.post("/v1/cases", expect=201, json={"text": REFUND, "country": "KZ"})["case"]["id"]
-    body = run_intake(api, cid, STORY)
-    assert body["question"]["field"] == "evidence"  # no personal question has been asked yet
-    assert not any(f["field"].startswith("applicant_") for f in body["facts"])
+    created = api.post("/v1/cases", expect=201, json={"text": REFUND, "country": "KZ"})
+    cid = created["case"]["id"]
+    assert created["reply"]["question"]["field"] == "evidence"  # documents before any other question
     _, first = _upload(api, cid, "receipt", "receipt.txt", "Кассовый чек".encode())
     _, second = _upload(api, cid, "receipt", "photo.txt", "Фото чека".encode())
     assert second["case"]["question"]["field"] == "evidence" and second["case"]["question"]["uploaded"] == 2
+    api.answer(cid, "готово")
+    body = run_intake(api, cid, STORY)
+    assert body["question"]["field"] == "identity_document"  # then the story, then personal data
+    assert not any(f["field"].startswith("applicant_") for f in body["facts"])
+
+
+def test_a_document_fills_the_case_and_is_not_asked_again(ctx):
+    """What the uploaded contract shows (seller, BIN, date, amount) is never asked; a DOCX is read too."""
+    import io
+
+    from docx import Document
+
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": REFUND, "country": "KZ"})["case"]["id"]
+    doc = Document()
+    doc.add_paragraph("Договор купли-продажи от 03.09.2026")
+    doc.add_paragraph("Итого к оплате: 275000")
+    buf = io.BytesIO()
+    doc.save(buf)
+    up = api.post(f"/v1/cases/{cid}/evidence", expect=201, data={"kind": "other"}, files={"file": (
+        "договор.docx", buf.getvalue(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")})
+    assert up["evidence"]["has_text"] is True
+    assert up["evidence"]["kind"] != "other"  # filed under the scenario's document kinds by its content
+    assert up["evidence"]["extracted_facts"]["amount"] == "275000.00"  # read from the DOCX
+    asked = set()
+    q = up["case"]["question"]
     out = api.answer(cid, "готово")
-    assert out["case"]["question"]["field"] == "identity_document"
+    q = out["case"]["question"]
+    while q and q["type"] != "evidence" and len(asked) < 30:
+        asked.add(q["field"])
+        out = api.answer(cid, STORY.get(q["field"], "пропустить"))
+        q = out["case"]["question"]
+    assert not asked & set(up["evidence"]["extracted_facts"])
 
 
 def test_identity_document_never_reaches_the_llm_and_fills_the_iin(ctx):

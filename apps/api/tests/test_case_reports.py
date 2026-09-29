@@ -46,7 +46,7 @@ def test_baseline_then_update_then_reminders_capped(client):
     ctx, api, cid = client
     assert tick(ctx, T0) == 0 and mails(ctx) == []  # first sight: baseline only, nothing mailed
 
-    api.answer(cid, "ТОО Технодом")  # the case moves → a report
+    api.answer(cid, "пропустить")  # documents first: skipped, the case moves → a report
     assert tick(ctx, T0 + timedelta(minutes=5)) == 0  # debounced: too soon after the baseline
     assert tick(ctx, T0 + timedelta(minutes=15)) == 1
     to, body = mails(ctx)[-1]

@@ -3,16 +3,22 @@
 import { Icon } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
-/** Two ways to add a document: photograph it with the phone camera, or attach a photo / PDF / file.
- *  The camera button shows on touch devices only (desktop browsers ignore `capture`). */
-export function FilePicker({ onFile, disabled, attachLabel }: {
-  onFile: (f: File) => void; disabled?: boolean; attachLabel?: string;
+/** What the case accepts: photos, PDF, Word (DOCX) and text files. */
+export const DOC_ACCEPT = "image/*,application/pdf,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+/** Two ways to add documents: photograph with the phone camera, or attach photos / PDF / Word files.
+ *  With ``onFiles`` several files can be chosen at once. The camera button shows on touch devices only
+ *  (desktop browsers ignore `capture`). */
+export function FilePicker({ onFile, onFiles, disabled, attachLabel }: {
+  onFile?: (f: File) => void; onFiles?: (fs: File[]) => void; disabled?: boolean; attachLabel?: string;
 }) {
   const t = useT();
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // the same file can be picked again
-    if (f) onFile(f);
+    if (!files.length) return;
+    if (onFiles) onFiles(files);
+    else onFile?.(files[0]);
   };
   return (
     <>
@@ -22,7 +28,7 @@ export function FilePicker({ onFile, disabled, attachLabel }: {
       </label>
       <label className={`btn-ghost cursor-pointer ${disabled ? "pointer-events-none opacity-50" : ""}`}>
         <Icon name="upload" size={18} />{attachLabel ?? t("helper.attach")}
-        <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only" disabled={disabled} onChange={pick} />
+        <input type="file" accept={DOC_ACCEPT} multiple={!!onFiles} className="sr-only" disabled={disabled} onChange={pick} />
       </label>
     </>
   );

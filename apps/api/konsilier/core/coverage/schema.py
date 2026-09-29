@@ -295,3 +295,6 @@ class Routing(_Strict):
     abuse: AbuseLimits = Field(default_factory=AbuseLimits)
     # labels instead of facts ("вор", "мошенник"): in reports about crimes the user is asked once to describe facts
     evaluative_words: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # the person writes as a business (sole trader, company) about a dispute with a business: consumer law does not
+    # apply; lang → phrases, matched on whole words
+    business_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)

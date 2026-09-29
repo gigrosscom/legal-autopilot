@@ -74,7 +74,6 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
-  const [pendingEvidence, setPendingEvidence] = useState<{ id: string; facts: Record<string, string> } | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
 
@@ -150,28 +149,24 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     });
   }
 
-  async function upload(file: File) {
+  // Documents are read at once: what they show goes into the case and is never asked; the reply says what was
+  // taken from each file, then asks only what is still missing (once, after the last file).
+  async function upload(files: File[]) {
     await run(async () => {
-      const kind = c?.question?.evidence_kinds?.[0]?.kind ?? "other";
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", kind);
-      push({ from: "user", text: file.name });
-      const out = await api<{ case: CaseView; evidence: { id: string; extracted_facts: Record<string, string> } }>(
-        `/v1/cases/${id}/evidence`, { method: "POST", body: form });
-      setCase(out.case);
-      setPendingEvidence({ id: out.evidence.id, facts: out.evidence.extracted_facts });
-    });
-  }
-
-  async function confirmEvidence() {
-    if (!pendingEvidence) return;
-    await run(async () => {
-      const out = await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/evidence/${pendingEvidence.id}/confirm`, {
-        method: "POST", body: JSON.stringify({}),
-      });
-      setPendingEvidence(null);
-      applyReply(out);
+      for (const [i, file] of files.entries()) {
+        const kind = c?.question?.type === "evidence" ? c.question.evidence_kinds?.[0]?.kind ?? "other" : "other";
+        const form = new FormData();
+        form.append("file", file);
+        form.append("kind", kind);
+        push({ from: "user", text: `📎 ${file.name}` });
+        const out = await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/evidence`, { method: "POST", body: form });
+        setCase(out.case);
+        const q = out.reply.question?.text;
+        const last = i === files.length - 1;
+        const text = !last && q && out.reply.message?.endsWith(q) ? out.reply.message.slice(0, -q.length).trim() : out.reply.message;
+        if (text) push({ from: "bot", text });
+        if (last && out.reply.message) saveReply(id, out.reply);
+      }
     });
   }
 
@@ -262,10 +257,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   ];
 
   let bar: React.ReactNode = null;
-  if (pendingEvidence) {
-    bar = <Button className="min-h-12 w-full" disabled={busy} onClick={confirmEvidence} icon="check">{t("case.confirm")}</Button>;
-  } else if (interviewing) {
-    bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFile={upload}
+  if (interviewing) {
+    bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFiles={upload}
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
     bar = <NextStepBar c={c} busy={busy} post={post} openPay={() => setPayOpen(true)} run={run} setCase={setCase} />;
@@ -273,7 +266,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
-      scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}-${c.payment?.code ?? ""}-${c.payment?.status ?? ""}`}>
+      scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${c.payment?.code ?? ""}-${c.payment?.status ?? ""}`}>
       {c.scenario?.beta && <BetaNotice disclaimer={c.scenario.disclaimer} />}
       {c.scenario?.draft_disclaimer && (
         <p className="flex items-start gap-2 rounded-2xl bg-draft-50 px-3 py-2 text-xs text-draft">
@@ -284,7 +277,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
 
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
-        <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
+        <PlanCard plan={c.plan} busy={busy} onUpload={upload} />
       )}
 
       <div className="space-y-2" aria-live="polite">
@@ -317,21 +310,6 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {choosingForum && <ForumChoice options={cov.options} busy={busy} onChoose={chooseForum} />}
-
-      {pendingEvidence && (
-        <div className="rounded-2xl bg-brand-50 p-4 text-sm">
-          {Object.keys(pendingEvidence.facts).length > 0 ? (
-            <>
-              <p className="mb-1 font-semibold">{t("case.found")}:</p>
-              <ul className="list-inside list-disc">
-                {Object.entries(pendingEvidence.facts).map(([k, v]) => (
-                  <li key={k}>{(() => { const label = c.facts.find((f) => f.field === k)?.label; return label ? `${label}: ${v}` : v; })()}</li>
-                ))}
-              </ul>
-            </>
-          ) : <p>{t("case.nothingFound")}</p>}
-        </div>
-      )}
 
       {c.status === "handed_to_lawyer" && (
         <Alert tone="info" icon="lawyer" title={t("case.lawyerTitle")}
@@ -582,7 +560,7 @@ function PaymentDialog({ pay, busy, onClose, onChoose, onClaim }: {
 }
 
 /** The proposed solution right after the story: document → addressee → how to file → what to attach. */
-function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUpload: (f: File) => void }) {
+function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUpload: (fs: File[]) => void }) {
   const t = useT();
   const portalName = (url: string | null) => (url ? url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "");
   return (
@@ -622,7 +600,7 @@ function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUploa
               <li key={a} className="flex gap-2"><Icon name="checkCircle" size={18} className="mt-0.5 text-brand" /><span>{a}</span></li>
             ))}
           </ul>
-          <div className="flex flex-wrap gap-2"><FilePicker onFile={onUpload} disabled={busy} /></div>
+          <div className="flex flex-wrap gap-2"><FilePicker onFiles={onUpload} disabled={busy} /></div>
         </div>
       )}
       <p className="flex items-center gap-2 text-sm text-muted">

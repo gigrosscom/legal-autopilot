@@ -15,6 +15,9 @@ forums:
     accepts:
       - branches: [consumer, finance, housing, labor, civil]
         applicant_roles: [consumer, borrower, tenant, landlord, employee, claimant]
+      # споры ИП/ТОО с контрагентом: досудебная претензия по договору (ГК РК) — уточнит юрист
+      - branches: [commercial]
+        applicant_roles: [business]
     document_types: [claim_letter]
     submission:
       - kind: in_person
@@ -22,12 +25,37 @@ forums:
       - kind: post
       - kind: email
     languages: [ru, kk]
-    appeals_to: [kz.regulator.consumer, kz.regulator.financial, kz.labor_inspection, kz.court.district]
+    appeals_to: [kz.regulator.consumer, kz.regulator.financial, kz.labor_inspection, kz.court.district, kz.court.economic]
     legal_effect: none
     # Потребительские споры: претензия вручается нарочно, заказным письмом с уведомлением или на e-mail, ранее указанный
     # продавцом; ответ — 10 календарных дней (Закон о ЗПП, ст. 42-4, https://adilet.zan.kz/rus/docs/Z100000274_,
     # проверено 28.09.2026). Для остальных споров — TODO(lawyer).
     source: "Закон РК «О защите прав потребителей», ст. 42-4 (потребительские споры); ГК РК, ТК РК — ссылки проставит юрист"
+
+  - id: kz.court.economic
+    type: court
+    instance: first
+    name:
+      ru: "Специализированный межрайонный экономический суд (конкретный суд уточнит юрист)"
+      kk: "Мамандандырылған ауданаралық экономикалық сот (нақты сотты заңгер нақтылайды)"
+    jurisdiction:
+      rule:
+        ru: "Споры между ИП и юрлицами; как правило, по месту нахождения ответчика — уточнит юрист."
+        kk: "ЖК мен заңды тұлғалар арасындағы даулар; әдетте жауапкердің орналасқан жері бойынша — заңгер нақтылайды."
+    accepts:
+      - branches: [commercial]
+        applicant_roles: [business]
+    document_types: [lawsuit]
+    submission:
+      - kind: portal
+        url: https://office.sud.kz
+        note: {ru: "Судебный кабинет (вход по ЭЦП)", kk: "Сот кабинеті (ЭЦҚ арқылы кіру)"}
+      - kind: in_person
+    languages: [ru, kk]
+    fee: {note: {ru: "Размер госпошлины уточнит юрист", kk: "Мемлекеттік баж мөлшерін заңгер нақтылайды"}}
+    appeals_to: [kz.court.appeal]
+    legal_effect: binding
+    source: "ГПК РК, ст. 29 (подсудность); подсудность экономических судов — TODO(lawyer)"
 
   - id: kz.court.district
     type: court

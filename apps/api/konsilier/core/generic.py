@@ -137,7 +137,7 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
     names = {f.name for f in intake}
 
     parties = {
-        "applicant": PartySpec(kind="person", name_field="applicant_name",
+        "applicant": PartySpec(kind="business" if ref.role == "business" else "person", name_field="applicant_name",
                                id_field="applicant_iin" if "applicant_iin" in names else None,
                                address_field="applicant_address" if "applicant_address" in names else None),
         "respondent": PartySpec(kind="person" if set(dispute.counterparty_kinds) <= {"person"} else "business",

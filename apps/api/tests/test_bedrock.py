@@ -22,7 +22,8 @@ def test_build_provider_uses_the_bedrock_client():
     p = build_provider(s)
     assert isinstance(p.client, anthropic.AnthropicBedrockMantle)
     assert p.model_for("narrative") == "anthropic.claude-sonnet-5"
-    assert p.model_for("qualify") == "anthropic.claude-haiku-4-5"
+    assert p.model_for("qualify") == "anthropic.claude-sonnet-5"  # deciding the case: main model
+    assert p.model_for("extract_fields") == "anthropic.claude-haiku-4-5"
     assert p.refusal_fallback is None  # server-side fallbacks are not offered on Bedrock
 
 
@@ -41,7 +42,7 @@ def test_same_structured_request_through_any_client():
     p = AnthropicProvider(model="anthropic.claude-sonnet-5", fast_model="anthropic.claude-haiku-4-5",
                           refusal_fallback=None, client=fake)
     schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"], "additionalProperties": False}
-    assert p.complete_json(task="qualify", system="s", user="{}", schema=schema) == {"ok": True}
+    assert p.complete_json(task="extract_fields", system="s", user="{}", schema=schema) == {"ok": True}
     req = fake.messages.requests[0]
     assert req["model"] == "anthropic.claude-haiku-4-5"
     assert req["output_config"]["format"]["type"] == "json_schema"

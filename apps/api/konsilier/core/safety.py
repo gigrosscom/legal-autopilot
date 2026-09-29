@@ -97,3 +97,17 @@ def abuse_reason(session: Session, cov: Coverage | None, case: Case) -> str | No
         if same > limits.max_cases_per_respondent:
             return "repeated_against_person"
     return None
+
+
+def writes_as_business(cov: Coverage | None, text: str) -> bool:
+    """The person writes as a sole trader or a company about a dispute with a business (routing.business_markers,
+    whole words): consumer-protection scenarios do not apply to them."""
+    if cov is None or not text:
+        return False
+
+    def words(t: str) -> str:
+        return " ".join(re.findall(r"\w+", t.lower()))
+
+    low = words(text)
+    return any(re.search(r"(?<!\w)" + re.escape(words(m)) + r"(?!\w)", low)
+               for ms in cov.routing.business_markers.values() for m in ms if words(m))

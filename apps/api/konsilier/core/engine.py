@@ -54,6 +54,7 @@ from .state_machine import CaseStatus, assert_transition
 log = logging.getLogger(__name__)
 
 S = CaseStatus
+DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 IDENTITY_KIND = "id_document"  # a copy of the applicant's ID: attached to documents, never read by the LLM
 _IIN = re.compile(r"(?<!\d)\d{12}(?!\d)")
 OUTCOME_RESULTS = ("won", "partial", "lost", "settled", "abandoned")
@@ -232,14 +233,22 @@ class CaseEngine:
     def _qualify_and_continue(self, session: Session, case: Case, text: str) -> Reply:
         llm = self.llm_for(case)
         candidates = self.packs.published(case.jurisdiction)
-        sid, confidence, reason = ai.qualify(llm, candidates, self.packs.packs, text, case.language)
+        # a sole trader or a company in a dispute with a business: never a consumer scenario (consumer law does
+        # not apply) — a business scenario if one is offered, else the business branch of the universal path
+        business = any(safety.writes_as_business(p.coverage, text) for p in self.packs.packs.values()
+                       if not case.jurisdiction or p.country == case.jurisdiction.upper())
+        if business:
+            candidates = [s for s in candidates if "applicant" in s.parties and s.parties["applicant"].kind == "business"]
+            self.audit(session, case, "system", "business_applicant")
+        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
+                                   else (None, 0.0, "no business scenario"))
         case.qualification_confidence = confidence
         if sid is None:
             case.needs_review = True
             self.audit(session, case, "system", "qualification_failed", reason=reason)
             pack = self.pack_of(case)
             if pack.coverage is not None and pack.coverage.has_registry:
-                return self._route_universal(session, case, pack, llm, text)
+                return self._route_universal(session, case, pack, llm, text, business=business)
             self._save_vault(case, llm)
             return Reply(message=pack.t(pack.lang(case.language), "interview.no_scenario"))
         case.coverage_level = qualifier.LEVEL_VERIFIED
@@ -258,6 +267,7 @@ class CaseEngine:
         values = ai.extract_fields(llm, sc, pack, case.language, text, None, missing)
         self._apply_values(case, sc, pack, values, llm, strict=False)
         self._save_vault(case, llm)
+        self.read_unread_evidence(case, sc, pack)
         intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language),
                        first_action=pack.localized(sc.actions[0].title, case.language))
         reply = self._next_step(session, case, sc, pack)
@@ -266,13 +276,20 @@ class CaseEngine:
 
     # ================================================================ universal path (ADR 0001)
     def _route_universal(self, session: Session, case: Case, pack: JurisdictionPack, llm: RedactingLLM,
-                         text: str) -> Reply:
+                         text: str, business: bool = False) -> Reply:
         cov = pack.coverage
         assert cov is not None
         lang = pack.lang(case.language)
-        result = ai.classify_taxonomy(llm, qualifier.taxonomy_options(cov, lang),
-                                      sorted({r for d in cov.disputes.values() for r in d.applicant_roles}),
-                                      text, lang)
+        options = qualifier.taxonomy_options(cov, lang)
+        roles = sorted({r for d in cov.disputes.values() for r in d.applicant_roles})
+        if business:  # only disputes a business can bring (contract breach, unpaid invoice, tax…)
+            options = [o for o in options if "business" in o["applicant_roles"]] or options
+            roles = ["business"]
+        result = ai.classify_taxonomy(llm, options, roles, text, lang)
+        if business and result.get("dispute_id") not in {o["id"] for o in options}:
+            fallback = next((o["id"] for o in options if o["id"].endswith("contract_breach")), options[0]["id"])
+            result = {**result, "dispute_id": fallback, "role": "business",
+                      "confidence": max(float(result.get("confidence") or 0), cov.routing.min_confidence)}
         self._save_vault(case, llm)
         route = qualifier.route_universal(cov, result, amount=case.amount_at_stake)
         case.jurisdiction = case.jurisdiction or pack.country
@@ -338,6 +355,7 @@ class CaseEngine:
                                    self.missing_fields(case, sc))
         self._apply_values(case, sc, pack, values, llm, strict=False)
         self._save_vault(case, llm)
+        self.read_unread_evidence(case, sc, pack)
         forum_name = pack.localized(pack.coverage.forums[forum_id].name, case.language)
         intro = pack.t(case.language, "routing.universal_intro", forum=forum_name)
         reply = self.ack_reply(session, case) or self._next_step(session, case, sc, pack)
@@ -355,12 +373,13 @@ class CaseEngine:
         return Reply(message=message)
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
-        """Fields still to ask, in interview order: what happened → evidence → identity document → personal data.
-        The order within each group is the scenario's."""
+        """Fields still to ask, in interview order: documents → what happened → identity document → personal data.
+        Documents come first: what is in them is read and never asked. The order within each group is the
+        scenario's."""
         def stage(f: Any) -> int:
             if f.type == "evidence":
-                return 2 if IDENTITY_KIND in f.evidence_kinds else 1
-            return 3 if f.pii else 0
+                return 2 if IDENTITY_KIND in f.evidence_kinds else 0
+            return 3 if f.pii else 1
         missing = [f for f in sc.intake if f.name not in case.facts and f.name not in (case.skipped_fields or [])]
         return [f.name for f in sorted(missing, key=stage)]
 
@@ -388,6 +407,8 @@ class CaseEngine:
         case.facts = facts
         if sc.claim and sc.claim.amount_field and sc.claim.amount_field in facts:
             case.amount_at_stake = Decimal(str(facts[sc.claim.amount_field]))
+        if facts.get("claim_amount"):  # "how much you are owed", when it differs from what was paid
+            case.amount_at_stake = Decimal(str(facts["claim_amount"]))
         return errors if strict else {}
 
     def question_for(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> Question:
@@ -491,7 +512,8 @@ class CaseEngine:
                                           data, content_type)
         ev.text = extract_text(content_type, data)
         session.add(ev)
-        case.evidence.append(ev)
+        if ev not in case.evidence:  # loading the collection may already have picked up the new row
+            case.evidence.append(ev)
         if kind == IDENTITY_KIND:
             # an identity document is personal data: never sent to the LLM (not even with image extraction on)
             if case.scenario_id and case.status == S.INTAKE.value:
@@ -502,24 +524,82 @@ class CaseEngine:
             self.audit(session, case, "user", "evidence_added", kind=kind)
             return ev
         if case.scenario_id and case.status == S.INTAKE.value:
-            sc, pack = self.scenario_of(case), self.pack_of(case)
-            llm = self.llm_for(case)
-            attachments: tuple[Attachment, ...] = ()
-            if content_type.startswith("image/") and self.config.extract_images_with_llm:
-                attachments = (Attachment(content_type, data, filename),)
-            if ev.text or attachments:
-                facts, summary = ai.extract_evidence(llm, sc, pack, case.language, ev.text, attachments)
-                valid: dict[str, Any] = {}
-                today = pack.local_now().date()
-                for name, raw in facts.items():
-                    try:
-                        valid[name] = normalize(sc.field(name), raw, today=today)
-                    except (FieldError, KeyError):
-                        continue
-                ev.extracted_facts = valid
-                self._save_vault(case, llm)
-        self.audit(session, case, "user", "evidence_added", kind=kind, filename=filename)
+            self._read_evidence(case, self.scenario_of(case), self.pack_of(case), ev, data)
+        self.audit(session, case, "user", "evidence_added", kind=ev.kind, filename=filename)
         return ev
+
+    def _read_evidence(self, case: Case, sc: Scenario, pack: JurisdictionPack, ev: Evidence,
+                       data: bytes | None = None) -> dict[str, Any]:
+        """Read a document and put what it shows into the case's empty fields at once (no confirmation step):
+        the person is only asked what the documents do not say. Scans and photos go to the model as files when
+        EXTRACT_IMAGES_WITH_LLM is on. Returns the fields filled from this document."""
+        if ev.kind == IDENTITY_KIND or ev.kind == "response":
+            return {}
+        llm = self.llm_for(case)
+        attachments: tuple[Attachment, ...] = ()
+        scan = ev.content_type.startswith("image/") or (ev.content_type == "application/pdf" and not ev.text)
+        if scan and self.config.extract_images_with_llm:
+            if data is None:
+                data = self.storage.get(ev.storage_key)
+            attachments = (Attachment(ev.content_type, data, ev.filename),)
+        if not (ev.text or attachments):
+            return {}
+        kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds if k != IDENTITY_KIND]
+        facts, summary, kind = ai.extract_evidence(llm, sc, pack, case.language, ev.text, attachments, kinds)
+        if ev.kind in ("other", "") and kinds:  # a file sent outside the documents question: file it by content
+            ev.kind = kind if kind in kinds else kinds[0]
+        valid: dict[str, Any] = {}
+        today = pack.local_now().date()
+        for name, raw in facts.items():
+            try:
+                valid[name] = normalize(sc.field(name), raw, today=today)
+            except (FieldError, KeyError):
+                continue
+        ev.extracted_facts = valid
+        before = dict(case.facts)
+        self._apply_values(case, sc, pack, valid, llm, strict=False)
+        ev.confirmed = True
+        self._save_vault(case, llm)
+        return {k: v for k, v in case.facts.items() if k not in before}
+
+    def read_unread_evidence(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> None:
+        """Files uploaded before the case had a scenario are read once it has one."""
+        for ev in case.evidence:
+            if not ev.extracted_facts and not ev.confirmed:
+                self._read_evidence(case, sc, pack, ev)
+
+    def evidence_reply(self, session: Session, case: Case, ev: Evidence) -> Reply:
+        """After a file: what was taken from it, then the next question (only what is still missing)."""
+        if case.status != S.INTAKE.value or not case.scenario_id:
+            return Reply(message="")
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        lang = case.language
+        reply = self._next_step(session, case, sc, pack)
+        # what the document gave; where it disagrees with what the case already has, say so (the case keeps its value)
+        filled, differs = [], []
+        for k, v in ev.extracted_facts.items():
+            if k not in case.facts:
+                continue
+            label, doc = ai.field_label(sc, pack, lang, k), display(sc.field(k), v)
+            if str(case.facts[k]) == str(v):
+                filled.append(f"• {label}: {doc}")
+            else:
+                differs.append(pack.t(lang, "interview.evidence_differs", label=label, doc=doc,
+                                      case=display(sc.field(k), case.facts[k]),
+                                      default=f"• {label}: в документе {doc}, в деле {display(sc.field(k), case.facts[k])}"))
+        head = pack.t(lang, "interview.evidence_read", name=ev.filename or "",
+                      default="Прочитал документ «{name}». Взял из него:").replace("{name}", ev.filename or "")
+        q = reply.question
+        kinds = {k["kind"] for k in q.evidence_kinds} if q and q.type == "evidence" else set()
+        if ev.kind in kinds:
+            q.uploaded = sum(1 for e in case.evidence if e.kind in kinds)
+        if differs:
+            filled += [pack.t(lang, "interview.evidence_differs_head", default="Расходится с тем, что уже записано:")]
+            filled += differs
+        parts = [head + "\n" + "\n".join(filled)] if filled else [
+            pack.t(lang, "interview.evidence_added", n=str(sum(1 for e in case.evidence if e.kind != "response")))]
+        reply.message = "\n\n".join(parts + [reply.message]).strip()
+        return reply
 
     def confirm_evidence(self, session: Session, case: Case, evidence: Evidence,
                          facts: dict[str, Any] | None) -> Reply:
@@ -1038,7 +1118,9 @@ class CaseEngine:
                 case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached)
             self._save_vault(case, llm)
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
-            case.formal_demands = ai.write_demands(llm, pack, lang, str(case.facts["desired_outcome"]), title)
+            claim = case.facts.get("claim_amount") or case.facts.get("amount")
+            case.formal_demands = ai.write_demands(llm, pack, lang, str(case.facts["desired_outcome"]), title,
+                                                   amount=f"{claim} {case.currency or pack.currency}" if claim else None)
             self._save_vault(case, llm)
 
     def prewrite(self, session: Session, case: Case) -> bool:
@@ -1280,6 +1362,19 @@ def extract_text(content_type: str, data: bytes) -> str | None:
             return "\n".join((page.extract_text() or "") for page in reader.pages).strip() or None
         except Exception as e:  # damaged PDF etc.
             log.warning("pdf text extraction failed: %s", e)
+            return None
+    if content_type == DOCX:
+        try:
+            from docx import Document
+
+            doc = Document(io.BytesIO(data))
+            lines = [p.text for p in doc.paragraphs]
+            for table in doc.tables:
+                for row in table.rows:
+                    lines.append(" | ".join(cell.text.strip() for cell in row.cells))
+            return "\n".join(line for line in lines if line.strip()).strip() or None
+        except Exception as e:  # damaged file etc.
+            log.warning("docx text extraction failed: %s", e)
             return None
     if content_type.startswith("text/"):
         return data.decode("utf-8", errors="replace")
