@@ -12,9 +12,9 @@ export function CtaBanner({ title, lead }: { title?: string; lead?: string }) {
         <h2 className="text-[28px] font-semibold leading-tight tracking-[-0.015em] md:text-[40px] md:tracking-[-0.018em]">{title ?? t("cta.title")}</h2>
         <p className="lead">{lead ?? t("cta.lead")}</p>
       </div>
-      <div className="flex flex-wrap gap-3">
-        <Button href="/start" size="lg" iconEnd="arrowRight">{t("cta.start")}</Button>
-        <Button href="/lawyers" size="lg" variant="secondary" icon="lawyer">{t("cta.lawyer")}</Button>
+      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <Button href="/start" size="lg" iconEnd="arrowRight" className="w-full sm:w-auto">{t("cta.start")}</Button>
+        <Button href="/lawyers" size="lg" variant="secondary" icon="lawyer" className="w-full sm:w-auto">{t("cta.lawyer")}</Button>
       </div>
     </section>
   );

@@ -125,14 +125,14 @@ html[lang="ar"] body * {
   @apply min-h-12 px-[22px] py-3 text-[17px] leading-[1.18] tracking-[-0.022em];
 }
 @utility btn-primary {
-  @apply btn bg-action text-white hover:bg-action-hover active:bg-action-active;
+  @apply btn border border-transparent bg-action text-white hover:bg-action-hover active:bg-action-active;
 }
 /* apple .button-secondary: transparent, 1px #0066cc rule and text; filled blue on hover */
 @utility btn-ghost {
   @apply btn border border-brand bg-transparent text-brand hover:border-action-hover hover:bg-action-hover hover:text-white;
 }
 @utility btn-danger {
-  @apply btn bg-danger text-white hover:opacity-90;
+  @apply btn border border-transparent bg-danger text-white hover:opacity-90;
 }
 /* apple tiles: no rule, #f5f5f7 fill on white, white fill on a grey band (see .band), 18 px radius, roomy padding */
 @utility card {
