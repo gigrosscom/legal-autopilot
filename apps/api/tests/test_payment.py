@@ -19,7 +19,8 @@ from .test_ops_centre import operator
 STORY = "Заказал шкаф на маркетплейсе 01.09.2026 за 90000, не доставили, хочу вернуть деньги"
 ANSWERS = {"seller_name": "ИП Мебель", "seller_bin": "пропустить", "goods_description": "Шкаф",
            "applicant_name": "Петров Пётр", "applicant_phone": "+7 700 000 00 00", "applicant_iin": "пропустить",
-           "seller_email": "пропустить", "evidence": "пропустить", "identity_document": "пропустить"}
+           "seller_email": "пропустить", "seller_address": "Алматы, ул. Мебельная 1",
+           "applicant_address": "Алматы, ул. Абая 1", "evidence": "пропустить", "identity_document": "пропустить"}
 # placeholders only: real requisites live in the server's .env
 RECIPIENT, PHONE = "Получатель Тест", "+7 700 111 22 33"
 

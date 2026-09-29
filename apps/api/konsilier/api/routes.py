@@ -464,7 +464,8 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
                     f"Клиент сообщил о переводе {inv.amount} {inv.currency or ''} с кодом {inv.code} в комментарии.\n"
                     f"Счёт №{inv.id}, дело {case.id}.\n\n"
                     f"Найдите перевод в Kaspi и отметьте «Оплата получена» или «Не найдена» в оперативном центре: "
-                    f"https://konsilier.com/ops", desk="clients")
+                    f"https://konsilier.com/ops", desk="clients",
+                    also=container.settings.payment_notify_emails)
     return {"case": case_view(container.engine, session, case)}
 
 

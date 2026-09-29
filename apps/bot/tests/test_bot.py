@@ -83,7 +83,9 @@ def test_client_drives_a_case(api_app):
         assert (await api.active_case("42"))["id"] == cid
         # answer by field, not by position: the interview order is scenario data and may change
         answers = {"lender_name": "МФО Ромашка", "applicant_name": "Иванов Иван", "applicant_iin": "900101300123",
-                   "applicant_phone": "+77010000000"}
+                   "applicant_phone": "+77010000000", "applicant_address": "Алматы, ул. Абая 1",
+                   "loan_date": "2026-09-01", "amount": "150000",
+                   "problem_description": "Узнал из кредитной истории о займе, который не оформлял"}
         question = out["reply"]["question"]
         for _ in range(20):
             if question is None:

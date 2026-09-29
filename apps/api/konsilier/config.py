@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     payment_recipient_name: str = ""  # recipient's name as the payer's banking app shows it
     payment_kaspi_phone: str = ""  # Kaspi number to transfer to
     payment_comment_prefix: str = ""  # optional prefix of the payment code in the transfer comment
+    payment_notify_emails: str = ""  # also get «клиент оплатил» letters (comma-separated), without access to /ops
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
