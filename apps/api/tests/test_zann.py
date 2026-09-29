@@ -1,12 +1,12 @@
-"""Aqyl: the training consent, the anonymised export and the benchmark runner."""
+"""Zann: the training consent, the anonymised export and the benchmark runner."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from konsilier.aqyl import bench
-from konsilier.aqyl.export import export
+from konsilier.zann import bench
+from konsilier.zann.export import export
 
 from .test_e2e import run_intake, web_user
 from .test_payment import ANSWERS, STORY
@@ -41,7 +41,7 @@ def test_export_has_only_consented_cases_without_personal_data(ctx):
 
 
 def test_benchmark_runs_and_scores_the_first_client_story(ctx):
-    items = [i for i in bench.load(REPO / "aqyl" / "bench") if i["id"] in ("kz-routing-ru-001", "kz-extract-ru-001")]
+    items = [i for i in bench.load(REPO / "zann" / "bench") if i["id"] in ("kz-routing-ru-001", "kz-extract-ru-001")]
     assert len(items) == 2
     report = bench.run(ctx.settings.model_copy(update={"packs_dir": ctx.settings.packs_dir}), items,
                        with_examples=False)

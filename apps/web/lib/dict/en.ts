@@ -4,7 +4,7 @@ const en: Dict = {
   nav: {
     account: "Sign in",
     start: "Start", cases: "My cases", admin: "Admin", lawyers: "Lawyers", forLawyers: "For lawyers",
-    howItWorks: "How it works", coverage: "Coverage", menu: "Menu", language: "Language",
+    howItWorks: "How it works", coverage: "Services", menu: "Menu", language: "Language",
     skip: "Skip to content", main: "Main menu",
   },
   legal: {
@@ -214,13 +214,13 @@ const en: Dict = {
     pathEyebrow: "Path map",
     pathTitle: "How your case moves forward",
     pathLead: "At each step you can see who checked it and when a lawyer steps in.",
-    levelsEyebrow: "Honest about coverage",
+    levelsEyebrow: "Honest about what we can do",
     levelsTitle: "Three levels: you always know where your case stands",
     levelsLead: "We guide you all the way: document, filing, deadline tracking and a lawyer when you need one.",
     howLink: "Learn more about how it works",
     coverageTitle: "Kazakhstan is live. CIS and the Middle East are coming soon",
     coverageLead: "Uzbekistan, Kyrgyzstan, Azerbaijan, Turkey, the UAE, Saudi Arabia and other countries are in the launch plan.",
-    coverageCta: "Coverage by country",
+    coverageCta: "All services",
     stepsTitle: "From your question to the next step",
     steps: {
       share: "Know colleagues this would suit? Send them the link.",
@@ -489,7 +489,7 @@ const en: Dict = {
     emptyHint: "Tell us what happened — the consultation is free.",
   },
   coverage: {
-    eyebrow: "Coverage",
+    eyebrow: "Services",
     title: "Where we already help, and with what",
     lead: "What already works by country and area of law: where there are ready-made scenarios, where we prepare a document for your situation, and what is coming soon.",
     legend: "What the statuses mean",
@@ -508,7 +508,7 @@ const en: Dict = {
     lead: "Describe your problem — Konsiliér AI prepares the document under your country's law, tells you where to file it, tracks the deadlines and, when needed, brings in a verified lawyer.",
     pathTitle: "How a case moves",
     pathLead: "Document → where to file → response deadline → next step → lawyer.",
-    levelsTitle: "Three coverage levels",
+    levelsTitle: "Three levels of help",
     levelsLead: "The level is set automatically and always shown in your case.",
     level: {
       verified: { title: "Verified scenario", when: "For common situations where a lawyer has signed off on the laws, deadlines and recipients.", get: { 1: "A document from a verified template", 2: "Legal response deadlines and reminders", 3: "The next step from a known sequence" } },

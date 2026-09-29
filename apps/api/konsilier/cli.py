@@ -6,8 +6,8 @@
     python -m konsilier.cli backup      # pg_dump → S3 bucket (backups/…) or ./data/backups
     python -m konsilier.cli review CC [PACKS_DIR]   # refresh the generated table in packs/<cc>/REVIEW.md
     python -m konsilier.cli forums-export CC OUT.yaml  # admin drafts → YAML for a reviewed PR
-    python -m konsilier.cli aqyl-bench [PATH] [--no-examples] [--limit N] [--out REPORT.json]  # score the system
-    python -m konsilier.cli aqyl-export OUT.jsonl [--with-evidence]   # consented, anonymised cases for training
+    python -m konsilier.cli zann-bench [PATH] [--no-examples] [--limit N] [--out REPORT.json]  # score the system
+    python -m konsilier.cli zann-export OUT.jsonl [--with-evidence]   # consented, anonymised cases for training
 """
 
 from __future__ import annotations
@@ -22,10 +22,10 @@ from .core.packs import PackRegistry, PackValidationError
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "backup":
         return backup()
-    if argv and argv[0] == "aqyl-bench":
-        return aqyl_bench(argv[1:])
-    if argv and argv[0] == "aqyl-export" and len(argv) > 1:
-        return aqyl_export(Path(argv[1]), "--with-evidence" in argv)
+    if argv and argv[0] == "zann-bench":
+        return zann_bench(argv[1:])
+    if argv and argv[0] == "zann-export" and len(argv) > 1:
+        return zann_export(Path(argv[1]), "--with-evidence" in argv)
     if argv and argv[0] == "forums-export" and len(argv) > 2:
         return forums_export(argv[1], Path(argv[2]))
     if argv and argv[0] == "review" and len(argv) > 1:
@@ -142,15 +142,15 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
 
 
-def aqyl_bench(args: list[str]) -> int:
+def zann_bench(args: list[str]) -> int:
     import json
 
-    from .aqyl import bench
+    from .zann import bench
 
     def opt(name: str) -> str | None:
         return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else None
     paths = [a for i, a in enumerate(args) if not a.startswith("--") and (i == 0 or args[i - 1] not in ("--limit", "--out"))]
-    path = Path(paths[0]) if paths else Path(__file__).resolve().parents[3] / "aqyl" / "bench"
+    path = Path(paths[0]) if paths else Path(__file__).resolve().parents[3] / "zann" / "bench"
     report = bench.run(get_settings(), bench.load(path), with_examples="--no-examples" not in args,
                        limit=int(opt("--limit")) if opt("--limit") else None)
     for r in report["results"]:
@@ -164,10 +164,10 @@ def aqyl_bench(args: list[str]) -> int:
     return 0
 
 
-def aqyl_export(out: Path, with_evidence: bool) -> int:
+def zann_export(out: Path, with_evidence: bool) -> int:
     import json
 
-    from .aqyl.export import export
+    from .zann.export import export
     from .container import build_container
 
     container = build_container(get_settings())

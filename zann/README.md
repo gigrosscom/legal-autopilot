@@ -1,11 +1,11 @@
-# Aqyl — собственная правовая модель Консильéра
+# Zann — собственная правовая модель Консильéра
 
 Стратегия, выбор базовых моделей и источники данных — в [`docs/STRATEGY.md`](../docs/STRATEGY.md). Здесь — рабочие
 инструменты, с которых начинается обучение.
 
-## 1. Тест: Aqyl-Bench
+## 1. Тест: Zann-Bench
 
-`aqyl/bench/<страна>/*.jsonl` — по одному заданию на строку.
+`zann/bench/<страна>/*.jsonl` — по одному заданию на строку.
 
 - **routing** — рассказ человека → спор, к которому система должна его отнести (id из справочника тем:
   `consumer.refund`, `commercial.contract_breach`…); в `accept` — допустимые альтернативы.
@@ -19,11 +19,11 @@
 
 ```
 cd apps/api
-python -m konsilier.cli aqyl-bench                    # все задания + примеры сценариев
-python -m konsilier.cli aqyl-bench --no-examples --out report.json
+python -m konsilier.cli zann-bench                    # все задания + примеры сценариев
+python -m konsilier.cli zann-bench --no-examples --out report.json
 ```
 
-Правило выпуска: новая модель или новая настройка выходит в продукт, только если на Aqyl-Bench она не хуже текущей.
+Правило выпуска: новая модель или новая настройка выходит в продукт, только если на Zann-Bench она не хуже текущей.
 
 ## 2. Данные для обучения
 
@@ -33,17 +33,17 @@ python -m konsilier.cli aqyl-bench --no-examples --out report.json
 
 ```
 cd apps/api
-python -m konsilier.cli aqyl-export cases.jsonl                    # рассказ, маршрут, факты, документы, исход
-python -m konsilier.cli aqyl-export cases.jsonl --with-evidence    # + тексты загруженных документов
+python -m konsilier.cli zann-export cases.jsonl                    # рассказ, маршрут, факты, документы, исход
+python -m konsilier.cli zann-export cases.jsonl --with-evidence    # + тексты загруженных документов
 ```
 
 Выгрузка запускается на сервере; файл хранится в Казахстане до обезличенной передачи на обучение.
 
 ## 3. Порядок работ
 
-1. Юрист проверяет и дополняет задания Aqyl-Bench до 200 (сейчас 22 маршрутизации и 3 извлечения).
-2. Меряем текущие модели на Aqyl-Bench — это базовая линия.
+1. Юрист проверяет и дополняет задания Zann-Bench до 200 (сейчас 22 маршрутизации и 3 извлечения).
+2. Меряем текущие модели на Zann-Bench — это базовая линия.
 3. Поиск по статьям законов (Әділет) — ссылки на конкретные нормы.
 4. Первое дообучение открытой 8B-модели (LoRA) на обезличенных делах и заданиях — на бесплатной GPU (Kaggle, Colab),
    затем на грантовых кредитах (NVIDIA Inception, AWS, Google).
-5. Выпуск, только если Aqyl-Bench лучше.
+5. Выпуск, только если Zann-Bench лучше.
