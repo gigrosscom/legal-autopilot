@@ -53,6 +53,8 @@ class DisputeType(_Strict):
     false_report_warning: bool = False
     # lang → substrings; used only as an offline fallback when the LLM is unavailable
     keywords: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # lang → how people put it: suggestions in the consultation chat where no scenario covers the dispute yet
+    examples: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 
     @field_validator("id")
     @classmethod

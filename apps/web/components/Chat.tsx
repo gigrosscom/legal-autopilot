@@ -12,6 +12,7 @@ import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
 import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal/terms";
+import { SITUATIONS } from "@/lib/situations";
 import { canSpeak, speak, stopSpeaking, useDictation } from "@/lib/voice";
 
 type Pending = { key: string; filename: string; file?: File; id?: string };
@@ -134,12 +135,25 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     }
   }, [autoSend, initialDraft]);
 
-  // examples of the chosen life situation (fine → fines, family → divorce and alimony…); the general ones otherwise
-  const examples = useMemo(() => {
+  // Suggestions of the chosen life situation (fine → fines, family → divorce and alimony…) come from the scenarios
+  // themselves (GET /v1/examples), so each new scenario adds its own; the site's texts fill in where a language
+  // has none yet.
+  const fallback = useMemo(() => {
     if (situation) return [1, 2, 3, 4].map((i) => t(`situations.${situation}.ex${i}`));
     const n = Number(t("helper.exampleCount")) || 0;
     return Array.from({ length: n }, (_, i) => t(`helper.examples.${i + 1}`)).slice(0, 4);
   }, [t, situation]);
+  const [fromScenarios, setFromScenarios] = useState<string[]>([]);
+  useEffect(() => {
+    const topics = SITUATIONS.find((s) => s.key === situation)?.topics ?? [];
+    let live = true;
+    publicApi<{ examples: string[] }>(`/v1/examples?${new URLSearchParams({ topics: topics.join(","), lang, limit: "4" })}`)
+      .then((r) => { if (live) setFromScenarios(r.examples); }).catch(() => {});
+    return () => { live = false; };
+  }, [situation, lang]);
+  const examples = useMemo(
+    () => [...fromScenarios, ...fallback.filter((e) => !fromScenarios.includes(e))].slice(0, 4),
+    [fromScenarios, fallback]);
 
   const addFile = (f: File) => setFiles((xs) => [...xs, { key: `${Date.now()}-${f.name}`, filename: f.name, file: f }]);
   const toggleSpeak = (m: ChatMessage) => {

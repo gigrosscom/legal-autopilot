@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import uuid
 from dataclasses import asdict
 from datetime import timedelta
@@ -90,6 +91,46 @@ def list_packs(lang: str = "ru", container: Container = Depends(get_container)) 
             } for s in pack.scenarios.values() if container.packs.offered(s)],
         })
     return out
+
+
+@router.get("/examples")
+def examples(topics: str = "", lang: str = "ru", limit: int = 4, country: str | None = None,
+             container: Container = Depends(get_container)) -> dict[str, list[str]]:
+    """Suggestions for the consultation chat: how people describe problems of the chosen topics (taxonomy prefixes,
+    e.g. "family" or "administrative.fine_appeal"; empty — any). Taken from the offered scenarios' classification
+    examples and the taxonomy's dispute examples, so every new scenario brings its own; a random pick, one example
+    per scenario or dispute first, so the four differ."""
+    wanted = [t.strip() for t in topics.split(",") if t.strip()]
+
+    def fits(tax: str | None) -> bool:
+        return not wanted or bool(tax) and any(tax == w or tax.startswith(w + ".") or tax.startswith(w + "_")
+                                               for w in wanted)
+    sources: list[list[str]] = []
+    covered: set[str] = set()
+    for sc in container.packs.published(country):
+        if fits(sc.taxonomy):
+            ex = list(sc.classification.examples.get(lang) or ())
+            if ex:
+                sources.append(ex)
+                covered.add(sc.taxonomy or "")
+    for pack in container.packs.packs.values():
+        if pack.coverage is None or (country and pack.country != country.upper()) or \
+                (not country and pack.manifest.status != "live"):
+            continue
+        for d in pack.coverage.disputes.values():
+            if fits(d.id) and d.id not in covered and d.examples.get(lang):
+                sources.append(list(d.examples[lang]))
+                covered.add(d.id)
+    rng = random.Random()
+    for s in sources:
+        rng.shuffle(s)
+    rng.shuffle(sources)
+    out: list[str] = []
+    for i in range(max((len(s) for s in sources), default=0)):
+        for s in sources:
+            if i < len(s) and s[i] not in out:
+                out.append(s[i])
+    return {"examples": out[:max(1, min(limit, 12))]}
 
 
 def real_lawyers(session: Session, pack: Any, country: str, lg: str) -> list[dict[str, Any]]:
