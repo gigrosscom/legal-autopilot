@@ -12,6 +12,7 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { Agreements } from "@/components/Agreements";
+import { Bubble } from "@/components/Bubble";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
@@ -299,7 +300,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   }
 
   return (
-    <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
+    <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar} wallpaper avatar tabs={false}
       scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${c.payment?.code ?? ""}-${c.payment?.status ?? ""}`}>
       {c.scenario?.beta && <BetaNotice disclaimer={c.scenario.disclaimer} />}
       {c.scenario?.draft_disclaimer && (
@@ -311,23 +312,26 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
 
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
-        <PlanCard plan={c.plan} busy={busy} onUpload={upload} />
+        <PlanCard plan={c.plan} />
       )}
 
       <div className="space-y-2" aria-live="polite">
         {log.map((m, i) => (
-          <div key={i} className={`flex ${m.from === "user" ? "justify-end" : ""}`}>
-            <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 ${m.from === "user" ? "rounded-ee-sm bg-brand text-white" : "rounded-es-sm bg-surface shadow-sm"}`}>
-              {m.from === "bot" ? forScreen(m.text) : m.text}
-            </div>
-          </div>
+          <Bubble key={i} mine={m.from === "user"}>
+            <p className="whitespace-pre-line">{m.from === "bot" ? forScreen(m.text) : m.text}</p>
+          </Bubble>
         ))}
         {busy && (
-          <div className="flex">
-            <div className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 text-sm text-muted shadow-sm">
-              <Icon name="spinner" size={16} />{c.status === "intake" ? t("case.thinking") : t("case.working")}
-            </div>
-          </div>
+          <Bubble mine={false}>
+            <span className="flex items-center gap-2 text-muted" role="status">
+              {c.status === "intake" ? t("case.thinking") : t("case.working")}
+              <span className="flex items-center gap-1" aria-hidden>
+                {[0, 1, 2].map((k) => (
+                  <span key={k} className="h-1.5 w-1.5 rounded-full bg-muted motion-safe:animate-bounce" style={{ animationDelay: `${k * 150}ms` }} />
+                ))}
+              </span>
+            </span>
+          </Bubble>
         )}
       </div>
 
@@ -355,7 +359,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} />}
 
       {c.status === "awaiting_response" && proposal?.message && (
-        <div className="flex"><div className="max-w-[85%] rounded-2xl rounded-es-sm bg-surface px-4 py-2.5 shadow-sm">{proposal.message}</div></div>
+        <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
       )}
 
       {c.outcome && (
@@ -606,54 +610,37 @@ function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onCla
 }
 
 /** The proposed solution right after the story: document → addressee → how to file → what to attach. */
-function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUpload: (fs: File[]) => void }) {
+/** What will be made and what to attach — once, as Konsiliér's message; files are added from the box below. */
+function PlanCard({ plan }: { plan: Plan }) {
   const t = useT();
   const portalName = (url: string | null) => (url ? url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "");
   return (
-    <section className="card space-y-4 border-brand/40" aria-labelledby="plan-title">
-      <h2 id="plan-title" className="flex items-center gap-2 text-lg font-semibold">
-        <Icon name="sparkle" className="text-brand" />{t("helper.planTitle")}
-      </h2>
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-xl bg-brand-50 p-3 sm:col-span-2">
-          <dt className="text-xs text-muted">{t("helper.planDoc")}</dt>
-          <dd className="flex items-center gap-2 font-semibold"><Icon name="document" size={18} className="text-brand" />{plan.document}</dd>
-        </div>
-        {plan.addressee && (
-          <div>
-            <dt className="text-xs text-muted">{t("helper.planTo")}</dt>
-            <dd className="flex items-center gap-1.5"><Icon name="building" size={16} className="text-brand" />{plan.addressee}</dd>
-          </div>
-        )}
-        {plan.channels.length > 0 && (
-          <div>
-            <dt className="text-xs text-muted">{t("helper.planVia")}</dt>
-            <dd className="flex flex-wrap gap-1.5">
-              {plan.channels.map((ch, i) => ch.url ? (
-                <a key={i} href={ch.url} target="_blank" rel="noreferrer" className="chip hover:text-brand">
-                  {ch.kind === "portal" ? portalName(ch.url) : t(`forum.channel.${ch.kind}`)}
-                </a>
-              ) : <span key={i} className="chip">{t(`forum.channel.${ch.kind}`)}</span>)}
-            </dd>
-          </div>
-        )}
-      </dl>
+    <Bubble mine={false}>
+      <p className="font-semibold">{t("helper.planTitle")}</p>
+      <p className="flex items-start gap-2"><Icon name="document" size={20} className="mt-0.5 shrink-0 text-[var(--chat-accent)]" />{plan.document}</p>
+      {plan.addressee && (
+        <p className="flex items-start gap-2 text-[16px]"><Icon name="building" size={18} className="mt-0.5 shrink-0 text-muted" />{plan.addressee}</p>
+      )}
+      {plan.channels.length > 0 && (
+        <p className="flex flex-wrap gap-1.5 text-[15px]">
+          {plan.channels.map((ch, i) => ch.url ? (
+            <a key={i} href={ch.url} target="_blank" rel="noreferrer" className="rounded-full bg-surface px-2.5 py-0.5 hover:text-brand">
+              {ch.kind === "portal" ? portalName(ch.url) : t(`forum.channel.${ch.kind}`)}
+            </a>
+          ) : <span key={i} className="rounded-full bg-surface px-2.5 py-0.5">{t(`forum.channel.${ch.kind}`)}</span>)}
+        </p>
+      )}
       {plan.attachments.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-semibold">{t("helper.planAttach")}</p>
-          <ul className="space-y-1.5 text-sm">
+        <>
+          <p className="pt-1 text-[16px] font-semibold">{t("helper.planAttach")}</p>
+          <ul className="space-y-1 text-[16px]">
             {plan.attachments.map((a) => (
-              <li key={a} className="flex gap-2"><Icon name="checkCircle" size={18} className="mt-0.5 text-brand" /><span>{a}</span></li>
+              <li key={a} className="flex gap-2"><Icon name="checkCircle" size={18} className="mt-1 shrink-0 text-[var(--chat-accent)]" /><span>{a}</span></li>
             ))}
           </ul>
-          <div className="flex flex-wrap gap-2"><FilePicker onFiles={onUpload} disabled={busy} /></div>
-        </div>
+        </>
       )}
-      <p className="flex items-center gap-2 text-sm text-muted">
-        <Icon name={plan.lawyer_check ? "lawyer" : "checkCircle"} size={18} className="text-brand" />
-        {plan.lawyer_check ? t("helper.planLawyer") : t("helper.planSelf")}
-      </p>
-    </section>
+    </Bubble>
   );
 }
 
