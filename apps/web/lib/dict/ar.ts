@@ -212,6 +212,10 @@ const ar: Dict = {
     },
   },
   chat: {
+    cancel: "إلغاء التسجيل",
+    stop: "إيقاف الرد",
+    copied: "تم النسخ",
+    copy: "نسخ",
     share: "مشاركة",
     voiceTitle: "قراءة الردود بصوت",
     placeholderNext: "رسالة",

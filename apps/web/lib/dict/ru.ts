@@ -212,6 +212,10 @@ const ru: Dict = {
     },
   },
   chat: {
+    cancel: "Отменить запись",
+    stop: "Остановить ответ",
+    copied: "Скопировано",
+    copy: "Копировать",
     share: "Поделиться",
     voiceTitle: "Ответы вслух",
     placeholderNext: "Сообщение",
