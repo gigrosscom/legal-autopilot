@@ -154,7 +154,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
         placeholder={dictation.transcribing ? t("chat.transcribing") : placeholder}
         maxLength={4000}
         className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-[#6b6b70] ${
-          large ? "min-h-24 px-3 pt-2 text-[17px] leading-relaxed" : "min-h-10 px-3 py-2 text-[17px]"}`}
+          large ? "min-h-24 px-3 pt-2 text-[18px] leading-relaxed text-black" : "min-h-10 px-3 py-2 text-[18px] text-black"}`}
         style={{ outline: "none" }} /* the whole box shows focus */ />
     </>
   );
