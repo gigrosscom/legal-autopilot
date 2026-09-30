@@ -43,7 +43,8 @@ import {
   type SignedIn,
   saveFileAs,
 } from "@/lib/api";
-import { LAWYERS_PUBLIC } from "@/lib/features";
+import { LAWYERS_PUBLIC, LAWYER_PILOT } from "@/lib/features";
+import { LawyerPilot } from "@/components/LawyerPilot";
 import { useLang, useT } from "@/lib/i18n";
 
 type Msg = { from: "bot" | "user"; text: string };
@@ -78,6 +79,7 @@ function readStoredReply(id: string): Partial<Reply> | null {
 
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const [pilotStatus, setPilotStatus] = useState<string | null>(null);  // «Юрист по кнопке»: refreshes the lawyer block
   const t = useT();
   const [c, setCase] = useState<CaseView | null>(null);
   const [log, setLog] = useState<Msg[]>([]);
@@ -274,13 +276,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
     ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
       render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}</> }] : []),
-    ...(LAWYERS_PUBLIC ? [{ key: "lawyer", icon: "lawyer" as IconName, label: t("app.lawyer"), render: () => (
+    ...(LAWYERS_PUBLIC || LAWYER_PILOT ? [{ key: "lawyer", icon: "lawyer" as IconName, label: t("app.lawyer"), render: () => (
       <>
-        <LawyerBlock caseId={c.id} />
-        <div className="card space-y-2 text-sm">
-          <p className="text-muted">{t("cta.caseLawyerText")}</p>
-          <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
-        </div>
+        {LAWYER_PILOT && <LawyerPilot caseId={c.id} onChange={setPilotStatus} />}
+        <LawyerBlock key={pilotStatus ?? "none"} caseId={c.id} />
+        {LAWYERS_PUBLIC && (
+          <div className="card space-y-2 text-sm">
+            <p className="text-muted">{t("cta.caseLawyerText")}</p>
+            <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
+          </div>
+        )}
       </>) }] : []),
     ...(c.status !== "intake" ? [{ key: "gov", icon: "building" as IconName, label: t("app.gov"), render: () => <GovServices caseId={c.id} /> }] : []),
     ...(c.jurisdiction === "KZ" ? [{ key: "law", icon: "scroll" as IconName, label: t("app.law"), render: () => <LawQuestions caseId={c.id} /> }] : []),
