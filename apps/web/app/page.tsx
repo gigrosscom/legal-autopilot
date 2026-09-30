@@ -2,34 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Composer, type Attached } from "@/components/Composer";
-import { publicApi } from "@/lib/api";
 import { handOff } from "@/lib/handoff";
-import { useLang, useT } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
 
 /** The home page is the message box: what Konsiliér is in two lines, the box, a few examples. Sending opens the
  *  chat with the message already on its way. */
 export default function Home() {
   const t = useT();
-  const { lang } = useLang();
   const router = useRouter();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<Attached[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const fallback = useMemo(() => {
-    const n = Number(t("helper.exampleCount")) || 0;
-    return Array.from({ length: n }, (_, i) => t(`helper.examples.${i + 1}`)).slice(0, 4);
-  }, [t]);
-  const [examples, setExamples] = useState<string[]>([]);
-  useEffect(() => {
-    let live = true;
-    publicApi<{ examples: string[] }>(`/v1/examples?${new URLSearchParams({ lang, limit: "4" })}`)
-      .then((r) => { if (live && r.examples.length) setExamples(r.examples); }).catch(() => {});
-    return () => { live = false; };
-  }, [lang]);
-  const shown = examples.length ? examples : fallback;
+  // four short, everyday tasks chosen by hand: the first thing a visitor reads is never someone's misfortune
+  const shown = useMemo(() => [1, 2, 3, 4].map((i) => t(`helper.examples.${i}`)), [t]);
 
   function submit() {
     if (!text.trim()) return;

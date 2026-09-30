@@ -176,8 +176,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     }
   }, [autoSend, initialDraft]);
 
-  // Examples for an empty chat: those of the chosen life situation, else everyday ones (GET /v1/examples, which
-  // keeps them neutral); the site's texts fill in where a language has none yet.
+  // Examples for an empty chat: those of the chosen life situation (GET /v1/examples, which keeps them neutral),
+  // else the hand-picked everyday tasks of the site's texts.
   const fallback = useMemo(() => {
     if (situation) return [1, 2, 3, 4].map((i) => t(`situations.${situation}.ex${i}`));
     const n = Number(t("helper.exampleCount")) || 0;
@@ -186,7 +186,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [fromScenarios, setFromScenarios] = useState<string[]>([]);
   const empty = messages.length === 0 && streaming === null && !failed;
   useEffect(() => {
-    if (!empty) return;
+    if (!empty || !situation) return;  // without a chosen situation: the hand-picked everyday tasks
     const topics = SITUATIONS.find((s) => s.key === situation)?.topics ?? [];
     let live = true;
     publicApi<{ examples: string[] }>(`/v1/examples?${new URLSearchParams({ topics: topics.join(","), lang, limit: "4" })}`)
