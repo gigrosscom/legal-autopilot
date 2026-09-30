@@ -12,9 +12,11 @@ pilot. A lawyer bill never marks the case paid and never unlocks documents.
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import hmac
 import io
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -69,6 +71,27 @@ def channel(engine: "CaseEngine") -> dict[str, Any] | None:
 
 
 # ------------------------------------------------------------------ who is in the pilot
+INVITE_DAYS = 14
+
+
+def _invite_sig(secret: str, exp: int) -> str:
+    mac = hmac.new(secret.encode(), f"lawyer-invite:{exp}".encode(), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac[:16]).decode().rstrip("=")
+
+
+def invite_token(secret: str, now: datetime, days: int = INVITE_DAYS) -> tuple[str, datetime]:
+    """The owner's private link for pilot lawyers: expiry + signature, nothing stored. (token, expires_at)"""
+    exp = int((now + timedelta(days=days)).timestamp())
+    return f"{exp}.{_invite_sig(secret, exp)}", datetime.fromtimestamp(exp, timezone.utc)
+
+
+def invite_valid(secret: str, token: str | None, now: datetime) -> bool:
+    exp_s, _, sig = (token or "").partition(".")
+    if not exp_s.isdigit() or not sig or int(exp_s) < now.timestamp():
+        return False
+    return hmac.compare_digest(sig, _invite_sig(secret, int(exp_s)))
+
+
 def is_pilot_lawyer(app: LawyerApplication | None) -> bool:
     return (app is not None and app.status == "verified" and bool(app.pilot) and app.price is not None
             and app.price > 0 and bool(app.iin_hash) and app.user_id is not None)

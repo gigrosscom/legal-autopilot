@@ -919,6 +919,8 @@ const tr: Dict = {
     },
   },
   pilot: {
+    inviteChecking: "Bağlantı kontrol ediliyor…",
+    inviteInvalid: "Bu davet bağlantısı geçersiz veya süresi dolmuş. Lütfen Konsiliér AI ekibinden yenisini isteyin: info@konsilier.com.",
     title: "Tek dokunuşla avukat",
     lead: "Avukat, dosyanızın hazır özetini alır: yaşadıklarınız, olgular, deliller ve belgeler. Önce avukat talebinizi kabul eder, ardından siz ücretini ödersiniz.",
     empty: "Avukatlar yakında burada görünecek.",

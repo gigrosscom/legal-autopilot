@@ -80,6 +80,13 @@ function readStoredReply(id: string): Partial<Reply> | null {
 export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [pilotStatus, setPilotStatus] = useState<string | null>(null);  // «Юрист по кнопке»: refreshes the lawyer block
+  // owner 30.09: the «Юрист» tab is hidden while the pilot has no lawyers (unless this case already has a request)
+  const [pilotOpen, setPilotOpen] = useState(false);
+  useEffect(() => {
+    if (!LAWYER_PILOT || !id) return;
+    api<{ lawyers: unknown[]; request: unknown; last: unknown }>(`/v1/cases/${id}/lawyers`)
+      .then((v) => setPilotOpen(v.lawyers.length > 0 || !!v.request || !!v.last)).catch(() => setPilotOpen(false));
+  }, [id]);
   const t = useT();
   const [c, setCase] = useState<CaseView | null>(null);
   const [log, setLog] = useState<Msg[]>([]);
@@ -276,7 +283,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
     ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
       render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}</> }] : []),
-    ...(LAWYERS_PUBLIC || LAWYER_PILOT ? [{ key: "lawyer", icon: "lawyer" as IconName, label: t("app.lawyer"), render: () => (
+    ...(LAWYERS_PUBLIC || (LAWYER_PILOT && pilotOpen) ? [{ key: "lawyer", icon: "lawyer" as IconName, label: t("app.lawyer"), render: () => (
       <>
         {LAWYER_PILOT && <LawyerPilot caseId={c.id} onChange={setPilotStatus} />}
         <LawyerBlock key={pilotStatus ?? "none"} caseId={c.id} />

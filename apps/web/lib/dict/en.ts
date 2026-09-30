@@ -919,6 +919,8 @@ const en: Dict = {
     },
   },
   pilot: {
+    inviteChecking: "Checking the link…",
+    inviteInvalid: "This invitation link is invalid or has expired. Please ask the Konsiliér AI team for a new one: info@konsilier.com.",
     title: "Lawyer at a tap",
     lead: "The lawyer gets a ready file on your case: your story, the facts, the evidence and the documents. The lawyer first accepts your request, then you pay for their work.",
     empty: "Lawyers will appear here soon.",

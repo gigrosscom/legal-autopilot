@@ -34,6 +34,7 @@ export function PilotLawyers() {
             : "Оплата юристам закрыта: на сервере не задан счёт ТОО (PAYMENT_KASPI_PAY_LINK или LAWYER_PAYMENT_ACCOUNT)."}
         </p>
       )}
+      <InviteLink token={token} />
       {s?.lawyers.length === 0 && <p className="text-muted">Пока нет юристов, чей статус подтверждён.</p>}
       <ul className="space-y-3">
         {s?.lawyers.map((l) => <PilotRow key={l.id} row={l} token={token} onSaved={load} />)}
@@ -82,6 +83,38 @@ function PilotRow({ row, token, onSaved }: { row: Row; token: string; onSaved: (
           className="min-h-11 rounded-full bg-action px-4 text-[16px] font-semibold text-white hover:bg-action-hover disabled:opacity-50">Сохранить</button>
       </div>
       {error && <p role="alert" className="text-danger">{error}</p>}
+    </Card>
+  );
+}
+
+
+/** Owner 30.09: pilot lawyers join by a private link. One link can be sent to several lawyers; it works 14 days.
+ * Whoever applies through it still needs ЭЦП and the status check before they can be ticked above. */
+function InviteLink({ token }: { token: string }) {
+  const [link, setLink] = useState<{ url: string; expires_at: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  async function make() {
+    setError(null);
+    setCopied(false);
+    try { setLink(await adminApi<{ url: string; expires_at: string }>("/v1/admin/pilot-invite", token, { method: "POST" })); }
+    catch (e) { setError(errorText(e)); }
+  }
+  return (
+    <Card className="space-y-2">
+      <p className="text-[15px] text-muted">Юристы пилота подают заявку по закрытой ссылке. Ссылка действует 14 дней; её можно отправить нескольким юристам. После заявки — вход по ЭЦП и проверка статуса, затем отметьте юриста ниже и укажите цену.</p>
+      <button type="button" onClick={make}
+        className="min-h-10 rounded-full bg-surface px-4 text-[15px] font-medium ring-1 ring-line">{link ? "Создать новую ссылку" : "Создать ссылку-приглашение"}</button>
+      {error && <p role="alert" className="text-danger">{error}</p>}
+      {link && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input readOnly value={link.url} onFocus={(e) => e.target.select()} aria-label="Ссылка-приглашение"
+            className="min-h-10 w-full rounded-xl bg-surface px-3 text-[15px] ring-1 ring-line" />
+          <button type="button" onClick={() => { navigator.clipboard?.writeText(link.url); setCopied(true); }}
+            className="min-h-10 shrink-0 rounded-full bg-action px-4 text-[15px] font-semibold text-white">{copied ? "Скопировано" : "Копировать"}</button>
+        </div>
+      )}
+      {link && <p className="text-[14px] text-muted">Действует до {new Date(link.expires_at).toLocaleDateString("ru-RU")}.</p>}
     </Card>
   );
 }

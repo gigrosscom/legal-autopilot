@@ -223,3 +223,27 @@ def test_document_bill_is_not_cancelled_by_a_lawyer_bill(ctx):
     with ctx.container.session_factory() as s:
         assert s.scalar(select(Invoice.status).where(Invoice.code == "DOC-1")) == "pending"
         assert s.scalar(select(Invoice.status).where(Invoice.code == "LAW-1")) == "pending"
+
+
+def test_private_invite_link_marks_the_application(ctx):
+    # owner 30.09: pilot lawyers join by a private link; a forged or expired link is not accepted
+    r = ctx.client.post("/v1/admin/pilot-invite", headers=ADM)
+    assert r.status_code == 200, r.text
+    url = r.json()["url"]
+    assert "/join?t=" in url
+    token = url.split("t=", 1)[1]
+    assert ctx.client.post("/v1/admin/pilot-invite").status_code in (401, 403)  # owner only
+    assert ctx.client.get(f"/v1/lawyer-invite/{token}").json() == {"valid": True}
+    exp, sig = token.split(".")
+    assert ctx.client.get(f"/v1/lawyer-invite/{exp}.{sig[:-2]}xx").json() == {"valid": False}
+    assert ctx.client.get(f"/v1/lawyer-invite/{int(exp) + 1}.{sig}").json() == {"valid": False}
+    assert ctx.client.get("/v1/lawyer-invite/100.abc").json() == {"valid": False}  # long expired
+
+    base = {"country": "KZ", "kind": "advocate", "license_number": "12345", "city": "Алматы", "consent": True}
+    with_link = ctx.client.post("/v1/lawyer-applications", json={
+        **base, "full_name": "Пилот Ссылкин", "phone": "+77010000011", "invite": token}).json()["id"]
+    without = ctx.client.post("/v1/lawyer-applications", json={
+        **base, "full_name": "Без Ссылки", "phone": "+77010000012", "invite": "1.bad"}).json()["id"]
+    notes = {a["id"]: a.get("desk_note") for a in ctx.client.get("/v1/admin/lawyer-applications", headers=ADM).json()}
+    assert "закрытой ссылке" in (notes[with_link] or "")
+    assert not notes[without]

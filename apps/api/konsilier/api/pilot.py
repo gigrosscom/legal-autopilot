@@ -4,7 +4,8 @@ Client: GET /v1/cases/{id}/lawyers (pilot lawyers + the case's request), POST /v
 application_id (api/lawyers.py), POST /v1/cases/{id}/lawyer-payment and /lawyer-payment/claim.
 Lawyer: GET /v1/lawyer/requests, POST /v1/lawyer/requests/{id}/accept | decline, GET /v1/lawyer/cases/{id}/dossier,
 GET /v1/lawyer/cases/{id}/evidence/{eid}.
-Owner (admin token, command centre): GET /v1/admin/pilot-lawyers, POST /v1/admin/lawyer-applications/{id}/pilot.
+Owner (admin token, command centre): GET /v1/admin/pilot-lawyers, POST /v1/admin/lawyer-applications/{id}/pilot,
+POST /v1/admin/pilot-invite (the private link lawyers join by). Public: GET /v1/lawyer-invite/{token}.
 """
 
 from __future__ import annotations
@@ -295,6 +296,18 @@ def pilot_lawyers(session: Session = Depends(get_session),
             "payment_available": ch is not None,
             "payment_channel": ["kaspi_pay_link"] * ("kaspi_pay_link" in (ch or {}))
             + ["company_account"] * ("company_account" in (ch or {}))}
+
+
+@admin_router.post("/pilot-invite")
+def pilot_invite(container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Owner 30.09: pilot lawyers join by a private link (the public page for lawyers stays hidden)."""
+    token, expires = pilot.invite_token(container.settings.identity_secret, pilot.utcnow())
+    return {"url": f"{container.settings.public_site_url.rstrip('/')}/join?t={token}", "expires_at": expires.isoformat()}
+
+
+@router.get("/lawyer-invite/{token}")
+def lawyer_invite(token: str, container: Container = Depends(get_container)) -> dict[str, Any]:
+    return {"valid": pilot.invite_valid(container.settings.identity_secret, token, pilot.utcnow())}
 
 
 class PilotIn(BaseModel):

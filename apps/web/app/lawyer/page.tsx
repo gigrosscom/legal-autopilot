@@ -1,5 +1,6 @@
 "use client";
 
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Agreements } from "@/components/Agreements";
@@ -76,7 +77,7 @@ export default function LawyerCabinet() {
         </section>
       ))}
 
-      <p className="text-sm text-muted"><Link className="link" href="/for-lawyers">{t("lawyer.aboutProgram")}</Link></p>
+      {LAWYERS_PUBLIC && <p className="text-sm text-muted"><Link className="link" href="/for-lawyers">{t("lawyer.aboutProgram")}</Link></p>}
     </div>
   );
 }
