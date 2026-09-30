@@ -110,6 +110,11 @@ def history(case_id: uuid.UUID, user: User = Depends(current_user),
 
 
 REPLY_LANGS = ("ru", "kk", "en", "tr", "ar")  # the web interface languages
+# the person asks for a document themselves: then it may be offered in the very first reply
+ASKS_FOR_DOCUMENT = re.compile(
+    r"документ|претензи|жалоб|\bиск|заявлени|составь|составить|напиши|напишите|"
+    r"құжат|талап|шағым|арыз|document|claim|complaint|lawsuit|letter|draft|belge|dilekçe|şikâyet|şikayet|"
+    r"مستند|شكوى|دعوى|مطالبة", re.IGNORECASE)
 
 
 class ChatIn(BaseModel):
@@ -165,6 +170,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     ctx["lang"] = lang
     ctx["key_acts"] = [{"code": a.code, "title": pack.localized(a.title, lang)} for s in portal for a in s.key_acts]
     case_pk, user_pk = case.id, user.id
+    first_reply = not any(m.role == "assistant" for m in rows)
     session.commit()  # the user's message is saved even if the reply fails
 
     agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
@@ -218,6 +224,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             yield from unavailable("+".join(reasons) or "no_reply", started)
             return
         text = vault.restore(result.text) if result else ""
+        if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text):
+            result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
                             meta={"provider": used, "norms": result.norms, "sources": result.sources,
