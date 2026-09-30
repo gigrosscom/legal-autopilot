@@ -121,7 +121,7 @@ class EngineConfig:
     # «Юрист по кнопке» (core/lawyer_pilot.py): the company's payment channel only (never the personal Kaspi Gold)
     lawyer_commission_pct: float = 15.0
     lawyer_pay_link: str = ""  # the ТОО's Kaspi Pay link (https://…)
-    lawyer_pay_account: str = ""  # the ТОО's requisites as text (БИН, IBAN, bank)
+    lawyer_pay_account: str = ""  # the ТОО's requisites as text (tax number, IBAN, bank)
     company_name: str = ""  # ТОО «…», shown as the recipient
 
 

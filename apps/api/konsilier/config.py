@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     payment_kaspi_webhook: bool = False
     payment_kaspi_webhook_secret: str = ""
     # «Юрист по кнопке» (closed pilot): the client pays the lawyer's price to the COMPANY's account only — the Kaspi
-    # Pay link of the ТОО (PAYMENT_KASPI_PAY_LINK, https://…) or the company's requisites below (name, БИН, IBAN,
+    # Pay link of the ТОО (PAYMENT_KASPI_PAY_LINK, https://…) or the company's requisites below (name, tax number, IBAN,
     # bank as plain text). Never the Kaspi Gold of PAYMENT_KASPI_PHONE: with neither set, lawyer payment is off.
     # The platform keeps LAWYER_COMMISSION_PCT of the price; payouts to lawyers are manual in the pilot.
     lawyer_payment_account: str = ""
