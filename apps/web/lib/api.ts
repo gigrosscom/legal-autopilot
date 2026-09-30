@@ -215,7 +215,7 @@ export type CaseLawyer = {
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
 export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[];
   bonus_documents: number };  // free documents for inviting a friend who paid (any case)
-export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean };
+export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean; google?: boolean; apple?: boolean };
 export type SignedIn = { token: string; me: Me };
 
 /** After a verified sign-in the account may be a different one (the identifier was already known). */

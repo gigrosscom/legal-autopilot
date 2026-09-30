@@ -683,6 +683,8 @@ const tr: Dict = {
       email: "E-posta",
       phone: "Telefon",
       iin: "Kimlik no",
+      google: "Google",
+      apple: "Apple ID",
     },
     email: {
       title: "E-posta ile",
@@ -718,6 +720,14 @@ const tr: Dict = {
       expired: "Süre doldu. Yeni kod oluşturun.",
       qrAlt: "eGov Mobile ile giriş için QR kod",
     },
+    google: {
+      button: "Google ile giriş yap",
+      failed: "Google ile giriş açılamadı. İnternet bağlantınızı kontrol edin veya daha sonra deneyin.",
+    },
+    apple: {
+      button: "Apple ile giriş yap",
+      failed: "Apple ile giriş yapılamadı. Lütfen tekrar deneyin.",
+    },
     sendCode: "Kod al",
     codeLabel: "Mesajdaki kod",
     confirm: "Onayla",
@@ -738,6 +748,12 @@ const tr: Dict = {
       challenge_expired: "İmzalama süresi doldu. Tekrar deneyin.",
       verifier_unavailable: "İmza doğrulama geçici olarak kullanılamıyor. Daha sonra deneyin.",
       no_iin: "Sertifikada kimlik numarası yok.",
+      invalid_token: "Giriş doğrulanamadı. Lütfen tekrar deneyin.",
+      token_expired: "Giriş süresi doldu. Lütfen tekrar deneyin.",
+      wrong_nonce: "Bu giriş geçerliliğini yitirdi. Sayfayı yenileyip tekrar deneyin.",
+      email_not_verified: "Bu Google hesabının e-postası doğrulanmamış. Google'da doğrulayın veya başka bir yolla giriş yapın.",
+      provider_unavailable: "Giriş hizmeti geçici olarak kullanılamıyor. Lütfen daha sonra deneyin.",
+      foreign_challenge: "Giriş başka bir cihazda başlatıldı. Sayfayı yenileyip tekrar deneyin.",
     },
   },
   sign: {
