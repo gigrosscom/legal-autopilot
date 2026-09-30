@@ -1,8 +1,8 @@
 """invoices: the way to pay the person chose (Kaspi link / QR / Kaspi bill / bank invoice) and, for a Kaspi bill or
 «Счёт на оплату», the payer's phone or company
 
-Revision ID: 0023
-Revises: 0022
+Revision ID: 0024
+Revises: 0023
 Create Date: 2026-09-30
 """
 from __future__ import annotations
