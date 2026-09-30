@@ -30,7 +30,10 @@ const dayOf = (iso: string) => new Date(iso).toDateString();
  *  in the corner; the person's shows ✓ when sent and ✓✓ once answered. */
 function Bubble({ mine, at, seen, children }: { mine: boolean; at?: string; seen?: boolean; children: React.ReactNode }) {
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+    <div className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+      {!mine && ( // Konsiliér's small avatar beside its replies, as in Messenger
+        <img src="/icons/icon-192.png" alt="" width={28} height={28} className="mb-0.5 h-7 w-7 shrink-0 rounded-full ring-1 ring-line" />
+      )}
       <div className={`relative min-w-0 max-w-[85%] rounded-[18px] px-3.5 pt-2 pb-1.5 text-[16px] leading-[1.5] text-ink shadow-[0_1px_1px_rgb(0_0_0/0.08)] sm:max-w-[75%] ${
         mine ? "rounded-ee-[6px] bg-[#d9eafd]" : "rounded-es-[6px] bg-surface"}`}>
         <div className="space-y-2">{children}</div>
@@ -290,7 +293,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   );
 
   return (
-    <AppShell title={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar} wallpaper
+    <AppShell title={t("chat.brand")} subtitle={t("chat.subtitle")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar} wallpaper
       avatar tabs={false} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
       <div className="space-y-1.5" aria-live="polite">
 
@@ -314,6 +317,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               </ul>
             )}
           </div>
+        )}
+
+        {!empty && (  // who the person is talking to, once at the top, as official chats do
+          <p className="mx-auto max-w-md px-4 pt-2 pb-3 text-center text-xs leading-relaxed text-muted">{t("chat.notice")}</p>
         )}
 
         {messages.map((m, i) => {

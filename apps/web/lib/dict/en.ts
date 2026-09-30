@@ -213,6 +213,8 @@ const en: Dict = {
     },
   },
   chat: {
+    notice: "This is a chat with Konsiliér, an AI assistant for legal questions. Names and document numbers are hidden before AI processing. Konsiliér does not replace a lawyer.",
+    subtitle: "Legal AI assistant",
     greet: {"morning": "Good morning!", "day": "Good afternoon!", "evening": "Good evening!", "night": "Good night!"},
     cancel: "Cancel recording",
     stop: "Stop the answer",
