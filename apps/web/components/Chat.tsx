@@ -22,7 +22,9 @@ import { canSpeak, speak, stopSpeaking } from "@/lib/voice";
 const REMAINING_FROM = 10;
 /** The marker a reply ends with when it offers a document; hidden while the reply streams in. */
 const OFFER = /\[?\[\s*DOC[A-Z]*\s*\]?\]?\s*$|\[\[?\s*$/;
-const clean = (text: string) => text.replace(OFFER, "").trimEnd();
+// labels a model may copy from its instructions («SHORT ANSWER:», «DETAILS:») never reach the screen
+const LABELS = /^\s*\**\s*(SHORT ANSWER|DETAILS|КРАТКИЙ ОТВЕТ|ПОДРОБНОСТИ)\s*\**\s*:\s*\**\s*/gim;
+const clean = (text: string) => text.replace(OFFER, "").replace(LABELS, "").trimEnd();
 /** Between the short answer and the details (konsilier/chat.py MORE_MARKER); a half-typed one while streaming too. */
 const MORE = /\[?\[\s*MORE\s*\]?\]?/i;
 const MORE_TAIL = /\[\[?\s*M?O?R?E?\s*\]?$/i;
@@ -208,7 +210,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           if (voiceMode) speak(ev.message.text, lang);
           if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
         }
-      }, ctl.signal);
+      }, ctl.signal, lang);
     } catch (err) {
       if (ctl.signal.aborted) {  // stopped by the person: what was written stays, nothing to retry
         answered = true;

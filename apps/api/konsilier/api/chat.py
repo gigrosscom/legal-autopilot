@@ -108,9 +108,13 @@ def history(case_id: uuid.UUID, user: User = Depends(current_user),
     return [_view(m) for m in rows]
 
 
+REPLY_LANGS = ("ru", "kk", "en", "tr", "ar")  # the web interface languages
+
+
 class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
     attachments: list[str] = Field(default_factory=list, max_length=10)  # evidence ids uploaded with this message
+    language: str | None = Field(default=None, max_length=5)  # the interface language: the reply is written in it
 
 
 def _sse(event: dict[str, Any]) -> str:
@@ -148,7 +152,12 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     pack = ctx["pack"]
     ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault)}
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
-    lang = pack.lang(case.language)
+    lang = pack.lang(case.language)  # the pack's language for its titles (KZ: ru, kk)
+    # the reply follows the person: the interface language they write from, else the case's language — not the pack's
+    # fallback (an English page got Russian answers because the KZ pack has only ru and kk)
+    reply_lang = (body.language or case.language or lang).split("-")[0].lower()
+    if reply_lang not in REPLY_LANGS:
+        reply_lang = lang
     country = pack.localized(pack.manifest.name, "en") or pack.country
     portal = [s for s in pack.manifest.legal_sources if agent.portal_domain in str(s.url)]
     use_portal = bool(portal)
@@ -184,7 +193,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 break
             started = False
             try:
-                for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
+                for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{reply_lang}'",
                                    country=country, use_portal=use_portal):
                     if ev["type"] == "done":
                         result = ev["result"]
