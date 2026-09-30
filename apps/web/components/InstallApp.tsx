@@ -44,10 +44,10 @@ export function PwaRegister() {
   return null;
 }
 
-export function detect(): Platform {
+export function detect(storeKey: string = INSTALLED): Platform {
   if (isStandalone()) return "installed"; // running as the app
   if (window.__konsilierInstall) return "prompt";
-  if (read(INSTALLED) === "1") return "installed";
+  if (read(storeKey) === "1") return "installed";
   const ua = navigator.userAgent;
   if (isIos()) {
     // Chrome, Firefox, Edge, Google, Yandex and in-app browsers (Telegram, Instagram, Facebook…) on iOS
@@ -63,18 +63,20 @@ export function detect(): Platform {
   return "other";
 }
 
-/** The platform (null until known on the client) and the install action: the browser's own dialog, straight away. */
-export function useInstall() {
+/** The platform (null until known on the client) and the install action: the browser's own dialog, straight away.
+ * `storeKey`: where this browser remembers that the app is installed — the command centre (/ops, its own manifest)
+ * is a second app and keeps its own flag. */
+export function useInstall(storeKey: string = INSTALLED) {
   const [platform, setPlatform] = useState<Platform | null>(null);
   useEffect(() => {
-    const update = () => setPlatform(detect());
-    const onPrompt = () => { write(INSTALLED, null); update(); }; // offered again: the app is not installed
-    const onInstalled = () => { write(INSTALLED, "1"); update(); };
+    const update = () => setPlatform(detect(storeKey));
+    const onPrompt = () => { write(storeKey, null); update(); }; // offered again: the app is not installed
+    const onInstalled = () => { write(storeKey, "1"); update(); };
     update();
     // Chrome gives no install dialog once the app is installed; it can say so (manifest related_applications)
     const nav = navigator as Navigator & { getInstalledRelatedApps?: () => Promise<{ platform: string }[]> };
     nav.getInstalledRelatedApps?.().then((apps) => {
-      if (apps.some((a) => a.platform === "webapp") && !window.__konsilierInstall) { write(INSTALLED, "1"); update(); }
+      if (apps.some((a) => a.platform === "webapp") && !window.__konsilierInstall) { write(storeKey, "1"); update(); }
     }).catch(() => {});
     // the layout's INSTALL_CAPTURE was registered first, so window.__konsilierInstall is set by the time these run
     window.addEventListener("beforeinstallprompt", onPrompt);
@@ -85,7 +87,7 @@ export function useInstall() {
       window.removeEventListener("appinstalled", onInstalled);
       window.removeEventListener(CHANGED, update);
     };
-  }, []);
+  }, [storeKey]);
   const install = useCallback(async (): Promise<boolean> => {
     const e = window.__konsilierInstall;
     if (!e) return false;
@@ -95,10 +97,10 @@ export function useInstall() {
       await e.prompt();
       accepted = (await e.userChoice).outcome === "accepted";
     } catch {}
-    if (accepted) write(INSTALLED, "1");
+    if (accepted) write(storeKey, "1");
     window.dispatchEvent(new Event(CHANGED));
     return accepted;
-  }, []);
+  }, [storeKey]);
   return { platform, install };
 }
 
@@ -153,9 +155,10 @@ function Hint({ platform, text, onClose }: { platform: Platform; text?: string; 
  * nothing else. Elsewhere the tap shows one line in a small sheet (iPhone: Share → «На экран „Домой“»).
  * Hidden when the app is installed.
  */
-export function InstallButton({ className, icon, onInstalled }: { className: string; icon?: IconName; onInstalled?: () => void }) {
+export function InstallButton({ className, icon, onInstalled, storeKey, label }:
+  { className: string; icon?: IconName; onInstalled?: () => void; storeKey?: string; label?: string }) {
   const t = useT();
-  const { platform, install } = useInstall();
+  const { platform, install } = useInstall(storeKey);
   const [hint, setHint] = useState<Platform | null>(null);
   const closeHint = useCallback(() => setHint(null), []);
 
@@ -173,7 +176,7 @@ export function InstallButton({ className, icon, onInstalled }: { className: str
   return (
     <>
       <button type="button" onClick={go} className={className}>
-        {icon && <Icon name={icon} size={18} />}{t("pwa.install")}
+        {icon && <Icon name={icon} size={18} />}{label ?? t("pwa.install")}
       </button>
       {hint && <Hint platform={hint} onClose={closeHint} />}
     </>

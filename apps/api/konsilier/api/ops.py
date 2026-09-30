@@ -296,14 +296,21 @@ class PaymentDecision(BaseModel):
 def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = Depends(get_session),
                    container: Container = Depends(get_container),
                    op: User = Depends(operator("clients"))) -> dict[str, Any]:
+    return decide_invoice(session, container, invoice_id, op.email or "operator", body.decision == "paid", body.note)
+
+
+def decide_invoice(session: Session, container: Container, invoice_id: int, decided_by: str, paid: bool,
+                   note: str | None) -> dict[str, Any]:
+    """Payment found (the document is made right away) or not found; the client is told by e-mail. Used by the
+    clients desk and by the owner's command centre (konsilier/api/command.py)."""
     inv = session.get(Invoice, invoice_id)
     if inv is None:
         raise HTTPException(404, "invoice not found")
     try:
-        container.engine.decide_payment(session, inv, op.email or "operator", body.decision == "paid", body.note)
+        container.engine.decide_payment(session, inv, decided_by, paid, note)
     except EngineError as e:
         raise HTTPException(409, {"code": e.code, "message": e.code}) from e
-    if body.decision == "paid" and inv.case_id is not None:  # the document is made right away, not on the next visit
+    if paid and inv.case_id is not None:  # the document is made right away, not on the next visit
         def prepare(s: Session) -> None:
             action = container.engine.prepare_after_payment(s, s.get(Invoice, invoice_id))
             if action is not None and not action.pdf_key and action.docx_key:
@@ -313,7 +320,7 @@ def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = De
     owner = session.get(User, inv.user_id)
     if owner is not None and owner.email and container.email_sender is not None:
         where = (f"https://konsilier.com/case/{inv.case_id}" if inv.case_id else "https://konsilier.com/plans")
-        if body.decision == "paid":
+        if paid:
             text = (f"Оплата получена. Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}» подключён: {where}"
                     if inv.purpose == "plan" else f"Оплата получена. Документ готовится автоматически и появится в "
                                                   f"карточке дела: {where}")

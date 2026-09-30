@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..container import Container
-from ..core.models import Action, Case, LawyerApplication, Outcome, User, WaitlistEntry
+from ..core.models import Action, Case, Invoice, LawyerApplication, Outcome, User, WaitlistEntry
 from ..core.llm.spend import usage_summary
 from .chat import chat_usage_today
 from .deps import get_container, get_session, require_admin
@@ -93,6 +93,9 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
     for u in session.execute(select(User.created_at).where(User.is_test.is_(False))).scalars():
         bump(u, "users")
 
+    today = now.date()
+    new_users_today = sum(1 for u in session.execute(select(User.created_at).where(User.is_test.is_(False))).scalars()
+                          if u is not None and _aware(u).date() == today)
     owners = {c.owner_id for c in cases}
     repeat = sum(1 for n in Counter(c.owner_id for c in cases).values() if n > 1)
     out = {
@@ -108,6 +111,11 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
             "lawyer_applications": session.scalar(select(func.count()).select_from(LawyerApplication)) or 0,
             "waitlist": session.scalar(select(func.count()).select_from(WaitlistEntry)) or 0,
         },
+        "today": {  # UTC day
+            "users": new_users_today,
+            "cases": sum(1 for c in cases if c.created_at is not None and _aware(c.created_at).date() == today),
+            "documents": sum(1 for a in docs if a.created_at is not None and _aware(a.created_at).date() == today),
+        },
         "funnel": funnel,
         "outcomes": dict(Counter(o.result for o in outcomes)),
         "money": {
@@ -120,6 +128,7 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
         "countries": dict(Counter(c.jurisdiction or "—" for c in cases)),
         "top_scenarios": Counter(c.scenario_id for c in cases if c.scenario_id).most_common(10),
         "referral": referral_metrics(session),
+        "payments": payment_metrics(session, tests, now),
         "weekly": [{"week": w, **{k: series[w].get(k, 0) for k in ("users", "cases", "documents", "submitted")}}
                    for w in sorted(series)][-weeks:],
     }
@@ -128,6 +137,32 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
         out["claude"] = usage_summary(session, daily_usd=settings.llm_daily_budget_usd,
                                       monthly_usd=settings.llm_monthly_budget_usd)
     return out
+
+
+def payment_metrics(session: Session, tests: set[Any], now: datetime) -> dict[str, Any]:
+    """Real payments only (the test «stub» method and test accounts are left out): paid bills, paying clients,
+    revenue by currency (all time and today, UTC), and bills waiting for the desk's confirmation."""
+    rows = [i for i in session.execute(select(Invoice.user_id, Invoice.status, Invoice.amount, Invoice.currency,
+                                              Invoice.purpose, Invoice.decided_at)
+                                       .where(Invoice.method != "stub")).all() if i.user_id not in tests]
+    paid = [i for i in rows if i.status == "paid"]
+    today = now.date()
+
+    def revenue(items: list[Any]) -> dict[str, str]:
+        out: dict[str, Decimal] = {}
+        for i in items:
+            out[i.currency or "?"] = out.get(i.currency or "?", Decimal(0)) + Decimal(str(i.amount))
+        return {k: str(v) for k, v in out.items()}
+    paid_today = [i for i in paid if i.decided_at is not None and _aware(i.decided_at).date() == today]
+    return {
+        "paid": len(paid),
+        "paid_clients": len({i.user_id for i in paid}),
+        "paid_plans": sum(1 for i in paid if i.purpose == "plan"),
+        "paid_today": len(paid_today),
+        "revenue": revenue(paid),
+        "revenue_today": revenue(paid_today),
+        "awaiting_confirmation": sum(1 for i in rows if i.status == "awaiting_confirmation"),
+    }
 
 
 @router.get("/metrics")
