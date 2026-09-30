@@ -307,7 +307,7 @@ WAY_RECEIPT = {"kaspi_transfer": "перевод Kaspi", "kaspi_link": "Kaspi Pa
 def receipt_text(session: Session, container: Container, inv: Invoice, where: str) -> str:
     """PAYMENT_RECEIPT_EMAIL: the letter after the desk confirms — amount, date, what was bought, the link. It is a
     payment confirmation, not a fiscal receipt (that comes from a cash register: Kaspi Касса for Kaspi Pay)."""
-    from ..core.bill import ITEM_RU, money
+    from ..core.bill import ITEM_RU, BillWords, money
 
     st = container.settings
     item = ITEM_RU.get(inv.purpose, ITEM_RU["document"])
@@ -323,16 +323,17 @@ def receipt_text(session: Session, container: Container, inv: Invoice, where: st
     at = inv.decided_at or inv.created_at
     at = at if at.tzinfo else at.replace(tzinfo=timezone.utc)
     when = at.astimezone(timezone(timedelta(hours=5))).strftime("%d.%m.%Y %H:%M")
-    currency = "₸" if (inv.currency or "KZT") == "KZT" else inv.currency
+    words = BillWords.of(container.engine.billing_pack(session, inv), inv.currency)
     lines = ["Оплата получена. Спасибо!", "",
-             f"Сумма: {money(inv.amount)} {currency}",
+             f"Сумма: {money(inv.amount)} {words.sign}",
              f"Дата: {when} (Алматы)",
              f"За что: {item}",
              f"Код платежа: {inv.code}, счёт № {inv.id}"]
     if inv.pay_way in WAY_RECEIPT:
         lines.append(f"Способ: {WAY_RECEIPT[inv.pay_way]}")
     if st.payment_llp_name:
-        lines.append(f"Продавец: {st.payment_llp_name}" + (f", БИН {st.payment_llp_bin}" if st.payment_llp_bin else ""))
+        lines.append(f"Продавец: {st.payment_llp_name}"
+                     + (f", {words.seller_id} {st.payment_llp_bin}" if st.payment_llp_bin else ""))
     lines += ["", (f"Тариф подключён: {where}" if inv.purpose == "plan"
                    else f"Документ готовится автоматически и появится в карточке дела: {where}"), "",
               "Это письмо — подтверждение оплаты, а не фискальный чек."]

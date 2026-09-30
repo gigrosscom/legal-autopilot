@@ -988,6 +988,13 @@ class CaseEngine:
                 self.audit(session, session.get(Case, inv.case_id), actor, "payment_claimed", invoice=inv.code)
         return inv
 
+    def billing_pack(self, session: Session, inv: Invoice) -> JurisdictionPack | None:
+        """The pack whose country words a bill uses: the case's, else the one pack plans are sold in."""
+        case = session.get(Case, inv.case_id) if inv.case_id is not None else None
+        if case is not None and case.scenario_id:
+            return self.pack_of(case)
+        return next(iter(self.packs.packs.values()), None)
+
     def way_view(self, inv: Invoice | None) -> dict[str, Any]:
         """The way the person chose for this bill and what they gave for it."""
         if inv is None:
@@ -1001,7 +1008,7 @@ class CaseEngine:
                    buyer_address: str | None = None) -> Invoice:
         """The person picks how to pay the open bill (adapters/payment.py WAYS). kaspi_invoice: the Kaspi number to
         bill — the request goes to the clients desk at once (awaiting_confirmation), which sends the Kaspi bill and
-        confirms the payment. bank_invoice: the paying company's name and БИН/ИИН for «Счёт на оплату»."""
+        confirms the payment. bank_invoice: the paying company's name and tax number for «Счёт на оплату»."""
         from .adapters.payment import kz_phone, valid_bin
 
         if inv is None or inv.status not in self.OPEN:

@@ -13,7 +13,7 @@ from decimal import Decimal
 from konsilier.config import Settings
 from konsilier.core.adapters.payment import (ManualTransferPaymentAdapter, Requisites, build_payments, kz_phone,
                                              valid_bin)
-from konsilier.core.bill import amount_in_words, money, number_in_words
+from konsilier.core.bill import BillWords, amount_in_words, money, number_in_words
 from konsilier.identity.senders import LogSender
 
 from .test_e2e import web_user
@@ -90,7 +90,8 @@ def test_helpers():
     assert number_in_words(9990) == "девять тысяч девятьсот девяносто"
     assert number_in_words(2_021_002) == "два миллиона двадцать одна тысяча два"
     assert number_in_words(11_000) == "одиннадцать тысяч"
-    assert amount_in_words(Decimal("29990")) == "Двадцать девять тысяч девятьсот девяносто тенге 00 тиын"
+    tenge = BillWords(currency_forms=("тенге", "тенге", "тенге"), minor="тиын")
+    assert amount_in_words(Decimal("29990"), tenge) == "Двадцать девять тысяч девятьсот девяносто тенге 00 тиын"
     assert money(Decimal("1990")) == "1 990,00"
 
 

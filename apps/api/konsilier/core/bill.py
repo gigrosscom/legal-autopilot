@@ -1,12 +1,13 @@
 """«Счёт на оплату» for a company or an individual entrepreneur paying from its bank account (PAYMENT_METHODS
 bank_invoice). The form is not fixed by law; the bill carries what the payer's accountant needs to send the money:
-the seller's name, БИН, bank, ИИК, БИК, Кбе, the КНП, the buyer, the item, the amount in figures and words, VAT, the
+the seller's name and tax number, bank, ИИК, БИК, Кбе, the КНП, the buyer, the item, the amount in figures and words, VAT, the
 due date and a payment purpose with the bill number and payment code (the clients desk finds the payment by them).
 Word file made with python-docx; the PDF comes from the same LibreOffice converter as the documents."""
 
 from __future__ import annotations
 
 import io
+from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -61,12 +62,31 @@ def number_in_words(n: int) -> str:
     return " ".join(parts)
 
 
-def amount_in_words(amount: Decimal, currency: str | None = "KZT") -> str:
-    """«Одна тысяча девятьсот девяносто тенге 00 тиын»."""
+@dataclass
+class BillWords:
+    """Country words of the bill and the payment letter, from the pack's i18n «billing» block
+    (packs/<cc>/i18n/ru.yaml): the tax-number labels, the currency in words and its sign."""
+    seller_id: str = "ID"
+    buyer_id: str = "ID"
+    currency_forms: tuple[str, str, str] = ("", "", "")
+    minor: str = ""
+    sign: str = ""
+
+    @classmethod
+    def of(cls, pack: Any, currency: str | None) -> "BillWords":
+        def t(key: str, default: str) -> str:
+            return pack.t("ru", f"billing.{key}", default=default) if pack is not None else default
+
+        forms = (t("currency_forms", currency or "").split("|") * 3)[:3]
+        return cls(seller_id=t("seller_id", "ID"), buyer_id=t("buyer_id", "ID"),
+                   currency_forms=(forms[0], forms[1], forms[2]), minor=t("minor", ""), sign=t("sign", currency or ""))
+
+
+def amount_in_words(amount: Decimal, words: BillWords) -> str:
+    """«Одна тысяча девятьсот девяносто тенге 00 тиын» (currency words from the pack)."""
     amount = Decimal(amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     whole, cents = int(amount), int((amount - int(amount)) * 100)
-    unit = ("тенге", "тенге", "тенге") if (currency or "KZT") == "KZT" else (currency,) * 3
-    text = f"{number_in_words(whole)} {_plural(whole, unit)} {cents:02d} тиын"
+    text = f"{number_in_words(whole)} {_plural(whole, words.currency_forms)} {cents:02d} {words.minor}".strip()
     return text[0].upper() + text[1:]
 
 
@@ -82,7 +102,7 @@ ITEM_RU = {"document": "Подготовка юридического докум
            "plan": "Доступ к сервису Konsilier AI по тарифу"}
 
 
-def bill_fields(req: Requisites, inv: Any, *, item: str, issued: date) -> dict[str, Any]:
+def bill_fields(req: Requisites, inv: Any, *, item: str, issued: date, words: BillWords) -> dict[str, Any]:
     """Everything the bill shows; one place for the Word file and the tests."""
     number = f"{inv.id}"
     amount = Decimal(inv.amount)
@@ -93,7 +113,8 @@ def bill_fields(req: Requisites, inv: Any, *, item: str, issued: date) -> dict[s
         "seller": req.name, "seller_bin": req.bin, "seller_address": req.address, "bank": req.bank, "iik": req.iik,
         "bik": req.bik, "kbe": req.kbe, "knp": req.knp, "director": req.director,
         "buyer": inv.buyer_name or "", "buyer_bin": inv.buyer_bin or "", "buyer_address": inv.buyer_address or "",
-        "item": item, "amount": money(amount), "words": amount_in_words(amount, inv.currency),
+        "item": item, "amount": money(amount), "words": amount_in_words(amount, words),
+        "seller_id": words.seller_id, "buyer_id": words.buyer_id, "currency": words.currency_forms[2],
         "vat": f"в т. ч. НДС 12%: {money(vat)}" if vat is not None else "Без НДС",
         "purpose": f"Оплата по счёту № {number} от {issued.strftime('%d.%m.%Y')}, код {inv.code}. "
                    + (f"В т. ч. НДС {money(vat)}" if vat is not None else "Без НДС"),
@@ -124,7 +145,7 @@ def make_bill_docx(fields: dict[str, Any]) -> bytes:
     bank = doc.add_table(rows=0, cols=3)
     bank.style = "Table Grid"
     row(bank, ["Бенефициар:", "ИИК", "Кбе"], bold=True)
-    row(bank, [f"{fields['seller']}\nБИН: {fields['seller_bin']}", fields["iik"], fields["kbe"]])
+    row(bank, [f"{fields['seller']}\n{fields['seller_id']}: {fields['seller_bin']}", fields["iik"], fields["kbe"]])
     row(bank, ["Банк бенефициара:", "БИК", "Код назначения платежа"], bold=True)
     row(bank, [fields["bank"], fields["bik"], fields["knp"]])
 
@@ -134,10 +155,10 @@ def make_bill_docx(fields: dict[str, Any]) -> bytes:
     run.bold = True
     run.font.size = Pt(14)
 
-    doc.add_paragraph(f"Поставщик: {fields['seller']}, БИН {fields['seller_bin']}"
+    doc.add_paragraph(f"Поставщик: {fields['seller']}, {fields['seller_id']} {fields['seller_bin']}"
                       + (f", {fields['seller_address']}" if fields["seller_address"] else ""))
     doc.add_paragraph(f"Покупатель: {fields['buyer']}"
-                      + (f", БИН/ИИН {fields['buyer_bin']}" if fields["buyer_bin"] else "")
+                      + (f", {fields['buyer_id']} {fields['buyer_bin']}" if fields["buyer_bin"] else "")
                       + (f", {fields['buyer_address']}" if fields["buyer_address"] else ""))
 
     items = doc.add_table(rows=0, cols=6)
@@ -145,7 +166,7 @@ def make_bill_docx(fields: dict[str, Any]) -> bytes:
     row(items, ["№", "Наименование", "Кол-во", "Ед.", "Цена", "Сумма"], bold=True)
     row(items, ["1", fields["item"], "1", "усл.", fields["amount"], fields["amount"]])
 
-    doc.add_paragraph(f"Итого: {fields['amount']} тенге. {fields['vat']}.").runs[0].bold = True
+    doc.add_paragraph(f"Итого: {fields['amount']} {fields['currency']}. {fields['vat']}.").runs[0].bold = True
     doc.add_paragraph(f"Всего к оплате: {fields['words']}.")
     doc.add_paragraph(f"Назначение платежа: {fields['purpose']}")
     doc.add_paragraph(f"Оплатить до {fields['due']}. Услуга оказывается после поступления оплаты. "

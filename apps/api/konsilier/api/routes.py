@@ -724,7 +724,7 @@ PLAN_NAMES = {"biz": "Бизнес", "bizpro": "Бизнес Про"}
 def invoice_bill(invoice_id: int, format: Literal["pdf", "docx"] = "pdf", user: User = Depends(current_user),
                  session: Session = Depends(get_session), container: Container = Depends(get_container)):
     """«Счёт на оплату» (PDF; Word where the PDF converter is not installed) with the company's requisites."""
-    from ..core.bill import ITEM_RU, bill_fields, make_bill_docx
+    from ..core.bill import ITEM_RU, BillWords, bill_fields, make_bill_docx
 
     inv = _own_invoice(session, user, invoice_id)
     if inv.pay_way != "bank_invoice" or not inv.buyer_name or inv.status == "cancelled":
@@ -735,7 +735,8 @@ def invoice_bill(invoice_id: int, format: Literal["pdf", "docx"] = "pdf", user: 
     item = ITEM_RU.get(inv.purpose, ITEM_RU["document"])
     if inv.purpose == "plan":
         item = f"{item} «{PLAN_NAMES.get(inv.plan or '', inv.plan)}»"
-    docx = make_bill_docx(bill_fields(req, inv, item=item, issued=inv.created_at.date()))
+    words = BillWords.of(container.engine.billing_pack(session, inv), inv.currency)
+    docx = make_bill_docx(bill_fields(req, inv, item=item, issued=inv.created_at.date(), words=words))
     name = f"schet-{inv.id}"
     if format == "pdf":
         pdf = container.engine.pdf.convert(docx) if container.engine.pdf is not None else None

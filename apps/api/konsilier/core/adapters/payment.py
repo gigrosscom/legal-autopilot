@@ -45,7 +45,8 @@ def new_payment_code(prefix: str = "") -> str:
 
 
 def kz_phone(raw: str | None) -> str | None:
-    """+7XXXXXXXXXX for a Kazakhstan mobile number written any usual way (8 700…, +7 (700)…, 700…); else None."""
+    """+7XXXXXXXXXX for a +7-zone mobile number (the Kaspi app's numbers) written any usual way (8 700…,
+    +7 (700)…, 700…); else None."""
     digits = re.sub(r"\D", "", raw or "")
     if len(digits) == 11 and digits[0] in "78":
         digits = digits[1:]
@@ -55,7 +56,7 @@ def kz_phone(raw: str | None) -> str | None:
 
 
 def valid_bin(raw: str | None) -> str | None:
-    """A 12-digit БИН/ИИН, spaces removed; None when it is not 12 digits."""
+    """A 12-digit company / person tax number, spaces removed; None when it is not 12 digits."""
     digits = re.sub(r"\s", "", raw or "")
     return digits if re.fullmatch(r"\d{12}", digits) else None
 
