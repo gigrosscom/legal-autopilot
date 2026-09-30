@@ -136,3 +136,15 @@ const ru: LegalDoc = {
 };
 
 export default ru;
+
+const ACCEPTED_KEY = "konsilier.termsAccepted";
+
+/** Whether this browser already accepted the current terms (by sending a first message): the «Отправляя сообщение,
+ *  вы принимаете…» line is shown only until then. */
+export function termsAccepted(): boolean {
+  try { return localStorage.getItem(ACCEPTED_KEY) === TERMS_VERSION; } catch { return false; }
+}
+
+export function markTermsAccepted() {
+  try { localStorage.setItem(ACCEPTED_KEY, TERMS_VERSION); } catch {}
+}
