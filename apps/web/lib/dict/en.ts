@@ -68,6 +68,9 @@ const en: Dict = {
     step: { created: "Created", classified: "Classified", intake_done: "Interview done", document_ready: "Document ready", submitted: "Filed", response: "Reply received", resolved_positive: "Resolved in favour" },
   },
   pwa: {
+    openSafari: "Open in Safari",
+    openChrome: "Open in Chrome",
+    noHomeScreen: "No “Add to Home Screen”? Open in Safari",
     // after the browser's install dialog: where the icon is now
     done: {
       android: "Done — the Konsiliér AI icon is on your home screen and in the app list.",
@@ -84,9 +87,10 @@ const en: Dict = {
     hint: {
       ios: "Tap {share} and choose “Add to Home Screen”",
       ios26: "Tap “•••”, then {share} and “Add to Home Screen”",
-      iosOther: "Open {site} in Safari to install",
+      iosInApp: "Apps can't be installed here — open the site in Safari with one tap",
+      androidInApp: "Apps can't be installed here — open the site in Chrome with one tap",
       macSafari: "File → “Add to Dock”",
-      menu: "Browser menu ⋮ → “Install app” Already installed? Click “Open in app” in the address bar.",
+      menu: "Browser menu ⋮ → “Install app”. Already installed? Click “Open in app” in the address bar.",
       other: "Open {site} in Chrome or Edge to install",
     },
   },
@@ -220,6 +224,7 @@ const en: Dict = {
     },
   },
   chat: {
+    more: "More details",
     notice: "This is a chat with Konsiliér, an AI assistant for legal questions. Names and document numbers are hidden before AI processing. Konsiliér does not replace a lawyer.",
     subtitle: "AI assistant for legal questions",
     greet: {"morning": "Good morning!", "day": "Good afternoon!", "evening": "Good evening!", "night": "Good night!"},
@@ -261,8 +266,8 @@ const en: Dict = {
     free: "The chat is free. Konsiliér is an AI assistant and does not replace a lawyer.",
     open: "Open the chat",
     errors: {
-      agent_unavailable: "The chat consultant is unavailable right now. Please try later or prepare the document step by step.",
-      agent_failed: "The consultant could not answer. Please try again in a minute.",
+      agent_unavailable: "The AI chat is unavailable right now. Please try later or prepare the document step by step.",
+      agent_failed: "The AI assistant could not answer. Please try again in a minute.",
       too_many_messages: "Limit reached: {limit} free messages per 24 hours. New ones become available 24 hours after the ones you sent — and you can prepare the document step by step right now.",
       busy: "We're under heavy load right now. Please try again in a minute.",
       mic_denied: "No access to the microphone. Allow it in your browser or phone settings and try again.",
@@ -544,7 +549,7 @@ const en: Dict = {
     facts: "Case details",
     prepare: "Prepare document",
     handoff: "Pass to a lawyer",
-    awaitingApproval: "A lawyer is checking the document, usually within a few hours. We will notify you as soon as it is ready.",
+    awaitingApproval: "The document is being checked, usually within 24 hours. We will notify you as soon as it is ready.",
     rejected: "The lawyer sent the document back for changes.",
     download: "Download",
     instructions: "How to file",
@@ -831,7 +836,7 @@ const en: Dict = {
     title: "Contact us",
     lead: "Ask a question about the service, report a problem or suggest an improvement. The reply will come to your e-mail and appear on this page.",
     sentTitle: "Request No. {n} received",
-    sentText: "We will reply within one business day. The reply will come to your e-mail and appear below under “My requests”.",
+    sentText: "The reply will come to your e-mail and appear below under “My requests”.",
     kind: "Topic",
     kinds: { question: "Question", complaint: "Complaint", suggestion: "Suggestion", data: "My data", plan: "Plan request" },
     textLabel: { question: "Your question", complaint: "What went wrong", suggestion: "What could be better", data: "Which data and what to do with it", plan: "Tell us what you need" },
@@ -991,7 +996,7 @@ const en: Dict = {
     dropped: "Unconfirmed references dropped: {n}",
     disclaimer: "This is information from the official texts of the law, not a legal opinion. For complex cases we bring in a lawyer.",
     errors: {
-      agent_unavailable: "Ask this question in the free chat consultant.",
+      agent_unavailable: "Ask this question in the free AI chat.",
       agent_failed: "Could not answer right now. Try again a little later.",
       too_many_questions: "You have asked many questions about this case today. Please try again tomorrow.",
     },

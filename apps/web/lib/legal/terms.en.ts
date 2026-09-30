@@ -27,7 +27,7 @@ const en: LegalDoc = {
     {
       h: "2. What the Service does",
       p: [
-        "The Service provides software tools: an AI-based chat consultation with links to the official texts of regulatory legal acts (Adilet legal information system), a document builder based on your answers, suggestions on possible recipients and filing methods, deadline reminders, a directory of lawyers, signing of documents with EDS, and forwarding of your requests to lawyers.",
+        "The Service provides software tools: an AI chat with links to the official texts of regulatory legal acts (Adilet legal information system), a document builder based on your answers, suggestions on possible recipients and filing methods, deadline reminders, a directory of lawyers, signing of documents with EDS, and forwarding of your requests to lawyers.",
         "The Service is provided on an “as is” basis. Its features may change; we announce material changes on the website.",
       ],
     },
@@ -76,8 +76,8 @@ const en: LegalDoc = {
     {
       h: "8. Prices and payment",
       p: [
-        "8.1. The chat consultation is free of charge; a daily message limit applies.",
-        "8.2. The chat consultation is free of charge. Document preparation is paid; the price is shown before payment. Payment is made by transfer using the details on the payment page; the document becomes available once the payment is confirmed.",
+        "8.1. The AI chat is free of charge; a daily message limit applies.",
+        "8.2. Document preparation is paid; the price is shown before payment. Payment is made by transfer using the details on the payment page; the document becomes available once the payment is confirmed.",
         "8.3. The fee for legal assistance is set by the Lawyer in the agreement with you. Human rights organizations help free of charge.",
         "8.4. Refunds are made in accordance with the Law of the Republic of Kazakhstan “On Consumer Rights Protection”.",
       ],

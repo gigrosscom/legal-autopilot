@@ -68,6 +68,9 @@ const tr: Dict = {
     step: { created: "Oluşturuldu", classified: "Sınıflandırıldı", intake_done: "Görüşme tamam", document_ready: "Belge hazır", submitted: "Sunuldu", response: "Yanıt alındı", resolved_positive: "Lehine sonuçlandı" },
   },
   pwa: {
+    openSafari: "Safari'de aç",
+    openChrome: "Chrome'da aç",
+    noHomeScreen: "“Ana Ekrana Ekle” yok mu? Safari'de aç",
     // after the browser's install dialog: where the icon is now
     done: {
       android: "Tamam — Konsiliér AI simgesi ana ekranda ve uygulama listesinde.",
@@ -84,9 +87,10 @@ const tr: Dict = {
     hint: {
       ios: "{share} simgesine dokunun ve “Ana Ekrana Ekle”yi seçin",
       ios26: "“•••”, ardından {share} ve “Ana Ekrana Ekle”ye dokunun",
-      iosOther: "Yüklemek için {site} adresini Safari'de açın",
+      iosInApp: "Uygulama burada yüklenemez — siteyi tek dokunuşla Safari'de açın",
+      androidInApp: "Uygulama burada yüklenemez — siteyi tek dokunuşla Chrome'da açın",
       macSafari: "Dosya → “Dock'a Ekle”",
-      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle” Zaten yüklüyse adres çubuğundaki “Uygulamada aç” düğmesine tıklayın.",
+      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle”. Zaten yüklüyse adres çubuğundaki “Uygulamada aç”a tıklayın.",
       other: "Yüklemek için {site} adresini Chrome veya Edge'de açın",
     },
   },
@@ -220,6 +224,7 @@ const tr: Dict = {
     },
   },
   chat: {
+    more: "Ayrıntılar",
     notice: "Bu, hukuki sorular için yapay zekâ asistanı Konsiliér ile bir sohbettir. İsimler ve belge numaraları yapay zekâ işlemeden önce gizlenir. Konsiliér avukatın yerini tutmaz.",
     subtitle: "Hukuki sorular için yapay zekâ asistanı",
     greet: {"morning": "Günaydın!", "day": "İyi günler!", "evening": "İyi akşamlar!", "night": "İyi geceler!"},
@@ -261,8 +266,8 @@ const tr: Dict = {
     free: "Sohbet ücretsizdir. Konsiliér bir yapay zekâ asistanıdır, avukatın yerini tutmaz.",
     open: "Sohbeti aç",
     errors: {
-      agent_unavailable: "Sohbet danışmanı şu anda kullanılamıyor. Daha sonra deneyin veya belgeyi adım adım hazırlayın.",
-      agent_failed: "Danışman yanıt veremedi. Bir dakika sonra tekrar deneyin.",
+      agent_unavailable: "Yapay zekâ sohbeti şu anda kullanılamıyor. Daha sonra deneyin veya belgeyi adım adım hazırlayın.",
+      agent_failed: "Yapay zekâ asistanı yanıt veremedi. Bir dakika sonra tekrar deneyin.",
       too_many_messages: "Sınıra ulaşıldı: 24 saatte {limit} ücretsiz mesaj. Yenileri, gönderdiklerinizden 24 saat sonra kullanılabilir olur — belgeyi ise şimdi adım adım hazırlayabilirsiniz.",
       busy: "Şu anda yoğunluk var, lütfen bir dakika sonra tekrar deneyin.",
       mic_denied: "Mikrofona erişim yok. Tarayıcı veya telefon ayarlarından izin verip tekrar deneyin.",
@@ -544,7 +549,7 @@ const tr: Dict = {
     facts: "Dosya bilgileri",
     prepare: "Belgeyi hazırla",
     handoff: "Avukata ilet",
-    awaitingApproval: "Belgeyi bir hukukçu kontrol ediyor, genellikle birkaç saat içinde. Hazır olur olmaz size bildirim göndereceğiz.",
+    awaitingApproval: "Belge kontrol ediliyor, genellikle 24 saat içinde. Hazır olur olmaz size bildirim göndereceğiz.",
     rejected: "Avukat belgeyi düzeltme için geri gönderdi.",
     download: "İndir",
     instructions: "Nasıl başvurulur",
@@ -831,7 +836,7 @@ const tr: Dict = {
     title: "Bize yazın",
     lead: "Hizmetle ilgili bir soru sorun, bir sorunu bildirin veya bir iyileştirme önerin. Yanıt e-posta adresinize gelir ve bu sayfada görünür.",
     sentTitle: "{n} numaralı talebiniz alındı",
-    sentText: "Bir iş günü içinde yanıt vereceğiz. Yanıt e-postanıza gelir ve aşağıda «Taleplerim» bölümünde görünür.",
+    sentText: "Yanıt e-postanıza gelir ve aşağıda «Taleplerim» bölümünde görünür.",
     kind: "Konu",
     kinds: { question: "Soru", complaint: "Şikâyet", suggestion: "Öneri", data: "Verilerim", plan: "Paket talebi" },
     textLabel: { question: "Sorunuz", complaint: "Ne ters gitti", suggestion: "Neyi iyileştirebiliriz", data: "Hangi veriler ve onlarla ne yapmamızı istiyorsunuz", plan: "İhtiyacınızı anlatın" },
@@ -991,7 +996,7 @@ const tr: Dict = {
     dropped: "Doğrulanmayan atıflar çıkarıldı: {n}",
     disclaimer: "Bu, yasaların resmî metinlerine dayanan bir bilgidir, hukuki görüş değildir. Karmaşık durumlarda bir avukatı dahil ederiz.",
     errors: {
-      agent_unavailable: "Bu soruyu ücretsiz sohbet danışmanına sorun.",
+      agent_unavailable: "Bu soruyu ücretsiz yapay zekâ sohbetine sorun.",
       agent_failed: "Şu anda yanıtlanamadı. Biraz sonra tekrar deneyin.",
       too_many_questions: "Bugün bu dosyada çok soru soruldu. Yarın deneyin.",
     },
