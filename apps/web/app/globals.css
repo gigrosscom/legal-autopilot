@@ -77,7 +77,8 @@ body {
      The tracking is set in px so the 14–15 px captions that inherit it are not pinched further. */
   font-size: 17px;
   line-height: 1.47;
-  letter-spacing: -0.374px;
+  letter-spacing: 0; /* normal spacing: Cyrillic set tight looks cramped and pale */
+  -webkit-font-smoothing: auto;
   text-rendering: optimizeLegibility;
 }
 /* Arabic: Noto Sans Arabic first and no negative tracking (it breaks the joins of connected letters). */
@@ -243,7 +244,7 @@ footer {
 :root, [data-look="messenger"] {
   --chat-bg: #ffffff;
   --chat-in-bg: #f0f0f0;
-  --chat-in-fg: #050505;
+  --chat-in-fg: #000000;
   --chat-out-bg: #0084ff;
   --chat-out-fg: #ffffff;
   --chat-out-meta: rgb(255 255 255 / 0.85);
@@ -255,9 +256,9 @@ footer {
 [data-look="whatsapp"] {
   --chat-bg: #efeae2;
   --chat-in-bg: #ffffff;
-  --chat-in-fg: #111b21;
+  --chat-in-fg: #000000;
   --chat-out-bg: #d9fdd3;
-  --chat-out-fg: #111b21;
+  --chat-out-fg: #000000;
   --chat-out-meta: #667781;
   --chat-accent: #00a884;
   --chat-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13);
