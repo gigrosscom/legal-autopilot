@@ -25,7 +25,8 @@ declare global {
 export type Platform = "installed" | "prompt" | "ios" | "iosOther" | "macSafari" | "menu" | "other";
 
 const INSTALLED = "konsilier.installed"; // Chromium installed the app from this browser (it offers no dialog since)
-const CHANGED = "konsilier:install";     // the install state changed: every button and banner re-reads it
+const CHANGED = "konsilier:install";
+const DONE = "konsilier:installed";     // the browser's dialog installed the app just now     // the install state changed: every button and banner re-reads it
 
 function read(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -102,7 +103,7 @@ export function useInstall() {
 }
 
 /** The one line for a device without an install dialog; {share} becomes the Share icon. */
-function Hint({ platform, onClose }: { platform: Platform; onClose: () => void }) {
+function Hint({ platform, text, onClose }: { platform: Platform; text?: string; onClose: () => void }) {
   const t = useT();
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -117,11 +118,11 @@ function Hint({ platform, onClose }: { platform: Platform; onClose: () => void }
   // Safari 26 on iPhone keeps Share in the «•••» menu at the bottom right; before, Share sat mid-bottom; iPad: top right
   const safari26 = Number(/Version\/(\d+)/.exec(ua)?.[1] ?? 0) >= 26;
   const key = platform === "ios" && safari26 && !ipad ? "ios26" : platform;
-  const [before, after] = t(`pwa.hint.${key}`, { site: window.location.host }).split("{share}");
+  const [before, after] = (text ?? t(`pwa.hint.${key}`, { site: window.location.host })).split("{share}");
   const line: ReactNode = after === undefined ? before : (
     <>{before}<Icon name="share" size={22} className="mx-1 inline-block -translate-y-0.5 text-action" />{after}</>
   );
-  const pointer = platform !== "ios" ? null : ipad ? "top" : safari26 ? "bottomEnd" : "bottom";
+  const pointer = text || platform !== "ios" ? null : ipad ? "top" : safari26 ? "bottomEnd" : "bottom";
 
   return createPortal(
     <div className="fixed inset-0 z-50" onClick={onClose}>
@@ -161,7 +162,10 @@ export function InstallButton({ className, icon, onInstalled }: { className: str
   if (platform === null || platform === "installed") return null;
   const go = async () => {
     if (platform === "prompt") {
-      if (await install()) onInstalled?.();
+      if (await install()) {
+        window.dispatchEvent(new Event(DONE)); // the note on where the icon is lives in AppBanner, which stays mounted
+        onInstalled?.();
+      }
       return;
     }
     setHint(platform);
@@ -198,6 +202,12 @@ const QUIET = ["/case/", "/chat/", "/app", "/share", "/account"];
  * Dismissal is remembered.
  */
 export function AppBanner({ above = false }: { above?: boolean }) {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const onDone = () => setDone(true);
+    window.addEventListener(DONE, onDone);
+    return () => window.removeEventListener(DONE, onDone);
+  }, []);
   const t = useT();
   const path = usePathname();
   const { platform } = useInstall();
@@ -219,6 +229,12 @@ export function AppBanner({ above = false }: { above?: boolean }) {
     }
   }, []);
 
+  if (done) {
+    // where the icon is now: the browser puts it there, the site cannot choose
+    const ua = navigator.userAgent;
+    const where = /Android/.test(ua) ? "android" : /Windows/.test(ua) ? "windows" : /Macintosh/.test(ua) ? "mac" : "other";
+    return <Hint platform="installed" text={t(`pwa.done.${where}`)} onClose={() => setDone(false)} />;
+  }
   if (!kind || QUIET.some((q) => path === q || path.startsWith(q))) return null;
   if (kind === "install" && (platform === null || platform === "installed")) return null;
   const dismiss = () => { write(kind === "push" ? PUSH_BANNER : BANNER, "dismissed"); setKind(null); };

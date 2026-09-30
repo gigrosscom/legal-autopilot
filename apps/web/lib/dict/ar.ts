@@ -68,6 +68,13 @@ const ar: Dict = {
     step: { created: "أُنشئت", classified: "صُنّفت", intake_done: "اكتملت المقابلة", document_ready: "المستند جاهز", submitted: "قُدّمت", response: "وصل الرد", resolved_positive: "حُسمت لصالح العميل" },
   },
   pwa: {
+    // after the browser's install dialog: where the icon is now
+    done: {
+      android: "تم — أيقونة Konsiliér AI على الشاشة الرئيسية وفي قائمة التطبيقات.",
+      windows: "تم — Konsiliér AI على سطح المكتب وفي قائمة «ابدأ». إذا سأل المتصفح، فحدّد «اختصار على سطح المكتب».",
+      mac: "تم — Konsiliér AI في Launchpad وفي مجلد «التطبيقات». لإبقائه في Dock: انقر بزر الفأرة الأيمن على أيقونته في Dock ← «خيارات» ← «الاحتفاظ في Dock».",
+      other: "تم — تم تثبيت Konsiliér AI ويفتح في نافذة مستقلة.",
+    },
     install: "تثبيت",
     offlineTitle: "لا يوجد اتصال بالإنترنت",
     offlineText: "قضاياك محفوظة على الخادم. أعد تحميل الصفحة عند عودة الاتصال — سيكون كل شيء في مكانه.",

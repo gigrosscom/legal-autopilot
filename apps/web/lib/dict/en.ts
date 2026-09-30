@@ -68,6 +68,13 @@ const en: Dict = {
     step: { created: "Created", classified: "Classified", intake_done: "Interview done", document_ready: "Document ready", submitted: "Filed", response: "Reply received", resolved_positive: "Resolved in favour" },
   },
   pwa: {
+    // after the browser's install dialog: where the icon is now
+    done: {
+      android: "Done — the Konsiliér AI icon is on your home screen and in the app list.",
+      windows: "Done — Konsiliér AI is on the desktop and in the Start menu. If the browser asks, tick “Desktop shortcut”.",
+      mac: "Done — Konsiliér AI is in Launchpad and Applications. To keep it in the Dock: right-click its Dock icon → Options → Keep in Dock.",
+      other: "Done — Konsiliér AI is installed and opens in its own window.",
+    },
     install: "Install",
     offlineTitle: "No internet connection",
     offlineText: "Your cases are saved on the server. Reload the page once you're back online — everything will be there.",
