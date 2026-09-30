@@ -182,6 +182,23 @@ src = ','.join(f'{k}:{v}' for k, v in sorted((f.get('sources') or {}).items(), k
 print(f\"users={t['users']} with_case={t['users_with_case']} cases={t['cases']} documents={t['documents']} submitted={t['submitted']} lawyer_apps={t['lawyer_applications']} referred={f.get('referred_users')} inviters={f.get('inviters')} k={f.get('k_factor')} sources=[{src}]\")
 " </dev/null 2>&1 | tail -1) || true
     log "metrics ${METRICS:-unavailable}"
+    # chat speed over the last 24 h: seconds until the first words of a reply (median and 90th percentile) and in all
+    SPEED=$(timeout 60 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import select
+from konsilier.config import get_settings
+from konsilier.container import build_container
+from konsilier.core.models import ChatMessage
+c = build_container(get_settings())
+since = datetime.now(timezone.utc) - timedelta(days=1)
+with c.session_factory() as s:
+    metas = [m or {} for m in s.scalars(select(ChatMessage.meta).where(ChatMessage.role == 'assistant', ChatMessage.created_at > since))]
+first = sorted(m['first_ms'] for m in metas if m.get('first_ms') is not None)
+total = sorted(m['total_ms'] for m in metas if m.get('total_ms') is not None)
+q = lambda xs, p: round(xs[min(len(xs) - 1, int(len(xs) * p))] / 1000, 1) if xs else '-'
+print(f'replies={len(first)} first_s=p50:{q(first, .5)},p90:{q(first, .9)} total_s=p50:{q(total, .5)},p90:{q(total, .9)}')
+" </dev/null 2>&1 | tail -1) || true
+    log "chatspeed ${SPEED:-unavailable}"
   fi
 }
 main "$@"

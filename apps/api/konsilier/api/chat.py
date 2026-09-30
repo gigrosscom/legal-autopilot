@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import logging
 import re
 import uuid
@@ -184,8 +185,11 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         yield _sse({"type": "error", "code": "agent_failed" if started else "busy",
                     "message": BUSY.get(lang, BUSY["ru"])})
 
+    t_request = time.perf_counter()
+
     def events() -> Iterator[str]:
         result, used, reasons, started = None, None, [], False
+        first_ms: int | None = None  # how long the person waited for the first words
         for i, a in enumerate(agents):
             provider = provider_of(a)
             if i > 0 and provider == "anthropic" and not fallback_allowed():
@@ -199,6 +203,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                         result = ev["result"]
                     else:
                         started = started or ev["type"] == "text"
+                        if started and first_ms is None:
+                            first_ms = int((time.perf_counter() - t_request) * 1000)
                         yield _sse(ev)
                 used = provider
                 break
@@ -216,12 +222,15 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
                             meta={"provider": used, "norms": result.norms, "sources": result.sources,
                                   "unchecked": result.unchecked, "offer_document": result.offer_document,
-                                  "tool_calls": result.tool_calls, "usage": result.usage})
+                                  "tool_calls": result.tool_calls, "usage": result.usage,
+                                  "first_ms": first_ms, "total_ms": int((time.perf_counter() - t_request) * 1000)})
             s.add(m)
             c = s.get(Case, case_pk)
             container.engine.audit(s, c, f"user:{user_pk}", "chat_reply", tokens=result.usage,
                                    unchecked=result.unchecked)
             s.commit()
+            log.info("chat=reply case=%s provider=%s first_ms=%s total_ms=%s tools=%s", case_pk, used, first_ms,
+                     m.meta.get("total_ms"), result.tool_calls)
             if result.unchecked:  # not shown to the person; the team watches how often it happens
                 log.warning("chat=unchecked_norms case=%s", case_pk)
             # what is left of the daily limit (a rolling 24-hour window) after this answered message

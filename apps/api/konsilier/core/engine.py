@@ -177,8 +177,20 @@ class CaseEngine:
         self.audit(session, case, actor, "status_changed", current, target.value, **data)
 
     # ================================================================ intake
+    def qualify_later(self, session: Session, case_id: Any) -> None:
+        """The scenario of a case opened by the chat (``defer_qualification``), in the background."""
+        case = session.get(Case, case_id)
+        if case is None or case.scenario_id or case.taxonomy:
+            return
+        self._qualify_and_continue(session, case, case.initial_text or "")
+        if "emergency" in ((case.taxonomy or {}).get("flags") or []):
+            self.audit(session, case, "system", "emergency_detected", by="llm")
+
     def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
-                   channel: str | None = None, country: str | None = None) -> tuple[Case, Reply]:
+                   channel: str | None = None, country: str | None = None,
+                   defer_qualification: bool = False) -> tuple[Case, Reply]:
+        """``defer_qualification``: the chat opens the case and answers at once; which scenario fits (an LLM call of
+        several seconds) is worked out afterwards by ``qualify_later``."""
         lang = language or user.language or "ru"
         country = (country or user.country or "").upper() or None
         if country and country not in self.packs.packs:
@@ -192,6 +204,12 @@ class CaseEngine:
         self.audit(session, case, f"user:{user.id}", "case_created", None, case.status, channel=case.channel)
         pack = self.pack_of(case)
         keyword_emergency = safety.detect_emergency(pack.coverage, text)
+        if defer_qualification:
+            reply = Reply(message="")
+            if keyword_emergency:
+                reply.emergency = self.emergency_info(case)
+                self.audit(session, case, "system", "emergency_detected", by="keywords")
+            return case, reply
         reply = self._qualify_and_continue(session, case, text)
         if keyword_emergency or "emergency" in ((case.taxonomy or {}).get("flags") or []):
             reply.emergency = self.emergency_info(case)

@@ -231,6 +231,8 @@ class NewCase(BaseModel):
     country: str | None = None
     # the Terms of Use accepted with the first message: the wording's version, or true for the current one
     accept_terms: bool | str | None = None
+    # the chat: answer at once, work out the scenario afterwards (it takes an LLM call of several seconds)
+    defer: bool = False
 
 
 @router.post("/cases", status_code=201)
@@ -238,7 +240,11 @@ def create_case(body: NewCase, user: User = Depends(current_user), session: Sess
                 container: Container = Depends(get_container)) -> dict[str, Any]:
     try:
         case, reply = container.engine.start_case(session, user, body.text, language=body.language,
-                                                  country=body.country)
+                                                  country=body.country, defer_qualification=body.defer)
+        if body.defer:
+
+            case_pk = case.id
+            after_commit(session, container, lambda s: container.engine.qualify_later(s, case_pk), "qualify")
         if body.accept_terms:
             version = body.accept_terms if isinstance(body.accept_terms, str) else container.settings.terms_version
             session.add(Consent(case_id=case.id, kind=f"terms:{version[:32]}"))

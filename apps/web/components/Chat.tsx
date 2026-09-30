@@ -153,7 +153,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       }
     }
     const out = await api<{ case: CaseView; reply: Reply }>("/v1/cases", {
-      method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ", accept_terms: TERMS_VERSION }),
+      // defer: the reply starts at once; the case's scenario is worked out on the server meanwhile
+      method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ", accept_terms: TERMS_VERSION, defer: true }),
     });
     setCaseId(out.case.id);
     markTermsAccepted();  // accepted with the first message: the line about the terms is not shown again
