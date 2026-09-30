@@ -79,7 +79,7 @@ const en: Dict = {
       ios26: "Tap “•••”, then {share} and “Add to Home Screen”",
       iosOther: "Open {site} in Safari to install",
       macSafari: "File → “Add to Dock”",
-      menu: "Browser menu ⋮ → “Install app”",
+      menu: "Browser menu ⋮ → “Install app” Already installed? Click “Open in app” in the address bar.",
       other: "Open {site} in Chrome or Edge to install",
     },
   },
@@ -114,7 +114,7 @@ const en: Dict = {
   appPage: {
     title: "Konsiliér AI on your phone",
     lead: "Its own icon on your screen and deadline alerts — one tap away.",
-    installed: "The app is already installed on this device.",
+    installed: "The app is already installed on this device. Open it from the desktop, the Dock or “Open in app” in the address bar.",
     qrAlt: "QR code of the app page",
     qrTitle: "Open it on your phone",
     qrText: "Point your camera at the code and tap “Install”.",
