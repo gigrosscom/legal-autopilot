@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-import time
 import logging
 import re
+import threading
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
@@ -75,6 +76,39 @@ def chat_usage_today(session: Session, settings: Settings) -> dict[str, Any]:
             "anthropic_budget_usd": budget, "fallback_open": budget > 0 and cost < budget}
 
 
+def _percentile(values: list[int], q: float) -> int | None:
+    if not values:
+        return None
+    v = sorted(values)
+    return v[min(len(v) - 1, max(0, round(q * (len(v) - 1))))]
+
+
+def chat_latency(session: Session, hours: int = 24) -> dict[str, Any]:
+    """Time to the first words of chat replies over the last ``hours`` (ms, the reply's ``first_ms``): p50 / p95
+    overall and by the provider that answered (``served_by``: cerebras, gemini … inside the free chain)."""
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    rows = session.scalars(select(ChatMessage.meta).where(ChatMessage.role == "assistant",
+                                                          ChatMessage.created_at >= since)).all()
+    by: dict[str, list[int]] = {}
+    for meta in rows:
+        meta = meta or {}
+        if isinstance(meta.get("first_ms"), (int, float)):
+            by.setdefault(str(meta.get("served_by") or meta.get("provider") or "?"), []).append(int(meta["first_ms"]))
+    every = [v for vs in by.values() for v in vs]
+    return {"hours": hours, "n": len(every), "p50_ms": _percentile(every, 0.5), "p95_ms": _percentile(every, 0.95),
+            "by_provider": {k: {"n": len(v), "p50_ms": _percentile(v, 0.5), "p95_ms": _percentile(v, 0.95)}
+                            for k, v in sorted(by.items())}}
+
+
+def warm_chat(container: Container) -> None:
+    """Open the chat providers' connections in the background (the chat page opened, a case is being created), so
+    the person's message does not wait for a TLS handshake. Each client does it at most once a minute."""
+    clients = [getattr(a, "client", None) for a in (container.chat_agent, container.chat_fallback_agent)]
+    warm = [c.warm for c in clients if c is not None and callable(getattr(c, "warm", None))]
+    if warm:
+        threading.Thread(target=lambda: [w() for w in warm], name="chat-warm", daemon=True).start()
+
+
 def _reason(provider: str, e: Exception) -> str:
     status = getattr(e, "status_code", None)
     if status is None and (m := re.match(r"gemini (\d{3})", str(e))):
@@ -96,7 +130,9 @@ def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[s
 
 @router.get("/chat/info")
 def info(container: Container = Depends(get_container)) -> dict[str, Any]:
-    """Whether the chat is available and its daily limit; which AI answers is not disclosed to clients."""
+    """Whether the chat is available and its daily limit; which AI answers is not disclosed to clients. The chat page
+    asks this when it opens: the providers' connections are opened meanwhile."""
+    warm_chat(container)
     return {"available": container.chat_agent is not None, "daily_limit": container.settings.chat_daily_limit}
 
 
@@ -168,6 +204,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     portal = [s for s in pack.manifest.legal_sources if agent.portal_domain in str(s.url)]
     use_portal = bool(portal)
     ctx["lang"] = lang
+    ctx["case_id"] = str(case.id)
     ctx["key_acts"] = [{"code": a.code, "title": pack.localized(a.title, lang)} for s in portal for a in s.key_acts]
     case_pk, user_pk = case.id, user.id
     first_reply = not any(m.role == "assistant" for m in rows)
@@ -194,6 +231,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     t_request = time.perf_counter()
 
     def events() -> Iterator[str]:
+        # waiting for a worker thread between the response and its first chunk (a busy server shows here)
+        queue_ms = int((time.perf_counter() - t_request) * 1000)
         result, used, reasons, started = None, None, [], False
         first_ms: int | None = None  # how long the person waited for the first words
         for i, a in enumerate(agents):
@@ -226,12 +265,20 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         text = vault.restore(result.text) if result else ""
         if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text):
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
+        # the agent's phases (library, each model round with the providers tried, each tool call and its source)
+        timing = {**(getattr(result, "timing", None) or {}), "queue_ms": queue_ms}
+        served_by = timing.get("provider") or used  # inside the free chain: cerebras, gemini …
+        log.info("chat timing: case=%s summary %s", case_pk, json.dumps(
+            {k: v for k, v in timing.items() if k not in ("rounds", "tools")} | {
+                "first_ms": first_ms, "served_by": served_by, "rounds": len(timing.get("rounds", [])),
+                "tools": [t.get("source") for t in timing.get("tools", [])]}))
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
-                            meta={"provider": used, "norms": result.norms, "sources": result.sources,
-                                  "unchecked": result.unchecked, "offer_document": result.offer_document,
-                                  "tool_calls": result.tool_calls, "usage": result.usage,
-                                  "first_ms": first_ms, "total_ms": int((time.perf_counter() - t_request) * 1000)})
+                            meta={"provider": used, "served_by": served_by, "norms": result.norms,
+                                  "sources": result.sources, "unchecked": result.unchecked,
+                                  "offer_document": result.offer_document, "tool_calls": result.tool_calls,
+                                  "usage": result.usage, "first_ms": first_ms,
+                                  "total_ms": int((time.perf_counter() - t_request) * 1000), "timing": timing})
             s.add(m)
             c = s.get(Case, case_pk)
             container.engine.audit(s, c, f"user:{user_pk}", "chat_reply", tokens=result.usage,

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import logging
 import random
 import uuid
 from dataclasses import asdict
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -25,6 +26,8 @@ from ..core.scenario import RESPONSE_CLASSES
 from .background import after_commit
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
 from .views import case_view
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1")
 
@@ -242,9 +245,11 @@ def create_case(body: NewCase, user: User = Depends(current_user), session: Sess
         case, reply = container.engine.start_case(session, user, body.text, language=body.language,
                                                   country=body.country, defer_qualification=body.defer)
         if body.defer:
+            from .chat import warm_chat
 
             case_pk = case.id
             after_commit(session, container, lambda s: container.engine.qualify_later(s, case_pk), "qualify")
+            warm_chat(container)  # the chat message follows in a moment: open the providers' connections
         if body.accept_terms:
             version = body.accept_terms if isinstance(body.accept_terms, str) else container.settings.terms_version
             session.add(Consent(case_id=case.id, kind=f"terms:{version[:32]}"))
@@ -264,7 +269,27 @@ def list_cases(user: User = Depends(current_user), session: Session = Depends(ge
 @router.get("/cases/{case_id}")
 def get_case(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
              container: Container = Depends(get_container)) -> dict[str, Any]:
-    return case_view(container.engine, session, load_case(case_id, session, user))
+    case = load_case(case_id, session, user)
+    if unqualified(case):
+        try:
+            with session.begin_nested():
+                container.engine.qualify_later(session, case.id)
+        except Exception:  # noqa: BLE001 — the model is still down: the case opens as it is, tried again next time
+            log.exception("deferred classification of case %s failed", case.id)
+    return case_view(container.engine, session, case)
+
+
+QUALIFY_RETRY_AFTER_S = 60
+
+
+def unqualified(case: Case, now: datetime | None = None) -> bool:
+    """A case opened by the chat (``defer``) whose background classification never ran to the end (the model was
+    down, the server restarted): it is run again when the case is opened, a minute after it was created."""
+    if (case.status != "intake" or case.scenario_id or case.taxonomy or case.qualification_confidence is not None
+            or not case.initial_text or case.created_at is None):
+        return False
+    created = case.created_at if case.created_at.tzinfo else case.created_at.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - created > timedelta(seconds=QUALIFY_RETRY_AFTER_S)
 
 
 class MessageIn(BaseModel):
