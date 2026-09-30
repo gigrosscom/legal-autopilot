@@ -398,3 +398,60 @@ def test_document_is_offered_only_when_the_reply_says_so():
     events, client = run("Срок гарантии зависит от договора.", use_portal=False)
     assert events[-1]["result"].offer_document is False
     assert "[[DOCUMENT]]" in client.calls[0]["system"]  # the model is told how to offer one
+
+
+def test_reply_follows_interface_language_not_pack_fallback(ctx):
+    """The KZ pack has only ru and kk: an English page used to get Russian answers. The reply follows the interface."""
+    from .test_e2e import web_user
+
+    client = StreamingClient([(["Hello."], "end_turn", [])])
+    ctx.container.chat_agent = ChatAgent(client, "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Refund?", "language": "en"}))
+    assert "ISO 639-1 code 'en'" in client.calls[0]["system"]
+    client.turns = [(["Сәлем."], "end_turn", [])]
+    _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "?", "language": "de"}))
+    assert "ISO 639-1 code 'ru'" in client.calls[-1]["system"]  # an unsupported one falls back to the case's
+
+
+def test_chat_opens_the_case_at_once_and_qualifies_it_afterwards(ctx):
+    """The chat's first message must not wait for the scenario (an LLM call): the case opens with `defer`, the
+    scenario is worked out afterwards (background job; called directly here)."""
+    import uuid
+
+    from konsilier.core.models import Case
+
+    from .test_e2e import web_user
+
+    api = web_user(ctx)
+    out = api.post("/v1/cases", expect=201, json={
+        "text": "Купил телефон в магазине, сломался, продавец не возвращает деньги", "country": "KZ", "defer": True})
+    cid = out["case"]["id"]
+    assert out["case"]["scenario"] is None and out["reply"]["message"] == ""
+    with ctx.container.session_factory() as s:
+        ctx.container.engine.qualify_later(s, uuid.UUID(cid))
+        s.commit()
+        assert s.get(Case, uuid.UUID(cid)).scenario_id == "kz.consumer.refund"
+    assert api.get(f"/v1/cases/{cid}").json()["scenario"]["id"] == "kz.consumer.refund"
+
+
+def test_document_is_not_offered_in_the_first_reply(ctx):
+    """Owner 30.09: the «Составить документ» button in the very first reply scares people off; later it may come,
+    and at once when the person asks for a document themselves."""
+    from .test_e2e import web_user
+
+    offer = "Могу подготовить претензию продавцу — показать?\n[[DOCUMENT]]"
+    client = StreamingClient([([offer], "end_turn", []), ([offer], "end_turn", [])])
+    ctx.container.chat_agent = ChatAgent(client, "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Сломался телефон", "country": "KZ", "defer": True})["case"]["id"]
+    first = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Сломался телефон"}))[-1]
+    assert first["message"]["offer_document"] is False
+    second = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Чек есть, 200 000 тенге"}))[-1]
+    assert second["message"]["offer_document"] is True
+
+    client.turns = [([offer], "end_turn", [])]
+    cid2 = api.post("/v1/cases", expect=201, json={"text": "Нужна претензия", "country": "KZ", "defer": True})["case"]["id"]
+    asked = _sse(ctx.client.post(f"/v1/cases/{cid2}/chat", headers=api.h, json={"text": "Составьте претензию продавцу"}))[-1]
+    assert asked["message"]["offer_document"] is True

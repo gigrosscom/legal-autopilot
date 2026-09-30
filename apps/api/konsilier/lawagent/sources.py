@@ -126,13 +126,19 @@ class Fetch(Protocol):
     def __call__(self, url: str) -> str: ...
 
 
-def http_fetch(url: str) -> str:
-    r = httpx.get(url, timeout=25, follow_redirects=True,
+def http_fetch(url: str, timeout: float = 25) -> str:
+    r = httpx.get(url, timeout=timeout, follow_redirects=True,
                   headers={"User-Agent": "Konsilier.AI legal research (+https://konsilier.com)"})
     if r.status_code == 404:
         raise ActNotFound(url)
     r.raise_for_status()
     return r.text
+
+
+def quick_fetch(url: str) -> str:
+    """For the chat: the person waits for the reply, so a slow portal page is given up after 8 s (the model then
+    says the article could not be checked) instead of holding the answer for up to 25 s."""
+    return http_fetch(url, timeout=8)
 
 
 class Adilet:

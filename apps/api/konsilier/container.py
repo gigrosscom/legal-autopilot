@@ -156,7 +156,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
     container.reporter = CaseReporter(container)
     from .chat import ChatAgent
-    from .lawagent.sources import Adilet
+    from .lawagent.sources import Adilet, quick_fetch
     from .official import load_all
     from .official.search import OfficialLibrary
 
@@ -187,6 +187,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         container.transcriber = GeminiTranscriber(settings.gemini_api_key, (
             settings.gemini_model, *(m.strip() for m in settings.gemini_fallback_models.split(","))))
     adilet = Adilet()
+    chat_adilet = Adilet(fetch=quick_fetch)  # the chat waits at most 8 s for a portal page
     if settings.llm_provider == "anthropic":
         import anthropic
 
@@ -196,7 +197,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         if settings.anthropic_for_questions:  # off by default: questions on a case go to the free chat
             container.law_agent = LawAgent(client, settings.llm_model, adilet)
         if settings.anthropic_for_chat:  # off by default: the chat never spends the paid model's budget
-            claude_chat = ChatAgent(client, settings.llm_fast_model, adilet, library=library)
+            claude_chat = ChatAgent(client, settings.llm_fast_model, chat_adilet, library=library)
             if settings.chat_provider == "anthropic":
                 container.chat_agent = claude_chat
             elif settings.chat_fallback_to_anthropic:
@@ -208,13 +209,13 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
         container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
-                                         settings.gemini_model, adilet, web_search=False, library=library)
+                                         settings.gemini_model, chat_adilet, web_search=False, library=library)
     if settings.chat_provider == "free":
         clients = free_chat_clients(settings)
         if clients:
             from .openai_compat import ChainClient
 
-            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, adilet, web_search=False,
+            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, chat_adilet, web_search=False,
                                              library=library)
     def approval_needed(session: Any, case: Any, action: Any) -> None:
         from .core.models import User

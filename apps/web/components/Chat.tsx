@@ -22,7 +22,9 @@ import { canSpeak, speak, stopSpeaking } from "@/lib/voice";
 const REMAINING_FROM = 10;
 /** The marker a reply ends with when it offers a document; hidden while the reply streams in. */
 const OFFER = /\[?\[\s*DOC[A-Z]*\s*\]?\]?\s*$|\[\[?\s*$/;
-const clean = (text: string) => text.replace(OFFER, "").trimEnd();
+// labels a model may copy from its instructions («SHORT ANSWER:», «DETAILS:») never reach the screen
+const LABELS = /^\s*\**\s*(SHORT ANSWER|DETAILS|КРАТКИЙ ОТВЕТ|ПОДРОБНОСТИ)\s*\**\s*:\s*\**\s*/gim;
+const clean = (text: string) => text.replace(OFFER, "").replace(LABELS, "").trimEnd();
 /** Between the short answer and the details (konsilier/chat.py MORE_MARKER); a half-typed one while streaming too. */
 const MORE = /\[?\[\s*MORE\s*\]?\]?/i;
 const MORE_TAIL = /\[\[?\s*M?O?R?E?\s*\]?$/i;
@@ -151,7 +153,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       }
     }
     const out = await api<{ case: CaseView; reply: Reply }>("/v1/cases", {
-      method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ", accept_terms: TERMS_VERSION }),
+      // defer: the reply starts at once; the case's scenario is worked out on the server meanwhile
+      method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ", accept_terms: TERMS_VERSION, defer: true }),
     });
     setCaseId(out.case.id);
     markTermsAccepted();  // accepted with the first message: the line about the terms is not shown again
@@ -208,7 +211,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           if (voiceMode) speak(ev.message.text, lang);
           if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
         }
-      }, ctl.signal);
+      }, ctl.signal, lang);
     } catch (err) {
       if (ctl.signal.aborted) {  // stopped by the person: what was written stays, nothing to retry
         answered = true;
@@ -380,7 +383,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 <Link href={`/case/${caseId}`}
                   className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-[var(--chat-action-bg)] px-3 py-2 text-center hover:opacity-90">
                   <span className="font-semibold text-[var(--chat-accent)]">{t("chat.doc")}</span>
-                  <span className="text-xs text-muted">{t("chat.docPrice")}</span>
                 </Link>
               )}
             </Bubble>

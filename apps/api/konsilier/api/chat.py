@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import logging
 import re
 import uuid
@@ -108,9 +109,18 @@ def history(case_id: uuid.UUID, user: User = Depends(current_user),
     return [_view(m) for m in rows]
 
 
+REPLY_LANGS = ("ru", "kk", "en", "tr", "ar")  # the web interface languages
+# the person asks for a document themselves: then it may be offered in the very first reply
+ASKS_FOR_DOCUMENT = re.compile(
+    r"документ|претензи|жалоб|\bиск|заявлени|составь|составить|напиши|напишите|"
+    r"құжат|талап|шағым|арыз|document|claim|complaint|lawsuit|letter|draft|belge|dilekçe|şikâyet|şikayet|"
+    r"مستند|شكوى|دعوى|مطالبة", re.IGNORECASE)
+
+
 class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
     attachments: list[str] = Field(default_factory=list, max_length=10)  # evidence ids uploaded with this message
+    language: str | None = Field(default=None, max_length=5)  # the interface language: the reply is written in it
 
 
 def _sse(event: dict[str, Any]) -> str:
@@ -148,13 +158,19 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     pack = ctx["pack"]
     ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault)}
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
-    lang = pack.lang(case.language)
+    lang = pack.lang(case.language)  # the pack's language for its titles (KZ: ru, kk)
+    # the reply follows the person: the interface language they write from, else the case's language — not the pack's
+    # fallback (an English page got Russian answers because the KZ pack has only ru and kk)
+    reply_lang = (body.language or case.language or lang).split("-")[0].lower()
+    if reply_lang not in REPLY_LANGS:
+        reply_lang = lang
     country = pack.localized(pack.manifest.name, "en") or pack.country
     portal = [s for s in pack.manifest.legal_sources if agent.portal_domain in str(s.url)]
     use_portal = bool(portal)
     ctx["lang"] = lang
     ctx["key_acts"] = [{"code": a.code, "title": pack.localized(a.title, lang)} for s in portal for a in s.key_acts]
     case_pk, user_pk = case.id, user.id
+    first_reply = not any(m.role == "assistant" for m in rows)
     session.commit()  # the user's message is saved even if the reply fails
 
     agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
@@ -175,8 +191,11 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         yield _sse({"type": "error", "code": "agent_failed" if started else "busy",
                     "message": BUSY.get(lang, BUSY["ru"])})
 
+    t_request = time.perf_counter()
+
     def events() -> Iterator[str]:
         result, used, reasons, started = None, None, [], False
+        first_ms: int | None = None  # how long the person waited for the first words
         for i, a in enumerate(agents):
             provider = provider_of(a)
             if i > 0 and provider == "anthropic" and not fallback_allowed():
@@ -184,12 +203,14 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 break
             started = False
             try:
-                for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{lang}'",
+                for ev in a.stream(turns, context=ctx, language=f"the language with ISO 639-1 code '{reply_lang}'",
                                    country=country, use_portal=use_portal):
                     if ev["type"] == "done":
                         result = ev["result"]
                     else:
                         started = started or ev["type"] == "text"
+                        if started and first_ms is None:
+                            first_ms = int((time.perf_counter() - t_request) * 1000)
                         yield _sse(ev)
                 used = provider
                 break
@@ -203,16 +224,21 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             yield from unavailable("+".join(reasons) or "no_reply", started)
             return
         text = vault.restore(result.text) if result else ""
+        if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text):
+            result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
                             meta={"provider": used, "norms": result.norms, "sources": result.sources,
                                   "unchecked": result.unchecked, "offer_document": result.offer_document,
-                                  "tool_calls": result.tool_calls, "usage": result.usage})
+                                  "tool_calls": result.tool_calls, "usage": result.usage,
+                                  "first_ms": first_ms, "total_ms": int((time.perf_counter() - t_request) * 1000)})
             s.add(m)
             c = s.get(Case, case_pk)
             container.engine.audit(s, c, f"user:{user_pk}", "chat_reply", tokens=result.usage,
                                    unchecked=result.unchecked)
             s.commit()
+            log.info("chat=reply case=%s provider=%s first_ms=%s total_ms=%s tools=%s", case_pk, used, first_ms,
+                     m.meta.get("total_ms"), result.tool_calls)
             if result.unchecked:  # not shown to the person; the team watches how often it happens
                 log.warning("chat=unchecked_norms case=%s", case_pk)
             # what is left of the daily limit (a rolling 24-hour window) after this answered message
