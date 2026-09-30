@@ -33,8 +33,8 @@ export default function Home() {
   return (
     <section className="mx-auto flex min-h-[calc(100dvh-13rem)] max-w-3xl flex-col justify-center gap-8 py-6 md:gap-10">
       <div className="space-y-3 text-center">
-        <h1 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-ink md:text-[48px]">{t("home.title")}</h1>
-        <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-pretty text-muted md:text-[19px]">{t("home.sub")}</p>
+        <h1 className="mx-auto text-[30px] font-bold leading-[1.12] text-balance text-ink md:max-w-none md:text-[48px]">{t("home.title")}</h1>
+        <p className="mx-auto max-w-md text-[18px] leading-relaxed text-balance text-muted md:max-w-xl md:text-[20px]">{t("home.sub")}</p>
       </div>
 
       <div className="space-y-4">

@@ -214,7 +214,7 @@ const en: Dict = {
   },
   chat: {
     notice: "This is a chat with Konsiliér, an AI assistant for legal questions. Names and document numbers are hidden before AI processing. Konsiliér does not replace a lawyer.",
-    subtitle: "Legal AI assistant",
+    subtitle: "AI assistant for legal questions",
     greet: {"morning": "Good morning!", "day": "Good afternoon!", "evening": "Good evening!", "night": "Good night!"},
     cancel: "Cancel recording",
     stop: "Stop the answer",
@@ -273,8 +273,8 @@ const en: Dict = {
   home: {
     placeholder: "Describe what happened…",
     eyebrow: "Konsiliér AI",
-    title: "Your legal AI assistant",
-    sub: "Describe your situation in your own words — Konsiliér explains your rights under the law and drafts the claim, complaint or lawsuit.",
+    title: "AI assistant for legal questions",
+    sub: "I explain your rights under the law and draft the claim, complaint or lawsuit.",
     promise1: "Finds the relevant articles in official legal texts",
     promise2: "Drafts your claim, complaint or application under the law",
     promise3: "Shows where and how to file it",

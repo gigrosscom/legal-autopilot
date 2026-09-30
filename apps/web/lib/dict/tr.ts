@@ -214,7 +214,7 @@ const tr: Dict = {
   },
   chat: {
     notice: "Bu, hukuki sorular için yapay zekâ asistanı Konsiliér ile bir sohbettir. İsimler ve belge numaraları yapay zekâ işlemeden önce gizlenir. Konsiliér avukatın yerini tutmaz.",
-    subtitle: "Hukuki yapay zekâ asistanı",
+    subtitle: "Hukuki sorular için yapay zekâ asistanı",
     greet: {"morning": "Günaydın!", "day": "İyi günler!", "evening": "İyi akşamlar!", "night": "İyi geceler!"},
     cancel: "Kaydı iptal et",
     stop: "Yanıtı durdur",
@@ -273,8 +273,8 @@ const tr: Dict = {
   home: {
     placeholder: "Ne olduğunu anlatın…",
     eyebrow: "Konsiliér AI",
-    title: "Hukuki yapay zekâ asistanı",
-    sub: "Durumunuzu kendi sözlerinizle anlatın — Konsiliér yasal haklarınızı açıklar ve ihtarname, şikâyet ya da dava dilekçesi hazırlar.",
+    title: "Hukuki sorular için yapay zekâ asistanı",
+    sub: "Yasal haklarınızı açıklar; ihtarname, şikâyet veya dava dilekçesi hazırlarım.",
     promise1: "Resmî yasa metinlerinden ilgili maddeleri bulur",
     promise2: "Yasaya uygun ihtarname, şikâyet veya dilekçe hazırlar",
     promise3: "Belgeyi nereye ve nasıl sunacağınızı gösterir",
