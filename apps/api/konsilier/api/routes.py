@@ -551,7 +551,8 @@ def training_consent(case_id: uuid.UUID, body: TrainingConsentIn, user: User = D
     return {"case": case_view(container.engine, session, case)}
 
 
-PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа"}
+PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа",
+              "lawyer": "Оплата юриста (на счёт ТОО)"}
 
 
 class PaymentIn(BaseModel):

@@ -26,7 +26,8 @@ from .push import MAX_FAILURES, PushGone, payload
 log = logging.getLogger(__name__)
 
 # kinds worth an e-mail besides the inbox (case reports mail themselves, see konsilier.reports)
-EMAIL_KINDS = frozenset({"payment", "document", "approval", "deadline_reminder", "deadline_expired", "handoff"})
+EMAIL_KINDS = frozenset({"payment", "document", "approval", "deadline_reminder", "deadline_expired", "handoff",
+                         "lawyer"})
 # no SMS from 22:00 to 08:00 local time; the inbox and e-mail still get it
 QUIET_HOURS = (22, 8)
 

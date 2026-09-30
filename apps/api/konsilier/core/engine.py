@@ -118,6 +118,11 @@ class EngineConfig:
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
     plan_days: int = 30
     plan_currency: str = ""  # empty: the currency of the jurisdiction pack
+    # «Юрист по кнопке» (core/lawyer_pilot.py): the company's payment channel only (never the personal Kaspi Gold)
+    lawyer_commission_pct: float = 15.0
+    lawyer_pay_link: str = ""  # the ТОО's Kaspi Pay link (https://…)
+    lawyer_pay_account: str = ""  # the ТОО's requisites as text (БИН, IBAN, bank)
+    company_name: str = ""  # ТОО «…», shown as the recipient
 
 
 class CaseEngine:
@@ -884,8 +889,10 @@ class CaseEngine:
         return case.paid or action.unlocked_by is not None or self.price(case) is None
 
     def invoice_of(self, session: Session, case: Case) -> Invoice | None:
-        """The case's open bill (not paid yet), if any."""
-        return session.scalar(select(Invoice).where(Invoice.case_id == case.id, Invoice.status.in_(self.OPEN))
+        """The case's open document bill (a document or «Дело под ключ», not paid yet), if any. A lawyer bill
+        (purpose lawyer, core/lawyer_pilot.py) lives beside it and never replaces or cancels it."""
+        return session.scalar(select(Invoice).where(Invoice.case_id == case.id, Invoice.status.in_(self.OPEN),
+                                                    Invoice.purpose.in_(("document", "case")))
                               .order_by(Invoice.id.desc()).limit(1))
 
     def plan_invoice_of(self, session: Session, user_id: uuid.UUID) -> Invoice | None:
@@ -935,7 +942,12 @@ class CaseEngine:
 
     def _apply_paid(self, session: Session, inv: Invoice) -> None:
         """What a paid bill gives: a document credit, the whole case, or a subscription period (and, for an invited
-        person's first payment, the referral bonus)."""
+        person's first payment, the referral bonus). A lawyer bill puts the lawyer on the case and nothing else."""
+        if inv.purpose == "lawyer":
+            from . import lawyer_pilot
+
+            lawyer_pilot.apply_paid(session, self, inv)
+            return
         self._referral_bonus(session, inv)
         if inv.purpose == "plan":
             now = utcnow()
@@ -1013,6 +1025,8 @@ class CaseEngine:
 
         if inv is None or inv.status not in self.OPEN:
             raise EngineError("no_open_invoice")
+        if inv.purpose == "lawyer":  # the company's channel only, shown with the bill (core/lawyer_pilot.py)
+            raise EngineError("way_unavailable")
         if not self.payments.way_available(way):
             raise EngineError("way_unavailable")
         if inv.status == "awaiting_confirmation" and way != inv.pay_way:
@@ -1056,6 +1070,9 @@ class CaseEngine:
         case = session.get(Case, inv.case_id)
         pack = self.pack_of(case)
         lang = pack.lang(case.language)
+        if inv.purpose == "lawyer" and received:  # lawyer_pilot.apply_paid told the client and the lawyer
+            self.audit(session, case, f"ops:{operator}", "payment_confirmed", invoice=inv.code)
+            return
         if received:
             text = pack.t(lang, "notifications.payment_confirmed",
                           default="Оплата получена. Документ можно подготовить и скачать в карточке дела.")
@@ -1126,6 +1143,10 @@ class CaseEngine:
     def invoice_details(self, inv: Invoice | None) -> dict[str, Any] | None:
         if inv is None:
             return None
+        if inv.purpose == "lawyer":  # never the Kaspi Gold of the document bills
+            from . import lawyer_pilot
+
+            return lawyer_pilot.payment_view(None, self, inv)
         view = {"id": inv.id, "code": inv.code, "purpose": inv.purpose, "plan": inv.plan, "amount": float(inv.amount),
                 "currency": inv.currency, "status": inv.status, "recipient_name": None, "kaspi_phone": None,
                 "ways": [], **self.way_view(inv)}

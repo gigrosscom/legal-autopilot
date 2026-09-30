@@ -413,6 +413,10 @@ class LawyerApplication(Base):
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # «Юрист по кнопке» (closed pilot, 0025): the owner picks verified lawyers for the pilot and sets their price
+    pilot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    price_note: Mapped[str | None] = mapped_column(String(300), nullable=True)  # what the price covers
 
 
 class DemandSignal(Base):
@@ -489,8 +493,15 @@ class LawyerRequest(Base):
     full_name: Mapped[str] = mapped_column(String(200))
     phone: Mapped[str] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(200))
-    status: Mapped[str] = mapped_column(String(16), default="new")  # new | passed | closed
+    # new | passed | closed (desk hand-over); pilot: new → accepted | declined → paid (→ closed)
+    status: Mapped[str] = mapped_column(String(16), default="new")
     desk_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # clients desk: to whom it was passed
+    # «Юрист по кнопке» (0025): the pilot lawyer the request is addressed to, their price when it was sent, the bill
+    application_id: Mapped[int | None] = mapped_column(ForeignKey("lawyer_applications.id"), nullable=True,
+                                                       index=True)
+    price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    invoice_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
@@ -525,7 +536,7 @@ class TicketMessage(Base):
 
 class Invoice(Base):
     """A bill. purpose: document (one document of the case, scenario price), case («Дело под ключ»: every document
-    of the case) or plan (a «Бизнес» / «Бизнес Про» subscription, no case). Manual transfer: pending → the person
+    of the case), lawyer (a pilot lawyer's work, paid to the company's account only) or plan (a «Бизнес» / «Бизнес Про» subscription, no case). Manual transfer: pending → the person
     reports the transfer (awaiting_confirmation) → the clients desk confirms (paid) or does not find it (not_found,
     the person may report it again); cancelled — replaced by a bill of another purpose before it was paid."""
 
@@ -551,6 +562,10 @@ class Invoice(Base):
     buyer_name: Mapped[str | None] = mapped_column(String(300))  # bank_invoice: the paying company / ИП
     buyer_bin: Mapped[str | None] = mapped_column(String(12))
     buyer_address: Mapped[str | None] = mapped_column(String(300))
+    # purpose=lawyer (0025): the lawyer's work, paid to the company's account; the platform keeps commission_pct
+    lawyer_request_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

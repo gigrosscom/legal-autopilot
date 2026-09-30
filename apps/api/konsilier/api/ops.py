@@ -267,6 +267,8 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
             title = case.scenario_id
     if inv.purpose == "plan":
         title = f"Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}»"
+    from .pilot import lawyer_invoice_line
+
     return {"id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
             "status": inv.status, "method": inv.method, "purpose": inv.purpose, "plan": inv.plan,
             "case_id": str(inv.case_id) if inv.case_id else None, "case_title": title,
@@ -274,7 +276,7 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
             "created_at": inv.created_at.isoformat(), "claimed_at": inv.claimed_at.isoformat() if inv.claimed_at else None,
             "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
             "note": inv.desk_note, "way": inv.pay_way, "payer_phone": inv.payer_phone,
-            "buyer_name": inv.buyer_name, "buyer_bin": inv.buyer_bin}
+            "buyer_name": inv.buyer_name, "buyer_bin": inv.buyer_bin, "lawyer": lawyer_invoice_line(session, inv)}
 
 
 @router.get("/clients/payments")
@@ -335,6 +337,7 @@ def receipt_text(session: Session, container: Container, inv: Invoice, where: st
         lines.append(f"Продавец: {st.payment_llp_name}"
                      + (f", {words.seller_id} {st.payment_llp_bin}" if st.payment_llp_bin else ""))
     lines += ["", (f"Тариф подключён: {where}" if inv.purpose == "plan"
+                   else f"Юрист получил материалы дела: {where}" if inv.purpose == "lawyer"
                    else f"Документ готовится автоматически и появится в карточке дела: {where}"), "",
               "Это письмо — подтверждение оплаты, а не фискальный чек."]
     if st.payment_kaspi_kassa and inv.pay_way in ("kaspi_link", "kaspi_qr", "kaspi_invoice"):
@@ -353,7 +356,7 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
         container.engine.decide_payment(session, inv, decided_by, paid, note)
     except EngineError as e:
         raise HTTPException(409, {"code": e.code, "message": e.code}) from e
-    if paid and inv.case_id is not None:  # the document is made right away, not on the next visit
+    if paid and inv.case_id is not None and inv.purpose in ("document", "case"):  # made now, not on the next visit
         def prepare(s: Session) -> None:
             action = container.engine.prepare_after_payment(s, s.get(Invoice, invoice_id))
             if action is not None and not action.pdf_key and action.docx_key:
@@ -365,6 +368,8 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
         where = (f"https://konsilier.com/case/{inv.case_id}" if inv.case_id else "https://konsilier.com/plans")
         if paid and container.settings.payment_receipt_email:
             text = receipt_text(session, container, inv, where)
+        elif paid and inv.purpose == "lawyer":
+            text = f"Оплата получена. Юрист получил материалы дела, подпишите с ним соглашения ЭЦП: {where}"
         elif paid:
             text = (f"Оплата получена. Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}» подключён: {where}"
                     if inv.purpose == "plan" else f"Оплата получена. Документ готовится автоматически и появится в "
