@@ -31,13 +31,15 @@ export default function Home() {
   }
 
   return (
-    <section className="mx-auto flex min-h-[calc(100dvh-13rem)] max-w-3xl flex-col justify-center gap-8 py-6 md:gap-10">
-      <div className="space-y-3 text-center">
-        <h1 className="mx-auto text-[30px] font-bold leading-[1.12] text-balance text-ink md:max-w-none md:text-[48px]">{t("home.title")}</h1>
-        <p className="mx-auto max-w-md text-[18px] leading-relaxed text-balance text-muted md:max-w-xl md:text-[20px]">{t("home.sub")}</p>
+    <section className="mx-auto flex min-h-[calc(100dvh-13rem)] max-w-5xl flex-col justify-center gap-8 py-6 md:gap-10">
+      {/* The lead takes exactly the title's width (w-fit block, the lead min-w-full w-0), so both read as one
+          block on every screen: two even lines on phones, one line each on wide screens. */}
+      <div className="mx-auto w-fit max-w-full space-y-3 text-center md:space-y-4">
+        <h1 className="text-[22px] min-[360px]:text-[29px] font-semibold leading-[1.15] tracking-[-0.01em] text-balance text-ink sm:text-[36px] lg:whitespace-nowrap lg:text-[44px]">{t("home.title")}</h1>
+        <p className="w-0 min-w-full text-[14px] min-[360px]:text-[16.5px] leading-[1.45] text-muted sm:text-[17.5px] lg:text-[21px]">{t("home.sub")}</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="mx-auto w-full max-w-3xl space-y-4">
         <Composer large autoFocus value={text} setValue={setText} files={files} busy={busy} onSubmit={submit}
           placeholder={t("home.placeholder")}
           onFiles={(fs) => setFiles((xs) => [...xs, ...fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f }))])}
