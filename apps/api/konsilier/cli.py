@@ -10,6 +10,7 @@
     python -m konsilier.cli zann-export OUT.jsonl [--with-evidence]   # consented, anonymised cases for training
     python -m konsilier.cli official-crawl [CC] [--limit N] [--minutes M]  # refresh the library of official pages
     python -m konsilier.cli official-search "query" [CC] [--lang ru] [--limit N]
+    python -m konsilier.cli zann-corpus [--limit N] [--minutes M] [--discover]  # Zann law corpus from adilet
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ def main(argv: list[str]) -> int:
         return official_crawl(argv[1:])
     if argv and argv[0] == "official-search" and len(argv) > 1:
         return official_search(argv[1:])
+    if argv and argv[0] == "zann-corpus":
+        return zann_corpus(argv[1:])
     if argv and argv[0] == "zann-bench":
         return zann_bench(argv[1:])
     if argv and argv[0] == "zann-export" and len(argv) > 1:
@@ -209,6 +212,27 @@ def official_crawl(args: list[str]) -> int:
         for domain, s in sorted(stats.items()):
             print(f"{cc} {domain:<24} " + " ".join(f"{k}={v}" for k, v in vars(s).items()))
     return 0
+
+
+def zann_corpus(args: list[str]) -> int:
+    """Collect the Zann law corpus now (the job does the same, time-boxed): --discover walks only the portal's
+    index (act codes, no texts); --limit N reads at most N acts; --minutes M stops after M minutes."""
+    import json
+    from dataclasses import asdict
+
+    from .container import build_container
+    from .zann.corpus import build_collector, corpus_metrics
+
+    settings = get_settings()
+    container = build_container(settings)
+    collector = build_collector(settings, container.session_factory, container.storage)
+    limit, minutes = _opt(args, "--limit"), _opt(args, "--minutes")
+    stats = collector.run(budget_seconds=float(minutes) * 60 if minutes else None,
+                          limit=int(limit) if limit else None, discover_only="--discover" in args)
+    print("run:", json.dumps(asdict(stats), ensure_ascii=False))
+    with container.session_factory() as s:
+        print("corpus:", json.dumps(corpus_metrics(s), ensure_ascii=False))
+    return 1 if stats.stopped == "robots" else 0
 
 
 def official_search(args: list[str]) -> int:

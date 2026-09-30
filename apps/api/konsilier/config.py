@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     official_crawl_minutes: int = 20
     official_crawl_max_pages: int = 400  # per domain; a pack may set lower caps
     official_search_enabled: bool = True
+    # Zann law corpus (konsilier/zann/corpus.py, docs/zann-llm-plan.md «Сбор корпуса»): every act of old.adilet.zan.kz,
+    # ru + kk, gzip texts in the storage under zann/corpus/. Off by default. ZANN_CORPUS_HOUR: local hour
+    # (ZANN_CORPUS_TZ) of the nightly run, which lasts at most ZANN_CORPUS_MINUTES (2:00–2:50, before the 03:00 official crawl);
+    # -1 = continuous: time-boxed runs back to back around the clock. Pause between requests ≥ 2 s.
+    zann_corpus_enabled: bool = False
+    zann_corpus_hour: int = 2
+    zann_corpus_minutes: int = 50
+    zann_corpus_pause: float = 3.0
+    zann_corpus_langs: str = "ru,kk"
+    zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
+    zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
+    zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
