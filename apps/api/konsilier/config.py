@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
+    # Chat speed. Gemini 3 thinks before it writes; the chat asks for the least thinking so the first words come at
+    # once (minimal | low | medium | high; empty → the model's default). A model that refuses it is asked again
+    # without it.
+    gemini_chat_thinking_level: str = "minimal"
+    # CHAT_PROVIDER=free: when the provider asked first has not started answering after this many seconds, the next
+    # one is asked in parallel and the first to answer is used (0 → one after another, only after a failure).
+    chat_first_token_timeout: float = 1.5
+    # Articles of the law are cut from the Zann corpus copy (konsilier/zann/corpus.py) when it has the act; the
+    # live portal is read only for acts not collected yet.
+    law_texts_local: bool = True
     # Voice input for browsers without built-in speech recognition (POST /v1/transcribe, free Gemini only):
     # uploads per account and per IP address in a rolling hour.
     transcribe_per_user_hour: int = 30

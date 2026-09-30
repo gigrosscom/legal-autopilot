@@ -21,7 +21,7 @@ from ..container import Container
 from ..core.models import Action, Case, Invoice, LawyerApplication, Outcome, User, WaitlistEntry
 from ..core.llm.spend import usage_summary
 from ..zann.corpus import corpus_metrics
-from .chat import chat_usage_today
+from .chat import chat_latency, chat_usage_today
 from .deps import get_container, get_session, require_admin
 from .referral import referral_metrics
 
@@ -136,6 +136,8 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
     }
     if settings is not None:  # consultation chat today: who answered, refusals, Claude spend against its budget
         out["chat"] = chat_usage_today(session, settings)
+        # time to the chat's first words, last 24 h (p50 / p95, by provider): the /ops tile «Ответ чата»
+        out["chat_latency"] = chat_latency(session)
         out["claude"] = usage_summary(session, daily_usd=settings.llm_daily_budget_usd,
                                       monthly_usd=settings.llm_monthly_budget_usd)
     return out

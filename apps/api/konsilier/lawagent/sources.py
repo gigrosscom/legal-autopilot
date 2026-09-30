@@ -1,8 +1,9 @@
 """Free, live access to the official legislation portal: open an act, take one article.
 
-The agent never gets whole codes. When it needs an article, our server opens the act's official page (like a
-browser would), cuts out that one article and hands it over with the page URL. Nothing is copied into a
-database; a short in-memory cache (per process, hours) only avoids re-opening the same page within a session.
+The agent never gets whole codes. When it needs an article, our server takes the act's text — the copy collected
+for Zann (konsilier/zann/corpus.py) when there is one, else the official page opened live (like a browser would) —
+cuts out that one article and hands it over with the official page URL. A short in-memory cache (per process,
+hours) avoids re-reading the same act within a session.
 
 The portal: ИПС «Әділет» of the Ministry of Justice (adilet.zan.kz) — free, public, current wording. Its new
 site renders text with JavaScript, so the server-rendered mirror old.adilet.zan.kz is read. Document codes
@@ -12,6 +13,7 @@ look like K1500000414 (Labour Code) or Z100000274 (a law); the language segment 
 from __future__ import annotations
 
 import html
+import logging
 import re
 import threading
 import time
@@ -21,6 +23,7 @@ from typing import Protocol
 
 import httpx
 
+log = logging.getLogger(__name__)
 CODE_RE = re.compile(r"^[A-Z]\d{9,10}_?$")
 URL_CODE_RE = re.compile(r"/docs/([A-Z]\d{9,10}_?)")
 # "Статья 113. Порядок…", "Статья 113-1. …", "113-бап. …" (kk), with optional markdown bold
@@ -141,13 +144,24 @@ def quick_fetch(url: str) -> str:
     return http_fetch(url, timeout=8)
 
 
+class Local(Protocol):
+    """The act's text stored on our side (the Zann corpus, konsilier/zann/corpus.py): (title, text) or None."""
+
+    def __call__(self, code: str, lang: str) -> tuple[str, str] | None: ...
+
+
 class Adilet:
     BASE = "https://old.adilet.zan.kz"
 
-    def __init__(self, fetch: Fetch = http_fetch, ttl_seconds: int = 6 * 3600, max_acts: int = 16):
-        self.fetch, self.ttl, self.max_acts = fetch, ttl_seconds, max_acts
+    def __init__(self, fetch: Fetch = http_fetch, ttl_seconds: int = 6 * 3600, max_acts: int = 16,
+                 local: Local | None = None):
+        self.fetch, self.ttl, self.max_acts, self.local = fetch, ttl_seconds, max_acts, local
         self._cache: dict[str, tuple[float, str, dict[str, tuple[str, str]]]] = {}
         self._lock = threading.Lock()
+        self._where = threading.local()  # where this thread's last act came from: cache | local | live
+
+    def last_source(self) -> str:
+        return getattr(self._where, "source", "")
 
     def url(self, code: str, lang: str = "rus") -> str:
         return f"{self.BASE}/{lang}/docs/{code}"
@@ -157,9 +171,17 @@ class Adilet:
         with self._lock:
             hit = self._cache.get(key)
             if hit and time.time() - hit[0] < self.ttl:
+                self._where.source = "cache"
                 return hit[1], hit[2]
-        title, text = page_text(self.fetch(self.url(code, lang)))
-        articles = split_articles(text)
+        # the copy collected for Zann first (milliseconds, no network); the live portal when it has no such act
+        stored = self._stored(code, lang)
+        if stored is not None:
+            title, articles = stored
+            self._where.source = "local"
+        else:
+            self._where.source = "live"
+            title, text = page_text(self.fetch(self.url(code, lang)))
+            articles = split_articles(text)
         if not articles:
             raise ActNotFound(code)
         with self._lock:
@@ -167,6 +189,19 @@ class Adilet:
                 self._cache.pop(min(self._cache, key=lambda k: self._cache[k][0]))
             self._cache[key] = (time.time(), title, articles)
         return title, articles
+
+    def _stored(self, code: str, lang: str) -> tuple[str, dict[str, tuple[str, str]]] | None:
+        if self.local is None:
+            return None
+        try:
+            got = self.local(code, lang)
+        except Exception:  # noqa: BLE001 — storage trouble: the live portal answers instead
+            log.exception("local text of %s (%s) could not be read", code, lang)
+            return None
+        if not got:
+            return None
+        articles = split_articles(got[1])
+        return (got[0], articles) if articles else None
 
     def article(self, ref: str, number: str, lang: str = "rus") -> Article:
         code = act_code(ref)
