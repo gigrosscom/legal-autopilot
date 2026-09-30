@@ -175,6 +175,7 @@ const en: Dict = {
     lawyersLead: "Describe the situation — we prepare the documents and bring in a lawyer when you need one.",
   },
   app: {
+    toEnd: "To the latest message",
     tabs: { home: "Home", chat: "Chat", cases: "Cases", documents: "Documents", profile: "Profile" },
     signIn: "Sign in",
     newQuestion: "New question",
@@ -212,6 +213,7 @@ const en: Dict = {
     },
   },
   chat: {
+    greet: {"morning": "Good morning!", "day": "Good afternoon!", "evening": "Good evening!", "night": "Good night!"},
     cancel: "Cancel recording",
     stop: "Stop the answer",
     copied: "Copied",

@@ -237,3 +237,12 @@ footer {
 }
 .wave-bar { animation: wave 0.9s ease-in-out infinite; transform-origin: center; }
 @media (prefers-reduced-motion: reduce) { .wave-bar { animation: none; transform: scaleY(0.5); } }
+
+/* the chat's background, as in the messengers: a warm light tone with a faint pattern */
+:root { --chat-bg: #f2efe9; }
+.chat-wallpaper {
+  background-color: var(--chat-bg);
+  background-image: radial-gradient(rgb(0 0 0 / 0.045) 1px, transparent 1.2px), radial-gradient(rgb(0 0 0 / 0.03) 1px, transparent 1.2px);
+  background-size: 22px 22px, 22px 22px;
+  background-position: 0 0, 11px 11px;
+}

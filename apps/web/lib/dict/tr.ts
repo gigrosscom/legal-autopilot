@@ -175,6 +175,7 @@ const tr: Dict = {
     lawyersLead: "Durumu anlatın — belgeleri hazırlarız, gerektiğinde bir avukatı dahil ederiz.",
   },
   app: {
+    toEnd: "Son mesaja git",
     tabs: { home: "Ana sayfa", chat: "Sohbet", cases: "Dosyalar", documents: "Belgeler", profile: "Profil" },
     signIn: "Giriş yap",
     newQuestion: "Yeni soru",
@@ -212,6 +213,7 @@ const tr: Dict = {
     },
   },
   chat: {
+    greet: {"morning": "Günaydın!", "day": "İyi günler!", "evening": "İyi akşamlar!", "night": "İyi geceler!"},
     cancel: "Kaydı iptal et",
     stop: "Yanıtı durdur",
     copied: "Kopyalandı",

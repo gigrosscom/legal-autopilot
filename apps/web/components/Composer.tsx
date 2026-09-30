@@ -101,68 +101,118 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     </span>
   );
 
-  return (
+  const filesList = files.length > 0 && (
+    <ul className="flex flex-wrap gap-2 px-2 pt-1 pb-2">
+      {files.map((f) => (
+        <li key={f.key} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sand py-1 ps-3 pe-1 text-xs">
+          <Icon name="paperclip" size={14} className="shrink-0" /><span className="truncate">{f.filename}</span>
+          <button type="button" aria-label={t("chat.remove")} onClick={() => onRemove(f.key)}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink">
+            <Icon name="x" size={14} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+  const recording = (
+    <div className={`flex w-full items-center gap-2 ${large ? "min-h-[7.5rem] px-1" : "py-0.5"}`}>
+      <button type="button" onClick={cancel} title={t("chat.cancel")}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink hover:bg-sand-deep">
+        <Icon name="x" size={20} /><span className="sr-only">{t("chat.cancel")}</span>
+      </button>
+      <span className="flex h-10 min-w-0 flex-1 items-center justify-center gap-[3px] overflow-hidden" role="status"
+        aria-label={t("chat.listening")}>
+        {Array.from({ length: 28 }, (_, i) => (
+          <span key={i} className="wave-bar h-6 w-[3px] shrink-0 rounded-full bg-ink/70"
+            style={{ animationDelay: `${(i * 97) % 900}ms` }} />
+        ))}
+      </span>
+      <button type="button" onClick={dictation.stop} title={t("chat.micStop")}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink hover:bg-sand-deep">
+        <span className="h-3.5 w-3.5 rounded-[3px] bg-ink" /><span className="sr-only">{t("chat.micStop")}</span>
+      </button>
+      <button type="button" onClick={sendNow} title={t("chat.send")}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white">
+        <Icon name="arrowUp" size={20} /><span className="sr-only">{t("chat.send")}</span>
+      </button>
+    </div>
+  );
+  const textarea = (
+    <>
+      <label htmlFor={large ? "home-input" : "chat-input"} className="sr-only">{placeholder}</label>
+      <textarea id={large ? "home-input" : "chat-input"} ref={box} rows={large ? 3 : 1} value={shown}
+        onChange={(e) => { setValue(e.target.value); setInterim(""); }}
+        onKeyDown={(e) => {
+          // Enter sends on a computer; on a phone it is a new line, as in the messengers
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && matchMedia("(pointer: fine)").matches) {
+            e.preventDefault(); submit();
+          }
+        }}
+        placeholder={dictation.transcribing ? t("chat.transcribing") : placeholder}
+        maxLength={4000}
+        className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-muted ${
+          large ? "min-h-24 px-3 pt-2 text-[17px] leading-relaxed" : "min-h-10 px-3 py-2 text-[16px]"}`}
+        style={{ outline: "none" }} /* the whole box shows focus */ />
+    </>
+  );
+  const errorLine = dictation.error && (
+    <p role="alert" className="px-3 pt-1 pb-1 text-xs text-danger">{t(`chat.errors.${dictation.error}`)}</p>
+  );
+
+  if (large) return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }}
-      className={`border border-line bg-surface shadow-[var(--shadow-raised)] transition-colors focus-within:border-ink/30 ${
-        large ? "rounded-[28px] p-3" : "rounded-[26px] p-1.5"}`}>
-      {files.length > 0 && (
-        <ul className="flex flex-wrap gap-2 px-2 pt-1 pb-2">
-          {files.map((f) => (
-            <li key={f.key} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sand py-1 ps-3 pe-1 text-xs">
-              <Icon name="paperclip" size={14} className="shrink-0" /><span className="truncate">{f.filename}</span>
-              <button type="button" aria-label={t("chat.remove")} onClick={() => onRemove(f.key)}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink">
-                <Icon name="x" size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {dictation.listening ? (
-        <div className={`flex items-center gap-2 ${large ? "min-h-[7.5rem] px-1" : ""}`}>
-          <button type="button" onClick={cancel} title={t("chat.cancel")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink hover:bg-sand-deep">
-            <Icon name="x" size={20} /><span className="sr-only">{t("chat.cancel")}</span>
-          </button>
-          <span className="flex h-10 min-w-0 flex-1 items-center justify-center gap-[3px] overflow-hidden" role="status"
-            aria-label={t("chat.listening")}>
-            {Array.from({ length: 28 }, (_, i) => (
-              <span key={i} className="wave-bar h-6 w-[3px] shrink-0 rounded-full bg-ink/70"
-                style={{ animationDelay: `${(i * 97) % 900}ms` }} />
-            ))}
-          </span>
-          <button type="button" onClick={dictation.stop} title={t("chat.micStop")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink hover:bg-sand-deep">
-            <span className="h-3.5 w-3.5 rounded-[3px] bg-ink" /><span className="sr-only">{t("chat.micStop")}</span>
-          </button>
-          <button type="button" onClick={sendNow} title={t("chat.send")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white">
-            <Icon name="arrowUp" size={20} /><span className="sr-only">{t("chat.send")}</span>
-          </button>
+      className="rounded-[28px] border border-line bg-surface p-3 shadow-[var(--shadow-raised)] transition-colors focus-within:border-ink/30">
+      {filesList}
+      {dictation.listening ? recording : (
+        <div className="space-y-2">
+          {textarea}
+          <div className="flex items-center justify-between">{attach}{action}</div>
         </div>
-      ) : (
-      <div className={large ? "space-y-2" : "flex items-end gap-1"}>
-        {!large && attach}
-        <label htmlFor={large ? "home-input" : "chat-input"} className="sr-only">{placeholder}</label>
-        <textarea id={large ? "home-input" : "chat-input"} ref={box} rows={large ? 3 : 1} value={shown}
-          onChange={(e) => { setValue(e.target.value); setInterim(""); }}
-          onKeyDown={(e) => {
-            // Enter sends on a computer; on a phone it is a new line, as in the messengers
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && matchMedia("(pointer: fine)").matches) {
-              e.preventDefault(); submit();
-            }
-          }}
-          placeholder={dictation.transcribing ? t("chat.transcribing") : dictation.listening ? t("chat.listening") : placeholder}
-          maxLength={4000}
-          className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-muted ${
-            large ? "min-h-24 px-3 pt-2 text-[17px] leading-relaxed" : "min-h-10 px-2 py-2 text-[16px]"}`}
-          style={{ outline: "none" }} /* the whole box shows focus */ />
-        {large ? <div className="flex items-center justify-between">{attach}{action}</div> : action}
+      )}
+      {errorLine}
+    </form>
+  );
+
+  // The chat's box, as in WhatsApp: «+» · the message · camera · one round button (microphone, or send once
+  // there is text, or stop while the answer is being written).
+  const round = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full";
+  const main = onStop ? (
+    <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-white`}>
+      <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
+    </button>
+  ) : dictation.transcribing ? (
+    <span role="status" title={t("chat.transcribing")} className={`${round} bg-action text-white`}>
+      <Icon name="spinner" size={20} /><span className="sr-only">{t("chat.transcribing")}</span>
+    </span>
+  ) : !hasText && dictation.supported ? (
+    <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-action text-white`}>
+      <Icon name="mic" size={21} /><span className="sr-only">{t("chat.mic")}</span>
+    </button>
+  ) : (
+    <button type="submit" disabled={busy || !hasText} title={t("chat.send")}
+      className={`${round} bg-action text-white disabled:bg-sand-deep disabled:text-muted`}>
+      <Icon name={busy ? "spinner" : "send"} size={19} /><span className="sr-only">{t("chat.send")}</span>
+    </button>
+  );
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      {filesList}
+      <div className="flex items-end gap-1.5">
+        {!dictation.listening && attach}
+        <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] border border-line bg-surface shadow-[0_1px_1px_rgb(0_0_0/0.06)] focus-within:border-ink/25">
+          {dictation.listening ? recording : textarea}
+        </div>
+        {!dictation.listening && !hasText && !onStop && (
+          <label title={t("helper.photo")}
+            className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-ink ${busy ? "pointer-events-none opacity-40" : ""}`}>
+            <Icon name="camera" size={23} /><span className="sr-only">{t("helper.photo")}</span>
+            <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy}
+              onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
+          </label>
+        )}
+        {!dictation.listening && main}
       </div>
-      )}
-      {dictation.error && (
-        <p role="alert" className="px-3 pt-1 pb-1 text-xs text-danger">{t(`chat.errors.${dictation.error}`)}</p>
-      )}
+      {errorLine}
     </form>
   );
 }

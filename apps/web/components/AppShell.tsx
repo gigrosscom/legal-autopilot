@@ -15,15 +15,21 @@ export type MoreLink = { href: string; icon: IconName; label: string };
  * sidebar), the conversation in the middle (the only part that scrolls) and a fixed input bar at the bottom. Everything secondary lives in the «Ещё»
  * sheet, so the screen never grows panels under the conversation.
  */
-export function AppShell({ title, subtitle, back = "/cases", sections = [], links = [], children, bar, scrollKey }: {
+export function AppShell({ title, subtitle, back = "/cases", sections = [], links = [], children, bar, scrollKey,
+  wallpaper = false, avatar = false, tabs = true }: {
   title: string; subtitle?: string; back?: string; sections?: MoreSection[]; links?: MoreLink[];
   children: ReactNode; bar?: ReactNode; scrollKey?: unknown;
+  wallpaper?: boolean;  // the chat's messenger background
+  avatar?: boolean;     // Konsiliér's icon beside the title, as a contact in a messenger
+  tabs?: boolean;       // the app's tab bar under the screen (a conversation hides it, as the messengers do)
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLElement>(null);
+  const [below, setBelow] = useState(false);  // scrolled up: the «down» button shows
 
   useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [scrollKey]);
 
@@ -53,31 +59,43 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
             <Icon name="arrowRight" size={22} className="rotate-180 rtl:rotate-0" />
           </Link>
+          {avatar && <img src="/icons/icon-192.png" alt="" width={36} height={36} className="me-2 h-9 w-9 shrink-0 rounded-full ring-1 ring-line" />}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">{title}</h1>
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
           <NotificationBell className="lg:hidden" />
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
-            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-line px-3.5 text-sm font-medium hover:bg-sand">
-            <Icon name="menu" size={18} />{t("app.more")}
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" title={t("app.more")}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
+            <Icon name="menu" size={21} /><span className="sr-only">{t("app.more")}</span>
           </button>
         </div>
       </header>
 
-      <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <main id="main" ref={scroller} onScroll={(e) => {
+        const el = e.currentTarget;
+        setBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 240);
+      }}
+        className={`relative min-h-0 flex-1 overflow-y-auto overscroll-contain ${wallpaper ? "chat-wallpaper" : ""}`}>
         <div className="mx-auto max-w-3xl space-y-3 px-5 py-5 lg:px-8">
           {children}
           <div ref={end} />
         </div>
+        {below && (
+          <button type="button" onClick={() => end.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
+            aria-label={t("app.toEnd")}
+            className="sticky bottom-3 float-end me-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow-[0_2px_8px_rgb(0_0_0/0.15)]">
+            <Icon name="chevronDown" size={20} />
+          </button>
+        )}
       </main>
 
       {bar && (
-        <div className={`bg-surface ${keyboard ? "pb-2" : "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
+        <div className={`${wallpaper ? "bg-[var(--chat-bg)]" : "bg-surface"} ${keyboard ? "pb-2" : "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
           <div className="mx-auto max-w-3xl px-3 pt-2 lg:px-8">{bar}</div>
         </div>
       )}
-      {!keyboard && <TabBar inline />}
+      {!keyboard && tabs && <TabBar inline />}
 
       {open && <MoreSheet sections={sections} links={links} onClose={() => setOpen(false)} />}
     </div>
