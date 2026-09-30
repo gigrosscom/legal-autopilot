@@ -32,7 +32,7 @@ const CHECK: Record<string, string> = {
 };
 const norm = (s: string) => s.toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е").split(/\s+/).filter(Boolean).sort().join(" ");
 const APP_STATUS: Record<string, string> = { new: "Новая", verified: "Подтверждена", rejected: "Отклонена" };
-const TICKET_KIND: Record<string, string> = { question: "Вопрос", complaint: "Жалоба", suggestion: "Предложение", plan: "Заявка на тариф" };
+const TICKET_KIND: Record<string, string> = { question: "Вопрос", complaint: "Жалоба", suggestion: "Предложение", data: "Мои данные", plan: "Заявка на тариф" };
 const TICKET_STATUS: Record<string, string> = { new: "Новое", in_progress: "В работе", done: "Решено" };
 const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Передана юристу", closed: "Закрыта" };
 type Pay = {

@@ -88,3 +88,33 @@ def test_plan_request_goes_to_the_clients_desk(ctx):
                                                      "email": "client@mail.kz"})
     assert t["kind"] == "plan"
     assert outbox.sent[-1][0] == "support@konsilier.com" and "Заявка на тариф" in outbox.sent[-1][1]
+
+
+def test_personal_data_request_and_reply_in_the_ticket_language(ctx):
+    """«Мои данные»: a personal data request reaches the clients desk; the reply comes in the ticket's language."""
+    ctx.container.settings.ops_clients_emails = "support@konsilier.com"
+    outbox = Outbox()
+    ctx.container.email_sender = outbox
+    client = web_user(ctx)
+    t = client.post("/v1/support", expect=201, json={"kind": "data", "text": "Удалите, пожалуйста, мои данные.",
+                                                     "email": "client@mail.kz", "language": "kk"})
+    assert t["kind"] == "data" and t["language"] == "kk"
+    assert outbox.sent[-1][0] == "support@konsilier.com" and "Мои данные" in outbox.sent[-1][1]
+    assert ctx.client.post("/v1/support", headers=client.h, json={"kind": "delete_all", "text": "что-то",
+                                                                  "email": "client@mail.kz"}).status_code == 422
+
+    cl = operator(ctx, "support@konsilier.com")
+    cl.post(f"/v1/ops/clients/tickets/{t['id']}/reply", json={"text": "Деректеріңіз жойылды."})
+    to, subject, text = outbox.sent[-1][:3]
+    assert to == "client@mail.kz" and subject == f"Konsiliér AI: №{t['id']} өтінішке жауап"
+    assert text.startswith("Деректеріңіз жойылды.") and "https://konsilier.com/support" in text
+
+    en = client.post("/v1/support", expect=201, json={"kind": "question", "text": "How do I pay?",
+                                                      "email": "client@mail.kz", "language": "en"})
+    cl.post(f"/v1/ops/clients/tickets/{en['id']}/reply", json={"text": "Via Kaspi."})
+    assert outbox.sent[-1][1] == f"Konsiliér AI: reply to your request No. {en['id']}"
+    # a language without letter texts falls back to Russian
+    de = client.post("/v1/support", expect=201, json={"kind": "question", "text": "Wie bezahle ich?",
+                                                      "email": "client@mail.kz", "language": "de"})
+    cl.post(f"/v1/ops/clients/tickets/{de['id']}/reply", json={"text": "Через Kaspi."})
+    assert outbox.sent[-1][1] == f"Konsiliér AI: ответ на обращение №{de['id']}"

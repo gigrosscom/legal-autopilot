@@ -64,6 +64,7 @@ export default function Header() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden><path d="M4 7h16M4 12h16M4 17h16" /></svg>
             </summary>
             <nav aria-label={t("nav.main")}
+              onClick={(e) => { if ((e.target as HTMLElement).closest("a")) e.currentTarget.closest("details")?.removeAttribute("open"); }}
               className="absolute end-0 top-11 z-40 flex w-64 max-w-[calc(100vw-1.5rem)] flex-col rounded-[18px] bg-surface p-2 text-[17px] shadow-[0_12px_40px_rgb(0_0_0/0.14)]">
               <div className="px-1 pb-2 min-[360px]:hidden"><LangSelect /></div>
               <Link href="/start" className="rounded-xl px-3 py-3 font-semibold text-brand hover:bg-sand">{t("nav.start")}</Link>

@@ -13,13 +13,24 @@ const FEATURES: { key: string; icon: IconName }[] = [
   { key: "window", icon: "smartphone" },
 ];
 
-// Where each platform's steps go; the device's own comes first and open.
-const GUIDES: { key: "ios" | "android" | "mac" | "windows"; icon: IconName; steps: number; own: Platform[] }[] = [
-  { key: "ios", icon: "smartphone", steps: 3, own: ["ios"] },
-  { key: "android", icon: "smartphone", steps: 2, own: ["android"] },
-  { key: "mac", icon: "globe", steps: 2, own: ["macSafari"] },
-  { key: "windows", icon: "globe", steps: 2, own: ["desktop"] },
+type Device = "ios" | "android" | "mac" | "windows";
+// The devices to install on and how many steps each takes where the browser has no install dialog.
+const GUIDES: { key: Device; steps: number }[] = [
+  { key: "ios", steps: 3 },
+  { key: "android", steps: 2 },
+  { key: "mac", steps: 2 },
+  { key: "windows", steps: 2 },
 ];
+const LABEL: Record<Device, string> = { ios: "iPhone / iPad", android: "Android", mac: "Mac", windows: "Windows" };
+
+/** The device this visitor is on, picked first. */
+function ownDevice(p: Platform): Device {
+  if (p === "ios") return "ios";
+  if (p === "android") return "android";
+  if (p === "macSafari") return "mac";
+  if (p === "prompt") return /Android/.test(navigator.userAgent) ? "android" : /Macintosh/.test(navigator.userAgent) ? "mac" : "windows";
+  return "windows";
+}
 
 /** A QR code of this page, drawn here as inline SVG (no image service): a computer visitor opens it on the phone. */
 function PageQr() {
@@ -47,8 +58,9 @@ export default function AppPage() {
   const t = useT();
   const { platform, install } = useInstall();
   const [declined, setDeclined] = useState(false);
+  const [picked, setDevice] = useState<Device | null>(null);
   const phone = platform === "ios" || platform === "android";
-  const guides = [...GUIDES].sort((a, b) => Number(platform !== null && b.own.includes(platform)) - Number(platform !== null && a.own.includes(platform)));
+  const device = picked ?? (platform ? ownDevice(platform) : "ios");
 
   return (
     <div className="space-y-12">
@@ -61,14 +73,32 @@ export default function AppPage() {
             {platform === "installed" && (
               <Alert tone="info" icon="checkCircle" role="status">{t("appPage.installed")}</Alert>
             )}
-            {platform === "prompt" && (
-              <Button size="lg" icon="download" onClick={async () => setDeclined(!(await install()))}>{t("appPage.install")}</Button>
-            )}
-            {platform === "prompt" && declined && <p className="text-sm text-muted">{t("appPage.later")}</p>}
-            {platform !== null && platform !== "installed" && platform !== "prompt" && (
-              <p className="flex items-start gap-2 text-sm text-muted">
-                <Icon name="arrowRight" size={18} className="mt-0.5 shrink-0 rotate-90 text-brand" />{t("appPage.seeSteps")}
-              </p>
+            {platform !== null && platform !== "installed" && (
+              <section id="install" aria-label={t("appPage.howTitle")} className="scroll-mt-20 space-y-4">
+                <div role="tablist" aria-label={t("appPage.howTitle")} className="flex flex-wrap gap-2">
+                  {GUIDES.map((g) => (
+                    <button key={g.key} type="button" role="tab" aria-selected={device === g.key} onClick={() => setDevice(g.key)}
+                      className={`min-h-11 rounded-full px-3.5 text-sm font-semibold ${device === g.key ? "bg-ink text-white" : "bg-sand text-ink hover:bg-black/[0.08]"}`}>
+                      {LABEL[g.key]}
+                    </button>
+                  ))}
+                </div>
+                {platform === "prompt" && device === ownDevice(platform) ? (
+                  <>
+                    <Button size="lg" icon="download" onClick={async () => setDeclined(!(await install()))}>{t("appPage.install")}</Button>
+                    {declined && <p className="text-sm text-muted">{t("appPage.later")}</p>}
+                  </>
+                ) : (
+                  <ol className="space-y-2 text-sm">
+                    {Array.from({ length: GUIDES.find((g) => g.key === device)!.steps }, (_, n) => (
+                      <li key={n} className="flex gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-white tabular-nums">{n + 1}</span>
+                        <span>{t(`appPage.guide.${device}.${n + 1}`)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
             )}
             <p className="text-xs text-muted">{t("appPage.free")}</p>
           </div>
@@ -90,36 +120,6 @@ export default function AppPage() {
           ))}
         </ul>
       </section>
-
-      {platform !== "installed" && (
-        <section aria-labelledby="how" className="space-y-4">
-          <h2 id="how" className="text-2xl font-semibold tracking-tight">{t("appPage.howTitle")}</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {guides.map((g, i) => {
-              const own = platform !== null && g.own.includes(platform);
-              return (
-                <details key={g.key} open={own || (i < 2 && !phone)} className={`card group ${own ? "ring-2 ring-brand/30" : ""}`}>
-                  <summary className="flex cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name={g.icon} /></span>
-                    <span className="flex-1 font-semibold">{t(`appPage.guide.${g.key}.title`)}</span>
-                    {own && <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-dark">{t("appPage.yourDevice")}</span>}
-                    <Icon name="chevronDown" className="text-muted transition-transform group-open:rotate-180" />
-                  </summary>
-                  <ol className="space-y-2 pt-3 text-sm">
-                    {Array.from({ length: g.steps }, (_, n) => (
-                      <li key={n} className="flex gap-3">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-white tabular-nums">{n + 1}</span>
-                        <span>{t(`appPage.guide.${g.key}.${n + 1}`)}</span>
-                      </li>
-                    ))}
-                  </ol>
-                  {g.key === "ios" && <p className="pt-3 text-xs text-muted">{t("appPage.guide.ios.note")}</p>}
-                </details>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
       {!phone && platform !== "installed" && <PageQr />}
 

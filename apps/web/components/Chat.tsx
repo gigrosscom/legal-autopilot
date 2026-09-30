@@ -16,6 +16,8 @@ import { SITUATIONS } from "@/lib/situations";
 import { canSpeak, speak, stopSpeaking, useDictation } from "@/lib/voice";
 
 type Pending = { key: string; filename: string; file?: File; id?: string };
+/** The count of free messages left shows once this many or fewer remain (e.g. after the 30th of 40). */
+const REMAINING_FROM = 10;
 
 /**
  * Free consultation as a chat: type or dictate, attach files, hear the answer. Without a case yet, the first
@@ -30,6 +32,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [caseId, setCaseId] = useState(initialCase);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
+  // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
+  const [failed, setFailed] = useState<{ partial: string; text: string; files: Pending[] } | null>(null);
+  const [left, setLeft] = useState<{ n: number; limit: number } | null>(null);  // free messages left in 24 hours
+  const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +60,9 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   }, [initialCase]);
 
   useEffect(() => setTts(canSpeak()), []);
+  useEffect(() => {
+    publicApi<{ daily_limit: number }>("/v1/chat/info").then((r) => setDailyLimit(r.daily_limit)).catch(() => {});
+  }, []);
   // the «Чат» tab returns to the latest conversation
   useEffect(() => { if (caseId) try { localStorage.setItem(LAST_CASE_KEY, caseId); } catch {} }, [caseId]);
 
@@ -66,8 +75,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
   const errText = useCallback((err: unknown) => {
     const key = err instanceof ApiError && err.code ? `chat.errors.${err.code}` : "";
-    return key && t(key) !== key ? t(key) : errorText(err);
-  }, [t]);
+    const limit = err instanceof ApiError && typeof err.detail === "object" && err.detail && "limit" in err.detail
+      ? Number((err.detail as { limit: number }).limit) : dailyLimit;
+    return key && t(key) !== key ? t(key, limit ? { limit } : undefined) : errorText(err);
+  }, [t, dailyLimit]);
 
   async function openCase(text: string, skipTriage: boolean): Promise<string | null> {
     if (!skipTriage) {
@@ -99,35 +110,57 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     return done;
   }
 
-  async function send(textIn?: string, skipTriage = false) {
+  async function send(textIn?: string, skipTriage = false, again?: Pending[]) {
     const text = (textIn ?? draft).trim();
     if (!text || busy) return;
     if (dictation.listening) dictation.stop();
     stopSpeaking();
-    setBusy(true); setError(null); setEmergency(null);
+    setBusy(true); setError(null); setEmergency(null); setFailed(null);
+    // set once the message is shown in the chat: from then on a failure keeps it and offers «Повторить»
+    let sent: Pending[] | null = null;
+    let partial = "", answered = false, retry = true;
     try {
       const id = caseId ?? await openCase(text, skipTriage);
       if (!id) { setBusy(false); return; }
-      const uploaded = await upload(id, files);
+      const uploaded = await upload(id, again ?? files);
       const attachments = uploaded.filter((f) => f.id).map((f) => ({ id: f.id!, filename: f.filename }));
       setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "user", text, created_at: new Date().toISOString(),
         attachments, norms: [] }]);
-      setDraft(""); setInterim(""); setFiles([]);
+      if (!again) { setDraft(""); setInterim(""); setFiles([]); }
+      sent = uploaded;
       setStreaming("");
       await sendChat(id, text, attachments.map((a) => a.id), (ev) => {
-        if (ev.type === "text") { setLookingUp(false); setStreaming((s) => (s ?? "") + ev.text); }
+        if (ev.type === "text") { partial += ev.text; setLookingUp(false); setStreaming((s) => (s ?? "") + ev.text); }
         else if (ev.type === "tool") setLookingUp(true);
         else if (ev.type === "error") setError(t(`chat.errors.${ev.code}`));
         else if (ev.type === "done") {
+          answered = true;
           setMessages((m) => [...m, ev.message]);
           if (voiceMode && speak(ev.message.text, lang)) setSpeaking(ev.message.id);
+          if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
         }
       });
     } catch (err) {
       setError(errText(err));
+      if (err instanceof ApiError && (err.code === "too_many_messages" || err.code === "agent_unavailable")) {
+        retry = false;  // «Повторить» would not help
+        if (err.code === "too_many_messages") setLeft((l) => ({ n: 0, limit: l?.limit ?? dailyLimit ?? 0 }));
+      }
     } finally {
+      if (sent && !answered && retry) setFailed({ partial, text, files: sent });
       setStreaming(null); setLookingUp(false); setBusy(false);
     }
+  }
+
+  /** Send the message whose answer failed once more; its bubble is replaced, its files are not uploaded again. */
+  function retryFailed() {
+    if (!failed || busy) return;
+    const { text, files: again } = failed;
+    setMessages((m) => {
+      const last = m[m.length - 1];
+      return last && last.role === "user" && last.text === text ? m.slice(0, -1) : m;
+    });
+    send(text, true, again);
   }
 
   useEffect(() => {  // text typed on the home page arrives here and is sent once
@@ -162,7 +195,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     if (speaking === m.id) { stopSpeaking(); setSpeaking(null); return; }
     if (speak(m.text, lang)) setSpeaking(m.id);
   };
-  const empty = messages.length === 0 && streaming === null;
+  const empty = messages.length === 0 && streaming === null && !failed;
 
   const links: MoreLink[] = [
     ...(caseId ? [{ href: `/case/${caseId}`, icon: "document" as IconName, label: `${t("chat.doc")} · ${t("chat.docPrice")}` }] : []),
@@ -221,7 +254,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           </button>
         </form>
         <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-muted">
-          <span>{t("chat.freeShort")}</span>
+          <span>{left && left.limit > 0 && left.n <= REMAINING_FROM
+            ? t("chat.remaining", { n: left.n, limit: left.limit }) : t("chat.freeShort")}</span>
           {tts && (
             <button type="button" onClick={() => { setVoiceMode((v) => !v); stopSpeaking(); setSpeaking(null); }} aria-pressed={voiceMode}
               className="inline-flex min-h-8 items-center gap-1.5 hover:text-ink">
@@ -239,7 +273,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
   return (
     <AppShell title={t("app.chat")} subtitle={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections}
-      links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}`}>
+      links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
       <div className="space-y-4" aria-live="polite">
 
         {empty && (
@@ -299,6 +333,19 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               <p className="flex items-center gap-2 text-sm text-muted" role="status">
                 <Icon name="spinner" size={14} />{lookingUp ? t("chat.lookingUp") : t("chat.thinking")}
               </p>
+            </div>
+          </div>
+        )}
+        {failed && streaming === null && (
+          <div className="space-y-2">
+            {failed.partial && <p className="text-sm font-semibold text-ink"><bdi>{t("chat.brand")}</bdi></p>}
+            <div className="min-w-0 space-y-2 lg:ps-7">
+              {failed.partial && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{failed.partial}</p>}
+              {failed.partial && <p className="text-sm text-muted">{t("chat.interrupted")}</p>}
+              <button type="button" onClick={retryFailed} disabled={busy}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:border-brand disabled:opacity-50">
+                <Icon name="send" size={16} />{t("chat.retry")}
+              </button>
             </div>
           </div>
         )}

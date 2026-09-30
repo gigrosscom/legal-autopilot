@@ -224,7 +224,7 @@ class LawyerRequestIn(BaseModel):
 def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depends(current_user),
                    session: Session = Depends(get_session), container: Container = Depends(get_container)) -> dict[str, Any]:
     """«Обратиться»: register the case and the applicant's contacts for a lawyer. Direct booking opens later;
-    until then the team passes the request to a verified lawyer of the right field."""
+    until then the team passes the request to a lawyer of the right field from the directory."""
     from ..identity import form_rules as R
 
     case = load_case(case_id, session, user)

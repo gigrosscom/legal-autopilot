@@ -14,7 +14,8 @@ export type ChatMessage = {
 export type ChatEvent =
   | { type: "text"; text: string }
   | { type: "tool"; name: string }
-  | { type: "done"; message: ChatMessage }
+  // limit/remaining: the free daily limit (a rolling 24-hour window) and what is left of it after this message
+  | { type: "done"; message: ChatMessage; limit?: number; remaining?: number }
   | { type: "error"; code: string; message: string };
 
 export const chatHistory = (caseId: string) => api<ChatMessage[]>(`/v1/cases/${caseId}/chat`);
