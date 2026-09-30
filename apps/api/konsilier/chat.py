@@ -14,6 +14,11 @@ Speed (owner 30.09: first words within ~2 s): articles are cut from the Zann cor
 (milliseconds; the live portal otherwise), and the phases — library search, each model round with the providers
 tried, each tool call and where its text came from, the first words — are logged as "chat timing:" and kept in
 ``ChatResult.timing``.
+
+One answer per reply: after a tool call the model is told to continue the text already shown, and a round that
+starts over anyway (the short answer again, a second [[MORE]]) is cut (RepeatGuard); a look-up note written just
+before a tool call is not kept in the stored reply; a turn without any words raises EmptyReply (the endpoint then
+says «busy»), it never ends as an empty reply.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
+from .gemini import EmptyReply
 from .lawagent.agent import LawAgent
 from .lawagent.sources import Adilet
 from .official.search import Hit
@@ -135,7 +141,102 @@ OFFER_MARKER = "[[DOCUMENT]]"
 
 def _ms(since: float) -> int:
     return round((time.perf_counter() - since) * 1000)
+
+
 MORE_MARKER = "[[MORE]]"  # between the short answer and the details; the app shows the details under «Подробнее»
+_MORE = re.compile(r"\[\[\s*MORE\s*\]\]", re.IGNORECASE)
+
+# Added to the tool results when the person already reads part of the reply: the model continues, it does not start
+# over (open models wrote the whole answer again after a tool call: a doubled reply, 30.09).
+CONTINUE_NOTE = ("The person already sees what you wrote above in this reply. Continue right after it: do not repeat "
+                 "the short answer or anything already written. Write the " + MORE_MARKER + " marker only if you have "
+                 "not written it yet. Do not announce another look-up; just write the rest.")
+# Added when the model has used up its tool rounds: the answer is written now.
+FINAL_NOTE = ("No more tool calls are possible in this reply. Write the answer to the person now from what you "
+              "already have, in the reply shape asked for.")
+
+# A note a model writes just before a tool call ("Сейчас уточняю официальные источники…"): useful while the person
+# waits, but the stored reply must not keep it hanging in the middle or at the end.
+_FILLER = re.compile(
+    r"\b(?:секунду|минутку|одну минуту|let me|one moment|just a moment|bir saniye|bir dakika)\b|"
+    r"уточняю|уточню|проверю|проверяю|посмотрю|смотрю|поищу|ищу|найду|открою|открываю|загляну|сверю|сверяю|"
+    r"тексеремін|тексерейін|қараймын|қарап шығайын|анықтаймын|іздеймін|"
+    r"i'?ll check|i will check|i'?m checking|checking|looking (?:it )?up|i'?ll look|"
+    r"kontrol ediyorum|kontrol edeyim|bakıyorum|bakayım|araştırıyorum|"
+    r"لحظة|سأتحقق|أتحقق|دعني|سأبحث|أبحث", re.IGNORECASE)
+_SENTENCE_END = re.compile(r"(?<=[.!?…:])[*_»\"')\]]*\s+")  # also after closing bold or quotes
+
+
+def trailing_filler(text: str) -> str:
+    """The look-up note at the end of a round that ended in a tool call ('' if the round ends with real content):
+    the trailing sentences of its last paragraph that announce a look-up."""
+    tail = re.split(r"\n|\[\[\s*MORE\s*\]\]", text.rstrip(), flags=re.IGNORECASE)[-1]
+    sentences = [x for x in _SENTENCE_END.split(tail.strip()) if x.strip()]
+    drop: list[str] = []
+    while sentences and len(sentences[-1]) <= 160 and _FILLER.search(sentences[-1]):
+        drop.insert(0, sentences.pop())
+    if not drop:
+        return ""
+    # the exact end of the text that holds those sentences
+    first = drop[0]
+    at = text.rstrip().rfind(first)
+    return text.rstrip()[at:] if at >= 0 else ""
+
+
+def _words(text: str) -> set[str]:
+    return {w for w in re.findall(r"\w+", text.lower()) if len(w) > 2}
+
+
+def _repeats(new: str, shown: str) -> bool:
+    """``new`` says again what ``shown`` already said (mostly the same words)."""
+    a, b = _words(new), _words(shown)
+    if min(len(a), len(b)) < 4:
+        return bool(new.strip()) and new.strip() == shown.strip()
+    return len(a & b) / min(len(a), len(b)) >= 0.6
+
+
+class RepeatGuard:
+    """The text of a round after a tool call, when the person already reads part of the reply. Held back until it
+    is clear whether the model starts over (writes the short answer again, a second [[MORE]]); the repeated part is
+    dropped, the rest passes. The details are hidden under «Подробнее» anyway, so the short hold costs nothing."""
+
+    HOLD = 600  # characters: a repeated short answer (≤ ~50 words) is shorter than this
+
+    def __init__(self, shown: str):
+        self.shown, self.buf, self.done = shown, "", False
+        m = _MORE.search(shown)
+        self.short = shown[:m.start()] if m else shown  # what the person sees as the short answer
+        self.has_more = m is not None
+
+    def feed(self, chunk: str) -> str:
+        if self.done:
+            return chunk
+        self.buf += chunk
+        m = _MORE.search(self.buf)
+        if m or len(self.buf) >= self.HOLD:
+            return self._decide(m, final=False)
+        return ""
+
+    def flush(self) -> str:
+        return "" if self.done else self._decide(_MORE.search(self.buf), final=True)
+
+    def _decide(self, m: re.Match[str] | None, final: bool) -> str:
+        self.done = True
+        buf = self.buf
+        if m:
+            head, tail = buf[:m.start()], buf[m.end():]
+            if self.has_more:  # a second marker: what precedes it is the short answer again (or keep new words)
+                return tail.lstrip() if not head.strip() or _repeats(head, self.short) else head + tail
+            if head.strip() and _repeats(head, self.short):  # short answer again, first marker: keep the marker
+                return MORE_MARKER + "\n" + tail.lstrip()
+            return buf
+        # no marker: drop leading paragraphs that say again what was shown (the last one only once it is complete)
+        paras = re.split(r"(\n\s*\n)", buf.lstrip())
+        shown_paras = [p for p in re.split(r"\n\s*\n", self.shown) if p.strip()]
+        dropped = False
+        while paras and (len(paras) > 2 or final) and any(_repeats(paras[0], p) for p in shown_paras):
+            paras, dropped = paras[2:], True
+        return "".join(paras).lstrip() if dropped else buf
 
 
 def take_offer(text: str) -> tuple[str, bool]:
@@ -236,28 +337,40 @@ class ChatAgent:
             len(m["content"]) for m in messages if isinstance(m["content"], str))
         timing["setup_ms"] = _ms(t0)
         usage = {"input_tokens": 0, "output_tokens": 0}
-        text_parts: list[str] = []
+        reply = ""  # what the person was sent in this reply (look-up notes before a tool call are taken out)
         calls = 0
         served = ""  # the provider of a chain that answered keeps the rest of the turn (its own tool calls)
-        for n in range(self.max_turns):
+        # up to max_turns rounds with tools; a turn that still ends in a tool call gets one more round to write
+        for n in range(self.max_turns + 1):
             t_round = time.perf_counter()
             first_ms = None
+            round_text = ""
+            # after a tool call with part of the reply already shown: the model must continue, not start over
+            guard = RepeatGuard(reply) if n and reply.strip() else None
             kw: dict[str, Any] = {"prefer": served} if served and getattr(self.client, "accepts_prefer", False) else {}
             with self.client.messages.stream(model=self.model, max_tokens=self.max_tokens, system=system,
                                              tools=tools, messages=messages, **kw) as s:
-                for chunk in s.text_stream:
-                    chunk = strip_foreign_script(chunk, language)
-                    if not chunk:
-                        continue
-                    if first_ms is None:
-                        first_ms = _ms(t_round)
-                        if "ttft_ms" not in timing:
-                            timing["ttft_ms"] = _ms(t0)
-                            log.info("chat timing: case=%s phase=first_token ms=%d round=%d", case_id,
-                                     timing["ttft_ms"], n + 1)
-                    text_parts.append(chunk)
-                    yield {"type": "text", "text": chunk}
-                final = s.get_final_message()
+                chunks = iter(s.text_stream)
+                while True:
+                    raw = next(chunks, None)
+                    if raw is None:
+                        final = s.get_final_message()
+                        out = guard.flush() if guard else ""
+                    else:
+                        raw = strip_foreign_script(raw, language)
+                        out = guard.feed(raw) if guard and raw else raw
+                    if out and (reply.strip() or out.strip()):  # never open a reply with blank lines
+                        if first_ms is None:
+                            first_ms = _ms(t_round)
+                            if "ttft_ms" not in timing:
+                                timing["ttft_ms"] = _ms(t0)
+                                log.info("chat timing: case=%s phase=first_token ms=%d round=%d", case_id,
+                                         timing["ttft_ms"], n + 1)
+                        reply += out
+                        round_text += out
+                        yield {"type": "text", "text": out}
+                    if raw is None:
+                        break
             served = getattr(s, "provider", "") or served
             rnd: dict[str, Any] = {"n": n + 1, "provider": getattr(s, "provider", "") or getattr(self.client, "name", ""),
                                    "first_ms": first_ms, "ms": _ms(t_round), "stop": final.stop_reason}
@@ -270,9 +383,15 @@ class ChatAgent:
             searches = getattr(getattr(final.usage, "server_tool_use", None), "web_search_requests", 0) or 0
             if searches:  # Claude's server web search is billed per search
                 usage["web_search_requests"] = usage.get("web_search_requests", 0) + int(searches)
+            if n == self.max_turns:  # the extra round: its words are the answer, a further tool call is not run
+                break
             messages.append({"role": "assistant", "content": final.content})
             if final.stop_reason == "tool_use":
-                results = []
+                # a look-up note at the end of this round ("Сейчас уточняю…") is shown while the tool runs, but the
+                # stored reply does not keep it (the app replaces the streamed text with the stored one)
+                if filler := trailing_filler(round_text):
+                    reply = reply.rstrip()[:-len(filler)].rstrip() if reply.rstrip().endswith(filler) else reply
+                results: list[dict[str, Any]] = []
                 for b in final.content:
                     if b.type == "tool_use":
                         calls += 1
@@ -293,15 +412,26 @@ class ChatAgent:
                         timing["tools"].append(tool)
                         log.info("chat timing: case=%s phase=tool %s", case_id, json.dumps(tool))
                         results.append({"type": "tool_result", "tool_use_id": b.id, "content": content})
+                if n + 1 == self.max_turns:
+                    results.append({"type": "text", "text": FINAL_NOTE})
+                if reply.strip():
+                    results.append({"type": "text", "text": CONTINUE_NOTE})
                 messages.append({"role": "user", "content": results})
-                if text_parts and not text_parts[-1].endswith(("\n", " ")):
-                    text_parts.append("\n\n")
+                if reply.strip() and not reply.endswith("\n"):
+                    reply += "\n\n"
+                if round_text.strip() and not round_text.endswith("\n"):  # the next words start a new paragraph
                     yield {"type": "text", "text": "\n\n"}
                 continue
-            if final.stop_reason == "pause_turn":
+            if final.stop_reason == "pause_turn" and n + 1 < self.max_turns:
                 continue
             break
-        text = "".join(text_parts).strip()
+        text = reply.strip()
+        if not take_offer(text)[0]:
+            # nothing to show (the model only called tools, or wrote nothing): a failure, never an empty reply —
+            # the caller tries the fallback or tells the person to try again in a minute
+            timing["total_ms"] = _ms(t0)
+            log.warning("chat timing: case=%s empty reply %s", case_id, json.dumps(timing, ensure_ascii=False))
+            raise EmptyReply("the model wrote no answer")
         result = self._check(text, got, calls, usage)
         result.sources = [{"url": h.url, "title": h.title, "domain": h.domain} for h in found.values()
                           if h.url in text or h.domain in text]

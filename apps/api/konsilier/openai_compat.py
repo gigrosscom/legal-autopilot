@@ -20,7 +20,7 @@ from typing import Any, Iterator
 
 import httpx
 
-from .gemini import RETRY_STATUSES, Block, Message, Usage, Warm, keepalive_http
+from .gemini import RETRY_STATUSES, Block, EmptyReply, Message, Usage, Warm, has_content, keepalive_http
 
 log = logging.getLogger(__name__)
 RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at a provider
@@ -77,7 +77,15 @@ class _Stream:
     def __init__(self, http: httpx.Client, url: str, body: dict[str, Any], headers: dict[str, str], name: str):
         self._http, self._url, self._body, self._headers, self._name = http, url, body, headers, name
         self._final: Message | None = None
+        self._r: httpx.Response | None = None
+        self._closed = False
         self.attempts: list[dict[str, Any]] = []  # every HTTP try: status (or error) and ms until the answer
+
+    def close(self) -> None:
+        """Stop reading (another provider of the chain answered first); safe to call from another thread."""
+        self._closed = True
+        if self._r is not None:
+            self._r.close()
 
     def __enter__(self) -> "_Stream":
         return self
@@ -115,7 +123,10 @@ class _Stream:
         calls: dict[int, dict[str, Any]] = {}  # index → {"id", "name", "arguments"} assembled from deltas
         usage = Usage()
         finish = "stop"
-        r = self._open()
+        r = self._r = self._open()
+        if self._closed:
+            r.close()
+            return
         try:
             for line in r.iter_lines():
                 if not line.startswith("data: ") or line[6:].strip() == "[DONE]":
@@ -127,7 +138,13 @@ class _Stream:
                     finish = ch.get("finish_reason") or finish
                     delta = ch.get("delta") or {}
                     for tc in delta.get("tool_calls") or []:
-                        call = calls.setdefault(tc.get("index", len(calls)), {"id": "", "name": "", "arguments": ""})
+                        # a provider that leaves out "index" sends a call's later argument pieces without id or
+                        # name: they belong to the call being assembled, not to a new nameless one
+                        idx = tc.get("index")
+                        if idx is None:
+                            fresh = tc.get("id") or (tc.get("function") or {}).get("name")
+                            idx = len(calls) if fresh or not calls else max(calls)
+                        call = calls.setdefault(idx, {"id": "", "name": "", "arguments": ""})
                         fn = tc.get("function") or {}
                         call["id"] = tc.get("id") or call["id"]
                         call["name"] += fn.get("name") or ""
@@ -143,8 +160,9 @@ class _Stream:
                 args = json.loads(c["arguments"] or "{}")
             except json.JSONDecodeError:
                 args = {}
-            blocks.append(Block("tool_use", id=c["id"] or uuid.uuid4().hex[:12], name=c["name"], input=args))
-        stop = "tool_use" if calls else ("max_tokens" if finish == "length" else "end_turn")
+            if c["name"]:  # a nameless fragment cannot be run
+                blocks.append(Block("tool_use", id=c["id"] or uuid.uuid4().hex[:12], name=c["name"], input=args))
+        stop = "tool_use" if any(b.type == "tool_use" for b in blocks) else ("max_tokens" if finish == "length" else "end_turn")
         self._final = Message(blocks, stop, usage)
 
     def get_final_message(self) -> Message:
@@ -184,8 +202,10 @@ class OpenAICompatClient(Warm):
 class _ChainStream:
     """The first provider of the chain that starts answering. With ``first_token_timeout`` the next provider is
     asked in parallel once the current one has been silent that long (and at once after a failure); the first to
-    start (a word, or a finished tool call) answers and the others are dropped. Without it, one after another, only
-    after a failure. Nothing is shown twice: only the answering provider's words reach the reader."""
+    start (a non-blank word, or a finished tool call) answers and the others are cancelled (their connections
+    closed). Without it, one after another, only after a failure. Nothing is shown twice: only the answering
+    provider's words reach the reader. A reply with neither text nor a tool call counts as a failure, never as the
+    answer."""
 
     def __init__(self, clients: list[Any], kwargs: dict[str, Any], first_token_timeout: float = 0):
         self._clients, self._kwargs, self._timeout = clients, kwargs, first_token_timeout
@@ -211,11 +231,16 @@ class _ChainStream:
             try:
                 with c.messages.stream(**self._kwargs) as s:
                     for chunk in s.text_stream:
+                        if not started and not chunk.strip():
+                            continue  # blank first pieces are no answer yet (the reply is trimmed anyway)
                         if not started:
                             self._attempt(name, t0, "answered", s)
                         started = True
                         yield chunk
-                    self._final = s.get_final_message()
+                    final = s.get_final_message()
+                if not started and not has_content(final):
+                    raise EmptyReply(f"{name}: empty reply")  # nothing to show: the next provider
+                self._final = final
                 if not started:
                     self._attempt(name, t0, "answered", s)
                 self.provider = name
@@ -239,22 +264,45 @@ class _ChainStream:
         names = [getattr(c, "name", type(c).__name__) for c in self._clients]
         started_at: dict[int, float] = {}
         failed: set[int] = set()
+        streams: dict[int, Any] = {}
 
         def run(i: int) -> None:
+            begun = False
             try:
                 with self._clients[i].messages.stream(**self._kwargs) as s:
+                    streams[i] = s
+                    if stop[i].is_set():
+                        return
                     for chunk in s.text_stream:
                         if stop[i].is_set():
                             return
+                        if not begun and not chunk.strip():
+                            continue  # a blank first piece must not win the race and then leave the reply empty
+                        begun = True
                         events.put((i, "text", chunk))
+                    if stop[i].is_set():
+                        return
                     final = s.get_final_message()
+                if not begun and not has_content(final):
+                    raise EmptyReply(f"{names[i]}: empty reply")  # an empty reply never wins the race
                 events.put((i, "final", (final, getattr(s, "attempts", None))))
             except Exception as e:  # reported to the reader thread, which decides
-                events.put((i, "error", e))
+                if not stop[i].is_set():
+                    events.put((i, "error", e))
 
         def launch(i: int) -> None:
             started_at[i] = time.perf_counter()
             threading.Thread(target=run, args=(i,), name=f"chat-{names[i]}", daemon=True).start()
+
+        def cancel(j: int) -> None:
+            """The loser stops at once: its connection is closed, whatever it would still send is never read."""
+            stop[j].set()
+            close = getattr(streams.get(j), "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception:  # noqa: BLE001 — closing a finished or broken stream
+                    pass
 
         launch(0)
         winner: int | None = None
@@ -286,9 +334,9 @@ class _ChainStream:
                     winner = i
                     self._attempt(names[i], started_at[i], "answered",
                                   NS(attempts=payload[1]) if kind == "final" else None)
-                    for j in started_at:
+                    for j in list(started_at):
                         if j != i:
-                            stop[j].set()
+                            cancel(j)
                             if j not in failed:
                                 self._attempt(names[j], started_at[j], "dropped")
                 if i != winner:
@@ -301,9 +349,11 @@ class _ChainStream:
                     return
                 else:
                     raise payload
-        finally:  # the reader stopped (answer done, the person left): the other providers stop reading too
-            for e in stop:
-                e.set()
+        finally:  # the reader stopped (answer done, the person left): every provider still reading stops
+            for j in range(len(self._clients)):
+                if not stop[j].is_set() and not (j == winner and self._final is not None):
+                    cancel(j)
+                stop[j].set()
 
     def get_final_message(self) -> Message:
         if self._final is None:
@@ -336,7 +386,11 @@ class ChainClient:
     def stream(self, prefer: str = "", **kwargs: Any) -> _ChainStream:
         clients = self.clients
         if prefer:
+            # a continuation of a turn (after a tool call) is never raced: another model would not continue the
+            # text already shown but write the whole answer again (a doubled reply, 30.09); the others are asked
+            # only if this one fails before its first word
             clients = sorted(clients, key=lambda c: getattr(c, "name", "") != prefer)
+            return _ChainStream(clients, kwargs, 0)
         return _ChainStream(clients, kwargs, self.first_token_timeout)
 
     def warm(self) -> None:
