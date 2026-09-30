@@ -17,16 +17,21 @@ declare global {
  * How this device installs the app:
  * - "prompt": the browser's own install dialog (Chrome / Edge / Samsung Internet on Android, Windows, Mac);
  * - "ios": Safari on iPhone / iPad (Apple offers no install API: Share → «На экран „Домой“»);
- * - "iosOther": another browser or an in-app browser on iPhone / iPad (only Safari installs);
+ * - "iosBrowser": Chrome, Edge, Firefox on iPhone / iPad — since iOS 16.4 they add to the home screen from Share too;
+ * - "iosInApp": a browser inside another app (Telegram, Instagram, Facebook…): only a real browser installs, so the
+ *   tap opens the page in Safari (x-safari-https:, iOS 17+);
+ * - "androidInApp": the same on Android: the tap opens the page in Chrome (intent: link);
  * - "macSafari": Safari 17+ on Mac (File → Add to Dock);
  * - "menu": a Chromium browser that has not offered its dialog (yet): its menu → Install;
  * - "other": a browser that cannot install; "installed": already done.
  */
-export type Platform = "installed" | "prompt" | "ios" | "iosOther" | "macSafari" | "menu" | "other";
+export type Platform = "installed" | "prompt" | "ios" | "iosBrowser" | "iosInApp" | "androidInApp" | "macSafari" | "menu" | "other";
 
 const INSTALLED = "konsilier.installed"; // Chromium installed the app from this browser (it offers no dialog since)
-const CHANGED = "konsilier:install";
-const DONE = "konsilier:installed";     // the browser's dialog installed the app just now     // the install state changed: every button and banner re-reads it
+const CHANGED = "konsilier:install";     // the install state changed: every button and banner re-reads it
+const DONE = "konsilier:installed";      // the browser's dialog installed the app just now
+// browsers inside other apps: they cannot install, a real browser can
+const IN_APP = /FBAN|FBAV|Instagram|Line\/|Telegram|TikTok|musical_ly|Snapchat|VKClient|GSA\//;
 
 function read(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -50,17 +55,35 @@ export function detect(storeKey: string = INSTALLED): Platform {
   if (read(storeKey) === "1") return "installed";
   const ua = navigator.userAgent;
   if (isIos()) {
-    // Chrome, Firefox, Edge, Google, Yandex and in-app browsers (Telegram, Instagram, Facebook…) on iOS
-    const other = /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser|GSA\/|FBAN|FBAV|Instagram|Line\/|Telegram|MiuiBrowser/.test(ua)
-      || !/Safari\//.test(ua);
-    return other ? "iosOther" : "ios";
+    if (IN_APP.test(ua) || !/Safari\//.test(ua)) return "iosInApp"; // an app's own web view has no «Safari/» in its name
+    return /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser/.test(ua) ? "iosBrowser" : "ios";
   }
   if (/Macintosh/.test(ua) && /Version\/(1[7-9]|[2-9]\d)/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua)) {
     return "macSafari";
   }
+  if (/Android/.test(ua) && (IN_APP.test(ua) || /; wv\)/.test(ua))) return "androidInApp";
   if (/Chrome|Chromium|Edg|SamsungBrowser/.test(ua) && !/Firefox|OPR|YaBrowser/.test(ua)) return "menu";
   if (/Android/.test(ua)) return "menu"; // Firefox, Opera, Yandex on Android also install from their menu
   return "other";
+}
+
+/** Chrome can offer its dialog a moment after the page opens: wait for it up to 3 s before giving up. */
+function lateDialog(): Promise<PromptEvent | null> {
+  return new Promise((resolve) => {
+    const done = () => { window.removeEventListener("beforeinstallprompt", done); clearTimeout(timer); resolve(window.__konsilierInstall ?? null); };
+    const timer = setTimeout(done, 3000);
+    window.addEventListener("beforeinstallprompt", done);
+  });
+}
+
+/** Opens this site's /app in the device's real browser, from a browser inside another app. */
+function realBrowserLink(platform: Platform): string {
+  const { host } = window.location;
+  if (platform === "androidInApp") {
+    const back = encodeURIComponent(`https://${host}/app?install=1`);
+    return `intent://${host}/app?install=1#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${back};end`;
+  }
+  return `x-safari-https://${host}/app?install=1`;
 }
 
 /** The platform (null until known on the client) and the install action: the browser's own dialog, straight away.
@@ -89,7 +112,7 @@ export function useInstall(storeKey: string = INSTALLED) {
     };
   }, [storeKey]);
   const install = useCallback(async (): Promise<boolean> => {
-    const e = window.__konsilierInstall;
+    const e = window.__konsilierInstall ?? await lateDialog();
     if (!e) return false;
     window.__konsilierInstall = null; // the dialog opens once per event
     let accepted = false;
@@ -119,7 +142,8 @@ function Hint({ platform, text, onClose }: { platform: Platform; text?: string; 
   const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   // Safari 26 on iPhone keeps Share in the «•••» menu at the bottom right; before, Share sat mid-bottom; iPad: top right
   const safari26 = Number(/Version\/(\d+)/.exec(ua)?.[1] ?? 0) >= 26;
-  const key = platform === "ios" && safari26 && !ipad ? "ios26" : platform;
+  const key = platform === "ios" && safari26 && !ipad ? "ios26" : platform === "iosBrowser" ? "ios" : platform;
+  const inApp = platform === "iosInApp" || platform === "androidInApp";
   const [before, after] = (text ?? t(`pwa.hint.${key}`, { site: window.location.host })).split("{share}");
   const line: ReactNode = after === undefined ? before : (
     <>{before}<Icon name="share" size={22} className="mx-1 inline-block -translate-y-0.5 text-action" />{after}</>
@@ -132,7 +156,19 @@ function Hint({ platform, text, onClose }: { platform: Platform; text?: string; 
       <div role="dialog" aria-modal="true" aria-label={t("pwa.install")} onClick={(e) => e.stopPropagation()}
         className={`absolute inset-x-3 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-surface py-4 ps-5 pe-2 shadow-[0_12px_40px_rgb(0_0_0/0.2)] ${
           pointer === "top" ? "top-[calc(3.5rem+env(safe-area-inset-top))]" : "bottom-[calc(3.5rem+env(safe-area-inset-bottom))]"}`}>
-        <p className="flex-1 text-[17px] leading-snug font-medium">{line}</p>
+        <div className="flex-1 space-y-3">
+          <p className="text-[17px] leading-snug font-medium">{line}</p>
+          {inApp && !text && (
+            // one tap: the page opens in Safari / Chrome, where «Установить» works
+            <a href={realBrowserLink(platform)} className="btn-primary min-h-11 w-full justify-center">
+              {t(platform === "androidInApp" ? "pwa.openChrome" : "pwa.openSafari")}
+            </a>
+          )}
+          {platform === "ios" && !text && (
+            // inside a Telegram / Instagram viewer iOS has no «На экран „Домой“»: open the page in Safari itself
+            <a href={realBrowserLink("iosInApp")} className="block text-sm text-muted underline">{t("pwa.noHomeScreen")}</a>
+          )}
+        </div>
         <button ref={close} type="button" onClick={onClose} aria-label={t("app.close")}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={20} /></button>
       </div>
@@ -160,10 +196,26 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
   const t = useT();
   const { platform, install } = useInstall(storeKey);
   const [hint, setHint] = useState<Platform | null>(null);
+  const [waiting, setWaiting] = useState(false);
   const closeHint = useCallback(() => setHint(null), []);
+  // /app?install=1 — the page was just opened in Safari / Chrome from another app's browser: continue at once
+  useEffect(() => {
+    if (platform !== "ios" && platform !== "iosBrowser") return;
+    if (new URLSearchParams(window.location.search).get("install") === "1") setHint(platform);
+  }, [platform]);
 
   if (platform === null || platform === "installed") return null;
   const go = async () => {
+    if (platform === "menu") {
+      // Chrome / Edge that has not offered its dialog yet: wait for it briefly rather than show steps at once
+      setWaiting(true);
+      const ok = await install();
+      setWaiting(false);
+      if (ok) { window.dispatchEvent(new Event(DONE)); onInstalled?.(); return; }
+      if (detect(storeKey) === "installed") return;
+      setHint(platform);
+      return;
+    }
     if (platform === "prompt") {
       if (await install()) {
         window.dispatchEvent(new Event(DONE)); // the note on where the icon is lives in AppBanner, which stays mounted
@@ -175,7 +227,7 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
   };
   return (
     <>
-      <button type="button" onClick={go} className={className}>
+      <button type="button" onClick={go} disabled={waiting} aria-busy={waiting} className={className}>
         {icon && <Icon name={icon} size={18} />}{label ?? t("pwa.install")}
       </button>
       {hint && <Hint platform={hint} onClose={closeHint} />}
