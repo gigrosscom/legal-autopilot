@@ -383,7 +383,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 <Link href={`/case/${caseId}`}
                   className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-[var(--chat-action-bg)] px-3 py-2 text-center hover:opacity-90">
                   <span className="font-semibold text-[var(--chat-accent)]">{t("chat.doc")}</span>
-                  <span className="text-xs text-muted">{t("chat.docPrice")}</span>
                 </Link>
               )}
             </Bubble>

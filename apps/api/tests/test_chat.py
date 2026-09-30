@@ -434,3 +434,24 @@ def test_chat_opens_the_case_at_once_and_qualifies_it_afterwards(ctx):
         s.commit()
         assert s.get(Case, uuid.UUID(cid)).scenario_id == "kz.consumer.refund"
     assert api.get(f"/v1/cases/{cid}").json()["scenario"]["id"] == "kz.consumer.refund"
+
+
+def test_document_is_not_offered_in_the_first_reply(ctx):
+    """Owner 30.09: the «Составить документ» button in the very first reply scares people off; later it may come,
+    and at once when the person asks for a document themselves."""
+    from .test_e2e import web_user
+
+    offer = "Могу подготовить претензию продавцу — показать?\n[[DOCUMENT]]"
+    client = StreamingClient([([offer], "end_turn", []), ([offer], "end_turn", [])])
+    ctx.container.chat_agent = ChatAgent(client, "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Сломался телефон", "country": "KZ", "defer": True})["case"]["id"]
+    first = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Сломался телефон"}))[-1]
+    assert first["message"]["offer_document"] is False
+    second = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Чек есть, 200 000 тенге"}))[-1]
+    assert second["message"]["offer_document"] is True
+
+    client.turns = [([offer], "end_turn", [])]
+    cid2 = api.post("/v1/cases", expect=201, json={"text": "Нужна претензия", "country": "KZ", "defer": True})["case"]["id"]
+    asked = _sse(ctx.client.post(f"/v1/cases/{cid2}/chat", headers=api.h, json={"text": "Составьте претензию продавцу"}))[-1]
+    assert asked["message"]["offer_document"] is True
