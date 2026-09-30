@@ -12,6 +12,8 @@ import { captureReferral } from "@/lib/api";
 export function SiteChrome({ children }: { children: ReactNode }) {
   const path = usePathname();
   useEffect(() => { captureReferral(); }, []);
+  // the owner's command centre is an app of its own (app/ops/layout.tsx): its own navigation, no site chrome
+  if (path === "/ops" || path.startsWith("/ops/")) return <>{children}</>;
   if (isAppRoute(path)) {
     return (
       <>

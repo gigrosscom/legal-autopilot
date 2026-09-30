@@ -211,6 +211,24 @@ def test_flag_on_lists_beta_with_mark(ctx):
         assert scen[sid]["beta"] is True
 
 
+STUDY_AND_VISAS = {"kz.services.university_admission", "kz.services.study_abroad", "kz.services.visa_schengen_de",
+                   "kz.services.visa_uk", "kz.services.visa_us"}
+
+
+def test_study_and_visas_stay_off_by_default(ctx, monkeypatch):
+    """Owner 30.09: with the flag on only the 12 legal beta scenarios are offered, not study and visas."""
+    from konsilier.config import Settings
+    monkeypatch.delenv("BETA_SCENARIOS_OFF", raising=False)
+    off = {x.strip() for x in Settings(_env_file=None).beta_scenarios_off.split(",")}
+    assert off == STUDY_AND_VISAS
+    ctx.container.packs.experimental = True
+    ctx.container.packs.beta_off = frozenset(off)
+    listed = {s["id"] for p in ctx.client.get("/v1/packs").json() for s in p["scenarios"]}
+    assert set(BETA) - STUDY_AND_VISAS <= listed
+    assert not listed & STUDY_AND_VISAS
+    assert len(set(BETA) - STUDY_AND_VISAS) == 12
+
+
 def test_flag_defaults_off_in_settings(monkeypatch):
     from konsilier.config import Settings
 

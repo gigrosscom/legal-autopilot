@@ -4,7 +4,15 @@ const ICON = [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" 
 
 // Installable app (PWA): home screen on iPhone / Android, a window of its own on Mac / Windows. The same manifest
 // feeds the store packages (docs/app-stores.md): Trusted Web Activity on Google Play, PWABuilder for Microsoft Store.
-export default function manifest(): MetadataRoute.Manifest {
+// Served at /manifest.webmanifest by this route (not the app/manifest.ts convention, which Next links on every page):
+// the root layout links it, and the owner's command centre (/ops) links its own public/ops.webmanifest instead.
+export const dynamic = "force-static";
+
+export function GET() {
+  return new Response(JSON.stringify(manifest()), { headers: { "Content-Type": "application/manifest+json" } });
+}
+
+function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
     name: "Konsiliér AI",

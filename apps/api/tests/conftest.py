@@ -21,6 +21,7 @@ REPO = Path(__file__).resolve().parents[3]
 FIXTURES = Path(__file__).parent / "fixtures"
 # Beta scenarios (tender bid, admission, visa, business…) are on in tests and dev, off in production.
 os.environ.setdefault("EXPERIMENTAL_SCENARIOS", "true")
+os.environ.setdefault("BETA_SCENARIOS_OFF", "")  # tests cover every beta scenario; production keeps study and visas off
 
 
 @pytest.fixture
