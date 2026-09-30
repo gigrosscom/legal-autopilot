@@ -666,6 +666,8 @@ const en: Dict = {
     tick: "Run reminders",
   },
   account: {
+    resendIn: "Send the code again in {n} s",
+    resend: "Send the code again",
     bonus: "Free documents: {n} — for inviting friends. They are prepared without payment in any of your cases.",
     eyebrow: "Account",
     title: "Sign in and verify your identity",
