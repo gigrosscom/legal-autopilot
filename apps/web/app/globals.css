@@ -12,9 +12,9 @@
      Old token names are kept so every screen picks the palette up: sand = light-grey fill, sand-deep = pressed grey.
      Contrast (WCAG 2.2 AA) on white / on #f5f5f7: ink 16.8 / 15.5, muted 5.1 / 4.7, brand 5.6 / 5.1;
      white on action 4.7, on action-hover 4.5, on brand 5.6. */
-  --color-ink: #1d1d1f; /* apple --sk-body-text-color */
-  --color-ink-soft: #1d1d1f;
-  --color-muted: #6e6e73; /* apple --sk-fill-gray-secondary */
+  --color-ink: #0d0d0d; /* near black, as in the Claude and ChatGPT apps: crisp on every screen */
+  --color-ink-soft: #1f1f1f;
+  --color-muted: #4f4f55; /* secondary text stays readable (8:1), never washed out */
   --color-faint: #6e6e73; /* apple uses #86868b for tertiary text, but that is 3.6:1: kept at AA instead */
   --color-line: #d2d2d7; /* apple --sk-fill-gray-tertiary: hairline rules */
   --color-sand: #f5f5f7; /* apple --sk-fill-gray / footer background */
