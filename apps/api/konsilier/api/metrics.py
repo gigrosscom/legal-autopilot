@@ -20,6 +20,7 @@ from ..config import Settings
 from ..container import Container
 from ..core.models import Action, Case, Invoice, LawyerApplication, Outcome, User, WaitlistEntry
 from ..core.llm.spend import usage_summary
+from ..zann.corpus import corpus_metrics
 from .chat import chat_usage_today
 from .deps import get_container, get_session, require_admin
 from .referral import referral_metrics
@@ -129,6 +130,7 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
         "top_scenarios": Counter(c.scenario_id for c in cases if c.scenario_id).most_common(10),
         "referral": referral_metrics(session),
         "payments": payment_metrics(session, tests, now),
+        "zann": corpus_metrics(session),  # the Zann law corpus collected from adilet (konsilier/zann/corpus.py)
         "weekly": [{"week": w, **{k: series[w].get(k, 0) for k in ("users", "cases", "documents", "submitted")}}
                    for w in sorted(series)][-weeks:],
     }

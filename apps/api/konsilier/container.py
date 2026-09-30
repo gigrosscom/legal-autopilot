@@ -166,6 +166,15 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                                  hour=settings.official_crawl_hour,
                                                  minutes=settings.official_crawl_minutes,
                                                  max_pages=settings.official_crawl_max_pages))
+    if settings.zann_corpus_enabled:  # off by default: the Zann law corpus from adilet (docs/zann-llm-plan.md)
+        from zoneinfo import ZoneInfo
+
+        from .zann.corpus import ZannCorpusJob, build_collector
+
+        scheduler.extra_jobs.append(ZannCorpusJob(lambda: build_collector(settings, factory, storage),
+                                                  ZoneInfo(settings.zann_corpus_tz),
+                                                  hour=settings.zann_corpus_hour,
+                                                  minutes=settings.zann_corpus_minutes))
     from .transcribe import GeminiTranscriber, SlidingLimiter
 
     container.transcribe_limits = (SlidingLimiter(settings.transcribe_per_user_hour),

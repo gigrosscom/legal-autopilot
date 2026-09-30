@@ -16,6 +16,7 @@ import { Bubble } from "@/components/Bubble";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
+import { PaymentWays, type WayBody } from "@/components/PaymentWays";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
@@ -24,6 +25,8 @@ import {
   applySignIn,
   downloadFile,
   errorText,
+  fetchFile,
+  saveBlob,
   type CaseAction,
   type CaseLawyer,
   type Filing,
@@ -203,6 +206,24 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     });
   }
 
+  // A way to pay (PAYMENT_METHODS): recorded on the bill; then «Оплатить» or the «Счёт на оплату» file.
+  async function chooseWay(body: WayBody, then?: "claim" | "bill") {
+    const invoice = c?.payment?.invoice_id;
+    if (!invoice) return;
+    await run(async () => {
+      const out = await api<{ case: CaseView }>(`/v1/invoices/${invoice}/way`, { method: "POST", body: JSON.stringify(body) });
+      setCase(out.case);
+      if (then === "claim") {
+        const claimed = await api<{ case: CaseView }>(`/v1/cases/${id}/payment/claim`, { method: "POST", body: "{}" });
+        setCase(claimed.case);
+      }
+      if (then === "bill") {
+        const blob = await fetchFile(`/v1/invoices/${invoice}/bill?format=pdf`);
+        saveBlob(blob, `schet-${invoice}.${blob.type.includes("pdf") ? "pdf" : "docx"}`);
+      }
+    });
+  }
+
   // Contact confirmed: switch to the account token (it may be an existing account the case has just moved to), then
   // go on by itself: the bill for the chosen option, or the document at once if that account has a free one.
   async function contactConfirmed(r: SignedIn) {
@@ -337,7 +358,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
-          onContact={contactConfirmed} onChoose={choosePayment} onClaim={() => post("/payment/claim")} />
+          onContact={contactConfirmed} onChoose={choosePayment} onClaim={() => post("/payment/claim")} onWay={chooseWay} />
       )}
 
       {ack && (
@@ -541,9 +562,9 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
  *  «Дело под ключ», confirm a phone by SMS code if the server asks (an e-mail where SMS is not available), Kaspi
  *  details and the code, "I have paid". Once the transfer is confirmed the page prepares the
  *  document by itself (and the server does, if the page is closed). */
-function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onClaim }: {
+function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onClaim, onWay }: {
   pay: Payment; busy: boolean; contact: "phone" | "email" | null; onClose: () => void; onContact: (r: SignedIn) => void;
-  onChoose: (purpose: string) => void; onClaim: () => void;
+  onChoose: (purpose: string) => void; onClaim: () => void; onWay: (body: WayBody, then?: "claim" | "bill") => void;
 }) {
   const t = useT();
   const panel = useRef<HTMLDivElement>(null);
@@ -590,15 +611,32 @@ function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onCla
               {waiting && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
               {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
               <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
-              <div className="space-y-2">
-                {pay.recipient_name && <CopyValue label={t("payment.recipient")} value={pay.recipient_name} />}
-                {pay.kaspi_phone && <CopyValue label={t("payment.kaspi")} value={pay.kaspi_phone} />}
-                <CopyValue label={t("payment.code")} value={pay.code} mono />
-              </div>
-              <p className="text-sm">{t("payment.steps")}</p>
+              {pay.ways?.length ? (
+                <PaymentWays pay={pay} busy={busy} amount={String(pay.amount)} onWay={onWay}
+                  copy={(label, value, mono) => <CopyValue label={label} value={value} mono={mono} />}
+                  transfer={(
+                    <>
+                      <div className="space-y-2">
+                        {pay.recipient_name && <CopyValue label={t("payment.recipient")} value={pay.recipient_name} />}
+                        {pay.kaspi_phone && <CopyValue label={t("payment.kaspi")} value={pay.kaspi_phone} />}
+                        <CopyValue label={t("payment.code")} value={pay.code} mono />
+                      </div>
+                      <p className="text-sm">{t("payment.steps")}</p>
+                    </>
+                  )} />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {pay.recipient_name && <CopyValue label={t("payment.recipient")} value={pay.recipient_name} />}
+                    {pay.kaspi_phone && <CopyValue label={t("payment.kaspi")} value={pay.kaspi_phone} />}
+                    <CopyValue label={t("payment.code")} value={pay.code} mono />
+                  </div>
+                  <p className="text-sm">{t("payment.steps")}</p>
+                </>
+              )}
               {waiting ? (
                 <Button className="min-h-12 w-full" variant="secondary" onClick={onClose}>{t("app.close")}</Button>
-              ) : (
+              ) : !pay.ways?.length && (
                 <Button className="min-h-12 w-full" disabled={busy} icon="check" onClick={onClaim}>{t("payment.paid")}</Button>
               )}
             </>

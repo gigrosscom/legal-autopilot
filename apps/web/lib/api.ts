@@ -124,12 +124,23 @@ export type Payment = {
   code: string | null;
   recipient_name: string | null;
   kaspi_phone: string | null;
+  /** The open bill's id (for the /v1/invoices endpoints); null before a bill. */
+  invoice_id?: number | null;
+  /** Ways to pay switched on by the server (PAYMENT_METHODS); empty: the Kaspi transfer only, as before. */
+  ways?: PayWay[];
+  way?: PayWayId | null;
+  payer_phone?: string | null;
+  buyer?: { name: string; bin: string | null; address: string | null } | null;
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
   subscription: Subscription | null;
 };
+
+export type PayWayId = "kaspi_transfer" | "kaspi_link" | "kaspi_qr" | "kaspi_invoice" | "bank_invoice";
+/** kaspi_link: url; kaspi_qr: image (and url); bank_invoice: seller. */
+export type PayWay = { id: PayWayId; url?: string; image?: string; seller?: string };
 
 export type Subscription = { plan: string; documents: number; left: number; ends_at: string };
 
@@ -402,7 +413,7 @@ export async function fetchFile(path: string, extraHeaders?: Record<string, stri
   return r.blob();
 }
 
-function saveBlob(blob: Blob, filename: string) {
+export function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
