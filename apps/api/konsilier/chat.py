@@ -46,8 +46,10 @@ How to work
    {portal_rule}
    Bodies and courts come only from the forums tool. For any date use the deadline tool.
    If you could not check something, say so plainly instead of guessing.
-5. When the person needs a written claim, complaint or lawsuit, say that Konsiliér AI can prepare it with the
-   button "Prepare the document" (a paid step: one document, or the whole case).
+5. Offer a document only when it is the right next step: the person needs a written claim, complaint, lawsuit or
+   application, and you know the main facts. Then say in one sentence that Konsiliér AI can prepare it, and end the
+   reply with the marker {offer_marker} on its own line (the app shows a button there). Never offer a document for a
+   question that only needs an explanation, never twice in a row, and never write about buttons or prices yourself.
 6. Applications, not disputes. Many people ask how to get something from the state: a social benefit (at the birth
    of a child, childcare, disability, loss of a breadwinner, targeted social assistance, loss of a job), a grant or
    non-repayable funding for a business, an education grant or a scholarship, or how to take part in a public
@@ -100,6 +102,16 @@ class ChatResult:
     tool_calls: int = 0
     usage: dict[str, int] = field(default_factory=dict)
     sources: list[dict[str, str]] = field(default_factory=list)  # official pages the reply cites (url, title, domain)
+    offer_document: bool = False  # the reply ends with OFFER_MARKER: the app shows «Составить документ» under it
+
+
+OFFER_MARKER = "[[DOCUMENT]]"
+
+
+def take_offer(text: str) -> tuple[str, bool]:
+    """The reply without the document marker, and whether it had one (models sometimes drop a bracket)."""
+    cleaned = re.sub(r"\[?\[\s*DOCUMENT\s*\]\]?", "", text)
+    return cleaned.strip(), cleaned != text
 
 
 # Some open models slip a word of Chinese or Japanese into an answer in a Cyrillic language ("если 母亲 работала"). The
@@ -162,7 +174,7 @@ class ChatAgent:
         cc, lang = getattr(context.get("pack"), "country", None), context.get("lang")
         use_library = self.library is not None and self.library.available(cc)
         search = " or with web_search on the official portal" if self.web_search else ""
-        system = SYSTEM.format(country=country, language=language,
+        system = SYSTEM.format(country=country, language=language, offer_marker=OFFER_MARKER,
                                portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE,
                                official_rule=OFFICIAL_RULE if use_library else NO_OFFICIAL_RULE)
         if use_portal and context.get("key_acts"):
@@ -249,4 +261,6 @@ class ChatAgent:
         mentioned = mentioned_articles(text)
         norms = [{"act": r.act_title, "act_code": r.code, "article": r.number, "title": r.title, "url": r.url}
                  for num, r in read.items() if num in mentioned]
-        return ChatResult(text, norms, unchecked=bool(mentioned - set(read)), tool_calls=calls, usage=usage)
+        text, offer = take_offer(text)
+        return ChatResult(text, norms, unchecked=bool(mentioned - set(read)), tool_calls=calls, usage=usage,
+                          offer_document=offer)

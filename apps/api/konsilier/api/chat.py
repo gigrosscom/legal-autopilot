@@ -84,7 +84,7 @@ def _reason(provider: str, e: Exception) -> str:
 def _view(m: ChatMessage) -> dict[str, Any]:
     return {"id": str(m.id), "role": m.role, "text": m.text, "created_at": m.created_at.isoformat(),
             "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", []),
-            "sources": m.meta.get("sources", [])}
+            "sources": m.meta.get("sources", []), "offer_document": bool(m.meta.get("offer_document"))}
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -206,7 +206,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
                             meta={"provider": used, "norms": result.norms, "sources": result.sources,
-                                  "unchecked": result.unchecked,
+                                  "unchecked": result.unchecked, "offer_document": result.offer_document,
                                   "tool_calls": result.tool_calls, "usage": result.usage})
             s.add(m)
             c = s.get(Case, case_pk)

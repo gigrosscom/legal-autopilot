@@ -2,206 +2,69 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { CtaBanner } from "@/components/CtaBanner";
-import { Icon, type IconName } from "@/components/ui";
-import { useT } from "@/lib/i18n";
-import { SITUATIONS } from "@/lib/situations";
+import { useEffect, useMemo, useState } from "react";
+import { Composer, type Attached } from "@/components/Composer";
+import { publicApi } from "@/lib/api";
+import { handOff } from "@/lib/handoff";
+import { useLang, useT } from "@/lib/i18n";
 
-type Plan = { k: string; icon: IconName; unit?: string; href: string; cta: "start" | "buy" };
-/** Plans on the home page. One document and «Дело под ключ» are bought inside a case (/start); the business plans
- *  on /plans. */
-const PLAN_GROUPS: { key: string; cols: string; plans: Plan[] }[] = [
-  { key: "people", cols: "md:grid-cols-3", plans: [
-    { k: "chat", icon: "chat", href: "/start", cta: "start" },
-    { k: "doc", icon: "document", href: "/start", cta: "start" },
-    { k: "case", icon: "shieldCheck", unit: "perCase", href: "/start", cta: "start" },
-  ] },
-  { key: "business", cols: "md:grid-cols-2", plans: [
-    { k: "biz", icon: "briefcase", unit: "perMonth", href: "/plans?plan=biz", cta: "buy" },
-    { k: "bizpro", icon: "building", unit: "perMonth", href: "/plans?plan=bizpro", cta: "buy" },
-  ] },
-];
-
-// The «my situation» card closes the grid of life situations: it takes whatever is left of the last row at each width
-// (2 / 3 / 4 columns), a full row when the tiles fill theirs. Literal class names, so Tailwind sees them.
-const SPAN: Record<number, string[]> = {
-  2: ["", "col-span-1", "col-span-2"],
-  3: ["", "md:col-span-1", "md:col-span-2", "md:col-span-3"],
-  4: ["", "lg:col-span-1", "lg:col-span-2", "lg:col-span-3", "lg:col-span-4"],
-};
-const MY_SITUATION_SPAN = [2, 3, 4].map((cols) => SPAN[cols][cols - (SITUATIONS.length % cols)]).join(" ");
-// one column wide on tablets: the card stacks like a tile, without the arrow
-const MY_SITUATION_NARROW = SITUATIONS.length % 3 === 2;
-
-function SectionHead({ title, lead, href, more }: { title: string; lead?: string; href?: string; more?: string }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div className="max-w-3xl space-y-3">
-        <h2 className="h-section text-balance">{title}</h2>
-        {lead && <p className="lead text-pretty">{lead}</p>}
-      </div>
-      {href && more && (
-        <Link href={href} className="more">
-          {more}<Icon name="arrowRight" size={16} className="rtl:-scale-x-100" />
-        </Link>
-      )}
-    </div>
-  );
-}
-
+/** The home page is the message box: what Konsiliér is in two lines, the box, a few examples. Sending opens the
+ *  chat with the message already on its way. */
 export default function Home() {
   const t = useT();
-  const [text, setText] = useState("");
+  const { lang } = useLang();
   const router = useRouter();
+  const [text, setText] = useState("");
+  const [files, setFiles] = useState<Attached[]>([]);
   const [busy, setBusy] = useState(false);
 
-  // The story goes to the consultation chat, which checks for emergencies and opens the case.
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (text.trim().length < 10) return;
+  const fallback = useMemo(() => {
+    const n = Number(t("helper.exampleCount")) || 0;
+    return Array.from({ length: n }, (_, i) => t(`helper.examples.${i + 1}`)).slice(0, 4);
+  }, [t]);
+  const [examples, setExamples] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    publicApi<{ examples: string[] }>(`/v1/examples?${new URLSearchParams({ lang, limit: "4" })}`)
+      .then((r) => { if (live && r.examples.length) setExamples(r.examples); }).catch(() => {});
+    return () => { live = false; };
+  }, [lang]);
+  const shown = examples.length ? examples : fallback;
+
+  function submit() {
+    if (!text.trim()) return;
     setBusy(true);
-    try { sessionStorage.setItem("konsilier.chat.draft", text.trim()); } catch {}
+    handOff(text.trim(), files.map((f) => f.file!).filter(Boolean));
     router.push("/start?send=1");
   }
 
   return (
-    <div>
-      {/* HERO: one main action — describe the situation */}
-      <section className="grid items-center gap-10 pt-4 pb-14 md:pt-8 md:pb-20 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-10 lg:pb-24">
-        <div className="space-y-6">
-          <p className="eyebrow">{t("home.eyebrow")}</p>
-          <h1 className="h-hero text-ink text-balance">{t("home.title")}</h1>
-          <p className="lead max-w-xl text-pretty">{t("home.sub")}</p>
-          <ul className="grid gap-x-6 gap-y-3 pt-2 text-[17px] leading-snug text-ink sm:grid-cols-2">
-            {(["promise1", "promise2", "promise3", "promise4"] as const).map((k) => (
-              <li key={k} className="flex items-start gap-2.5">
-                <Icon name="check" size={18} className="mt-0.5 shrink-0 text-brand" /><span>{t(`home.${k}`)}</span>
+    <section className="mx-auto flex min-h-[calc(100dvh-13rem)] max-w-3xl flex-col justify-center gap-8 py-6 md:gap-10">
+      <div className="space-y-3 text-center">
+        <h1 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-ink md:text-[48px]">{t("home.title")}</h1>
+        <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-pretty text-muted md:text-[19px]">{t("home.sub")}</p>
+      </div>
+
+      <div className="space-y-4">
+        <Composer large autoFocus value={text} setValue={setText} files={files} busy={busy} onSubmit={submit}
+          placeholder={t("home.placeholder")}
+          onFiles={(fs) => setFiles((xs) => [...xs, ...fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f }))])}
+          onRemove={(key) => setFiles((xs) => xs.filter((x) => x.key !== key))} />
+        {!text.trim() && (
+          <ul className="flex flex-wrap justify-center gap-2">
+            {shown.map((e) => (
+              <li key={e}>
+                <button type="button" onClick={() => { setText(e); document.getElementById("home-input")?.focus(); }}
+                  className="min-h-10 rounded-full border border-line bg-surface px-4 py-2 text-start text-sm text-ink hover:bg-sand">{e}</button>
               </li>
             ))}
           </ul>
-        </div>
+        )}
+      </div>
 
-        <form onSubmit={submit} aria-labelledby="describe"
-          className="space-y-3 rounded-[28px] bg-sand p-4 ring-accent/40 transition-shadow focus-within:ring-2 md:p-5">
-          <label id="describe" htmlFor="story" className="block px-2 pt-2 text-[19px] font-semibold tracking-[-0.01em] text-ink">{t("home.describe")}</label>
-          <textarea id="story" className="block min-h-40 w-full resize-y rounded-[18px] border-0 bg-surface px-4 py-3 text-[17px] leading-relaxed text-ink outline-none placeholder:text-faint"
-            required minLength={10} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("start.placeholder")} />
-          <div className="flex flex-wrap items-center justify-between gap-3 px-2 pt-1">
-            <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted"><Icon name="globe" size={16} className="shrink-0" />{t("start.country").replace(/\.$/, "")}</span>
-            <button type="submit" disabled={busy || text.trim().length < 10}
-              className="btn-primary btn-lg w-full px-5 sm:w-auto sm:whitespace-nowrap">
-              {busy ? <Icon name="spinner" size={18} /> : null}{busy ? t("start.busy") : t("home.cta")}
-              {!busy && <Icon name="arrowRight" size={18} className="rtl:-scale-x-100" />}
-            </button>
-          </div>
-          <p className="px-2 pb-1 text-xs leading-relaxed text-muted">
-            {t("home.privacy")} {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
-          </p>
-        </form>
-      </section>
-
-      {/* LIFE SITUATIONS */}
-      <section id="situations" className="band section-y scroll-mt-12 space-y-10">
-        <SectionHead title={t("home.situationsTitle")} lead={t("home.situationsLead")} href="/coverage" more={t("home.coverageCta")} />
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
-          {SITUATIONS.map((s) => (
-            <li key={s.key}>
-              <Link href={`/start?s=${s.key}`}
-                className="card-link flex h-full min-h-36 flex-col gap-4 rounded-[18px] bg-surface p-4 sm:p-5 md:p-6">
-                <Icon name={s.icon} size={24} className="text-ink" />
-                <span className="space-y-1">
-                  <span className="block text-[15px] font-semibold leading-snug tracking-[-0.015em] text-ink sm:text-[17px]">{t(`situations.${s.key}.label`)}</span>
-                  <span className="line-clamp-2 block text-[13px] leading-relaxed text-muted sm:text-sm">{t(`situations.${s.key}.hint`)}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-          <li className={MY_SITUATION_SPAN}>
-            <Link href="/start"
-              className={`card-link flex h-full min-h-36 items-center gap-4 rounded-[18px] bg-surface p-5 md:p-6 ${
-                MY_SITUATION_NARROW ? "md:flex-col md:items-start lg:flex-row lg:items-center" : ""}`}>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-action text-white"><Icon name="plus" /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[17px] font-semibold tracking-[-0.015em] text-ink">{t("home.mySituation")}</span>
-                <span className="block text-[15px] text-muted">{t("home.mySituationText")}</span>
-              </span>
-              <Icon name="arrowRight" className={`shrink-0 text-muted rtl:-scale-x-100 ${MY_SITUATION_NARROW ? "md:hidden lg:block" : ""}`} />
-            </Link>
-          </li>
-        </ul>
-      </section>
-
-      {/* FROM A QUESTION TO THE NEXT STEP */}
-      <section className="section-y space-y-10 md:space-y-12">
-        <SectionHead title={t("home.stepsTitle")} href="/how-it-works" more={t("home.more")} />
-        <ol className="grid gap-8 md:grid-cols-3 md:gap-6">
-          {([1, 2, 3] as const).map((n) => (
-            <li key={n} className="relative space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-[17px] font-semibold text-ink">{n}</span>
-                {n < 3 && <span aria-hidden className="hidden h-px flex-1 bg-line md:block" />}
-              </div>
-              <p className="text-[21px] font-semibold leading-snug tracking-[-0.015em] text-ink">{t(`home.steps.s${n}t`)}</p>
-              <p className="text-[17px] leading-[1.47] text-muted">{t(`home.steps.s${n}d`)}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* WHAT IT COSTS: plans for people and for business */}
-      <section className="band section-y space-y-10">
-        <SectionHead title={t("home.priceTitle")} />
-        {PLAN_GROUPS.map(({ key, cols, plans }) => (
-          <div key={key} className="space-y-4">
-            <h3 className="text-[19px] font-semibold tracking-[-0.01em] text-ink">{t(`home.price.${key}`)}</h3>
-            <ul className={`grid gap-4 ${cols}`}>
-              {plans.map(({ k, icon, unit, href, cta }) => (
-                <li key={k}>
-                  <Link href={href}
-                    className="card-link flex h-full flex-col gap-3 rounded-[18px] bg-surface p-7 md:p-8">
-                    <Icon name={icon} size={26} className="text-ink" />
-                    <span className="text-[21px] font-semibold tracking-[-0.015em] text-ink">{t(`home.price.${k}T`)}</span>
-                    <span className="text-[32px] leading-tight font-semibold tracking-[-0.02em] text-ink">
-                      {t(`home.price.${k}P`)}
-                      {unit && <span className="text-[17px] font-normal tracking-normal text-muted"> {t(`home.price.${unit}`)}</span>}
-                    </span>
-                    <span className="flex-1 text-[17px] leading-[1.47] text-muted">{t(`home.price.${k}D`)}</span>
-                    <span className="inline-flex items-center gap-1.5 text-[17px] font-semibold text-brand">
-                      {t(`home.price.${cta}`)}
-                      <Icon name="arrowRight" size={20} className="rtl:-scale-x-100" />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </section>
-
-      {/* TRUST: only what is true today */}
-      <section className="section-y space-y-10">
-        <SectionHead title={t("home.trustTitle")} />
-        <ul className="grid gap-4 md:grid-cols-3">
-          {(["t1", "t2", "t3"] as const).map((k, i) => (
-            <li key={k} className="card flex gap-4 text-[17px] leading-[1.47] text-muted">
-              <Icon name={(["scroll", "lock", "shieldCheck"] as const)[i]} size={26} className="mt-0.5 shrink-0 text-ink" />
-              <span>{t(`home.trust.${k}`)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <CtaBanner />
-
-      {/* COVERAGE */}
-      <section className="flex flex-col items-start gap-5 pt-14 pb-6 md:flex-row md:items-center md:justify-between md:pt-20">
-        <div className="space-y-1">
-          <h2 className="text-[24px] font-semibold leading-tight tracking-[-0.015em] md:text-[28px]">{t("home.coverageTitle")}</h2>
-          <p className="text-[17px] text-muted">{t("home.coverageLead")}</p>
-        </div>
-        <Link href="/coverage" className="btn-ghost btn-lg">{t("home.coverageCta")}</Link>
-      </section>
-    </div>
+      <p className="text-center text-xs leading-relaxed text-muted">
+        {t("home.privacy")} {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+      </p>
+    </section>
   );
 }

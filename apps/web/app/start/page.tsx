@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Chat } from "@/components/Chat";
 import { useT } from "@/lib/i18n";
+import { takeHandOff } from "@/lib/handoff";
 import { clearShared, sharedFiles } from "@/lib/share";
 import { SITUATIONS } from "@/lib/situations";
 
@@ -23,12 +24,15 @@ export default function StartPage() {
     const q = new URLSearchParams(window.location.search);
     const s = SITUATIONS.find((x) => x.key === q.get("s"));
     if (s) { setHint(t(`situations.${s.key}.hint`)); setSituation(s.key); }
+    const handed = takeHandOff();  // typed on the home page, with its files
+    let saved = handed?.text ?? "";
     try {
-      const saved = sessionStorage.getItem(DRAFT_KEY) ?? "";
+      saved ||= sessionStorage.getItem(DRAFT_KEY) ?? "";
       sessionStorage.removeItem(DRAFT_KEY);
-      setDraft(saved);
-      setAutoSend(q.get("send") === "1" && saved.trim().length > 0);
     } catch {}
+    setDraft(saved);
+    if (handed?.files.length) setFiles(handed.files);
+    setAutoSend(q.get("send") === "1" && saved.trim().length > 0);
     if (q.get("shared") !== "1") { setReady(true); return; }
     // «Новое дело» from /share: the shared files come attached to the first message (read once)
     if (shared.current) return;

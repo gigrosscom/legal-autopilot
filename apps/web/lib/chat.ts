@@ -10,6 +10,7 @@ export type ChatMessage = {
   created_at: string;
   attachments: { id: string; filename: string }[];
   norms: ChatNorm[];
+  offer_document?: boolean;  // the reply offers to prepare the document: a button shows under it
 };
 export type ChatEvent =
   | { type: "text"; text: string }
