@@ -343,20 +343,27 @@ async function request(url: string, init: RequestInit = {}): Promise<Response> {
   }
 }
 
+// One anonymous account per browser: the first visit fires several requests at once (bell, cases, chat), and each
+// must wait for the same account — otherwise a case opened with one token is asked for with another (404).
+let creating: Promise<string> | null = null;
+
 export async function ensureToken(): Promise<string> {
   const saved = typeof window !== "undefined" ? localStorage.getItem("konsilier.token") : null;
   if (saved) return saved;
-  const r = await request(`${API_URL}/v1/users`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    // who invited this person and where they came from (saved on arrival by captureReferral)
-    body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru",
-      ref: localStorage.getItem("konsilier.ref"), src: localStorage.getItem("konsilier.src") }),
-  });
-  if (!r.ok) throw new ApiError(r.status, await r.text());
-  const { token } = await r.json();
-  localStorage.setItem("konsilier.token", token);
-  return token;
+  creating ??= (async () => {
+    const r = await request(`${API_URL}/v1/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // who invited this person and where they came from (saved on arrival by captureReferral)
+      body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru",
+        ref: localStorage.getItem("konsilier.ref"), src: localStorage.getItem("konsilier.src") }),
+    });
+    if (!r.ok) throw new ApiError(r.status, await r.text());
+    const { token } = await r.json();
+    localStorage.setItem("konsilier.token", token);
+    return token as string;
+  })().finally(() => { creating = null; });
+  return creating;
 }
 
 async function handle<T>(r: Response): Promise<T> {
@@ -376,6 +383,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
+}
+
+/** Dictated audio → text (POST /v1/transcribe, free Gemini on the server; the audio is not stored). */
+export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm"): Promise<string> {
+  const form = new FormData();
+  form.append("file", audio, filename);
+  form.append("lang", lang);
+  const r = await api<{ text: string }>("/v1/transcribe", { method: "POST", body: form });
+  return r.text ?? "";
 }
 
 export async function fetchFile(path: string, extraHeaders?: Record<string, string>): Promise<Blob> {

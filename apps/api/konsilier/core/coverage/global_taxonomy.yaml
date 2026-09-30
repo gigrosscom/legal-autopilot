@@ -63,7 +63,7 @@ branches:
       - id: family.divorce
         title: {ru: Развод, kk: Ажырасу, en: Divorce}
         keywords: {ru: [развод, развестись], kk: [ажырас], en: [divorce]}
-        examples: {ru: ["Хочу развестись, муж против, у нас двое детей", "Как развестись, если супруг живёт за границей"], kk: ["Ажырасқым келеді, күйеуім қарсы, екі баламыз бар"], en: ["I want a divorce, my husband objects, we have two children"]}
+        examples: {ru: ["Как оформить развод через суд", "Как развестись, если супруг живёт за границей"], kk: ["Сот арқылы ажырасуды қалай рәсімдеуге болады"], en: ["How to file for divorce through the court"]}
         applicant_roles: [spouse]
         counterparty_kinds: [person]
       - id: family.alimony
@@ -75,14 +75,14 @@ branches:
       - id: family.child_residence
         title: {ru: "С кем живёт ребёнок, порядок общения", kk: "Баланың тұратын жері, қарым-қатынас тәртібі", en: Child residence and contact}
         keywords: {ru: [с кем будет жить ребенок, с кем будет жить ребёнок, видеться с ребенком, видеться с ребёнком], kk: [баламен кездес], en: [custody, contact with child]}
-        examples: {ru: ["Бывшая жена не даёт видеться с ребёнком", "Хочу, чтобы ребёнок после развода жил со мной"], kk: ["Бұрынғы әйелім баламен кездесуге рұқсат бермейді"], en: ["My ex won't let me see our child"]}
+        examples: {ru: ["Как установить порядок общения с ребёнком", "Как определить место жительства ребёнка через суд"], kk: ["Баламен кездесу тәртібін қалай белгілеуге болады"], en: ["How to set a schedule for contact with a child"]}
         applicant_roles: [parent]
         counterparty_kinds: [person]
         sensitive: [children]
       - id: family.property_division
         title: {ru: Раздел имущества супругов, kk: Ерлі-зайыптылардың мүлкін бөлу, en: Division of marital property}
         keywords: {ru: [раздел имущества, делить квартиру], kk: [мүлікті бөлу], en: [property division]}
-        examples: {ru: ["Как разделить квартиру, купленную в браке в ипотеку", "Муж продал машину, купленную в браке, без моего согласия"], kk: ["Некеде ипотекамен алынған пәтерді қалай бөлуге болады"], en: ["How to split a flat bought on a mortgage during the marriage"]}
+        examples: {ru: ["Как разделить квартиру, купленную в браке в ипотеку", "Как разделить машину, купленную в браке"], kk: ["Некеде ипотекамен алынған пәтерді қалай бөлуге болады"], en: ["How to split a flat bought on a mortgage during the marriage"]}
         applicant_roles: [spouse]
         counterparty_kinds: [person]
   - id: inheritance
@@ -92,13 +92,13 @@ branches:
       - id: inheritance.acceptance
         title: {ru: Принятие наследства, kk: Мұраны қабылдау, en: Accepting an inheritance}
         keywords: {ru: [наследств, нотариус, завещан], kk: [мұра], en: [inheritance, will]}
-        examples: {ru: ["Отец умер без завещания, как оформить наследство", "Пропустил шесть месяцев для принятия наследства"], kk: ["Әкем өсиетсіз қайтыс болды, мұраны қалай ресімдеуге болады"], en: ["My father died without a will: how do I inherit"]}
+        examples: {ru: ["Как оформить наследство по закону", "Как восстановить пропущенный срок для принятия наследства"], kk: ["Мұраны заң бойынша қалай ресімдеуге болады"], en: ["How to accept an inheritance by law"]}
         applicant_roles: [heir]
         counterparty_kinds: [state_body, person]
       - id: inheritance.dispute
         title: {ru: Спор о наследстве, kk: Мұра туралы дау, en: Inheritance dispute}
         keywords: {ru: [оспорить завещание, спор о наследстве], kk: [мұра дауы], en: [contest the will]}
-        examples: {ru: ["Брат не пускает в квартиру, которую мы унаследовали вместе", "Нотариус отказал в выдаче свидетельства о наследстве"], kk: ["Бауырым бірге мұраға қалған пәтерге кіргізбейді"], en: ["My brother won't let me into the flat we inherited together"]}
+        examples: {ru: ["Как разделить унаследованную квартиру между наследниками", "Нотариус отказал в выдаче свидетельства о наследстве"], kk: ["Мұраға қалған пәтерді мұрагерлер арасында қалай бөлуге болады"], en: ["How to divide an inherited flat between heirs"]}
         applicant_roles: [heir]
         counterparty_kinds: [person]
   - id: housing
@@ -137,14 +137,14 @@ branches:
       - id: criminal.crime_report
         title: {ru: Заявление о преступлении, kk: Қылмыс туралы арыз, en: Reporting a crime}
         keywords: {ru: [украли, кража, ограбили, избили, мошенничество, преступлен], kk: [ұрла, тонады, алаяқтық, қылмыс], en: [stolen, theft, robbed, assault, crime]}
-        examples: {ru: ["Мошенники выманили код из SMS и сняли деньги с карты", "Перевёл предоплату продавцу из объявления, он пропал"], kk: ["Алаяқтар SMS-кодты алып, картадан ақша шешіп алды"], en: ["Scammers got my SMS code and took money from my card"]}
+        examples: {ru: ["Как подать заявление о мошенничестве с банковской картой", "Как вернуть предоплату продавцу из объявления, если он пропал"], kk: ["Банк картасымен алаяқтық туралы арызды қалай беруге болады"], en: ["How to report card fraud to the police"]}
         applicant_roles: [victim]
         counterparty_kinds: [person, business, unknown]
         false_report_warning: true
       - id: criminal.police_inaction
         title: {ru: Жалоба на бездействие полиции или следователя, kk: Полиция не тергеушінің әрекетсіздігіне шағым, en: Complaint about police inaction}
         keywords: {ru: [полиция бездействует, полиция не принимает, следователь], kk: [полиция әрекетсіз, тергеуші], en: [police inaction, investigator]}
-        examples: {ru: ["Украли телефон, полиция не принимает заявление", "Подал заявление месяц назад, по нему ничего не делают"], kk: ["Телефонымды ұрлады, полиция арызды қабылдамайды"], en: ["My phone was stolen and the police won't take my report"]}
+        examples: {ru: ["Полиция не принимает заявление — как обжаловать", "Подал заявление месяц назад, по нему ничего не делают"], kk: ["Полиция арызды қабылдамайды — қалай шағымдануға болады"], en: ["The police won't accept my report: how do I appeal"]}
         applicant_roles: [victim, complainant]
         counterparty_kinds: [police]
       - id: criminal.defence
@@ -219,7 +219,7 @@ branches:
       - id: social.benefit_refusal
         title: {ru: Отказ в назначении пособия или выплаты, kk: Жәрдемақы не төлем тағайындаудан бас тарту, en: Refusal of a benefit or social payment}
         keywords: {ru: [отказали в назначении, отказ в назначении, отказали в пособии, отказ в пособии, отказали в выплате пособия, прекратили выплату пособия, перестали выплачивать пособие, приостановили выплату пособия, обжаловать отказ], kk: [жәрдемақы тағайындаудан бас тарт, жәрдемақыдан бас тарт], en: [benefit was refused, benefit refused, benefit was stopped]}
-        examples: {ru: ["Отказали в назначении пособия по инвалидности, хочу обжаловать", "Прекратили выплату пособия по потере кормильца без объяснений", "Отказали в адресной социальной помощи, считаю отказ незаконным"], kk: ["Мүгедектік бойынша жәрдемақы тағайындаудан бас тартты, шағымданғым келеді"], en: ["My disability benefit was refused and I want to appeal"]}
+        examples: {ru: ["Отказали в назначении пособия, хочу обжаловать", "Прекратили выплату пособия без объяснений", "Отказали в адресной социальной помощи, считаю отказ незаконным"], kk: ["Жәрдемақы тағайындаудан бас тартты, шағымданғым келеді"], en: ["My benefit application was refused and I want to appeal"]}
         applicant_roles: [complainant]
         counterparty_kinds: [state_body]
       - id: social.benefit_application

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
+import { Composer, type Attached } from "@/components/Composer";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { Invite } from "@/components/Invite";
 import { Alert, Icon, type IconName } from "@/components/ui";
@@ -13,19 +14,33 @@ import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
 import { TERMS_VERSION } from "@/lib/legal/terms";
 import { SITUATIONS } from "@/lib/situations";
-import { canSpeak, speak, stopSpeaking, useDictation } from "@/lib/voice";
+import { canSpeak, speak, stopSpeaking } from "@/lib/voice";
 
-type Pending = { key: string; filename: string; file?: File; id?: string };
 /** The count of free messages left shows once this many or fewer remain (e.g. after the 30th of 40). */
 const REMAINING_FROM = 10;
+/** The marker a reply ends with when it offers a document; hidden while the reply streams in. */
+const OFFER = /\[?\[\s*DOC[A-Z]*\s*\]?\]?\s*$|\[\[?\s*$/;
+const clean = (text: string) => text.replace(OFFER, "").trimEnd();
+
+const BUBBLE = "max-w-[88%] rounded-[20px] px-4 py-2.5 text-[16px] leading-[1.55] sm:max-w-[80%]";
+
+/** Konsiliér's side of the dialogue. */
+function Reply({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-start">
+      <div className={`${BUBBLE} min-w-0 space-y-2 rounded-es-md bg-sand text-ink`}>{children}</div>
+    </div>
+  );
+}
 
 /**
- * Free consultation as a chat: type or dictate, attach files, hear the answer. Without a case yet, the first
- * message runs the emergency check and opens the case; the chat then lives at /chat/<id>.
+ * The chat, as in the messengers: the conversation as a dialogue, one message box at the bottom. Without a case
+ * yet, the first message runs the emergency check and opens the case; the chat then lives at /chat/<id>. A document
+ * is offered inside a reply, only when the conversation comes to it.
  */
 export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend = false, hint, situation, files: initialFiles }: {
   caseId: string | null; draft?: string; autoSend?: boolean; hint?: string; situation?: string;
-  files?: File[];  // attached from the start: files shared to the app from another app (/share → «Новое дело»)
+  files?: File[];  // attached from the start: typed on the home page, or shared to the app from another app
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -33,27 +48,19 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
   // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
-  const [failed, setFailed] = useState<{ partial: string; text: string; files: Pending[] } | null>(null);
+  const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[] } | null>(null);
   const [left, setLeft] = useState<{ n: number; limit: number } | null>(null);  // free messages left in 24 hours
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [emergency, setEmergency] = useState<Emergency | null>(null);
+  const [emergency, setEmergency] = useState<(Emergency & { text: string }) | null>(null);
   const [draft, setDraft] = useState(initialDraft);
-  const [interim, setInterim] = useState("");
-  const [files, setFiles] = useState<Pending[]>(() =>
-    (initialFiles ?? []).map((f, i) => ({ key: `shared-${i}-${f.name}`, filename: f.name, file: f })));
+  const [files, setFiles] = useState<Attached[]>(() =>
+    (initialFiles ?? []).map((f, i) => ({ key: `start-${i}-${f.name}`, filename: f.name, file: f })));
   const [voiceMode, setVoiceMode] = useState(false);
-  const [speaking, setSpeaking] = useState<string | null>(null);
   const [tts, setTts] = useState(false);
-  const box = useRef<HTMLTextAreaElement>(null);
   const sentInitial = useRef(false);
-
-  const dictation = useDictation(lang, (fin, part) => {
-    if (fin) setDraft((d) => (d ? `${d.trimEnd()} ${fin.trim()}` : fin.trim()));
-    setInterim(part);
-  });
 
   useEffect(() => {
     if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => setError(errorText(e)));
@@ -65,13 +72,6 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   }, []);
   // the «Чат» tab returns to the latest conversation
   useEffect(() => { if (caseId) try { localStorage.setItem(LAST_CASE_KEY, caseId); } catch {} }, [caseId]);
-
-  useEffect(() => {  // grow the box with the text, up to a limit
-    const el = box.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-  }, [draft, interim]);
 
   const errText = useCallback((err: unknown) => {
     const key = err instanceof ApiError && err.code ? `chat.errors.${err.code}` : "";
@@ -85,7 +85,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       const tri = await publicApi<{ emergency: boolean; message: string; numbers: Emergency["numbers"] }>(
         "/v1/triage", { method: "POST", body: JSON.stringify({ text, country: "KZ", language: lang }) });
       if (tri.emergency) {
-        setEmergency({ message: tri.message, numbers: tri.numbers });
+        setEmergency({ message: tri.message, numbers: tri.numbers, text });
         return null;
       }
     }
@@ -97,8 +97,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     return out.case.id;
   }
 
-  async function upload(id: string, list: Pending[]): Promise<Pending[]> {
-    const done: Pending[] = [];
+  async function upload(id: string, list: Attached[]): Promise<Attached[]> {
+    const done: Attached[] = [];
     for (const f of list) {
       if (f.id || !f.file) { done.push(f); continue; }
       const form = new FormData();
@@ -110,25 +110,30 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     return done;
   }
 
-  async function send(textIn?: string, skipTriage = false, again?: Pending[]) {
+  async function send(textIn?: string, skipTriage = false, again?: Attached[]) {
     const text = (textIn ?? draft).trim();
     if (!text || busy) return;
-    if (dictation.listening) dictation.stop();
     stopSpeaking();
-    setBusy(true); setError(null); setEmergency(null); setFailed(null);
-    // set once the message is shown in the chat: from then on a failure keeps it and offers «Повторить»
-    let sent: Pending[] | null = null;
+    const list = again ?? files;
+    // the message shows at once and the box empties, as in any messenger; the answer's dots follow right away
+    const localId = `local-${Date.now()}`;
+    setMessages((m) => [...m, { id: localId, role: "user", text, created_at: new Date().toISOString(),
+      attachments: list.map((f) => ({ id: f.id ?? f.key, filename: f.filename })), norms: [] }]);
+    if (!again) { setDraft(""); setFiles([]); }
+    setBusy(true); setError(null); setEmergency(null); setFailed(null); setStreaming("");
+    // set once the message reached the server: from then on a failure keeps it and offers «Повторить»
+    let sent: Attached[] | null = null;
     let partial = "", answered = false, retry = true;
+    const unsend = () => {  // nothing reached the server: the message goes back into the box
+      setMessages((m) => m.filter((x) => x.id !== localId));
+      if (!again) { setDraft(text); setFiles(list); }
+    };
     try {
       const id = caseId ?? await openCase(text, skipTriage);
-      if (!id) { setBusy(false); return; }
-      const uploaded = await upload(id, again ?? files);
+      if (!id) { unsend(); return; }
+      const uploaded = await upload(id, list);
       const attachments = uploaded.filter((f) => f.id).map((f) => ({ id: f.id!, filename: f.filename }));
-      setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "user", text, created_at: new Date().toISOString(),
-        attachments, norms: [] }]);
-      if (!again) { setDraft(""); setInterim(""); setFiles([]); }
       sent = uploaded;
-      setStreaming("");
       await sendChat(id, text, attachments.map((a) => a.id), (ev) => {
         if (ev.type === "text") { partial += ev.text; setLookingUp(false); setStreaming((s) => (s ?? "") + ev.text); }
         else if (ev.type === "tool") setLookingUp(true);
@@ -136,7 +141,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
         else if (ev.type === "done") {
           answered = true;
           setMessages((m) => [...m, ev.message]);
-          if (voiceMode && speak(ev.message.text, lang)) setSpeaking(ev.message.id);
+          if (voiceMode) speak(ev.message.text, lang);
           if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
         }
       });
@@ -146,6 +151,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
         retry = false;  // «Повторить» would not help
         if (err.code === "too_many_messages") setLeft((l) => ({ n: 0, limit: l?.limit ?? dailyLimit ?? 0 }));
       }
+      if (!sent) unsend();
     } finally {
       if (sent && !answered && retry) setFailed({ partial, text, files: sent });
       setStreaming(null); setLookingUp(false); setBusy(false);
@@ -170,32 +176,30 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     }
   }, [autoSend, initialDraft]);
 
-  // Suggestions of the chosen life situation (fine → fines, family → divorce and alimony…) come from the scenarios
-  // themselves (GET /v1/examples), so each new scenario adds its own; the site's texts fill in where a language
-  // has none yet.
+  // Examples for an empty chat: those of the chosen life situation (GET /v1/examples, which keeps them neutral),
+  // else the hand-picked everyday tasks of the site's texts.
   const fallback = useMemo(() => {
     if (situation) return [1, 2, 3, 4].map((i) => t(`situations.${situation}.ex${i}`));
     const n = Number(t("helper.exampleCount")) || 0;
     return Array.from({ length: n }, (_, i) => t(`helper.examples.${i + 1}`)).slice(0, 4);
   }, [t, situation]);
   const [fromScenarios, setFromScenarios] = useState<string[]>([]);
+  const empty = messages.length === 0 && streaming === null && !failed;
   useEffect(() => {
+    if (!empty || !situation) return;  // without a chosen situation: the hand-picked everyday tasks
     const topics = SITUATIONS.find((s) => s.key === situation)?.topics ?? [];
     let live = true;
     publicApi<{ examples: string[] }>(`/v1/examples?${new URLSearchParams({ topics: topics.join(","), lang, limit: "4" })}`)
       .then((r) => { if (live) setFromScenarios(r.examples); }).catch(() => {});
     return () => { live = false; };
-  }, [situation, lang]);
+  }, [situation, lang, empty]);
   const examples = useMemo(
     () => [...fromScenarios, ...fallback.filter((e) => !fromScenarios.includes(e))].slice(0, 4),
     [fromScenarios, fallback]);
 
-  const addFile = (f: File) => setFiles((xs) => [...xs, { key: `${Date.now()}-${f.name}`, filename: f.name, file: f }]);
-  const toggleSpeak = (m: ChatMessage) => {
-    if (speaking === m.id) { stopSpeaking(); setSpeaking(null); return; }
-    if (speak(m.text, lang)) setSpeaking(m.id);
-  };
-  const empty = messages.length === 0 && streaming === null && !failed;
+  // the document is offered under the latest reply that offers it, and only while nothing was said after it
+  const last = messages[messages.length - 1];
+  const offerId = streaming === null && last?.role === "assistant" && last.offer_document ? last.id : null;
 
   const links: MoreLink[] = [
     ...(caseId ? [{ href: `/case/${caseId}`, icon: "document" as IconName, label: `${t("chat.doc")} · ${t("chat.docPrice")}` }] : []),
@@ -206,165 +210,131 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     { href: caseId ? `/support?case=${caseId}` : "/support", icon: "mail", label: t("footer.support") },
     { href: "/terms", icon: "scroll", label: t("legal.terms") },
   ];
-  const sections: MoreSection[] = [{ key: "about", icon: "info", label: t("app.about"), render: () => (
-    <div className="space-y-3 text-sm">
-      <p>{t("chat.free")}</p>
-      <p className="text-muted">{t("legal.disclaimer")}</p>
-    </div>) }];
+  const sections: MoreSection[] = [
+    ...(tts ? [{ key: "voice", icon: "volume" as IconName, label: t("chat.voiceTitle"), render: () => (
+      <button type="button" onClick={() => { setVoiceMode((v) => !v); stopSpeaking(); }} aria-pressed={voiceMode}
+        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border border-line px-4 text-sm font-medium">
+        {voiceMode ? t("chat.voiceOn") : t("chat.voiceOff")}
+        <span className={`h-6 w-10 rounded-full p-0.5 transition-colors ${voiceMode ? "bg-brand" : "bg-sand-deep"}`}>
+          <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${voiceMode ? "translate-x-4 rtl:-translate-x-4" : ""}`} />
+        </span>
+      </button>) }] : []),
+    ...(caseId ? [{ key: "invite", icon: "share" as IconName, label: t("chat.share"), render: () => <Invite compact /> }] : []),
+    { key: "about", icon: "info", label: t("app.about"), render: () => (
+      <div className="space-y-3 text-sm">
+        <p>{t("chat.free")}</p>
+        <p className="text-muted">{t("legal.disclaimer")}</p>
+      </div>) },
+  ];
 
   const bar = (
-    <div className="space-y-2">
-        {files.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
-            {files.map((f) => (
-              <li key={f.key} className="inline-flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs">
-                <Icon name="paperclip" size={14} />{f.filename}
-                <button type="button" aria-label={t("chat.remove")} onClick={() => setFiles((xs) => xs.filter((x) => x.key !== f.key))}
-                  className="ms-1 text-muted hover:text-ink"><Icon name="x" size={14} /></button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form onSubmit={(e) => { e.preventDefault(); send(); }}
-          className="flex items-end gap-1 rounded-3xl border border-line bg-surface p-2 shadow-[var(--shadow-raised)] focus-within:border-accent">
-          <label className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}
-            title={t("chat.attach")}>
-            <Icon name="paperclip" size={20} /><span className="sr-only">{t("chat.attach")}</span>
-            <input type="file" accept="image/*,application/pdf,text/plain" className="sr-only" disabled={busy}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addFile(f); }} />
-          </label>
-          <label htmlFor="chat-input" className="sr-only">{t("chat.placeholder")}</label>
-          <textarea id="chat-input" ref={box} rows={1} value={interim ? `${draft} ${interim}`.trim() : draft}
-            onChange={(e) => { setDraft(e.target.value); setInterim(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
-            placeholder={dictation.listening ? t("chat.listening") : t("chat.placeholder")} maxLength={4000}
-            className="max-h-[200px] min-h-10 flex-1 resize-none border-0 bg-transparent px-2 py-2 shadow-none outline-none placeholder:text-muted"
-            style={{ outline: "none" }} /* the whole box shows focus (focus-within) */ />
-          {dictation.supported && (
-            <button type="button" onClick={dictation.listening ? dictation.stop : dictation.start} disabled={busy}
-              aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening ? "bg-danger text-white motion-safe:animate-pulse" : "text-muted hover:bg-sand hover:text-ink"}`}>
-              <Icon name={dictation.listening ? "stop" : "mic"} size={20} />
-              <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
-            </button>
-          )}
-          <button type="submit" disabled={busy || !(draft.trim() || interim.trim())} title={t("chat.send")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:opacity-30">
-            <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
-          </button>
-        </form>
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-muted">
-          <span>{left && left.limit > 0 && left.n <= REMAINING_FROM
-            ? t("chat.remaining", { n: left.n, limit: left.limit }) : t("chat.freeShort")}</span>
-          {tts && (
-            <button type="button" onClick={() => { setVoiceMode((v) => !v); stopSpeaking(); setSpeaking(null); }} aria-pressed={voiceMode}
-              className="inline-flex min-h-8 items-center gap-1.5 hover:text-ink">
-              <Icon name="volume" size={14} className={voiceMode ? "text-brand" : ""} />{voiceMode ? t("chat.voiceOn") : t("chat.voiceOff")}
-            </button>
-          )}
-        </div>
-        {!caseId && (
-          <p className="px-2 text-xs text-muted">
-            {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
-          </p>
-        )}
+    <div className="space-y-1.5">
+      <Composer value={draft} setValue={setDraft} files={files} busy={busy} onSubmit={() => send()}
+        placeholder={empty ? t("chat.placeholder") : t("chat.placeholderNext")}
+        onFiles={(fs) => setFiles((xs) => [...xs, ...fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f }))])}
+        onRemove={(key) => setFiles((xs) => xs.filter((x) => x.key !== key))} />
+      {left && left.limit > 0 && left.n <= REMAINING_FROM && (
+        <p className="px-3 text-center text-xs text-muted">{t("chat.remaining", { n: left.n, limit: left.limit })}</p>
+      )}
+      {!caseId && empty && (
+        <p className="px-3 text-center text-xs text-muted">
+          {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+        </p>
+      )}
     </div>
   );
 
   return (
-    <AppShell title={t("app.chat")} subtitle={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections}
+    <AppShell title={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections}
       links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
-      <div className="space-y-4" aria-live="polite">
+      <div className="space-y-2.5" aria-live="polite">
 
         {empty && (
-          <div className="space-y-4 py-6 sm:py-12">
-            <p className="eyebrow">{t("chat.eyebrow")}</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">{t("chat.title")}</h1>
-            <p className="max-w-xl text-muted">{hint ?? t("chat.lead")}</p>
-            <div className="flex flex-wrap gap-2">
-              {examples.map((e) => (
-                <button key={e} type="button" onClick={() => setDraft(e)}
-                  className="min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-start text-sm text-ink-soft hover:border-accent hover:bg-sand">{e}</button>
-              ))}
+          <div className="flex min-h-[45dvh] flex-col items-center justify-end gap-5 pb-4 text-center">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">{t("chat.title")}</h2>
+              <p className="mx-auto max-w-md text-[15px] text-muted">{hint ?? t("chat.lead")}</p>
             </div>
+            {!draft.trim() && (
+              <ul className="flex flex-wrap justify-center gap-2">
+                {examples.map((e) => (
+                  <li key={e}>
+                    <button type="button" onClick={() => { setDraft(e); document.getElementById("chat-input")?.focus(); }}
+                      className="min-h-10 rounded-full border border-line bg-surface px-4 py-2 text-start text-sm text-ink hover:bg-sand">{e}</button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
         {messages.map((m) => m.role === "user" ? (
           <div key={m.id} className="flex justify-end">
-            <div className="max-w-[85%] space-y-2 rounded-2xl rounded-ee-md bg-sand-deep px-4 py-2.5 text-ink">
+            <div className={`${BUBBLE} space-y-1.5 rounded-ee-md bg-brand text-white`}>
               <p className="whitespace-pre-line">{m.text}</p>
               {m.attachments.map((a) => (
-                <p key={a.id} className="flex items-center gap-1.5 text-xs opacity-90"><Icon name="paperclip" size={14} />{a.filename}</p>
+                <p key={a.id} className="flex items-center gap-1.5 text-xs text-white/85"><Icon name="paperclip" size={14} />{a.filename}</p>
               ))}
             </div>
           </div>
         ) : (
-          <div key={m.id} className="space-y-2">
-            <p className="text-sm font-semibold text-ink"><bdi>{t("chat.brand")}</bdi></p>
-            <div className="min-w-0 space-y-2 lg:ps-7">
-              <p className="whitespace-pre-line text-[16px] leading-[1.7]">{m.text}</p>
-              {m.norms.length > 0 && (
-                <ul className="flex flex-wrap gap-2">
-                  {m.norms.map((n) => (
-                    <li key={`${n.act_code}-${n.article}`}>
-                      <a href={n.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs hover:border-brand">
-                        <Icon name="shieldCheck" size={14} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {tts && (
-                <button type="button" onClick={() => toggleSpeak(m)} className="inline-flex min-h-8 items-center gap-1.5 text-xs text-muted hover:text-ink">
-                  <Icon name={speaking === m.id ? "stop" : "volume"} size={14} />{speaking === m.id ? t("chat.stopSpeak") : t("chat.speak")}
-                </button>
-              )}
-            </div>
-          </div>
+          <Reply key={m.id}>
+            <p className="whitespace-pre-line">{clean(m.text)}</p>
+            {m.norms.length > 0 && (
+              <ul className="flex flex-wrap gap-1.5 pt-0.5">
+                {m.norms.map((n) => (
+                  <li key={`${n.act_code}-${n.article}`}>
+                    <a href={n.url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
+                      <Icon name="scroll" size={13} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {m.id === offerId && caseId && (
+              <Link href={`/case/${caseId}`}
+                className="mt-1 flex min-h-12 items-center gap-3 rounded-2xl bg-surface px-3.5 py-2 hover:ring-1 hover:ring-brand">
+                <Icon name="document" size={20} className="shrink-0 text-brand" />
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block font-semibold">{t("chat.doc")}</span>
+                  <span className="block text-xs text-muted">{t("chat.docPrice")}</span>
+                </span>
+                <Icon name="arrowRight" size={18} className="shrink-0 text-muted rtl:-scale-x-100" />
+              </Link>
+            )}
+          </Reply>
         ))}
 
         {streaming !== null && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-ink"><bdi>{t("chat.brand")}</bdi></p>
-            <div className="min-w-0 lg:ps-7">
-              {streaming && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{streaming}</p>}
-              <p className="flex items-center gap-2 text-sm text-muted" role="status">
-                <Icon name="spinner" size={14} />{lookingUp ? t("chat.lookingUp") : t("chat.thinking")}
-              </p>
-            </div>
-          </div>
+          <Reply>
+            {clean(streaming) ? <p className="whitespace-pre-line">{clean(streaming)}</p> : (
+              <span className="flex h-6 items-center gap-1" aria-hidden>
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="h-2 w-2 rounded-full bg-muted motion-safe:animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                ))}
+              </span>
+            )}
+            <span className="sr-only" role="status">{t("chat.thinking")}</span>
+            {lookingUp && <p className="flex items-center gap-2 text-xs text-muted"><Icon name="spinner" size={12} />{t("chat.lookingUp")}</p>}
+          </Reply>
         )}
         {failed && streaming === null && (
           <div className="space-y-2">
-            {failed.partial && <p className="text-sm font-semibold text-ink"><bdi>{t("chat.brand")}</bdi></p>}
-            <div className="min-w-0 space-y-2 lg:ps-7">
-              {failed.partial && <p className="whitespace-pre-line text-[16px] leading-[1.7]">{failed.partial}</p>}
-              {failed.partial && <p className="text-sm text-muted">{t("chat.interrupted")}</p>}
-              <button type="button" onClick={retryFailed} disabled={busy}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:border-brand disabled:opacity-50">
-                <Icon name="send" size={16} />{t("chat.retry")}
-              </button>
-            </div>
+            {failed.partial && (
+              <Reply>
+                <p className="whitespace-pre-line">{clean(failed.partial)}</p>
+                <p className="text-xs text-muted">{t("chat.interrupted")}</p>
+              </Reply>
+            )}
+            <button type="button" onClick={retryFailed} disabled={busy}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:border-brand disabled:opacity-50">
+              <Icon name="send" size={16} />{t("chat.retry")}
+            </button>
           </div>
         )}
-        {emergency && <EmergencyPanel info={emergency} onContinue={() => send(undefined, true)} />}
+        {emergency && <EmergencyPanel info={emergency} onContinue={() => send(emergency.text, true)} />}
         {error && <Alert tone="danger" role="alert">{error}</Alert>}
-
-        {caseId && messages.length > 0 && streaming === null && (
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Link href={`/case/${caseId}`} className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
-              <Icon name="document" size={22} className="text-brand" />
-              <span className="flex-1"><span className="block font-semibold">{t("chat.doc")}</span><span className="text-xs text-muted">{t("chat.docPrice")}</span></span>
-            </Link>
-            {LAWYERS_PUBLIC && <Link href="/lawyers" className="flex min-h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 hover:border-brand">
-              <Icon name="lawyer" size={22} className="text-brand" />
-              <span className="flex-1"><span className="block font-semibold">{t("chat.lawyer")}</span><span className="text-xs text-muted">{t("chat.lawyerPrice")}</span></span>
-            </Link>}
-          </div>
-        )}
-        {caseId && messages.some((m) => m.role !== "user") && streaming === null && <Invite compact />}
       </div>
     </AppShell>
   );

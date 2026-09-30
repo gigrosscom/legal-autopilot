@@ -388,3 +388,13 @@ def test_a_stray_chinese_word_never_reaches_the_person():
 
     assert strip_foreign_script("если 母亲 работала", "русском") == "если работала"
     assert strip_foreign_script("обычный текст", "русском") == "обычный текст"
+
+
+def test_document_is_offered_only_when_the_reply_says_so():
+    events, _ = run("Вам нужна письменная претензия продавцу. Консильéр может её подготовить.\n[[DOCUMENT]]",
+                    use_portal=False)
+    res = events[-1]["result"]
+    assert res.offer_document is True and "[[" not in res.text and res.text.endswith("подготовить.")
+    events, client = run("Срок гарантии зависит от договора.", use_portal=False)
+    assert events[-1]["result"].offer_document is False
+    assert "[[DOCUMENT]]" in client.calls[0]["system"]  # the model is told how to offer one
