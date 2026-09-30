@@ -78,7 +78,8 @@ def free_chat_clients(settings: Settings) -> list[Any]:
         if name == "gemini":
             if settings.gemini_api_key:
                 fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
-                out.append(GeminiClient(settings.gemini_api_key, fallback_models=fallback))
+                out.append(GeminiClient(settings.gemini_api_key, fallback_models=fallback,
+                                        thinking_level=settings.gemini_chat_thinking_level))
         elif name in PROVIDERS:
             key = getattr(settings, f"{name}_api_key", "")
             if key:
@@ -186,8 +187,13 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     if settings.gemini_api_key:  # speech to text only ever uses the free Gemini models
         container.transcriber = GeminiTranscriber(settings.gemini_api_key, (
             settings.gemini_model, *(m.strip() for m in settings.gemini_fallback_models.split(","))))
-    adilet = Adilet()
-    chat_adilet = Adilet(fetch=quick_fetch)  # the chat waits at most 8 s for a portal page
+    local = None
+    if settings.law_texts_local:  # articles from the Zann corpus copy when it has the act, else the live portal
+        from .zann.corpus import CorpusTexts
+
+        local = CorpusTexts(factory, storage)
+    adilet = Adilet(local=local)
+    chat_adilet = Adilet(fetch=quick_fetch, local=local)  # the chat waits at most 8 s for a portal page
     if settings.llm_provider == "anthropic":
         import anthropic
 
@@ -208,14 +214,17 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         from .gemini import GeminiClient
 
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
-        container.chat_agent = ChatAgent(GeminiClient(settings.gemini_api_key, fallback_models=fallback),
-                                         settings.gemini_model, chat_adilet, web_search=False, library=library)
+        gemini = GeminiClient(settings.gemini_api_key, fallback_models=fallback,
+                              thinking_level=settings.gemini_chat_thinking_level)
+        container.chat_agent = ChatAgent(gemini, settings.gemini_model, chat_adilet, web_search=False,
+                                         library=library)
     if settings.chat_provider == "free":
         clients = free_chat_clients(settings)
         if clients:
             from .openai_compat import ChainClient
 
-            container.chat_agent = ChatAgent(ChainClient(clients), settings.gemini_model, chat_adilet, web_search=False,
+            chain = ChainClient(clients, settings.chat_first_token_timeout)
+            container.chat_agent = ChatAgent(chain, settings.gemini_model, chat_adilet, web_search=False,
                                              library=library)
     def approval_needed(session: Any, case: Any, action: Any) -> None:
         from .core.models import User

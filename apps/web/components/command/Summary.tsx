@@ -1,7 +1,7 @@
 "use client";
 
 import { MdInline } from "@/components/Markdown";
-import { fmt, goalsOf, latestReport, moneyText, pendingOf, usd } from "./model";
+import { fmt, goalsOf, latestReport, moneyText, pendingOf, secs, usd } from "./model";
 import { PaymentsToConfirm } from "./Payments";
 import { ReviewsToCheck } from "./Reviews";
 import { Card, H2, Loading, NoData, PageTitle, Progress, RowLink, Stat, TeamUnavailable, useCentre } from "./ui";
@@ -67,6 +67,12 @@ export function Summary() {
             <Stat label="Claude за месяц" value={m.claude ? usd(m.claude.month_usd) : <NoData />}
               note={m.claude ? `лимит ${usd(m.claude.monthly_budget_usd)}` : undefined}
               tone={m.claude && m.claude.month_usd >= m.claude.monthly_budget_usd ? "warn" : undefined} />
+            {/* the owner's target (30.09): the first words of an answer within 2 s */}
+            <Stat label="Ответ чата: первые слова p50/p95"
+              value={m.chat_latency?.n ? `${secs(m.chat_latency.p50_ms)} / ${secs(m.chat_latency.p95_ms)}` : <NoData />}
+              note={m.chat_latency?.n ? `ответов за 24 ч: ${fmt(m.chat_latency.n)} · ${Object.entries(m.chat_latency.by_provider)
+                .map(([p, v]) => `${p} ${secs(v.p50_ms)}`).join(", ")}` : undefined}
+              tone={m.chat_latency?.p50_ms != null && m.chat_latency.p50_ms > 2000 ? "warn" : undefined} />
           </dl>
         )}
       </section>

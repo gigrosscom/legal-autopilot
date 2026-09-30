@@ -119,6 +119,27 @@ def file_key(code: str, lang: str) -> str:
     return f"{PREFIX}{code}.{lang}.txt.gz"
 
 
+class CorpusTexts:
+    """The collected text of an act for the chat and the legal agent (``Adilet(local=CorpusTexts(...))``): an
+    article is cut from our copy in milliseconds instead of opening the portal live (≈1–8 s). None when the act is
+    not collected yet in that language; the portal is then read live."""
+
+    PORTAL_LANGS = {v: k for k, v in LANGS.items()}  # rus → ru, kaz → kk
+
+    def __init__(self, session_factory: sessionmaker[Session], storage: Any):
+        self.sf, self.storage = session_factory, storage
+
+    def __call__(self, code: str, lang: str) -> tuple[str, str] | None:
+        ours = self.PORTAL_LANGS.get(lang, lang)
+        with self.sf() as s:
+            f = s.get(ZannFile, (code, ours))
+            if f is None:
+                return None
+            key, title = f.key, f.title or ""
+        text = gzip.decompress(self.storage.get(key)).decode("utf-8")
+        return title, text
+
+
 # ---------------------------------------------------------------------------------------------------- listings
 @dataclass(frozen=True)
 class Listed:
