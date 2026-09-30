@@ -25,10 +25,15 @@ class ResendEmail:
         self.api_key, self.sender = api_key, sender
 
     def send(self, to: str, subject: str, text: str) -> None:
-        r = httpx.post("https://api.resend.com/emails", timeout=15,
-                       headers={"Authorization": f"Bearer {self.api_key}"},
-                       json={"from": self.sender, "to": [to], "subject": subject, "text": text})
+        try:
+            r = httpx.post("https://api.resend.com/emails", timeout=15,
+                           headers={"Authorization": f"Bearer {self.api_key}"},
+                           json={"from": self.sender, "to": [to], "subject": subject, "text": text})
+        except httpx.HTTPError as e:
+            log.warning("email: resend unreachable: %s", e.__class__.__name__)
+            raise SendError(f"resend {e.__class__.__name__}") from e
         if r.status_code >= 300:
+            log.warning("email: resend answered %s: %s", r.status_code, r.text[:200])
             raise SendError(f"resend {r.status_code}")
 
 
@@ -44,6 +49,7 @@ class SmtpEmail:
             with smtplib.SMTP(self.host, self.port, timeout=15) as s:
                 s.send_message(msg)
         except OSError as e:
+            log.warning("email: smtp %s:%s failed: %s", self.host, self.port, e.__class__.__name__)
             raise SendError(f"smtp {e.__class__.__name__}") from e
 
 
