@@ -58,7 +58,8 @@ export function Summary() {
               note={m.payments ? `клиентов: ${fmt(m.payments.paid_clients)} · сегодня +${fmt(m.payments.paid_today)}` : undefined} />
             <Stat label="Выручка" value={m.payments ? moneyText(m.payments.revenue) : <NoData />}
               note={m.payments ? `сегодня: ${moneyText(m.payments.revenue_today)}` : undefined} />
-            <Stat label="Заявки юристов" value={fmt(m.totals.lawyer_applications)} />
+            <Stat label="Ждут подтверждения" value={m.payments ? fmt(m.payments.awaiting_confirmation) : <NoData />}
+              note="оплаты" tone={m.payments && m.payments.awaiting_confirmation > 0 ? "warn" : undefined} />
             <Stat label="Claude сегодня" value={m.claude ? usd(m.claude.today_usd) : <NoData />}
               note={m.claude ? `лимит ${usd(m.claude.daily_budget_usd)}` : undefined}
               tone={m.claude && m.claude.today_usd >= m.claude.daily_budget_usd ? "warn" : undefined} />
