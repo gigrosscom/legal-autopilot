@@ -378,6 +378,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return handle<T>(await request(`${API_URL}${path}`, { ...init, headers }));
 }
 
+/** Dictated audio → text (POST /v1/transcribe, free Gemini on the server; the audio is not stored). */
+export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm"): Promise<string> {
+  const form = new FormData();
+  form.append("file", audio, filename);
+  form.append("lang", lang);
+  const r = await api<{ text: string }>("/v1/transcribe", { method: "POST", body: form });
+  return r.text ?? "";
+}
+
 export async function fetchFile(path: string, extraHeaders?: Record<string, string>): Promise<Blob> {
   const headers = new Headers(extraHeaders);
   if (!extraHeaders) headers.set("Authorization", `Bearer ${await ensureToken()}`);

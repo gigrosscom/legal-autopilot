@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Speech recognition and speech synthesis built into the browser: no server, no cost. Recognition exists in
-// Chrome, Edge and Safari (Chrome sends the audio to its own speech service); Firefox has none, so the mic
-// button hides there.
+import { ApiError, NetworkError, transcribeAudio } from "./api";
+
+// Voice input, on every device. Where the browser has speech recognition that works (Chrome, Edge, Safari) it is
+// used: no server, no cost, live interim text. Elsewhere (Firefox, iOS home-screen apps, some Android WebViews)
+// the voice is recorded with MediaRecorder and sent to POST /v1/transcribe (free Gemini, audio not stored).
+// Speech synthesis (reading replies aloud) is the device's own.
 const LOCALES: Record<string, string> = { ru: "ru-RU", kk: "kk-KZ", en: "en-US", tr: "tr-TR", ar: "ar-SA" };
+export const MAX_RECORDING_MS = 120_000; // the server accepts about two minutes
 
 type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean;
@@ -14,32 +18,145 @@ type Recognition = {
   start: () => void; stop: () => void;
 };
 
+/** iOS home-screen app: webkitSpeechRecognition is defined there but does not work. */
+function iosStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  const nav = navigator as Navigator & { standalone?: boolean };
+  const ios = /iPad|iPhone|iPod/.test(nav.userAgent) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  return ios && (nav.standalone === true || window.matchMedia?.("(display-mode: standalone)").matches === true);
+}
+
 function recognitionCtor(): (new () => Recognition) | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || iosStandalone()) return null;
   const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-/** Dictation: while listening, `onText(final, interim)` receives what was said. */
-export function useDictation(lang: string, onText: (finalText: string, interim: string) => void) {
+function canRecord(): boolean {
+  return typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined"
+    && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function";
+}
+
+/** A container the recorder supports: Opus in WebM (Chrome, Firefox, Android), MP4/AAC (Safari). */
+function recorderType(): string {
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus", "audio/aac"];
+  return types.find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) ?? "";
+}
+
+function extension(mime: string): string {
+  const m = mime.split(";")[0];
+  return m.endsWith("mp4") ? "m4a" : m.endsWith("ogg") ? "ogg" : m.endsWith("aac") ? "aac" : m.endsWith("wav") ? "wav" : "webm";
+}
+
+/** Web Speech error → the code shown as t(`chat.errors.${code}`); null: nothing to show. */
+function speechErrorCode(e: string): string | null {
+  if (e === "not-allowed") return "mic_denied";
+  if (e === "audio-capture") return "no_mic";
+  if (e === "no-speech") return "no_speech";
+  if (e === "aborted") return null;
+  return "mic_failed";
+}
+
+function uploadErrorCode(e: unknown): string {
+  if (e instanceof ApiError) return e.code ?? (e.status === 429 ? "too_many_transcriptions" : "transcribe_failed");
+  if (e instanceof NetworkError) return "transcribe_network";
+  return "transcribe_failed";
+}
+
+/**
+ * Voice input on every device. While listening, `onText(final, interim)` receives what was said; with the
+ * recording fallback the whole text arrives once, after `stop()` (or the 2-minute limit) and the upload
+ * (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
+ * no_speech, mic_failed, transcribe_unavailable, transcribe_busy, transcribe_failed, transcribe_network,
+ * too_many_transcriptions, audio_too_large.
+ */
+export function useVoiceInput(lang: string, onText: (finalText: string, interim: string) => void) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rec = useRef<Recognition | null>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechBroken = useRef(false); // Web Speech exists but its service fails here (WebViews, Brave…)
+  const alive = useRef(true);
   const cb = useRef(onText);
   cb.current = onText;
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
-  useEffect(() => setSupported(recognitionCtor() !== null), []);
+  useEffect(() => {
+    alive.current = true;
+    setSupported(recognitionCtor() !== null || canRecord());
+    return () => { alive.current = false; };
+  }, []);
 
-  const stop = useCallback(() => rec.current?.stop(), []);
+  const startRecording = useCallback(async () => {
+    if (!canRecord()) { setError("mic_failed"); return; }
+    setError(null);
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch (e) {
+      const name = (e as { name?: string })?.name;
+      setError(name === "NotAllowedError" || name === "SecurityError" ? "mic_denied"
+        : name === "NotFoundError" || name === "OverconstrainedError" ? "no_mic" : "mic_failed");
+      return;
+    }
+    if (!alive.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+    const type = recorderType();
+    let r: MediaRecorder;
+    try {
+      r = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      setError("mic_failed");
+      return;
+    }
+    const chunks: Blob[] = [];
+    r.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    r.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      recorder.current = null;
+      if (!alive.current) return;
+      setListening(false);
+      const mime = r.mimeType || type || "audio/webm";
+      const blob = new Blob(chunks, { type: mime.split(";")[0] });
+      if (blob.size === 0) { setError("no_speech"); return; }
+      setTranscribing(true);
+      try {
+        const text = (await transcribeAudio(blob, langRef.current, `voice.${extension(mime)}`)).trim();
+        if (!alive.current) return;
+        if (text) cb.current(text, ""); else setError("no_speech");
+      } catch (e) {
+        if (alive.current) setError(uploadErrorCode(e));
+      } finally {
+        if (alive.current) setTranscribing(false);
+      }
+    };
+    recorder.current = r;
+    r.start(1000); // a chunk every second: nothing is lost if the recorder is stopped abruptly
+    setListening(true);
+    timer.current = setTimeout(() => { if (r.state !== "inactive") r.stop(); }, MAX_RECORDING_MS);
+  }, []);
+
+  const stop = useCallback(() => {
+    if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
+    rec.current?.stop();
+  }, []);
+
   const start = useCallback(() => {
-    const Ctor = recognitionCtor();
-    if (!Ctor) return;
+    if (listening || transcribing) return;
+    const Ctor = speechBroken.current ? null : recognitionCtor();
+    if (!Ctor) { void startRecording(); return; }
     const r = new Ctor();
     r.lang = LOCALES[lang] ?? lang;
     r.continuous = true;
     r.interimResults = true;
+    let heard = false;
     r.onresult = (e) => {
+      heard = true;
       let fin = "", interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
@@ -47,17 +164,44 @@ export function useDictation(lang: string, onText: (finalText: string, interim: 
       }
       cb.current(fin, interim);
     };
-    r.onerror = (e) => setError(e.error);
-    r.onend = () => setListening(false);
+    r.onerror = (e) => {
+      // the speech service is missing or blocked here: record and transcribe on the server instead
+      if (!heard && canRecord()
+          && (e.error === "network" || e.error === "service-not-allowed" || e.error === "language-not-supported")) {
+        speechBroken.current = true;
+        r.onend = null;
+        rec.current = null;
+        setListening(false);
+        void startRecording();
+        return;
+      }
+      setError(speechErrorCode(e.error));
+    };
+    r.onend = () => { if (rec.current === r) rec.current = null; setListening(false); };
     rec.current = r;
     setError(null);
     setListening(true);
-    r.start();
-  }, [lang]);
+    try {
+      r.start();
+    } catch {
+      rec.current = null;
+      setListening(false);
+      speechBroken.current = true;
+      void startRecording();
+    }
+  }, [lang, listening, transcribing, startRecording]);
 
-  useEffect(() => () => rec.current?.stop(), []);
-  return { supported, listening, error, start, stop };
+  useEffect(() => () => {
+    rec.current?.stop();
+    if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  return { supported, listening, transcribing, error, start, stop };
 }
+
+/** Former name, kept for existing callers: the same hook (now with the recording fallback). */
+export const useDictation = useVoiceInput;
 
 /** Read a reply aloud with the device's voice for the language. */
 export function speak(text: string, lang: string) {
