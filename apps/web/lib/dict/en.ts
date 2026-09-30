@@ -683,6 +683,8 @@ const en: Dict = {
       email: "Email",
       phone: "Phone",
       iin: "IIN",
+      google: "Google",
+      apple: "Apple ID",
     },
     email: {
       title: "By email",
@@ -718,6 +720,14 @@ const en: Dict = {
       expired: "Time is up. Create a new code.",
       qrAlt: "QR code to sign in with eGov Mobile",
     },
+    google: {
+      button: "Sign in with Google",
+      failed: "Could not open Google sign-in. Check your connection or try again later.",
+    },
+    apple: {
+      button: "Sign in with Apple",
+      failed: "Could not sign in with Apple. Please try again.",
+    },
     sendCode: "Get code",
     codeLabel: "Code from the message",
     confirm: "Confirm",
@@ -738,6 +748,12 @@ const en: Dict = {
       challenge_expired: "Time to sign ran out. Try again.",
       verifier_unavailable: "Signature checking is temporarily unavailable. Try later.",
       no_iin: "The certificate has no IIN.",
+      invalid_token: "Sign-in could not be confirmed. Please try again.",
+      token_expired: "Sign-in timed out. Please try again.",
+      wrong_nonce: "This sign-in is out of date. Refresh the page and try again.",
+      email_not_verified: "The email of this Google account is not verified. Verify it with Google or use another way to sign in.",
+      provider_unavailable: "The sign-in service is temporarily unavailable. Please try later.",
+      foreign_challenge: "Sign-in was started on another device. Refresh the page and try again.",
     },
   },
   sign: {

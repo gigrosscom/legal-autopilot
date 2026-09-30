@@ -156,6 +156,12 @@ class Settings(BaseSettings):
     egov_org_name: str = "Konsiliér AI"
     phone_default_country_code: str = "7"  # for numbers typed without "+"
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
+    # «Войти через Google» / «Войти через Apple» (docs/auth-google-apple.md). Public ids, not secrets; empty → the
+    # button is hidden. GOOGLE_CLIENT_ID: OAuth client (Web) of Google Cloud. APPLE_SERVICES_ID: the Services ID of
+    # Sign in with Apple (e.g. com.konsilier.web); APPLE_REDIRECT_URI: its return URL, empty → PUBLIC_SITE_URL/account.
+    google_client_id: str | None = None
+    apple_services_id: str | None = None
+    apple_redirect_uri: str | None = None
 
     telegram_bot_token: str | None = None
     # Web push (notifications on the phone / computer, the installed app included): a VAPID key pair printed by
@@ -166,6 +172,10 @@ class Settings(BaseSettings):
     # Beta scenarios (tender bid, admission, visa, business…): off in production, on in dev and tests.
     experimental_scenarios: bool = False
     cors_origins: str = "http://localhost:3000"
+
+    @property
+    def apple_return_url(self) -> str:
+        return self.apple_redirect_uri or f"{self.public_site_url.rstrip('/')}/account"
 
     @field_validator("database_url")
     @classmethod

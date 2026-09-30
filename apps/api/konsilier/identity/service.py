@@ -108,7 +108,8 @@ class Identities:
                       name: str | None = None, subject_hash: str | None = None) -> User:
         """Attach the verified identifier to `user`, or sign `user` into the account that already owns it.
 
-        kind: email | phone | iin (ЭЦП and eGov Mobile both identify a person by IIN → one identity).
+        kind: email | phone | iin (ЭЦП and eGov Mobile both identify a person by IIN → one identity)
+              | google | apple (the provider's stable `sub`; `display` is the masked e-mail).
         """
         subject = subject_hash or self.h(kind, value or "")
         ident = session.scalar(select(Identity).where(Identity.kind == kind, Identity.subject_hash == subject))
@@ -135,7 +136,7 @@ class Identities:
             owner.email = value
         elif kind == "phone":
             owner.phone = value
-        if name and kind == "iin":
+        if name and (kind == "iin" or (kind in ("google", "apple") and not owner.display_name)):
             owner.display_name = name
         session.flush()
         return owner
