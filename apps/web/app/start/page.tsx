@@ -9,7 +9,7 @@ import { SITUATIONS } from "@/lib/situations";
 
 const DRAFT_KEY = "konsilier.chat.draft";
 
-/** «Начать дело»: the free consultation chat. The case opens with the first message. */
+/** «Начать дело»: the free AI chat. The case opens with the first message. */
 export default function StartPage() {
   const t = useT();
   const [ready, setReady] = useState(false);

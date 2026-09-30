@@ -261,8 +261,8 @@ const tr: Dict = {
     free: "Sohbet ücretsizdir. Konsiliér bir yapay zekâ asistanıdır, avukatın yerini tutmaz.",
     open: "Sohbeti aç",
     errors: {
-      agent_unavailable: "Sohbet danışmanı şu anda kullanılamıyor. Daha sonra deneyin veya belgeyi adım adım hazırlayın.",
-      agent_failed: "Danışman yanıt veremedi. Bir dakika sonra tekrar deneyin.",
+      agent_unavailable: "Yapay zekâ sohbeti şu anda kullanılamıyor. Daha sonra deneyin veya belgeyi adım adım hazırlayın.",
+      agent_failed: "Yapay zekâ asistanı yanıt veremedi. Bir dakika sonra tekrar deneyin.",
       too_many_messages: "Sınıra ulaşıldı: 24 saatte {limit} ücretsiz mesaj. Yenileri, gönderdiklerinizden 24 saat sonra kullanılabilir olur — belgeyi ise şimdi adım adım hazırlayabilirsiniz.",
       busy: "Şu anda yoğunluk var, lütfen bir dakika sonra tekrar deneyin.",
       mic_denied: "Mikrofona erişim yok. Tarayıcı veya telefon ayarlarından izin verip tekrar deneyin.",
@@ -991,7 +991,7 @@ const tr: Dict = {
     dropped: "Doğrulanmayan atıflar çıkarıldı: {n}",
     disclaimer: "Bu, yasaların resmî metinlerine dayanan bir bilgidir, hukuki görüş değildir. Karmaşık durumlarda bir avukatı dahil ederiz.",
     errors: {
-      agent_unavailable: "Bu soruyu ücretsiz sohbet danışmanına sorun.",
+      agent_unavailable: "Bu soruyu ücretsiz yapay zekâ sohbetine sorun.",
       agent_failed: "Şu anda yanıtlanamadı. Biraz sonra tekrar deneyin.",
       too_many_questions: "Bugün bu dosyada çok soru soruldu. Yarın deneyin.",
     },

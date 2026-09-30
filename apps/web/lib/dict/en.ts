@@ -261,8 +261,8 @@ const en: Dict = {
     free: "The chat is free. Konsiliér is an AI assistant and does not replace a lawyer.",
     open: "Open the chat",
     errors: {
-      agent_unavailable: "The chat consultant is unavailable right now. Please try later or prepare the document step by step.",
-      agent_failed: "The consultant could not answer. Please try again in a minute.",
+      agent_unavailable: "The AI chat is unavailable right now. Please try later or prepare the document step by step.",
+      agent_failed: "The AI assistant could not answer. Please try again in a minute.",
       too_many_messages: "Limit reached: {limit} free messages per 24 hours. New ones become available 24 hours after the ones you sent — and you can prepare the document step by step right now.",
       busy: "We're under heavy load right now. Please try again in a minute.",
       mic_denied: "No access to the microphone. Allow it in your browser or phone settings and try again.",
@@ -991,7 +991,7 @@ const en: Dict = {
     dropped: "Unconfirmed references dropped: {n}",
     disclaimer: "This is information from the official texts of the law, not a legal opinion. For complex cases we bring in a lawyer.",
     errors: {
-      agent_unavailable: "Ask this question in the free chat consultant.",
+      agent_unavailable: "Ask this question in the free AI chat.",
       agent_failed: "Could not answer right now. Try again a little later.",
       too_many_questions: "You have asked many questions about this case today. Please try again tomorrow.",
     },
