@@ -48,6 +48,8 @@ class Container:
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
     chat_fallback_agent: Any = None  # Claude, used when the free chat fails before the reply starts (off by default)
+    transcriber: Any = None  # konsilier.transcribe.GeminiTranscriber when a Gemini key is set (voice input)
+    transcribe_limits: Any = None  # (per account, per IP) konsilier.transcribe.SlidingLimiter
     official_sources: dict[str, Any] = field(default_factory=dict)  # country → konsilier.official OfficialSources
     official_library: Any = None  # konsilier.official.search.OfficialLibrary, searched by the chat
 
@@ -162,6 +164,13 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                                  hour=settings.official_crawl_hour,
                                                  minutes=settings.official_crawl_minutes,
                                                  max_pages=settings.official_crawl_max_pages))
+    from .transcribe import GeminiTranscriber, SlidingLimiter
+
+    container.transcribe_limits = (SlidingLimiter(settings.transcribe_per_user_hour),
+                                   SlidingLimiter(settings.transcribe_per_ip_hour))
+    if settings.gemini_api_key:  # speech to text only ever uses the free Gemini models
+        container.transcriber = GeminiTranscriber(settings.gemini_api_key, (
+            settings.gemini_model, *(m.strip() for m in settings.gemini_fallback_models.split(","))))
     adilet = Adilet()
     if settings.llm_provider == "anthropic":
         import anthropic

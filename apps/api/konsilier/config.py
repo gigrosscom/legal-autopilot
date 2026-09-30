@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in turn when the model above is overloaded (503/429): free-tier quotas are counted per model.
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview"
+    # Voice input for browsers without built-in speech recognition (POST /v1/transcribe, free Gemini only):
+    # uploads per account and per IP address in a rolling hour.
+    transcribe_per_user_hour: int = 30
+    transcribe_per_ip_hour: int = 60
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
     # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
     chat_fallback_to_anthropic: bool = False
