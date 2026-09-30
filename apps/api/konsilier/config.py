@@ -180,6 +180,9 @@ class Settings(BaseSettings):
     vapid_subject: str = "mailto:support@konsilier.com"  # the push services' contact for this sender
     # Beta scenarios (tender bid, admission, visa, business…): off in production, on in dev and tests.
     experimental_scenarios: bool = False
+    # Beta scenarios kept off even with EXPERIMENTAL_SCENARIOS=true (owner 30.09: no study and visas, legal ones only)
+    beta_scenarios_off: str = ("kz.services.university_admission,kz.services.study_abroad,kz.services.visa_schengen_de,"
+                               "kz.services.visa_uk,kz.services.visa_us")
     cors_origins: str = "http://localhost:3000"
 
     @property

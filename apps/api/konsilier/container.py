@@ -114,6 +114,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     packs = packs or PackRegistry.load(settings.packs_dir)
     if settings.experimental_scenarios:
         packs.experimental = True
+    packs.beta_off = frozenset(x.strip() for x in settings.beta_scenarios_off.split(",") if x.strip())
     storage = storage or build_storage(settings)
     channels = channels or {"web": WebChannel(), "telegram": TelegramChannel(settings.telegram_bot_token)}
     notifier = Notifier(channels, packs)

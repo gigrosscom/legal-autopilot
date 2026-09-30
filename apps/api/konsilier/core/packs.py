@@ -296,6 +296,7 @@ class PackRegistry:
         self._generic: dict[str, Scenario] = {}
         # EXPERIMENTAL_SCENARIOS: beta scenarios (tender bid, admission, visa, business…) are offered only when on
         self.experimental = experimental
+        self.beta_off: frozenset[str] = frozenset()  # BETA_SCENARIOS_OFF: beta scenarios kept off even when on
 
     @classmethod
     def load(cls, packs_root: Path) -> "PackRegistry":
@@ -339,4 +340,4 @@ class PackRegistry:
 
     def offered(self, sc: Scenario) -> bool:
         """Published scenarios, plus beta ones (kept ``published: false``) while experimental scenarios are on."""
-        return sc.published or (sc.beta and self.experimental)
+        return sc.published or (sc.beta and self.experimental and sc.id not in self.beta_off)
