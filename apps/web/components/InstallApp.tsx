@@ -70,6 +70,11 @@ export function useInstall() {
     const onPrompt = () => { write(INSTALLED, null); update(); }; // offered again: the app is not installed
     const onInstalled = () => { write(INSTALLED, "1"); update(); };
     update();
+    // Chrome gives no install dialog once the app is installed; it can say so (manifest related_applications)
+    const nav = navigator as Navigator & { getInstalledRelatedApps?: () => Promise<{ platform: string }[]> };
+    nav.getInstalledRelatedApps?.().then((apps) => {
+      if (apps.some((a) => a.platform === "webapp") && !window.__konsilierInstall) { write(INSTALLED, "1"); update(); }
+    }).catch(() => {});
     // the layout's INSTALL_CAPTURE was registered first, so window.__konsilierInstall is set by the time these run
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);

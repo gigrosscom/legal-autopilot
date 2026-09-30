@@ -79,7 +79,7 @@ const tr: Dict = {
       ios26: "“•••”, ardından {share} ve “Ana Ekrana Ekle”ye dokunun",
       iosOther: "Yüklemek için {site} adresini Safari'de açın",
       macSafari: "Dosya → “Dock'a Ekle”",
-      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle”",
+      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle” Zaten yüklüyse adres çubuğundaki “Uygulamada aç” düğmesine tıklayın.",
       other: "Yüklemek için {site} adresini Chrome veya Edge'de açın",
     },
   },
@@ -114,7 +114,7 @@ const tr: Dict = {
   appPage: {
     title: "Konsiliér AI telefonunuzda",
     lead: "Ekranınızda kendi simgesi ve süre bildirimleri — tek dokunuşla.",
-    installed: "Uygulama bu cihazda zaten yüklü.",
+    installed: "Uygulama bu cihazda zaten yüklü. Masaüstünden, Dock'tan veya adres çubuğundaki “Uygulamada aç” düğmesiyle açın.",
     qrAlt: "Uygulama sayfasının QR kodu",
     qrTitle: "Telefonunuzda açın",
     qrText: "Kamerayı koda tutun ve “Yükle”ye dokunun.",

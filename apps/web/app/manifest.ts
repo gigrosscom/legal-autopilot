@@ -21,6 +21,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#ffffff",
     categories: ["legal", "productivity"],
     prefer_related_applications: false,
+    // lets the site ask Chrome whether this app is already installed (navigator.getInstalledRelatedApps)
+    related_applications: [{ platform: "webapp", url: "https://konsilier.com/manifest.webmanifest" }],
     launch_handler: { client_mode: ["navigate-existing", "auto"] },
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
