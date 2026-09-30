@@ -34,7 +34,7 @@ function Bubble({ mine, at, seen, children }: { mine: boolean; at?: string; seen
       {!mine && ( // Konsiliér's small avatar beside its replies, as in Messenger
         <img src="/icons/icon-192.png" alt="" width={28} height={28} className="mb-0.5 h-7 w-7 shrink-0 rounded-full ring-1 ring-line" />
       )}
-      <div className={`relative min-w-0 max-w-[85%] rounded-[20px] px-3.5 pt-2 pb-1.5 text-[16px] leading-[1.5] sm:max-w-[75%] ${
+      <div className={`relative min-w-0 max-w-[85%] rounded-[20px] px-3.5 pt-2 pb-1.5 text-[17px] leading-[1.5] sm:max-w-[75%] ${
         mine ? "rounded-ee-[6px] bg-action text-white [&_a]:text-white" : "rounded-es-[6px] bg-[#f0f0f2] text-ink"}`}>
         <div className="space-y-2">{children}</div>
         {at && (
