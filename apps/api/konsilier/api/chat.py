@@ -29,6 +29,14 @@ router = APIRouter(prefix="/v1")
 log = logging.getLogger(__name__)
 
 
+def one_more_marker(text: str) -> str:
+    """Keep the first «[[MORE]]» (the cut between the short answer and the details) and drop any later ones."""
+    parts = re.split(r"\s*\[\[\s*MORE\s*\]\]\s*", text)
+    if len(parts) <= 2:
+        return text
+    return parts[0] + "\n[[MORE]]\n" + "\n\n".join(p for p in parts[1:] if p.strip())
+
+
 # Shown when no model can answer right now (Gemini over quota, Claude off or over its daily budget).
 BUSY = {
     "ru": "Сейчас большая нагрузка, повторите через минуту.",
@@ -267,6 +275,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             yield from unavailable("+".join(reasons) or "no_reply", started)
             return
         text = vault.restore(result.text) if result else ""
+        text = one_more_marker(text)  # QA BUG-05: a second [[MORE]] (after a tool call) never reaches the client
         if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text):
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)

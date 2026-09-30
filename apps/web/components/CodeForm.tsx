@@ -22,7 +22,10 @@ export function useAuthError() {
 
 /** Confirm an e-mail or a phone by a one-time code: the address, «Получить код», the code, «Подтвердить».
  *  `wide`: full-width buttons and no top rule, for the payment window on a phone. */
-export function CodeForm({ kind, onDone, wide = false }: { kind: "email" | "phone"; onDone: (r: SignedIn) => void; wide?: boolean }) {
+/** `onSendFailed`: the code could not be sent (the channel is down) — the caller may go on without it (payment does). */
+export function CodeForm({ kind, onDone, onSendFailed, wide = false }: {
+  kind: "email" | "phone"; onDone: (r: SignedIn) => void; onSendFailed?: () => void; wide?: boolean;
+}) {
   const t = useT();
   const { lang } = useLang();
   const authError = useAuthError();
@@ -46,7 +49,10 @@ export function CodeForm({ kind, onDone, wide = false }: { kind: "email" | "phon
     try {
       await api(`/v1/auth/${kind}/start`, { method: "POST", body: JSON.stringify({ target, language: lang }) });
       setSent(true); setWait(60); setCode(""); tried.current = "";
-    } catch (err) { setError(authError(err)); } finally { setBusy(false); }
+    } catch (err) {
+      if (onSendFailed && err instanceof ApiError && err.code === "send_failed") { onSendFailed(); return; }
+      setError(authError(err));
+    } finally { setBusy(false); }
   };
   const verify = async (e?: React.FormEvent) => {
     e?.preventDefault();

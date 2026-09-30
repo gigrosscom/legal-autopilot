@@ -107,6 +107,7 @@ def code_start(kind: str, body: CodeStart, request: Request, user: User = Depend
     try:
         sender.send(target, subject, text.format(code=code))
     except SendError as e:
+        container.send_failed_at[kind] = datetime.now(timezone.utc)  # payment stops asking for this channel for a while
         raise HTTPException(502, {"code": "send_failed", "message": "send_failed"}) from e
     out: dict[str, Any] = {"sent": True, "resend_after": 60}
     if container.settings.dev_show_codes:

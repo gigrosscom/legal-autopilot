@@ -590,19 +590,24 @@ class PaymentIn(BaseModel):
     purpose: Literal["document", "case"]
 
 
+CONFIRMED_CONTACTS = {"phone", "email", "iin", "google", "apple"}
+CHANNEL_DOWN = timedelta(minutes=30)
+
+
 def contact_to_confirm(container: Container, owner: User) -> list[str]:
     """How the case owner is to confirm a contact before paying: ["phone"] (SMS code), or ["email"] where SMS sign-in
-    is not configured; [] when a confirmed contact is there, the person is in Telegram, it is a test account (smoke
-    checks) or nothing can be sent."""
+    is not configured; [] when any confirmed contact is there (phone, e-mail, ЭЦП / eGov Mobile, Google, Apple), the
+    person is in Telegram, it is a test account (smoke checks), or nothing can be sent. A channel whose code failed to
+    go out in the last 30 minutes is not asked for: payment never waits on a channel that is down (QA BUG-01)."""
     if not container.settings.payment_requires_contact or owner.channel == "telegram" or owner.is_test:
         return []
+    if {i.kind for i in owner.identities} & CONFIRMED_CONTACTS:
+        return []
     methods = container.identity_methods()
-    kinds = {i.kind for i in owner.identities}
-    if methods["phone"]:
-        return [] if "phone" in kinds else ["phone"]
-    if methods["email"]:
-        return [] if kinds & {"phone", "email"} else ["email"]
-    return []
+    now = utcnow()
+    up = [k for k in ("phone", "email") if methods[k]
+          and not (container.send_failed_at.get(k) and now - container.send_failed_at[k] < CHANNEL_DOWN)]
+    return up[:1]
 
 
 @router.post("/cases/{case_id}/payment")

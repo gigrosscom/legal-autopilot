@@ -455,3 +455,11 @@ def test_document_is_not_offered_in_the_first_reply(ctx):
     cid2 = api.post("/v1/cases", expect=201, json={"text": "Нужна претензия", "country": "KZ", "defer": True})["case"]["id"]
     asked = _sse(ctx.client.post(f"/v1/cases/{cid2}/chat", headers=api.h, json={"text": "Составьте претензию продавцу"}))[-1]
     assert asked["message"]["offer_document"] is True
+
+
+def test_only_the_first_more_marker_is_kept():
+    # QA BUG-05: a reply written in two rounds (around a tool call) had a second [[MORE]] that the client showed
+    from konsilier.api.chat import one_more_marker
+    assert one_more_marker("Коротко.[[MORE]]Детали. Проверяю…[[MORE]]Ещё.") == "Коротко.\n[[MORE]]\nДетали. Проверяю…\n\nЕщё."
+    assert one_more_marker("A [[MORE]] B") == "A [[MORE]] B"
+    assert one_more_marker("без метки") == "без метки"

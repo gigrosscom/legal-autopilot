@@ -405,8 +405,11 @@ class CaseEngine:
             if f.type == "evidence":
                 return 2 if IDENTITY_KIND in f.evidence_kinds else 0
             return 3 if f.pii else 1
-        missing = [f for f in sc.intake if f.name not in case.facts and f.name not in (case.skipped_fields or [])]
-        return [f.name for f in sorted(missing, key=stage)]
+        skipped = case.skipped_fields or []
+        later = {x[len(LATER):] for x in skipped if isinstance(x, str) and x.startswith(LATER)}
+        missing = [f for f in sc.intake if f.name not in case.facts and f.name not in skipped]
+        # a required answer the person put off («пропустить») comes last, after everything else (QA BUG-08)
+        return [f.name for f in sorted(missing, key=lambda f: (f.name in later, stage(f)))]
 
     def _apply_values(self, case: Case, sc: Scenario, pack: JurisdictionPack, values: dict[str, Any],
                       llm: RedactingLLM | None, strict: bool, overwrite: bool = False) -> dict[str, str]:
@@ -427,8 +430,8 @@ class CaseEngine:
                 continue
             if f.pii and llm is not None:
                 llm.vault.register(f.pii, facts[name])
-            if name in (case.skipped_fields or []):
-                case.skipped_fields = [s for s in case.skipped_fields if s != name]
+            if name in (case.skipped_fields or []) or LATER + name in (case.skipped_fields or []):
+                case.skipped_fields = [s for s in case.skipped_fields if s not in (name, LATER + name)]
         case.facts = facts
         if sc.claim and sc.claim.amount_field and sc.claim.amount_field in facts:
             case.amount_at_stake = Decimal(str(facts[sc.claim.amount_field]))
@@ -505,8 +508,16 @@ class CaseEngine:
                     return self._next_step(session, case, sc, pack)
             if _is_skip(text, pack, lang):
                 if not f.optional:
+                    # QA BUG-08: a required answer is not asked again and again. The first «пропустить» puts it
+                    # off to the end (why it is needed, and that it stays in the case); at the end, the reason once
+                    others = [n for n in self.missing_fields(case, sc) if n != pending]
+                    if LATER + pending not in (case.skipped_fields or []) and others:
+                        case.skipped_fields = [*(case.skipped_fields or []), LATER + pending]
+                        case.pending_field = others[0]
+                        q = self.question_for(sc, pack, lang, others[0])
+                        return Reply(message=f"{pack.t(lang, 'interview.required_later')}\n\n{q.text}", question=q)
                     q = self.question_for(sc, pack, lang, pending)
-                    return Reply(message=f"{pack.t(lang, 'interview.required')}\n{q.text}", question=q,
+                    return Reply(message=f"{pack.t(lang, 'interview.required_why')}\n{q.text}", question=q,
                                  error="required")
                 case.skipped_fields = [*(case.skipped_fields or []), pending]
                 return self._next_step(session, case, sc, pack)
@@ -1482,6 +1493,9 @@ class CaseEngine:
 class _Fmt(dict):
     def __missing__(self, key: str) -> str:
         return ""
+
+
+LATER = "later:"  # skipped_fields entry: a required answer put off to the end of the interview
 
 
 def _is_skip(text: str, pack: JurisdictionPack, lang: str) -> bool:
