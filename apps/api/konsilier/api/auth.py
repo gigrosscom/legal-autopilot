@@ -1,4 +1,5 @@
-"""Sign-in and identity verification: e-mail and SMS codes, ЭЦП via NCALayer, eGov Mobile QR (mgovSign).
+"""Sign-in and identity verification: e-mail and SMS codes, ЭЦП via NCALayer, eGov Mobile QR (mgovSign),
+«Sign in with Google» and «Sign in with Apple» (ID tokens from a popup, verified against the providers' keys).
 
 All methods start from the anonymous bearer token the web app already has and end in `link_or_login`,
 which returns the (possibly different) account token the client must switch to.
@@ -8,7 +9,7 @@ from __future__ import annotations
 
 import base64
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..identity import normalize as norm
+from ..identity import oidc
 from ..identity.ncanode import SignatureError
 from ..identity.service import AuthError, EGOV_TTL, me_view
 from ..identity.senders import SendError
@@ -299,3 +301,96 @@ def egov_status(challenge_id: uuid.UUID, user: User = Depends(current_user),
     owner = container.identities.link_or_login(session, user, "iin", None, res["display"], res.get("name"),
                                                subject_hash=res["subject_hash"])
     return {"status": "done", **_signed_in(owner)}
+
+
+# ------------------------------------------------------------------ Google / Apple (ID token from a popup)
+# The page asks for a nonce when it shows the button (start), hands it to the provider's script, and posts the ID
+# token it gets back together with the same nonce (verify). The nonce is one-time and belongs to this device's
+# account, so a token caught elsewhere cannot sign anyone in here.
+OIDC_NONCE_TTL = timedelta(minutes=30)  # the button is prepared when the page opens; the person may read first
+
+
+def _oidc_audience(container: Container, kind: str) -> str:
+    s = container.settings
+    aud = s.google_client_id if kind == "google" else s.apple_services_id
+    if not aud:
+        raise HTTPException(503, {"code": "method_unavailable", "message": "method_unavailable"})
+    return aud
+
+
+def _oidc_start(kind: str, user: User, session: Session, container: Container) -> tuple[str, LoginChallenge]:
+    _oidc_audience(container, kind)
+    nonce, ch = container.identities.issue_nonce(session, kind, user, ttl=OIDC_NONCE_TTL)
+    return base64.b64encode(nonce).decode(), ch
+
+
+def _oidc_signed_in(kind: str, token: str, nonce: str, name: str | None, user: User, session: Session,
+                    container: Container) -> dict:
+    audience = _oidc_audience(container, kind)
+    try:
+        ch = container.identities.take_nonce(session, kind, nonce)
+    except AuthError as e:
+        raise _err(e) from e
+    if ch.user_id != user.id:
+        raise HTTPException(403, {"code": "foreign_challenge", "message": "foreign_challenge"})
+    if kind == "google":
+        # Google Identity Services puts the nonce into the token exactly as given
+        provider, expected = oidc.GOOGLE, nonce
+    else:
+        # Sign in with Apple JS is given SHA-256 (hex) of our nonce and echoes that value in the token's nonce
+        # claim; the raw nonce stays with this device's session, so only its holder can match the hash
+        provider, expected = oidc.APPLE, oidc.sha256_hex(nonce)
+    try:
+        claims = oidc.verify_id_token(provider, token, audience, lambda claim: claim == expected)
+    except oidc.TokenError as e:
+        raise HTTPException(e.status, {"code": e.code, "message": e.code}) from e
+    email = claims.get("email") if isinstance(claims.get("email"), str) else None
+    if kind == "google":
+        if not email or not oidc.verified_flag(claims.get("email_verified")):
+            raise HTTPException(400, {"code": "email_not_verified", "message": "email_not_verified"})
+        name = claims.get("name") if isinstance(claims.get("name"), str) else None
+    ch.consumed_at = datetime.now(timezone.utc)
+    display = norm.mask_email(email.strip().lower())[:120] if email else ("Google" if kind == "google" else "Apple ID")
+    owner = container.identities.link_or_login(session, user, kind, str(claims["sub"]), display,
+                                               (name or "").strip()[:100] or None)
+    return _signed_in(owner)
+
+
+@router.post("/auth/google/start")
+def google_start(user: User = Depends(current_user), session: Session = Depends(get_session),
+                 container: Container = Depends(get_container)) -> dict:
+    nonce, ch = _oidc_start("google", user, session, container)
+    return {"nonce": nonce, "client_id": container.settings.google_client_id,
+            "expires_at": ch.expires_at.isoformat()}
+
+
+class GoogleVerify(BaseModel):
+    credential: str = Field(max_length=8000)
+    nonce: str = Field(max_length=200)
+
+
+@router.post("/auth/google/verify")
+def google_verify(body: GoogleVerify, user: User = Depends(current_user), session: Session = Depends(get_session),
+                  container: Container = Depends(get_container)) -> dict:
+    return _oidc_signed_in("google", body.credential, body.nonce, None, user, session, container)
+
+
+@router.post("/auth/apple/start")
+def apple_start(user: User = Depends(current_user), session: Session = Depends(get_session),
+                container: Container = Depends(get_container)) -> dict:
+    nonce, ch = _oidc_start("apple", user, session, container)
+    s = container.settings
+    return {"nonce": nonce, "nonce_sha256": oidc.sha256_hex(nonce), "client_id": s.apple_services_id,
+            "redirect_uri": s.apple_return_url, "expires_at": ch.expires_at.isoformat()}
+
+
+class AppleVerify(BaseModel):
+    id_token: str = Field(max_length=8000)
+    nonce: str = Field(max_length=200)
+    name: str | None = Field(default=None, max_length=200)  # Apple gives the name to the page once, on first sign-in
+
+
+@router.post("/auth/apple/verify")
+def apple_verify(body: AppleVerify, user: User = Depends(current_user), session: Session = Depends(get_session),
+                 container: Container = Depends(get_container)) -> dict:
+    return _oidc_signed_in("apple", body.id_token, body.nonce, body.name, user, session, container)

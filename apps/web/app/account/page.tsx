@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { PushToggle } from "@/components/PushToggle";
+import { ProviderSignIn } from "@/components/ProviderSignIn";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -75,6 +76,7 @@ export default function AccountPage() {
 
       <section aria-labelledby="ways" className="space-y-3">
         <h2 id="ways" className="text-lg font-semibold">{t("account.waysTitle")}</h2>
+        {methods && <ProviderSignIn google={!!methods.google} apple={!!methods.apple} onDone={signedIn} />}
         {[...METHODS].sort((a, b) => Number(methods?.[b.id] ?? false) - Number(methods?.[a.id] ?? false)).map((m) => {
           const available = methods?.[m.id] ?? false;
           const isOpen = open === m.id;

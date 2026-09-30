@@ -86,7 +86,7 @@ class Identity(TimestampMixin, Base):
     __table_args__ = (UniqueConstraint("kind", "subject_hash", name="uq_identity_kind_subject"),)
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(16))  # email | phone | iin (ЭЦП or eGov Mobile)
+    kind: Mapped[str] = mapped_column(String(16))  # email | phone | iin (ЭЦП or eGov Mobile) | google | apple
     subject_hash: Mapped[str] = mapped_column(String(64))
     display: Mapped[str] = mapped_column(String(120))
     verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -55,7 +55,8 @@ def sent_code(sender: LogSender) -> str:
 
 
 def test_methods_reflect_configuration(ctx, auth):
-    assert auth.client.get("/v1/auth/methods").json() == {"email": True, "phone": True, "ecp": True, "egov": True}
+    assert auth.client.get("/v1/auth/methods").json() == {"email": True, "phone": True, "ecp": True, "egov": True,
+                                                         "google": False, "apple": False}
     auth.container.signature_verifier = None
     assert auth.client.get("/v1/auth/methods").json()["ecp"] is False
     assert auth.client.get("/v1/auth/methods").json()["egov"] is False

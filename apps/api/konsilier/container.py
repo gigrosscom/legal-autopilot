@@ -64,7 +64,8 @@ class Container:
     def identity_methods(self) -> dict[str, bool]:
         ecp = self.signature_verifier is not None
         return {"email": self.email_sender is not None, "phone": self.sms_sender is not None,
-                "ecp": ecp, "egov": ecp and bool(self.settings.egov_org_bin)}
+                "ecp": ecp, "egov": ecp and bool(self.settings.egov_org_bin),
+                "google": bool(self.settings.google_client_id), "apple": bool(self.settings.apple_services_id)}
 
 
 def free_chat_clients(settings: Settings) -> list[Any]:
