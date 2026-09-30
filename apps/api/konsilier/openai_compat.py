@@ -11,13 +11,16 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
+import threading
 import time
 import uuid
+from types import SimpleNamespace as NS
 from typing import Any, Iterator
 
 import httpx
 
-from .gemini import RETRY_STATUSES, Block, Message, Usage
+from .gemini import RETRY_STATUSES, Block, Message, Usage, Warm, keepalive_http
 
 log = logging.getLogger(__name__)
 RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at a provider
@@ -74,6 +77,7 @@ class _Stream:
     def __init__(self, http: httpx.Client, url: str, body: dict[str, Any], headers: dict[str, str], name: str):
         self._http, self._url, self._body, self._headers, self._name = http, url, body, headers, name
         self._final: Message | None = None
+        self.attempts: list[dict[str, Any]] = []  # every HTTP try: status (or error) and ms until the answer
 
     def __enter__(self) -> "_Stream":
         return self
@@ -84,12 +88,15 @@ class _Stream:
     def _open(self) -> httpx.Response:
         """Retried on overload and dropped connections, only before any text reached the reader."""
         for delay in (*RETRY_DELAYS, None):
+            t0 = time.perf_counter()
             try:
                 r = self._http.send(self._http.build_request("POST", self._url, json=self._body,
                                                              headers=self._headers), stream=True)
             except httpx.TransportError as e:
                 error = f"{self._name}: {e.__class__.__name__}: {e}"
+                self.attempts.append({"status": e.__class__.__name__, "ms": round((time.perf_counter() - t0) * 1000)})
             else:
+                self.attempts.append({"status": r.status_code, "ms": round((time.perf_counter() - t0) * 1000)})
                 if r.status_code < 400:
                     return r
                 r.read()
@@ -148,7 +155,7 @@ class _Stream:
         return self._final
 
 
-class OpenAICompatClient:
+class OpenAICompatClient(Warm):
     """``OpenAICompatClient(name, api_key, model).messages.stream(...)``; ``model=`` of the call is ignored in
     favour of the provider's own model (the chat agent passes one model name for all providers)."""
 
@@ -157,8 +164,11 @@ class OpenAICompatClient:
         default_base, default_model = PROVIDERS.get(name, ("", ""))
         self.name, self.api_key = name, api_key
         self.base_url, self.model = (base_url or default_base).rstrip("/"), model or default_model
-        self.http = http or httpx.Client(timeout=timeout)
+        self.http = http or keepalive_http(timeout)
         self.messages = self
+
+    def warm(self) -> None:
+        self._warm(f"{self.base_url}/models", {"Authorization": f"Bearer {self.api_key}"})
 
     def stream(self, *, model: str, max_tokens: int, system: str, tools: list[dict[str, Any]],
                messages: list[dict[str, Any]]) -> _Stream:
@@ -172,10 +182,16 @@ class OpenAICompatClient:
 
 
 class _ChainStream:
-    def __init__(self, clients: list[Any], kwargs: dict[str, Any]):
-        self._clients, self._kwargs = clients, kwargs
+    """The first provider of the chain that starts answering. With ``first_token_timeout`` the next provider is
+    asked in parallel once the current one has been silent that long (and at once after a failure); the first to
+    start (a word, or a finished tool call) answers and the others are dropped. Without it, one after another, only
+    after a failure. Nothing is shown twice: only the answering provider's words reach the reader."""
+
+    def __init__(self, clients: list[Any], kwargs: dict[str, Any], first_token_timeout: float = 0):
+        self._clients, self._kwargs, self._timeout = clients, kwargs, first_token_timeout
         self._final: Message | None = None
         self.provider = ""
+        self.attempts: list[dict[str, Any]] = []  # per provider: how long until it started, or why it did not
 
     def __enter__(self) -> "_ChainStream":
         return self
@@ -185,21 +201,109 @@ class _ChainStream:
 
     @property
     def text_stream(self) -> Iterator[str]:
+        if self._timeout > 0 and len(self._clients) > 1:
+            yield from self._hedged()
+            return
         for i, c in enumerate(self._clients):
             name = getattr(c, "name", type(c).__name__)
             started = False
+            t0 = time.perf_counter()
             try:
                 with c.messages.stream(**self._kwargs) as s:
                     for chunk in s.text_stream:
+                        if not started:
+                            self._attempt(name, t0, "answered", s)
                         started = True
                         yield chunk
                     self._final = s.get_final_message()
+                if not started:
+                    self._attempt(name, t0, "answered", s)
                 self.provider = name
                 return
             except Exception as e:  # overloaded, daily limit reached, key revoked …: the next free provider
+                if not started:
+                    self._attempt(name, t0, _why(e))
                 if started or i == len(self._clients) - 1:
                     raise
                 log.warning("chat provider %s failed, trying the next one: %s", name, str(e)[:200])
+
+    def _attempt(self, name: str, t0: float, result: str, s: Any = None) -> None:
+        a: dict[str, Any] = {"provider": name, "ms": round((time.perf_counter() - t0) * 1000), "result": result}
+        if tries := getattr(s, "attempts", None):
+            a["tries"] = tries
+        self.attempts.append(a)
+
+    def _hedged(self) -> Iterator[str]:
+        events: queue.Queue[tuple[int, str, Any]] = queue.Queue()
+        stop = [threading.Event() for _ in self._clients]
+        names = [getattr(c, "name", type(c).__name__) for c in self._clients]
+        started_at: dict[int, float] = {}
+        failed: set[int] = set()
+
+        def run(i: int) -> None:
+            try:
+                with self._clients[i].messages.stream(**self._kwargs) as s:
+                    for chunk in s.text_stream:
+                        if stop[i].is_set():
+                            return
+                        events.put((i, "text", chunk))
+                    final = s.get_final_message()
+                events.put((i, "final", (final, getattr(s, "attempts", None))))
+            except Exception as e:  # reported to the reader thread, which decides
+                events.put((i, "error", e))
+
+        def launch(i: int) -> None:
+            started_at[i] = time.perf_counter()
+            threading.Thread(target=run, args=(i,), name=f"chat-{names[i]}", daemon=True).start()
+
+        launch(0)
+        winner: int | None = None
+        try:
+            while True:
+                pending = [i for i in started_at if i not in failed]
+                nxt = len(started_at) if len(started_at) < len(self._clients) else None
+                if winner is None and nxt is not None and not pending:
+                    launch(nxt)  # everyone asked so far failed: the next one at once
+                    continue
+                wait = None
+                if winner is None and nxt is not None:
+                    wait = max(0.0, started_at[nxt - 1] + self._timeout - time.perf_counter())
+                try:
+                    i, kind, payload = events.get(timeout=wait)
+                except queue.Empty:  # the latest one is silent too long: ask the next in parallel
+                    log.info("chat provider %s has not started after %.1f s, asking %s too", names[nxt - 1],
+                             self._timeout, names[nxt])
+                    launch(nxt)
+                    continue
+                if winner is None:
+                    if kind == "error":
+                        failed.add(i)
+                        self._attempt(names[i], started_at[i], _why(payload))
+                        log.warning("chat provider %s failed, trying the next one: %s", names[i], str(payload)[:200])
+                        if len(failed) == len(self._clients):
+                            raise payload
+                        continue
+                    winner = i
+                    self._attempt(names[i], started_at[i], "answered",
+                                  NS(attempts=payload[1]) if kind == "final" else None)
+                    for j in started_at:
+                        if j != i:
+                            stop[j].set()
+                            if j not in failed:
+                                self._attempt(names[j], started_at[j], "dropped")
+                if i != winner:
+                    continue
+                if kind == "text":
+                    yield payload
+                elif kind == "final":
+                    self._final = payload[0]
+                    self.provider = names[i]
+                    return
+                else:
+                    raise payload
+        finally:  # the reader stopped (answer done, the person left): the other providers stop reading too
+            for e in stop:
+                e.set()
 
     def get_final_message(self) -> Message:
         if self._final is None:
@@ -209,14 +313,34 @@ class _ChainStream:
         return self._final
 
 
-class ChainClient:
-    """Tries each client in turn until one starts answering; a failure after text was shown is raised."""
+def _why(e: Exception) -> str:
+    status = getattr(e, "status_code", None)
+    return f"error {status}" if status else f"error {type(e).__name__}: {str(e)[:80]}"
 
-    def __init__(self, clients: list[Any]):
+
+class ChainClient:
+    """Tries each client in turn until one starts answering; a failure after text was shown is raised.
+    ``first_token_timeout`` > 0: a provider silent that long gets the next one asked in parallel (see
+    ``_ChainStream``). ``stream(prefer=name)`` asks that provider first (the one that began the conversation's turn
+    keeps its own tool calls)."""
+
+    accepts_prefer = True
+    name = "free"
+
+    def __init__(self, clients: list[Any], first_token_timeout: float = 0):
         if not clients:
             raise ValueError("ChainClient needs at least one client")
-        self.clients = clients
+        self.clients, self.first_token_timeout = clients, first_token_timeout
         self.messages = self
 
-    def stream(self, **kwargs: Any) -> _ChainStream:
-        return _ChainStream(self.clients, kwargs)
+    def stream(self, prefer: str = "", **kwargs: Any) -> _ChainStream:
+        clients = self.clients
+        if prefer:
+            clients = sorted(clients, key=lambda c: getattr(c, "name", "") != prefer)
+        return _ChainStream(clients, kwargs, self.first_token_timeout)
+
+    def warm(self) -> None:
+        """Open the connections of the first providers (TLS takes a few hundred ms) before the person's message."""
+        for c in self.clients[:2]:
+            if hasattr(c, "warm"):
+                c.warm()

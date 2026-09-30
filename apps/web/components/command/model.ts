@@ -15,6 +15,9 @@ export type Metrics = {
   referral?: { users: number; referred_users: number; inviters: number; users_with_link: number;
     k_factor: number | null; sources: Record<string, number> };
   chat?: { day: string; gemini: number; free: number; anthropic: number; unavailable: number; anthropic_cost_usd: number };
+  // time to the chat's first words over the last 24 h, ms (konsilier/api/chat.py chat_latency)
+  chat_latency?: { hours: number; n: number; p50_ms: number | null; p95_ms: number | null;
+    by_provider: Record<string, { n: number; p50_ms: number | null; p95_ms: number | null }> };
   claude?: { today_usd: number; month_usd: number; daily_budget_usd: number; monthly_budget_usd: number;
     by_task: Record<string, { calls: number; cost_usd: number }> };
   weekly: { week: string; users: number; cases: number; documents: number; submitted: number }[];
@@ -148,7 +151,10 @@ export function planSection(b: Bundle | null, re: RegExp) {
 }
 
 export const fmt = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("ru-RU"));
-export const usd = (n: number | null | undefined) => (n == null ? "—" : `$${n.toFixed(2)}`);
+/** Milliseconds as seconds with one decimal: «1,4 с». */
+export const secs = (ms: number | null | undefined) =>
+  ms == null ? "—" : `${(ms / 1000).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} с`;
+export const usd =(n: number | null | undefined) => (n == null ? "—" : `$${n.toFixed(2)}`);
 export function moneyText(r: Record<string, string> | undefined): string {
   const e = Object.entries(r ?? {});
   if (!e.length) return "0";

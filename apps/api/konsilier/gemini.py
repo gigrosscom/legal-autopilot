@@ -27,6 +27,31 @@ MAX_RETRY_WAIT = 3.0  # Retry-After longer than this: go straight to the next mo
 MAX_TOTAL_WAIT = 5.0  # all pauses of one request together; the person is waiting for the reply
 
 
+def keepalive_http(timeout: float) -> httpx.Client:
+    """One client per provider for the whole process: its connections stay open between chat messages (httpx drops
+    an idle one after 5 s by default, and a new TLS handshake costs a few hundred ms before the first word)."""
+    return httpx.Client(timeout=timeout, limits=httpx.Limits(max_keepalive_connections=10, keepalive_expiry=120))
+
+
+class Warm:
+    """``warm()``: a cheap GET (the model list) that opens the provider's connection before the person's message
+    arrives — when the chat page opens and when the case is created. At most once in WARM_EVERY seconds."""
+
+    WARM_EVERY = 60.0
+    http: httpx.Client
+    _warmed_at = 0.0
+
+    def _warm(self, url: str, headers: dict[str, str]) -> None:
+        now = time.monotonic()
+        if now - self._warmed_at < self.WARM_EVERY:
+            return
+        self._warmed_at = now
+        try:
+            self.http.get(url, headers=headers, timeout=5).close()
+        except Exception:  # noqa: BLE001 — only a warm-up: the message itself retries and reports
+            pass
+
+
 class GeminiUnavailable(RuntimeError):
     """Every model of the chain is over quota / overloaded (the last status is kept for the logs)."""
 
@@ -99,8 +124,11 @@ def _contents(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 if isinstance(b, Block):
                     if b.type == "tool_use":
                         names[b.id] = b.name
+                    # a call another provider of the chain made has no Gemini signature: Gemini 3 accepts this
+                    # documented placeholder instead of refusing the whole request
                     parts.append(b.part or ({"text": b.text} if b.type == "text" else
-                                            {"functionCall": {"name": b.name, "args": b.input}}))
+                                            {"functionCall": {"name": b.name, "args": b.input},
+                                             "thoughtSignature": "skip_thought_signature_validator"}))
                 elif b.get("type") == "tool_result":
                     parts.append({"functionResponse": {"name": names.get(b["tool_use_id"], "tool"),
                                                        "response": {"result": b["content"]}}})
@@ -112,9 +140,26 @@ def _contents(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 class _Stream:
-    def __init__(self, http: httpx.Client, urls: list[str], body: dict[str, Any], headers: dict[str, str]):
-        self._http, self._urls, self._body, self._headers = http, urls, body, headers
+    def __init__(self, http: httpx.Client, urls: list[str], body: dict[str, Any], headers: dict[str, str],
+                 thinking: str = ""):
+        self._http, self._urls, self._body, self._headers, self._thinking = http, urls, body, headers, thinking
         self._final: Message | None = None
+        self.attempts: list[dict[str, Any]] = []  # every HTTP try: model, status (or error), ms, pause after it
+
+    def _body_for(self, url: str) -> dict[str, Any]:
+        """The request for one model: Gemini 3 models get the chat's thinking level (least thinking → first words
+        sooner); older models do not know the setting and get the body as it is."""
+        if not self._thinking or "/models/gemini-3" not in url:
+            return self._body
+        gen = {**self._body["generationConfig"], "thinkingConfig": {"thinkingLevel": self._thinking}}
+        return {**self._body, "generationConfig": gen}
+
+    def _try(self, url: str, t0: float, status: Any, pause: float = 0.0) -> None:
+        model = url.split("/models/", 1)[-1].split(":", 1)[0]
+        a: dict[str, Any] = {"model": model, "status": status, "ms": round((time.perf_counter() - t0) * 1000)}
+        if pause:
+            a["pause_ms"] = round(pause * 1000)
+        self.attempts.append(a)
 
     def __enter__(self) -> "_Stream":
         return self
@@ -164,30 +209,48 @@ class _Stream:
         last: httpx.Response | None = None
         dropped: Exception | None = None
         for url in self._urls:
+            body = self._body_for(url)
             for attempt in (0, 1):
+                t0 = time.perf_counter()
                 try:
-                    r = self._http.send(self._http.build_request("POST", url, json=self._body,
+                    r = self._http.send(self._http.build_request("POST", url, json=body,
                                                                  headers=self._headers), stream=True)
                 except httpx.TransportError as e:  # dropped connection under load: same as an overload answer
                     dropped = e
+                    self._try(url, t0, e.__class__.__name__, 0 if attempt else RETRY_DELAY)
                     if attempt:
                         break
                     time.sleep(RETRY_DELAY)
                     waited += RETRY_DELAY
                     continue
                 if r.status_code < 400:
+                    self._try(url, t0, r.status_code)
                     return r
                 r.read()
                 r.close()
                 last = r
+                if r.status_code == 400 and body is not self._body and "thinking" in r.text.lower():
+                    self._try(url, t0, "400 thinking")
+                    body = self._body  # this model does not take the thinking level: the same request without it
+                    r = self._http.send(self._http.build_request("POST", url, json=body, headers=self._headers),
+                                        stream=True)
+                    if r.status_code < 400:
+                        return r
+                    r.read()
+                    r.close()
+                    last = r
                 if r.status_code not in RETRY_STATUSES:
+                    self._try(url, t0, r.status_code)
                     raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
                 if attempt:
+                    self._try(url, t0, r.status_code)
                     break
                 wait = retry_after(r)
                 wait = RETRY_DELAY if wait is None else wait
                 if wait > MAX_RETRY_WAIT or waited + wait > MAX_TOTAL_WAIT:
+                    self._try(url, t0, r.status_code)
                     break  # a long wait: the next model is quicker
+                self._try(url, t0, r.status_code, wait)
                 time.sleep(wait)
                 waited += wait
         if last is None:
@@ -204,14 +267,19 @@ class _Stream:
         return self._final
 
 
-class GeminiClient:
-    """``GeminiClient(api_key).messages.stream(...)`` — the Anthropic-shaped surface the chat needs."""
+class GeminiClient(Warm):
+    """``GeminiClient(api_key).messages.stream(...)`` — the Anthropic-shaped surface the chat needs.
+    ``thinking_level``: how much Gemini 3 models think before writing (the chat asks for the least)."""
 
     def __init__(self, api_key: str, *, http: httpx.Client | None = None, timeout: float = 60,
-                 fallback_models: tuple[str, ...] = ()):
+                 fallback_models: tuple[str, ...] = (), thinking_level: str = ""):
         self.name, self.api_key, self.fallback_models = "gemini", api_key, fallback_models
-        self.http = http or httpx.Client(timeout=timeout)
+        self.thinking_level = thinking_level
+        self.http = http or keepalive_http(timeout)
         self.messages = self
+
+    def warm(self) -> None:
+        self._warm(f"{BASE}/models?pageSize=1", {"x-goog-api-key": self.api_key})
 
     def stream(self, *, model: str, max_tokens: int, system: str, tools: list[dict[str, Any]],
                messages: list[dict[str, Any]]) -> _Stream:
@@ -221,4 +289,4 @@ class GeminiClient:
             body["tools"] = t
         models = [model, *(m for m in self.fallback_models if m != model)]
         return _Stream(self.http, [f"{BASE}/models/{m}:streamGenerateContent?alt=sse" for m in models], body,
-                       {"x-goog-api-key": self.api_key, "Content-Type": "application/json"})
+                       {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}, self.thinking_level)
