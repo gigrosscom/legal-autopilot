@@ -12,7 +12,9 @@ every block keeps the raw part it came from for that reason.
 from __future__ import annotations
 
 import json
+import queue
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -100,9 +102,19 @@ class EmptyReply(RuntimeError):
     reply (the next provider is asked, else the person is told to try again in a minute)."""
 
 
+# the chat's markers ([[MORE]], [[DOCUMENT]]), whole or still being streamed ("[[MO"), and a lone "[" at the end
+_MARKERS = re.compile(r"\[\[\s*[A-Za-z]*\s*\]{0,2}|\[$")
+
+
+def has_words(text: str) -> bool:
+    """Text a person can read: not blank and not only the chat's markers (QA 30.09: a reply of just [[MORE]] showed
+    as an empty bubble)."""
+    return bool(re.search(r"\w", _MARKERS.sub("", text or "")))
+
+
 def has_content(message: Any) -> bool:
-    """A reply with some text or a tool call (an empty or whitespace-only one is not an answer)."""
-    return any(getattr(b, "type", "") != "text" or (getattr(b, "text", "") or "").strip()
+    """A reply with some words or a tool call (an empty, blank or marker-only one is not an answer)."""
+    return any(getattr(b, "type", "") != "text" or has_words(getattr(b, "text", "") or "")
                for b in getattr(message, "content", None) or [])
 
 
@@ -150,10 +162,19 @@ def _contents(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def _close_late(results: "queue.Queue[tuple[httpx.Response | None, Exception | None]]", pending: int) -> None:
+    """Close the answers of the models that lost the race as they arrive (nobody reads them)."""
+    for _ in range(pending):
+        r, _e = results.get()
+        if r is not None:
+            r.close()
+
+
 class _Stream:
     def __init__(self, http: httpx.Client, urls: list[str], body: dict[str, Any], headers: dict[str, str],
-                 thinking: str = ""):
+                 thinking: str = "", hedge_after: float = 0):
         self._http, self._urls, self._body, self._headers, self._thinking = http, urls, body, headers, thinking
+        self._hedge = hedge_after
         self._final: Message | None = None
         self._r: httpx.Response | None = None
         self._closed = False
@@ -226,13 +247,63 @@ class _Stream:
     def _open(self) -> httpx.Response:
         """First model that answers. On 429/5xx or a dropped connection a model is retried once after a short pause
         (Retry-After when the API names one, if it is short), then the next model of the chain is tried (free-tier
-        quotas are per model). Only before any text reached the reader, so nothing is shown twice."""
+        quotas are per model). Only before any text reached the reader, so nothing is shown twice.
+
+        With ``hedge_after`` > 0 the fallback models are asked in parallel once the first model has been silent that
+        long (Gemini answers the request only when its first words are ready, so a slow model is a slow first word;
+        30.09 gemini-3.1-flash-lite took 2–8 s while gemini-3.5-flash-lite took ≈0.5 s). The first model to answer is
+        read; the other request is closed. The reader sees one model's words only."""
+        if self._hedge <= 0 or len(self._urls) < 2:
+            return self._open_seq(self._urls, threading.Event())
+        return self._open_hedged()
+
+    def _open_hedged(self) -> httpx.Response:
+        results: queue.Queue[tuple[httpx.Response | None, Exception | None]] = queue.Queue()
+        won = threading.Event()  # set once a model answered: the other one does not start a new try
+
+        def run(urls: list[str]) -> None:
+            try:
+                results.put((self._open_seq(urls, won), None))
+            except Exception as e:  # noqa: BLE001 — reported to the waiting reader
+                results.put((None, e))
+
+        def launch(urls: list[str]) -> None:
+            threading.Thread(target=run, args=(urls,), name="gemini-hedge", daemon=True).start()
+
+        launch(self._urls[:1])
+        pending, errors = 1, []
+        try:
+            r, e = results.get(timeout=self._hedge)
+        except queue.Empty:
+            r, e = None, None
+        else:
+            pending -= 1
+            if r is not None:
+                return r
+            errors.append(e)
+        launch(self._urls[1:])  # the first model is slow (or failed): the fallback models too
+        pending += 1
+        while pending:
+            r, e = results.get()
+            pending -= 1
+            if r is not None:
+                won.set()
+                if pending:  # the slower model may still answer: its request is closed unread
+                    threading.Thread(target=_close_late, args=(results, pending), daemon=True).start()
+                return r
+            errors.append(e)
+        # every model failed: an overload is reported as such (the chat says «busy»), else the last error
+        raise next((x for x in errors if isinstance(x, GeminiUnavailable)), errors[-1])
+
+    def _open_seq(self, urls: list[str], won: threading.Event) -> httpx.Response:
         waited = 0.0
         last: httpx.Response | None = None
         dropped: Exception | None = None
-        for url in self._urls:
+        for url in urls:
             body = self._body_for(url)
             for attempt in (0, 1):
+                if won.is_set():
+                    raise RuntimeError("gemini: another model answered first")
                 t0 = time.perf_counter()
                 try:
                     r = self._http.send(self._http.build_request("POST", url, json=body,
@@ -257,6 +328,7 @@ class _Stream:
                     r = self._http.send(self._http.build_request("POST", url, json=body, headers=self._headers),
                                         stream=True)
                     if r.status_code < 400:
+                        self._try(url, t0, r.status_code)
                         return r
                     r.read()
                     r.close()
@@ -291,12 +363,14 @@ class _Stream:
 
 class GeminiClient(Warm):
     """``GeminiClient(api_key).messages.stream(...)`` — the Anthropic-shaped surface the chat needs.
-    ``thinking_level``: how much Gemini 3 models think before writing (the chat asks for the least)."""
+    ``thinking_level``: how much Gemini 3 models think before writing (the chat asks for the least).
+    ``hedge_after``: seconds of silence of the first model before the fallback models are asked in parallel
+    (0: only after a failure)."""
 
     def __init__(self, api_key: str, *, http: httpx.Client | None = None, timeout: float = 60,
-                 fallback_models: tuple[str, ...] = (), thinking_level: str = ""):
+                 fallback_models: tuple[str, ...] = (), thinking_level: str = "", hedge_after: float = 0):
         self.name, self.api_key, self.fallback_models = "gemini", api_key, fallback_models
-        self.thinking_level = thinking_level
+        self.thinking_level, self.hedge_after = thinking_level, hedge_after
         self.http = http or keepalive_http(timeout)
         self.messages = self
 
@@ -311,4 +385,5 @@ class GeminiClient(Warm):
             body["tools"] = t
         models = [model, *(m for m in self.fallback_models if m != model)]
         return _Stream(self.http, [f"{BASE}/models/{m}:streamGenerateContent?alt=sse" for m in models], body,
-                       {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}, self.thinking_level)
+                       {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}, self.thinking_level,
+                       self.hedge_after)
