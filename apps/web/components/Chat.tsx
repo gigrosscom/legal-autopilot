@@ -23,38 +23,48 @@ const REMAINING_FROM = 10;
 const OFFER = /\[?\[\s*DOC[A-Z]*\s*\]?\]?\s*$|\[\[?\s*$/;
 const clean = (text: string) => text.replace(OFFER, "").trimEnd();
 
-const BUBBLE = "max-w-[88%] rounded-[20px] px-4 py-2.5 text-[16px] leading-[1.55] sm:max-w-[80%]";
+const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const dayOf = (iso: string) => new Date(iso).toDateString();
 
-/** Konsiliér's side of the dialogue: plain text across the width, as in ChatGPT and Claude. */
-function Answer({ children }: { children: React.ReactNode }) {
-  return <div className="min-w-0 space-y-3 py-1 text-[16px] leading-[1.65] text-ink">{children}</div>;
-}
-
-/** Copy, share and read aloud, small and quiet under a finished answer. */
-function AnswerTools({ text, onSpeak, speaking }: { text: string; onSpeak?: () => void; speaking?: boolean }) {
-  const t = useT();
-  const [copied, setCopied] = useState(false);
-  const btn = "flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-sand hover:text-ink";
-  const canShare = typeof navigator !== "undefined" && "share" in navigator;
+/** A message bubble, as in WhatsApp: the person's on the right (tinted), Konsiliér's on the left (white), the time
+ *  in the corner; the person's shows ✓ when sent and ✓✓ once answered. */
+function Bubble({ mine, at, seen, children }: { mine: boolean; at?: string; seen?: boolean; children: React.ReactNode }) {
   return (
-    <div className="-ms-2 flex items-center gap-0.5">
-      <button type="button" className={btn} title={copied ? t("chat.copied") : t("chat.copy")}
-        onClick={() => { navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}>
-        <Icon name={copied ? "check" : "copy"} size={18} /><span className="sr-only">{copied ? t("chat.copied") : t("chat.copy")}</span>
-      </button>
-      {canShare && (
-        <button type="button" className={btn} title={t("chat.share")}
-          onClick={() => navigator.share({ text: `${text}\n\n— Konsiliér AI · konsilier.com` }).catch(() => {})}>
-          <Icon name="share" size={18} /><span className="sr-only">{t("chat.share")}</span>
-        </button>
-      )}
-      {onSpeak && (
-        <button type="button" className={btn} onClick={onSpeak} aria-pressed={speaking} title={speaking ? t("chat.stopSpeak") : t("chat.speak")}>
-          <Icon name={speaking ? "stop" : "volume"} size={18} /><span className="sr-only">{speaking ? t("chat.stopSpeak") : t("chat.speak")}</span>
-        </button>
-      )}
+    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+      <div className={`relative min-w-0 max-w-[85%] rounded-[18px] px-3.5 pt-2 pb-1.5 text-[16px] leading-[1.5] text-ink shadow-[0_1px_1px_rgb(0_0_0/0.08)] sm:max-w-[75%] ${
+        mine ? "rounded-ee-[6px] bg-[#d9eafd]" : "rounded-es-[6px] bg-surface"}`}>
+        <div className="space-y-2">{children}</div>
+        {at && (
+          <span className="float-end ms-3 mt-1 flex translate-y-0.5 items-center gap-0.5 text-[11px] leading-none text-muted">
+            {time(at)}
+            {mine && <span aria-hidden className={seen ? "text-brand" : ""}>{seen ? "✓✓" : "✓"}</span>}
+          </span>
+        )}
+        <span className="block clear-both" />
+      </div>
     </div>
   );
+}
+
+/** «Сегодня», «Вчера» or the date, between the days of a conversation. */
+function DayChip({ iso }: { iso: string }) {
+  const t = useT();
+  const d = new Date(iso), now = new Date();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  const label = d.toDateString() === now.toDateString() ? t("app.today")
+    : d.toDateString() === y.toDateString() ? t("app.yesterday")
+    : d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  return (
+    <div className="flex justify-center py-1">
+      <span className="rounded-lg bg-surface/90 px-3 py-1 text-xs font-medium text-ink-soft shadow-[0_1px_1px_rgb(0_0_0/0.06)]">{label}</span>
+    </div>
+  );
+}
+
+/** Greeting by the time of day, as the messengers' assistants do. */
+function greeting(t: (k: string) => string) {
+  const h = new Date().getHours();
+  return t(h < 5 ? "chat.greet.night" : h < 12 ? "chat.greet.morning" : h < 18 ? "chat.greet.day" : "chat.greet.evening");
 }
 
 /**
@@ -265,7 +275,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     <div className="space-y-1.5">
       <Composer value={draft} setValue={setDraft} files={files} busy={busy} onSubmit={() => send()}
         onStop={streaming !== null ? () => abort.current?.abort() : undefined}
-        placeholder={empty ? t("chat.placeholder") : t("chat.placeholderNext")}
+        placeholder={t("chat.placeholderNext")}
         onFiles={(fs) => setFiles((xs) => [...xs, ...fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f }))])}
         onRemove={(key) => setFiles((xs) => xs.filter((x) => x.key !== key))} />
       {left && left.limit > 0 && left.n <= REMAINING_FROM && (
@@ -280,22 +290,25 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   );
 
   return (
-    <AppShell title={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections}
-      links={links} bar={bar} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
-      <div className="space-y-2.5" aria-live="polite">
+    <AppShell title={t("chat.brand")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar} wallpaper
+      avatar tabs={false} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
+      <div className="space-y-1.5" aria-live="polite">
 
         {empty && (
-          <div className="flex min-h-[45dvh] flex-col items-center justify-end gap-5 pb-4 text-center">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">{t("chat.title")}</h2>
-              <p className="mx-auto max-w-md text-[15px] text-muted">{hint ?? t("chat.lead")}</p>
+          <div className="flex min-h-[55dvh] flex-col items-center justify-end gap-6 pb-2">
+            <div className="space-y-4 text-center">
+              <img src="/icons/icon-192.png" alt="" width={72} height={72} className="mx-auto rounded-[22px] shadow-[0_2px_10px_rgb(0_0_0/0.08)]" />
+              <h2 className="text-[28px] font-semibold tracking-tight text-balance">{greeting(t)}</h2>
+              {hint && <p className="mx-auto max-w-md text-[15px] text-muted">{hint}</p>}
             </div>
             {!draft.trim() && (
-              <ul className="flex flex-wrap justify-center gap-2">
+              <ul className="w-full space-y-2">
                 {examples.map((e) => (
                   <li key={e}>
                     <button type="button" onClick={() => { setDraft(e); document.getElementById("chat-input")?.focus(); }}
-                      className="min-h-10 rounded-full border border-line bg-surface px-4 py-2 text-start text-sm text-ink hover:bg-sand">{e}</button>
+                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-surface px-4 py-3 text-start text-[16px] text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)] hover:bg-sand">
+                      <Icon name="chat" size={20} className="shrink-0 text-muted" />{e}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -303,71 +316,75 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           </div>
         )}
 
-        {messages.map((m) => m.role === "user" ? (
-          <div key={m.id} className="flex justify-end">
-            <div className={`${BUBBLE} space-y-1.5 rounded-ee-md bg-brand text-white`}>
-              <p className="whitespace-pre-line">{m.text}</p>
-              {m.attachments.map((a) => (
-                <p key={a.id} className="flex items-center gap-1.5 text-xs text-white/85"><Icon name="paperclip" size={14} />{a.filename}</p>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <Answer key={m.id}>
-            <Markdown text={clean(m.text)} />
-            {m.norms.length > 0 && (
-              <ul className="flex flex-wrap gap-1.5 pt-0.5">
-                {m.norms.map((n) => (
-                  <li key={`${n.act_code}-${n.article}`}>
-                    <a href={n.url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-full bg-sand px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
-                      <Icon name="scroll" size={13} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
-                    </a>
-                  </li>
+        {messages.map((m, i) => {
+          const day = i === 0 || dayOf(messages[i - 1].created_at) !== dayOf(m.created_at)
+            ? <DayChip key={`d-${m.id}`} iso={m.created_at} /> : null;
+          if (m.role === "user") {
+            const seen = messages.slice(i + 1).some((x) => x.role === "assistant") || !m.id.startsWith("local-");
+            return [day, (
+              <Bubble key={m.id} mine at={m.created_at} seen={seen}>
+                <p className="whitespace-pre-line">{m.text}</p>
+                {m.attachments.map((a) => (
+                  <p key={a.id} className="flex items-center gap-1.5 text-xs text-ink-soft"><Icon name="paperclip" size={14} />{a.filename}</p>
                 ))}
-              </ul>
-            )}
-            {m.id === offerId && caseId && (
-              <Link href={`/case/${caseId}`}
-                className="flex min-h-14 max-w-md items-center gap-3 rounded-2xl border border-line px-4 py-2 hover:border-brand">
-                <Icon name="document" size={20} className="shrink-0 text-brand" />
-                <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block font-semibold">{t("chat.doc")}</span>
-                  <span className="block text-xs text-muted">{t("chat.docPrice")}</span>
-                </span>
-                <Icon name="arrowRight" size={18} className="shrink-0 text-muted rtl:-scale-x-100" />
-              </Link>
-            )}
-            <AnswerTools text={clean(m.text)} speaking={speakingId === m.id} onSpeak={tts ? () => {
-              if (speakingId === m.id) { stopSpeaking(); setSpeakingId(null); return; }
-              if (speak(clean(m.text).replace(/\*\*/g, ""), lang)) setSpeakingId(m.id);
-            } : undefined} />
-          </Answer>
-        ))}
+              </Bubble>
+            )];
+          }
+          return [day, (
+            <Bubble key={m.id} mine={false} at={m.created_at}>
+              <Markdown text={clean(m.text)} />
+              {m.norms.length > 0 && (
+                <ul className="flex flex-wrap gap-1.5">
+                  {m.norms.map((n) => (
+                    <li key={`${n.act_code}-${n.article}`}>
+                      <a href={n.url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-sand px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
+                        <Icon name="scroll" size={13} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {m.id === offerId && caseId && (
+                <Link href={`/case/${caseId}`}
+                  className="-mx-1.5 flex min-h-12 items-center gap-3 rounded-xl bg-sand px-3 py-2 hover:bg-sand-deep">
+                  <Icon name="document" size={20} className="shrink-0 text-brand" />
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block font-semibold text-brand">{t("chat.doc")}</span>
+                    <span className="block text-xs text-muted">{t("chat.docPrice")}</span>
+                  </span>
+                  <Icon name="arrowRight" size={18} className="shrink-0 text-muted rtl:-scale-x-100" />
+                </Link>
+              )}
+            </Bubble>
+          )];
+        })}
 
         {streaming !== null && (
-          <Answer>
+          <Bubble mine={false}>
             {clean(streaming) ? <Markdown text={clean(streaming)} /> : (
-              <span className="flex h-6 items-center gap-1" aria-hidden>
-                {[0, 1, 2].map((i) => (
-                  <span key={i} className="h-2 w-2 rounded-full bg-muted motion-safe:animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-                ))}
+              <span className="flex items-center gap-2 text-muted">
+                {lookingUp ? t("chat.lookingUp") : t("chat.thinking")}
+                <span className="flex items-center gap-1" aria-hidden>
+                  {[0, 1, 2].map((k) => (
+                    <span key={k} className="h-1.5 w-1.5 rounded-full bg-muted motion-safe:animate-bounce" style={{ animationDelay: `${k * 150}ms` }} />
+                  ))}
+                </span>
               </span>
             )}
             <span className="sr-only" role="status">{t("chat.thinking")}</span>
-            {lookingUp && <p className="flex items-center gap-2 text-xs text-muted"><Icon name="spinner" size={12} />{t("chat.lookingUp")}</p>}
-          </Answer>
+          </Bubble>
         )}
         {failed && streaming === null && (
           <div className="space-y-2">
             {failed.partial && (
-              <Answer>
+              <Bubble mine={false}>
                 <Markdown text={clean(failed.partial)} />
                 <p className="text-xs text-muted">{t("chat.interrupted")}</p>
-              </Answer>
+              </Bubble>
             )}
             <button type="button" onClick={retryFailed} disabled={busy}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:border-brand disabled:opacity-50">
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-surface px-4 text-sm font-semibold shadow-[0_1px_1px_rgb(0_0_0/0.08)] hover:text-brand disabled:opacity-50">
               <Icon name="send" size={16} />{t("chat.retry")}
             </button>
           </div>

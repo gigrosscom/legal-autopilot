@@ -175,6 +175,7 @@ const ar: Dict = {
     lawyersLead: "صف الوضع — نجهّز المستندات ونضم محاميًا عند الحاجة.",
   },
   app: {
+    toEnd: "إلى آخر رسالة",
     tabs: { home: "الرئيسية", chat: "المحادثة", cases: "القضايا", documents: "المستندات", profile: "الملف الشخصي" },
     signIn: "تسجيل الدخول",
     newQuestion: "سؤال جديد",
@@ -212,6 +213,7 @@ const ar: Dict = {
     },
   },
   chat: {
+    greet: {"morning": "صباح الخير!", "day": "مساء الخير!", "evening": "مساء الخير!", "night": "تصبح على خير!"},
     cancel: "إلغاء التسجيل",
     stop: "إيقاف الرد",
     copied: "تم النسخ",
