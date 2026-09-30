@@ -68,6 +68,13 @@ const tr: Dict = {
     step: { created: "Oluşturuldu", classified: "Sınıflandırıldı", intake_done: "Görüşme tamam", document_ready: "Belge hazır", submitted: "Sunuldu", response: "Yanıt alındı", resolved_positive: "Lehine sonuçlandı" },
   },
   pwa: {
+    // after the browser's install dialog: where the icon is now
+    done: {
+      android: "Tamam — Konsiliér AI simgesi ana ekranda ve uygulama listesinde.",
+      windows: "Tamam — Konsiliér AI masaüstünde ve Başlat menüsünde. Tarayıcı sorarsa “Masaüstü kısayolu”nu işaretleyin.",
+      mac: "Tamam — Konsiliér AI Launchpad'de ve Uygulamalar klasöründe. Dock'ta tutmak için: Dock'taki simgeye sağ tıklayın → Seçenekler → Dock'ta Tut.",
+      other: "Tamam — Konsiliér AI yüklendi ve ayrı bir pencerede açılır.",
+    },
     install: "Yükle",
     offlineTitle: "İnternet bağlantısı yok",
     offlineText: "Dosyalarınız sunucuda kayıtlı. Bağlantı gelince sayfayı yenileyin — her şey yerinde olacak.",
