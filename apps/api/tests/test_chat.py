@@ -398,3 +398,18 @@ def test_document_is_offered_only_when_the_reply_says_so():
     events, client = run("Срок гарантии зависит от договора.", use_portal=False)
     assert events[-1]["result"].offer_document is False
     assert "[[DOCUMENT]]" in client.calls[0]["system"]  # the model is told how to offer one
+
+
+def test_reply_follows_interface_language_not_pack_fallback(ctx):
+    """The KZ pack has only ru and kk: an English page used to get Russian answers. The reply follows the interface."""
+    from .test_e2e import web_user
+
+    client = StreamingClient([(["Hello."], "end_turn", [])])
+    ctx.container.chat_agent = ChatAgent(client, "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Меня уволили и не рассчитались", "country": "KZ"})["case"]["id"]
+    _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Refund?", "language": "en"}))
+    assert "ISO 639-1 code 'en'" in client.calls[0]["system"]
+    client.turns = [(["Сәлем."], "end_turn", [])]
+    _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "?", "language": "de"}))
+    assert "ISO 639-1 code 'ru'" in client.calls[-1]["system"]  # an unsupported one falls back to the case's
