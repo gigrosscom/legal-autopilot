@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { PushToggle } from "@/components/PushToggle";
@@ -25,6 +26,7 @@ export default function AccountPage() {
   const [open, setOpen] = useState<Method | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);  // «Войти или зарегистрироваться»: Google · Apple · e-mail
 
   useEffect(() => {
     api<Me>("/v1/me").then(setMe).catch((e) => setError(errorText(e)));
@@ -33,7 +35,7 @@ export default function AccountPage() {
 
   const signedIn = (r: SignedIn) => {
     setMe(applySignIn(r));
-    setOpen(null);
+    setOpen(null); setSheet(false);
     setDone(t("account.done"));
     const next = new URLSearchParams(window.location.search).get("next");
     if (next && next.startsWith("/") && !next.startsWith("//")) setTimeout(() => { window.location.href = next; }, 800);
@@ -42,14 +44,15 @@ export default function AccountPage() {
   useEffect(() => {  // ?method=ecp: arrive with the ЭЦП form already open (lawyer onboarding)
     const m = new URLSearchParams(window.location.search).get("method");
     if (m === "ecp" || m === "egov") setOpen(m);
+    if (new URLSearchParams(window.location.search).get("signin") === "1") setSheet(true);
   }, []);
+  const signedInAlready = !!me && me.identities.length > 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-2">
-        <p className="eyebrow">{t("account.eyebrow")}</p>
-        <h1 className="text-3xl font-semibold tracking-tight">{t("account.title")}</h1>
-        <p className="text-muted">{t("account.lead")}</p>
+        <h1 className="text-[30px] font-semibold leading-tight">{t("account.title")}</h1>
+        {!signedInAlready && <p className="text-[17px] text-muted">{t("account.lead")}</p>}
       </div>
 
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
@@ -74,9 +77,19 @@ export default function AccountPage() {
         </section>
       )}
 
+      {me && !signedInAlready && (
+        <Button size="lg" className="min-h-14 w-full text-[18px]" icon="login" onClick={() => { setSheet(true); setDone(null); }}>
+          {t("account.signInOrUp")}
+        </Button>
+      )}
+      {sheet && methods && me && !signedInAlready && (
+        <SignInSheet methods={methods} onClose={() => setSheet(false)} onDone={signedIn}
+          onOther={() => { setSheet(false); setOpen("ecp"); document.getElementById("ways")?.scrollIntoView({ behavior: "smooth" }); }} />
+      )}
+
+      {(signedInAlready || open) && (
       <section aria-labelledby="ways" className="space-y-3">
-        <h2 id="ways" className="text-lg font-semibold">{t("account.waysTitle")}</h2>
-        {methods && <ProviderSignIn google={!!methods.google} apple={!!methods.apple} onDone={signedIn} />}
+        <h2 id="ways" className="text-lg font-semibold">{t(signedInAlready ? "account.moreWaysTitle" : "account.waysTitle")}</h2>
         {[...METHODS].sort((a, b) => Number(methods?.[b.id] ?? false) - Number(methods?.[a.id] ?? false)).map((m) => {
           const available = methods?.[m.id] ?? false;
           const isOpen = open === m.id;
@@ -103,12 +116,13 @@ export default function AccountPage() {
           );
         })}
       </section>
+      )}
 
       <PushToggle />
 
-      {me && <ReportsToggle me={me} onChange={setMe} />}
+      {signedInAlready && <ReportsToggle me={me} onChange={setMe} />}
 
-      <p className="text-xs text-muted">{t("account.privacy")}</p>
+      {signedInAlready && <p className="text-xs text-muted">{t("account.privacy")}</p>}
 
       <Invite />
     </div>
@@ -229,5 +243,52 @@ function EgovForm({ onDone }: { onDone: (r: SignedIn) => void }) {
       )}
       {error && <p role="alert" className="text-danger">{error}</p>}
     </div>
+  );
+}
+
+/** «Войти или зарегистрироваться»: one sheet with the three ways — Google, Apple (when set up) and e-mail with a code.
+ *  Signing in and signing up are the same step: a new person gets an account, a known one gets theirs back. */
+function SignInSheet({ methods, onClose, onDone, onOther }: {
+  methods: AuthMethods; onClose: () => void; onDone: (r: SignedIn) => void; onOther: () => void;
+}) {
+  const t = useT();
+  const [email, setEmail] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    panel.current?.focus();
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose]);
+  const other = methods.ecp || methods.egov || methods.phone;
+  // drawn over the whole app (tab bar included), not inside the page
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+      <button type="button" aria-label={t("app.close")} onClick={onClose} className="absolute inset-0 bg-black/40" />
+      <div ref={panel} tabIndex={-1}
+        className="relative w-full max-w-md space-y-4 rounded-t-3xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] outline-none sm:rounded-3xl">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h2 id="signin-title" className="text-[22px] font-semibold">{t("account.signInOrUp")}</h2>
+            <p className="text-[15px] text-muted">{t("account.signInLead")}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label={t("app.close")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand hover:bg-sand-deep"><Icon name="x" size={20} /></button>
+        </div>
+        <ProviderSignIn google={!!methods.google} apple={!!methods.apple} onDone={onDone} />
+        {methods.email && (email ? <CodeForm kind="email" onDone={onDone} wide /> : (
+          <button type="button" onClick={() => setEmail(true)}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
+            <Icon name="mail" size={20} />{t("account.withEmail")}
+          </button>
+        ))}
+        {other && (
+          <button type="button" onClick={onOther} className="mx-auto block min-h-10 text-[15px] text-muted underline-offset-4 hover:text-ink hover:underline">
+            {t("account.otherWays")}
+          </button>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }

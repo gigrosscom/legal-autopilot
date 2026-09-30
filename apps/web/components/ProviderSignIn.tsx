@@ -71,7 +71,8 @@ function GoogleButton({ onDone, onError }: Props) {
   const cb = useRef({ onDone, onError, authError, t });
   useEffect(() => { cb.current = { onDone, onError, authError, t }; });
 
-  const prepare = useCallback(async () => {
+  // Quiet while preparing: a failure shows only when the person presses the button.
+  const prepare = useCallback(async (loud = false) => {
     try {
       const [start] = await Promise.all([
         api<{ nonce: string; client_id: string }>("/v1/auth/google/start", { method: "POST" }),
@@ -107,6 +108,7 @@ function GoogleButton({ onDone, onError }: Props) {
       });
       setReady(true);
     } catch (err) {
+      if (!loud) return;
       const { onError, authError, t } = cb.current;
       onError(err instanceof Error && (err.message === "script" || err.message === "gsi")
         ? t("account.google.failed") : authError(err));
@@ -115,18 +117,19 @@ function GoogleButton({ onDone, onError }: Props) {
 
   useEffect(() => {
     prepare();
-    const id = setInterval(prepare, REFRESH_MS);
+    const id = setInterval(() => prepare(), REFRESH_MS);
     return () => clearInterval(id);
   }, [prepare]);
 
   return (
-    <div className="relative min-h-11">
+    <div className="relative min-h-12">
       {/* Google draws its own branded button here; until then (or if its script is blocked) a look-alike stands in */}
       <div ref={box} className={`flex justify-center ${busy ? "pointer-events-none opacity-60" : ""}`} aria-busy={busy} />
       {!ready && (
-        <div aria-hidden className="absolute inset-0 flex min-h-11 items-center justify-center gap-3 rounded-[980px] border border-[#dadce0] bg-white px-4 text-[15px] font-medium text-[#1f1f1f]">
+        <button type="button" onClick={() => prepare(true)}
+          className="absolute inset-0 flex min-h-12 items-center justify-center gap-3 rounded-full border border-[#dadce0] bg-white px-4 text-[17px] font-semibold text-[#1f1f1f]">
           <GoogleLogo /> {t("account.google.button")}
-        </div>
+        </button>
       )}
     </div>
   );
@@ -141,7 +144,8 @@ function AppleButton({ onDone, onError }: Props) {
   const failed = useRef<(err: unknown) => void>(() => {});
   useEffect(() => { failed.current = (err) => onError(authError(err)); });
 
-  const prepare = useCallback(async () => {
+  // Quiet while preparing: a failure shows only when the person presses the button.
+  const prepare = useCallback(async (loud = false): Promise<boolean> => {
     try {
       const [start] = await Promise.all([
         api<{ nonce: string; nonce_sha256: string; client_id: string; redirect_uri: string }>("/v1/auth/apple/start", { method: "POST" }),
@@ -154,21 +158,24 @@ function AppleButton({ onDone, onError }: Props) {
       auth.init({ clientId: start.client_id, scope: "name email", redirectURI: start.redirect_uri,
         nonce: start.nonce_sha256, usePopup: true });
       setReady(true);
+      return true;
     } catch (err) {
+      if (!loud) return false;
       if (err instanceof Error && (err.message === "script" || err.message === "apple")) onError(t("account.apple.failed"));
       else failed.current(err);
+      return false;
     }
   }, [onError, t]);
 
   useEffect(() => {
     prepare();
-    const id = setInterval(prepare, REFRESH_MS);
+    const id = setInterval(() => prepare(), REFRESH_MS);
     return () => clearInterval(id);
   }, [prepare]);
 
   const signIn = async () => {
     const auth = window.AppleID?.auth;
-    if (!auth || !ready) return;
+    if (!auth || !ready) { await prepare(true); return; }
     setBusy(true); onError(null);
     let res: Awaited<ReturnType<AppleAuth["signIn"]>>;
     try {
@@ -194,8 +201,8 @@ function AppleButton({ onDone, onError }: Props) {
   };
 
   return (
-    <button type="button" onClick={signIn} disabled={!ready || busy} aria-busy={busy}
-      className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[980px] bg-black px-4 text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
+    <button type="button" onClick={signIn} disabled={busy} aria-busy={busy}
+      className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-black px-4 text-[17px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
       <AppleLogo /> {t("account.apple.button")}
     </button>
   );
