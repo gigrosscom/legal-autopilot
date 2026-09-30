@@ -24,6 +24,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   const t = useT();
   const { lang } = useLang();
   const [interim, setInterim] = useState("");
+  const [tools, setTools] = useState(false);  // «›» pressed while typing: attach and camera shown again
   const box = useRef<HTMLTextAreaElement>(null);
   const discard = useRef(false);     // «cancel»: what is still being recognised is dropped
   const sendAfter = useRef(false);   // «send» while recording: sent once the words are in the box
@@ -36,6 +37,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   const shown = interim ? `${value} ${interim}`.trim() : value;
   const hasText = shown.trim().length > 0;
 
+  useEffect(() => { if (!value) setTools(false); }, [value]);
   useEffect(() => {  // grow with the text, up to a limit
     const el = box.current;
     if (!el) return;
@@ -63,8 +65,9 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
 
   const attach = (
     <label title={t("chat.attach")}
-      className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink hover:bg-sand ${busy ? "pointer-events-none opacity-40" : ""}`}>
-      <Icon name="plus" size={22} /><span className="sr-only">{t("chat.attach")}</span>
+      className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-sand ${
+        large ? "h-10 w-10 text-ink" : "h-11 w-10 text-action"} ${busy ? "pointer-events-none opacity-40" : ""}`}>
+      <Icon name="plus" size={large ? 22 : 24} /><span className="sr-only">{t("chat.attach")}</span>
       <input type="file" multiple accept="image/*,application/pdf,text/plain,.doc,.docx" className="sr-only" disabled={busy}
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
     </label>
@@ -181,35 +184,43 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
     </button>
   ) : dictation.transcribing ? (
-    <span role="status" title={t("chat.transcribing")} className={`${round} bg-action text-white`}>
-      <Icon name="spinner" size={20} /><span className="sr-only">{t("chat.transcribing")}</span>
+    <span role="status" title={t("chat.transcribing")} className={`${round} text-action`}>
+      <Icon name="spinner" size={22} /><span className="sr-only">{t("chat.transcribing")}</span>
     </span>
   ) : !hasText && dictation.supported ? (
     <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-action text-white`}>
       <Icon name="mic" size={21} /><span className="sr-only">{t("chat.mic")}</span>
     </button>
   ) : (
+    // as in Messenger: a plain paper plane in the brand colour
     <button type="submit" disabled={busy || !hasText} title={t("chat.send")}
-      className={`${round} bg-action text-white disabled:bg-sand-deep disabled:text-muted`}>
-      <Icon name={busy ? "spinner" : "send"} size={19} /><span className="sr-only">{t("chat.send")}</span>
+      className={`${round} text-action hover:bg-sand disabled:text-muted`}>
+      <Icon name={busy ? "spinner" : "send"} size={24} /><span className="sr-only">{t("chat.send")}</span>
     </button>
   );
+  const camera = (
+    <label title={t("helper.photo")}
+      className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-action ${busy ? "pointer-events-none opacity-40" : ""}`}>
+      <Icon name="camera" size={23} /><span className="sr-only">{t("helper.photo")}</span>
+      <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy}
+        onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
+    </label>
+  );
+  // While typing, the tools on the left fold into «›» so the message gets the width, as in Messenger.
+  const folded = hasText && !tools;
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
       {filesList}
-      <div className="flex items-end gap-1.5">
-        {!dictation.listening && attach}
-        <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] border border-line bg-surface shadow-[0_1px_1px_rgb(0_0_0/0.06)] focus-within:border-ink/25">
+      <div className="flex items-end gap-1">
+        {!dictation.listening && (folded ? (
+          <button type="button" onClick={() => setTools(true)} title={t("chat.attach")}
+            className="flex h-11 w-9 shrink-0 items-center justify-center text-action">
+            <Icon name="chevronDown" size={22} className="-rotate-90 rtl:rotate-90" /><span className="sr-only">{t("chat.attach")}</span>
+          </button>
+        ) : <>{attach}{camera}</>)}
+        <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] bg-sand-deep/60 focus-within:bg-sand-deep/80">
           {dictation.listening ? recording : textarea}
         </div>
-        {!dictation.listening && !hasText && !onStop && (
-          <label title={t("helper.photo")}
-            className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-ink ${busy ? "pointer-events-none opacity-40" : ""}`}>
-            <Icon name="camera" size={23} /><span className="sr-only">{t("helper.photo")}</span>
-            <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy}
-              onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
-          </label>
-        )}
         {!dictation.listening && main}
       </div>
       {errorLine}
