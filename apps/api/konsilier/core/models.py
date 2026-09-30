@@ -16,6 +16,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -544,6 +545,12 @@ class Invoice(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # operator's decision
     decided_by: Mapped[str | None] = mapped_column(String(200))  # operator's e-mail
     desk_note: Mapped[str | None] = mapped_column(Text)
+    # the way the person chose (adapters/payment.py WAYS); None — the transfer, as before
+    pay_way: Mapped[str | None] = mapped_column(String(24))
+    payer_phone: Mapped[str | None] = mapped_column(String(20))  # kaspi_invoice: the Kaspi number to bill
+    buyer_name: Mapped[str | None] = mapped_column(String(300))  # bank_invoice: the paying company / ИП
+    buyer_bin: Mapped[str | None] = mapped_column(String(12))
+    buyer_address: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -625,4 +632,56 @@ class LLMUsage(Base):
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ZannAct(Base):
+    """One act of the Zann law corpus (konsilier/zann/corpus.py), found in the index of old.adilet.zan.kz.
+    act_type: the portal's «вид акта» code of the listing that found it first (КОД, ЗАК, ПОСТ …; empty: the
+    catch-all listing). status: the portal's (new | upd — in force; yts | stp — lost force). state: pending |
+    done | missing (no text in any language) | error. priority: lower is collected first."""
+
+    __tablename__ = "zann_acts"
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    title: Mapped[str | None] = mapped_column(String(1000))
+    act_type: Mapped[str] = mapped_column(String(8), default="", server_default="")
+    status: Mapped[str] = mapped_column(String(8), default="", server_default="")
+    info: Mapped[str | None] = mapped_column(String(1000))  # the listing line: act kind, date and number
+    priority: Mapped[int] = mapped_column(Integer, default=9, server_default="9")
+    state: Mapped[str] = mapped_column(String(8), default="pending", server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    error: Mapped[str | None] = mapped_column(String(500))
+    discovered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    listed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    __table_args__ = (Index("ix_zann_acts_queue", "state", "priority", "code"),)
+
+
+class ZannFile(Base):
+    """A stored text of a Zann corpus act in one language: zann/corpus/<code>.<lang>.txt.gz in the storage."""
+
+    __tablename__ = "zann_files"
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    lang: Mapped[str] = mapped_column(String(2), primary_key=True)
+    key: Mapped[str] = mapped_column(String(255))
+    url: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str | None] = mapped_column(String(1000))
+    sha256: Mapped[str] = mapped_column(String(64))
+    chars: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # gzip size
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # last read
+    changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # last upload (text differed)
+
+
+class ZannListing(Base):
+    """Progress of one listing of the portal's index (a status and act type filter) for the Zann corpus discovery."""
+
+    __tablename__ = "zann_listings"
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)  # e.g. st=new%7Cupd&va=%D0%9A%D0%9E%D0%94
+    act_type: Mapped[str] = mapped_column(String(8), default="", server_default="")
+    priority: Mapped[int] = mapped_column(Integer, default=9, server_default="9")
+    total: Mapped[int | None] = mapped_column(Integer)
+    pages: Mapped[int | None] = mapped_column(Integer)
+    next_page: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    errors: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

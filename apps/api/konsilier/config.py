@@ -96,6 +96,30 @@ class Settings(BaseSettings):
     payment_kaspi_phone: str = ""  # Kaspi number to transfer to
     payment_comment_prefix: str = ""  # optional prefix of the payment code in the transfer comment
     payment_notify_emails: str = ""  # also get «клиент оплатил» letters (comma-separated), without access to /ops
+    # More ways to pay, all confirmed by the desk as today (docs/kaspi-pay-plan.md). Off while empty; comma-separated:
+    # kaspi_link, kaspi_qr, kaspi_invoice, bank_invoice. A way shows only once what it needs is set below.
+    payment_methods: str = ""
+    payment_kaspi_pay_link: str = ""  # «Ссылка для оплаты» from the Kaspi Pay app (https://…)
+    payment_kaspi_qr_image: str = ""  # URL of the printed Kaspi QR image of the point of sale
+    # «Счёт на оплату» for companies / ИП (bank_invoice): the company's requisites, values only in the server's .env
+    payment_llp_name: str = ""  # full name as registered, e.g. ТОО «…»
+    payment_llp_bin: str = ""
+    payment_llp_address: str = ""
+    payment_llp_bank: str = ""
+    payment_llp_iik: str = ""  # IBAN KZ…
+    payment_llp_bik: str = ""
+    payment_llp_kbe: str = "17"
+    payment_llp_knp: str = "859"
+    payment_llp_director: str = ""  # «Директор И. Фамилия» under the bill
+    payment_llp_vat: bool = False  # VAT payer: «в т. ч. НДС», else «Без НДС»
+    payment_invoice_due_days: int = 5
+    # After the desk confirms: a letter with amount, date, what was bought and the link (not a fiscal receipt).
+    payment_receipt_email: bool = False
+    payment_kaspi_kassa: bool = False  # Kaspi Касса is on: the letter says Kaspi sends the fiscal receipt
+    # Automatic confirmation, for when Kaspi issues its protocol under a contract: /v1/payments/kaspi/webhook
+    # answers 404 until this is on and the secret is set (HMAC-SHA256 of the body in X-Konsilier-Signature).
+    payment_kaspi_webhook: bool = False
+    payment_kaspi_webhook_secret: str = ""
     # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
     # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
     # them. Telegram users are reachable in the bot and are not asked.
@@ -118,6 +142,18 @@ class Settings(BaseSettings):
     official_crawl_minutes: int = 20
     official_crawl_max_pages: int = 400  # per domain; a pack may set lower caps
     official_search_enabled: bool = True
+    # Zann law corpus (konsilier/zann/corpus.py, docs/zann-llm-plan.md «Сбор корпуса»): every act of old.adilet.zan.kz,
+    # ru + kk, gzip texts in the storage under zann/corpus/. Off by default. ZANN_CORPUS_HOUR: local hour
+    # (ZANN_CORPUS_TZ) of the nightly run, which lasts at most ZANN_CORPUS_MINUTES (2:00–2:50, before the 03:00 official crawl);
+    # -1 = continuous: time-boxed runs back to back around the clock. Pause between requests ≥ 2 s.
+    zann_corpus_enabled: bool = False
+    zann_corpus_hour: int = 2
+    zann_corpus_minutes: int = 50
+    zann_corpus_pause: float = 3.0
+    zann_corpus_langs: str = "ru,kk"
+    zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
+    zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
+    zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"

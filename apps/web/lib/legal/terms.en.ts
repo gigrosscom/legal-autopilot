@@ -7,7 +7,7 @@ const en: LegalDoc = {
   summaryTitle: "Key points",
   summary: [
     "Konsiliér AI is an information technology (IT) service. We are not an advocate or a legal consultant, and we do not provide legal assistance.",
-    "AI answers are reference information, and the documents prepared are proposed texts. Check them: AI can make mistakes. You make the decisions and file documents yourself.",
+    "AI answers are for general information only, and the documents we prepare are drafts. Review them carefully: AI can make mistakes. You make the decisions and file documents yourself.",
     "When legal assistance is needed, it is provided by advocates and legal consultants under a separate agreement made directly with you.",
     "Names, IINs and phone numbers are replaced with tags before any text is passed to AI. The Service's servers are located in Kazakhstan.",
     "If there is a threat to life or health, call 112.",
@@ -20,14 +20,14 @@ const en: LegalDoc = {
         "“Operator” means the legal entity that operates the Service: Konsilier AI LLP, BIN 260940036818, address: 222 Akseleu Seidimbek St., Kuramys microdistrict, Nauryzbay district, Almaty 050000, Republic of Kazakhstan.",
         "“User”, “you” means any individual or legal entity that uses the Service.",
         "“Lawyer” means an advocate or a legal consultant who is a member of a chamber of legal consultants, or a human rights organization, working with Users through the Platform.",
-        "“AI” means the artificial intelligence systems the Service uses to answer questions and prepare documents.",
-        "“Case” means your matter in the Service: the description, answers, files, prepared documents and history of steps.",
+        "“AI” means the artificial intelligence systems the Service uses to answer questions and prepare draft documents.",
+        "“Case” means your matter in the Service: the description, answers, files, draft documents and history of steps.",
       ],
     },
     {
       h: "2. What the Service does",
       p: [
-        "The Service provides software tools: an AI chat with links to the official texts of regulatory legal acts (Adilet legal information system), a document builder based on your answers, suggestions on possible recipients and filing methods, deadline reminders, a directory of lawyers, signing of documents with EDS, and forwarding of your requests to lawyers.",
+        "The Service provides software tools: an AI chat with links to the official texts of regulatory legal acts (Adilet legal information system), a tool that builds draft documents from your answers, suggestions on possible recipients and filing methods, deadline reminders, a directory of lawyers, signing of documents with EDS, and forwarding of your requests to lawyers.",
         "The Service is provided on an “as is” basis. Its features may change; we announce material changes on the website.",
       ],
     },
