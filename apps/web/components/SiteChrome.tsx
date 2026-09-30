@@ -12,13 +12,6 @@ import { captureReferral } from "@/lib/api";
 export function SiteChrome({ children }: { children: ReactNode }) {
   const path = usePathname();
   useEffect(() => { captureReferral(); }, []);
-  useEffect(() => {  // the chat's look (messenger | whatsapp): ?look=… to preview, remembered on this device
-    try {
-      const q = new URLSearchParams(window.location.search).get("look");
-      if (q === "messenger" || q === "whatsapp") localStorage.setItem("konsilier.look", q);
-      document.documentElement.dataset.look = localStorage.getItem("konsilier.look") ?? "messenger";
-    } catch { document.documentElement.dataset.look = "messenger"; }
-  }, []);
   if (isAppRoute(path)) {
     return (
       <>
