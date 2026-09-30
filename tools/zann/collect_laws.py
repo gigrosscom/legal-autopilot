@@ -41,7 +41,7 @@ from konsilier.lawagent.sources import CODE_RE, ActNotFound, page_text  # noqa: 
 BASE = "https://old.adilet.zan.kz"
 USER_AGENT = "Konsilier.AI Zann corpus collector (+https://konsilier.com; research; 1 request / 3 s)"
 LANGS = {"ru": "rus", "kk": "kaz"}  # our code → the portal's path segment
-MAX_CODES = 40  # a guard, not a knob: this tool collects the acts our scenarios cite, not the portal
+MAX_CODES = 5000  # a sanity limit per run (owner 30.09: laws from adilet are collected for Zann)
 ADILET_LINK_RE = re.compile(r"adilet\.zan\.kz/(?:rus|kaz|eng)/docs/([A-Z]\d{9,10}_?)")
 ARTICLE_TAG_RE = re.compile(r"(?is)<article\b[^>]*>(.*?)</article>")
 TITLE_RE = re.compile(r"(?is)<title>(.*?)</title>")
@@ -132,7 +132,7 @@ def validate_codes(codes: Iterable[str]) -> list[str]:
         if c not in seen:
             seen.append(c)
     if len(seen) > MAX_CODES:
-        raise SystemExit(f"{len(seen)} codes > {MAX_CODES}: this tool is not for bulk download of the portal")
+        raise SystemExit(f"{len(seen)} codes > {MAX_CODES}: split the list into several runs")
     return seen
 
 
