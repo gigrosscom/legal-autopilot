@@ -123,6 +123,8 @@ Kaspi Pay (или в выписке банка) → «Оплата получе�
 **Где в коде:** `apps/api/konsilier/core/adapters/payment.py` (способы), `core/bill.py` (счёт, сумма прописью),
 `core/engine.py` `choose_way`, `api/routes.py` (`/v1/invoices/{id}/way`, `/v1/invoices/{id}/bill`, webhook),
 `api/ops.py` (письмо-квитанция), миграция `0023_invoice_ways`, окно оплаты `apps/web/components/PaymentWays.tsx`.
+Слова страны (БИН, тенге, тиын, ₸) — в пакете: блок `billing` в `packs/kz/i18n/ru.yaml`.
+Проверки 30.09: весь набор API — 576 passed; `ruff check .` — чисто; `npx tsc --noEmit` — без ошибок.
 Тесты: `apps/api/tests/test_payment_ways.py` — «оплачено → документ доступен» для ссылки, QR, счёта Kaspi, счёта
 для компании и webhook.
 
