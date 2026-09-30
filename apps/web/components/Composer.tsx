@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Icon } from "@/components/ui";
 import { useLang, useT } from "@/lib/i18n";
-import { useDictation } from "@/lib/voice";
+import { useVoiceInput } from "@/lib/voice";
 
 export type Attached = { key: string; filename: string; file?: File; id?: string };
 
@@ -22,7 +22,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   const { lang } = useLang();
   const [interim, setInterim] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
-  const dictation = useDictation(lang, (fin, part) => {
+  const dictation = useVoiceInput(lang, (fin, part) => {
     if (fin) setValue((d) => (d ? `${d.trimEnd()} ${fin.trim()}` : fin.trim()));
     setInterim(part);
   });
@@ -37,12 +37,14 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   }, [shown, large]);
   useEffect(() => { if (autoFocus && matchMedia("(pointer: fine)").matches) box.current?.focus(); }, [autoFocus]);
 
+  // while a recording is still being turned into text, sending waits for it
+  const waiting = dictation.listening || dictation.transcribing;
   const submit = () => {
-    if (dictation.listening) dictation.stop();
+    if (waiting) { if (dictation.listening) dictation.stop(); return; }
     setInterim("");
     if (!busy && hasText) onSubmit();
   };
-  const mic = dictation.supported && !hasText;
+  const mic = dictation.supported && !hasText && !dictation.transcribing;
 
   const attach = (
     <label title={t("chat.attach")}
@@ -52,7 +54,12 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
     </label>
   );
-  const action = mic || dictation.listening ? (
+  const action = dictation.transcribing ? (
+    <span role="status" title={t("chat.transcribing")}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink">
+      <Icon name="spinner" size={20} /><span className="sr-only">{t("chat.transcribing")}</span>
+    </span>
+  ) : mic || dictation.listening ? (
     <button type="button" onClick={dictation.listening ? dictation.stop : dictation.start} disabled={busy}
       aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening
@@ -95,12 +102,16 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
               e.preventDefault(); submit();
             }
           }}
-          placeholder={dictation.listening ? t("chat.listening") : placeholder} maxLength={4000}
+          placeholder={dictation.transcribing ? t("chat.transcribing") : dictation.listening ? t("chat.listening") : placeholder}
+          maxLength={4000}
           className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-muted ${
             large ? "min-h-24 px-3 pt-2 text-[17px] leading-relaxed" : "min-h-10 px-2 py-2 text-[16px]"}`}
           style={{ outline: "none" }} /* the whole box shows focus */ />
         {large ? <div className="flex items-center justify-between">{attach}{action}</div> : action}
       </div>
+      {dictation.error && (
+        <p role="alert" className="px-3 pt-1 pb-1 text-xs text-danger">{t(`chat.errors.${dictation.error}`)}</p>
+      )}
     </form>
   );
 }

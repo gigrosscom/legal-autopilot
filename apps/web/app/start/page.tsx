@@ -19,19 +19,25 @@ export default function StartPage() {
   const [situation, setSituation] = useState<string | undefined>();
   const [files, setFiles] = useState<File[]>([]);
   const shared = useRef(false);
+  // what the home page handed over is read once (effects may run again: language loaded, React's dev checks)
+  const first = useRef<{ text: string; files: File[] } | null>(null);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const s = SITUATIONS.find((x) => x.key === q.get("s"));
     if (s) { setHint(t(`situations.${s.key}.hint`)); setSituation(s.key); }
-    const handed = takeHandOff();  // typed on the home page, with its files
-    let saved = handed?.text ?? "";
-    try {
-      saved ||= sessionStorage.getItem(DRAFT_KEY) ?? "";
-      sessionStorage.removeItem(DRAFT_KEY);
-    } catch {}
+    if (!first.current) {  // typed on the home page, with its files
+      const handed = takeHandOff();
+      let text = handed?.text ?? "";
+      try {
+        text ||= sessionStorage.getItem(DRAFT_KEY) ?? "";
+        sessionStorage.removeItem(DRAFT_KEY);
+      } catch {}
+      first.current = { text, files: handed?.files ?? [] };
+    }
+    const saved = first.current.text;
     setDraft(saved);
-    if (handed?.files.length) setFiles(handed.files);
+    if (first.current.files.length) setFiles(first.current.files);
     setAutoSend(q.get("send") === "1" && saved.trim().length > 0);
     if (q.get("shared") !== "1") { setReady(true); return; }
     // «Новое дело» from /share: the shared files come attached to the first message (read once)

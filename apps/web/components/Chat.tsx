@@ -296,8 +296,11 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               <Link href={`/case/${caseId}`}
                 className="mt-1 flex min-h-12 items-center gap-3 rounded-2xl bg-surface px-3.5 py-2 hover:ring-1 hover:ring-brand">
                 <Icon name="document" size={20} className="shrink-0 text-brand" />
-                <span className="flex-1 font-semibold">{t("chat.doc")}</span>
-                <span className="text-sm text-muted">{t("chat.docPrice")}</span>
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block font-semibold">{t("chat.doc")}</span>
+                  <span className="block text-xs text-muted">{t("chat.docPrice")}</span>
+                </span>
+                <Icon name="arrowRight" size={18} className="shrink-0 text-muted rtl:-scale-x-100" />
               </Link>
             )}
           </Reply>

@@ -343,20 +343,27 @@ async function request(url: string, init: RequestInit = {}): Promise<Response> {
   }
 }
 
+// One anonymous account per browser: the first visit fires several requests at once (bell, cases, chat), and each
+// must wait for the same account — otherwise a case opened with one token is asked for with another (404).
+let creating: Promise<string> | null = null;
+
 export async function ensureToken(): Promise<string> {
   const saved = typeof window !== "undefined" ? localStorage.getItem("konsilier.token") : null;
   if (saved) return saved;
-  const r = await request(`${API_URL}/v1/users`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    // who invited this person and where they came from (saved on arrival by captureReferral)
-    body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru",
-      ref: localStorage.getItem("konsilier.ref"), src: localStorage.getItem("konsilier.src") }),
-  });
-  if (!r.ok) throw new ApiError(r.status, await r.text());
-  const { token } = await r.json();
-  localStorage.setItem("konsilier.token", token);
-  return token;
+  creating ??= (async () => {
+    const r = await request(`${API_URL}/v1/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // who invited this person and where they came from (saved on arrival by captureReferral)
+      body: JSON.stringify({ language: localStorage.getItem("konsilier.lang") ?? "ru",
+        ref: localStorage.getItem("konsilier.ref"), src: localStorage.getItem("konsilier.src") }),
+    });
+    if (!r.ok) throw new ApiError(r.status, await r.text());
+    const { token } = await r.json();
+    localStorage.setItem("konsilier.token", token);
+    return token as string;
+  })().finally(() => { creating = null; });
+  return creating;
 }
 
 async function handle<T>(r: Response): Promise<T> {
