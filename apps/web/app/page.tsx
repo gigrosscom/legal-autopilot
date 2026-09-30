@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Composer, type Attached } from "@/components/Composer";
+import { Icon } from "@/components/ui";
 import { handOff } from "@/lib/handoff";
 import { useT } from "@/lib/i18n";
 import { termsAccepted } from "@/lib/legal/terms";
@@ -42,11 +43,14 @@ export default function Home() {
           onFiles={(fs) => setFiles((xs) => [...xs, ...fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f }))])}
           onRemove={(key) => setFiles((xs) => xs.filter((x) => x.key !== key))} />
         {!text.trim() && (
-          <ul className="flex flex-wrap justify-center gap-2">
+          // one tidy column, left-aligned and all the same width, as the messengers' suggestion cards
+          <ul className="grid gap-2 sm:grid-cols-2">
             {shown.map((e) => (
               <li key={e}>
                 <button type="button" onClick={() => { setText(e); document.getElementById("home-input")?.focus(); }}
-                  className="min-h-10 rounded-full border border-line bg-surface px-4 py-2 text-start text-sm text-ink hover:bg-sand">{e}</button>
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-sand px-4 py-2.5 text-start text-[16px] font-medium leading-snug text-ink hover:bg-sand-deep">
+                  <Icon name="chat" size={20} className="shrink-0 text-muted" /><span>{e}</span>
+                </button>
               </li>
             ))}
           </ul>
