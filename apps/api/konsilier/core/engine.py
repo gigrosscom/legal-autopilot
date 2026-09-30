@@ -182,6 +182,30 @@ class CaseEngine:
         self.audit(session, case, actor, "status_changed", current, target.value, **data)
 
     # ================================================================ intake
+    def facts_from_chat(self, session: Session, case_id: Any, text: str) -> list[str]:
+        """QA BUG-03: what the person tells the chat goes into the case, so the interview asks only what is still
+        missing (and the case can reach «Подготовить документ» without the same questions again). Runs after the
+        chat reply, in the background; only while the case is being filled in. Returns the fields filled."""
+        case = session.get(Case, case_id)
+        if case is None or case.status != S.INTAKE.value or not case.scenario_id or len((text or "").strip()) < 15:
+            return []
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        missing = [n for n in self.missing_fields(case, sc) if sc.field(n).type != "evidence"]
+        if not missing:
+            return []
+        llm = self.llm_for(case)
+        before = set(case.facts)
+        values = ai.extract_fields(llm, sc, pack, case.language, text, None, missing)
+        self._apply_values(case, sc, pack, values, llm, strict=False)
+        self._save_vault(case, llm)
+        filled = sorted(set(case.facts) - before)
+        if not filled:
+            return []
+        self.audit(session, case, "system", "facts_from_chat", fields=filled)
+        if case.pending_field is None or case.pending_field in case.facts:
+            self._next_step(session, case, sc, pack)  # the next question — or «Проверьте данные» when all is known
+        return filled
+
     def qualify_later(self, session: Session, case_id: Any) -> None:
         """The scenario of a case opened by the chat (``defer_qualification``), in the background."""
         case = session.get(Case, case_id)

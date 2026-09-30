@@ -48,6 +48,13 @@ def parse_money(raw: Any) -> Decimal:
     return value.quantize(Decimal("0.01"))
 
 
+def _looks_like_address(value: str) -> bool:
+    """A soft check of a postal address: some words and a house number; not an id number or a name alone."""
+    words = re.findall(r"\w+", value)
+    has_number = bool(re.search(r"(?<!\d)\d{1,5}(?!\d)", value))  # a house / flat number, not a 12-digit BIN
+    return len(words) >= 2 and has_number
+
+
 def normalize(field: IntakeField, raw: Any, today: date | None = None) -> Any:
     """Return a JSON-serializable normalized value or raise FieldError."""
     if raw is None or (isinstance(raw, str) and not raw.strip()):
@@ -72,6 +79,8 @@ def normalize(field: IntakeField, raw: Any, today: date | None = None) -> Any:
         if not re.fullmatch(field.pattern, compact):
             raise FieldError("pattern")
         value = compact
+    if field.name.endswith("_address") and field.type in ("text", "string", None) and not _looks_like_address(value):
+        raise FieldError("address")  # QA BUG-10: a company name or a BIN given instead of the postal address
     if field.type == "phone":
         digits = re.sub(r"[^\d+]", "", value)
         if len(re.sub(r"\D", "", digits)) < 10:

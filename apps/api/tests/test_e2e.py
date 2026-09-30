@@ -412,3 +412,18 @@ def test_client_errors_are_stored_for_admin(ctx):
     rows = ctx.client.get("/v1/admin/client-errors", headers=ADMIN).json()
     assert rows[0]["message"] == "NotFoundError: removeChild" and rows[0]["url"] == "/case/1"
     assert ctx.client.get("/v1/admin/client-errors").status_code in (401, 403)
+
+
+def test_postal_address_is_checked_softly():
+    # QA BUG-10: a company name and a BIN given as the address are asked again; ordinary addresses pass
+    from konsilier.core.fields import FieldError, normalize
+    from konsilier.core.scenario.schema import IntakeField
+    f = IntakeField(name="seller_address")
+    for ok in ("г. Алматы, пр. Достык, 10", "Астана, ул. Кенесары 40, кв. 12", "050000, Алматы, Абая 1"):
+        assert normalize(f, ok) == ok
+    for bad in ("ТОО «Тест-Компания», БИН 123456789012", "Алматы", "магазин Технодом"):
+        try:
+            normalize(f, bad)
+            raise AssertionError(bad)
+        except FieldError as e:
+            assert e.code == "address"

@@ -22,6 +22,7 @@ from ..container import Container
 from ..core.models import Case, ChatMessage, Evidence, User
 from ..core.pii import PiiVault
 from ..gemini import EmptyReply
+from .background import after_commit
 from .deps import current_user, get_container, get_session
 from .questions import _case_for, _context
 
@@ -196,6 +197,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     session.add(asked)
     session.flush()
     asked_pk = asked.id
+    asked_text = body.text
     rows = session.scalars(select(ChatMessage).where(ChatMessage.case_id == case.id)
                            .order_by(ChatMessage.created_at, ChatMessage.id)).all()
     ctx = _context(container, case)
@@ -296,6 +298,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             c = s.get(Case, case_pk)
             container.engine.audit(s, c, f"user:{user_pk}", "chat_reply", tokens=result.usage,
                                    unchecked=result.unchecked)
+            # QA BUG-03: the facts told in the chat go into the case (after the reply, never delaying it)
+            after_commit(s, container, lambda s2: container.engine.facts_from_chat(s2, case_pk, asked_text),
+                         "chat_facts")
             s.commit()
             log.info("chat=reply case=%s provider=%s first_ms=%s total_ms=%s tools=%s", case_pk, used, first_ms,
                      m.meta.get("total_ms"), result.tool_calls)
