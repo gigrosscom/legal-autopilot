@@ -204,7 +204,7 @@ notify:
     deadline_expired: "Konsiliér AI: срок ответа истёк"
     handoff: "Konsiliér AI: дело передано юристу"
   open_case: "Открыть дело: {link}"
-  footer: "Konsiliér AI — ИИ-помощник по юридическим вопросам. Отключить уведомления на почту: {link}"
+  footer: "Konsiliér AI — ИИ-помощник по правовым вопросам. Отключить уведомления на почту: {link}"
   sms:
     payment_confirmed: "Konsilier: оплата получена, готовим документ. {link}"
     document_ready: "Konsilier: документ готов, скачайте его в деле: {link}"
@@ -229,7 +229,7 @@ reports:
   next_open: "Откройте дело — там показан следующий шаг."
   next_sign: "Подпишите ЭЦП документы с юристом: {titles}."
   open_case: "Открыть дело: {link}"
-  footer: "Konsiliér AI — ИИ-помощник по юридическим вопросам. Отключить отчёты на почту: {link}"
+  footer: "Konsiliér AI — ИИ-помощник по правовым вопросам. Отключить отчёты на почту: {link}"
   subject_update: "Konsiliér AI: дело «{title}» — {status}"
   subject_reminder: "Напоминание: следующий шаг по делу «{title}»"
 
