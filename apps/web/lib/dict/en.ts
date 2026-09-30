@@ -212,6 +212,10 @@ const en: Dict = {
     },
   },
   chat: {
+    cancel: "Cancel recording",
+    stop: "Stop the answer",
+    copied: "Copied",
+    copy: "Copy",
     share: "Share",
     voiceTitle: "Read replies aloud",
     placeholderNext: "Message",

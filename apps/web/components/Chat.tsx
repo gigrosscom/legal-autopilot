@@ -6,6 +6,7 @@ import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
 import { Composer, type Attached } from "@/components/Composer";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { Markdown } from "@/components/Markdown";
 import { Invite } from "@/components/Invite";
 import { Alert, Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
@@ -24,11 +25,34 @@ const clean = (text: string) => text.replace(OFFER, "").trimEnd();
 
 const BUBBLE = "max-w-[88%] rounded-[20px] px-4 py-2.5 text-[16px] leading-[1.55] sm:max-w-[80%]";
 
-/** Konsiliér's side of the dialogue. */
-function Reply({ children }: { children: React.ReactNode }) {
+/** Konsiliér's side of the dialogue: plain text across the width, as in ChatGPT and Claude. */
+function Answer({ children }: { children: React.ReactNode }) {
+  return <div className="min-w-0 space-y-3 py-1 text-[16px] leading-[1.65] text-ink">{children}</div>;
+}
+
+/** Copy, share and read aloud, small and quiet under a finished answer. */
+function AnswerTools({ text, onSpeak, speaking }: { text: string; onSpeak?: () => void; speaking?: boolean }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  const btn = "flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-sand hover:text-ink";
+  const canShare = typeof navigator !== "undefined" && "share" in navigator;
   return (
-    <div className="flex justify-start">
-      <div className={`${BUBBLE} min-w-0 space-y-2 rounded-es-md bg-sand text-ink`}>{children}</div>
+    <div className="-ms-2 flex items-center gap-0.5">
+      <button type="button" className={btn} title={copied ? t("chat.copied") : t("chat.copy")}
+        onClick={() => { navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}>
+        <Icon name={copied ? "check" : "copy"} size={18} /><span className="sr-only">{copied ? t("chat.copied") : t("chat.copy")}</span>
+      </button>
+      {canShare && (
+        <button type="button" className={btn} title={t("chat.share")}
+          onClick={() => navigator.share({ text: `${text}\n\n— Konsiliér AI · konsilier.com` }).catch(() => {})}>
+          <Icon name="share" size={18} /><span className="sr-only">{t("chat.share")}</span>
+        </button>
+      )}
+      {onSpeak && (
+        <button type="button" className={btn} onClick={onSpeak} aria-pressed={speaking} title={speaking ? t("chat.stopSpeak") : t("chat.speak")}>
+          <Icon name={speaking ? "stop" : "volume"} size={18} /><span className="sr-only">{speaking ? t("chat.stopSpeak") : t("chat.speak")}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -61,6 +85,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [voiceMode, setVoiceMode] = useState(false);
   const [tts, setTts] = useState(false);
   const sentInitial = useRef(false);
+  const abort = useRef<AbortController | null>(null);  // «Стоп» while the answer is being written
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => setError(errorText(e)));
@@ -124,6 +150,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     // set once the message reached the server: from then on a failure keeps it and offers «Повторить»
     let sent: Attached[] | null = null;
     let partial = "", answered = false, retry = true;
+    const ctl = new AbortController();
+    abort.current = ctl;
     const unsend = () => {  // nothing reached the server: the message goes back into the box
       setMessages((m) => m.filter((x) => x.id !== localId));
       if (!again) { setDraft(text); setFiles(list); }
@@ -144,8 +172,14 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           if (voiceMode) speak(ev.message.text, lang);
           if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
         }
-      });
+      }, ctl.signal);
     } catch (err) {
+      if (ctl.signal.aborted) {  // stopped by the person: what was written stays, nothing to retry
+        answered = true;
+        if (partial.trim()) setMessages((m) => [...m, { id: `stopped-${Date.now()}`, role: "assistant", text: partial,
+          created_at: new Date().toISOString(), attachments: [], norms: [] }]);
+        return;
+      }
       setError(errText(err));
       if (err instanceof ApiError && (err.code === "too_many_messages" || err.code === "agent_unavailable")) {
         retry = false;  // «Повторить» would not help
@@ -154,7 +188,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       if (!sent) unsend();
     } finally {
       if (sent && !answered && retry) setFailed({ partial, text, files: sent });
-      setStreaming(null); setLookingUp(false); setBusy(false);
+      setStreaming(null); setLookingUp(false); setBusy(false); abort.current = null;
     }
   }
 
@@ -230,6 +264,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const bar = (
     <div className="space-y-1.5">
       <Composer value={draft} setValue={setDraft} files={files} busy={busy} onSubmit={() => send()}
+        onStop={streaming !== null ? () => abort.current?.abort() : undefined}
         placeholder={empty ? t("chat.placeholder") : t("chat.placeholderNext")}
         onFiles={(fs) => setFiles((xs) => [...xs, ...fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f }))])}
         onRemove={(key) => setFiles((xs) => xs.filter((x) => x.key !== key))} />
@@ -278,14 +313,14 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             </div>
           </div>
         ) : (
-          <Reply key={m.id}>
-            <p className="whitespace-pre-line">{clean(m.text)}</p>
+          <Answer key={m.id}>
+            <Markdown text={clean(m.text)} />
             {m.norms.length > 0 && (
               <ul className="flex flex-wrap gap-1.5 pt-0.5">
                 {m.norms.map((n) => (
                   <li key={`${n.act_code}-${n.article}`}>
                     <a href={n.url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
+                      className="inline-flex items-center gap-1 rounded-full bg-sand px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
                       <Icon name="scroll" size={13} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
                     </a>
                   </li>
@@ -294,7 +329,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             )}
             {m.id === offerId && caseId && (
               <Link href={`/case/${caseId}`}
-                className="mt-1 flex min-h-12 items-center gap-3 rounded-2xl bg-surface px-3.5 py-2 hover:ring-1 hover:ring-brand">
+                className="flex min-h-14 max-w-md items-center gap-3 rounded-2xl border border-line px-4 py-2 hover:border-brand">
                 <Icon name="document" size={20} className="shrink-0 text-brand" />
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block font-semibold">{t("chat.doc")}</span>
@@ -303,12 +338,16 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 <Icon name="arrowRight" size={18} className="shrink-0 text-muted rtl:-scale-x-100" />
               </Link>
             )}
-          </Reply>
+            <AnswerTools text={clean(m.text)} speaking={speakingId === m.id} onSpeak={tts ? () => {
+              if (speakingId === m.id) { stopSpeaking(); setSpeakingId(null); return; }
+              if (speak(clean(m.text).replace(/\*\*/g, ""), lang)) setSpeakingId(m.id);
+            } : undefined} />
+          </Answer>
         ))}
 
         {streaming !== null && (
-          <Reply>
-            {clean(streaming) ? <p className="whitespace-pre-line">{clean(streaming)}</p> : (
+          <Answer>
+            {clean(streaming) ? <Markdown text={clean(streaming)} /> : (
               <span className="flex h-6 items-center gap-1" aria-hidden>
                 {[0, 1, 2].map((i) => (
                   <span key={i} className="h-2 w-2 rounded-full bg-muted motion-safe:animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
@@ -317,15 +356,15 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
             )}
             <span className="sr-only" role="status">{t("chat.thinking")}</span>
             {lookingUp && <p className="flex items-center gap-2 text-xs text-muted"><Icon name="spinner" size={12} />{t("chat.lookingUp")}</p>}
-          </Reply>
+          </Answer>
         )}
         {failed && streaming === null && (
           <div className="space-y-2">
             {failed.partial && (
-              <Reply>
-                <p className="whitespace-pre-line">{clean(failed.partial)}</p>
+              <Answer>
+                <Markdown text={clean(failed.partial)} />
                 <p className="text-xs text-muted">{t("chat.interrupted")}</p>
-              </Reply>
+              </Answer>
             )}
             <button type="button" onClick={retryFailed} disabled={busy}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-sm font-semibold hover:border-brand disabled:opacity-50">

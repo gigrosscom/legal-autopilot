@@ -212,6 +212,10 @@ const tr: Dict = {
     },
   },
   chat: {
+    cancel: "Kaydı iptal et",
+    stop: "Yanıtı durdur",
+    copied: "Kopyalandı",
+    copy: "Kopyala",
     share: "Paylaş",
     voiceTitle: "Yanıtları sesli oku",
     placeholderNext: "Mesaj",

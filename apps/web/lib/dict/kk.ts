@@ -213,6 +213,10 @@ const kk: Dict = {
     },
   },
   chat: {
+    cancel: "Жазбадан бас тарту",
+    stop: "Жауапты тоқтату",
+    copied: "Көшірілді",
+    copy: "Көшіру",
     share: "Бөлісу",
     voiceTitle: "Жауаптарды дауыстап оқу",
     placeholderNext: "Хабарлама",

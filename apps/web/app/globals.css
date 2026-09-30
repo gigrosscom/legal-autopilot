@@ -229,3 +229,11 @@ body {
 footer {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* the voice recording wave in the message box */
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+.wave-bar { animation: wave 0.9s ease-in-out infinite; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) { .wave-bar { animation: none; transform: scaleY(0.5); } }

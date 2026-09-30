@@ -22,12 +22,14 @@ export type ChatEvent =
 export const chatHistory = (caseId: string) => api<ChatMessage[]>(`/v1/cases/${caseId}/chat`);
 
 /** Send a message and read the streamed reply (server-sent events) chunk by chunk. */
-export async function sendChat(caseId: string, text: string, attachments: string[], onEvent: (e: ChatEvent) => void) {
+export async function sendChat(caseId: string, text: string, attachments: string[], onEvent: (e: ChatEvent) => void,
+  signal?: AbortSignal) {
   const token = await ensureToken();
   const r = await fetch(`${API_URL}/v1/cases/${caseId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ text, attachments }),
+    signal,
   });
   if (!r.ok || !r.body) {
     let detail: unknown = r.statusText;
