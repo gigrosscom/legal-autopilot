@@ -53,7 +53,7 @@ export default function Header() {
         <div className="flex items-center gap-1.5 min-[360px]:gap-2">
           {/* very narrow phones (Galaxy Fold): the language moves into the menu */}
           <div className="max-[359px]:hidden"><LangSelect /></div>
-          <Link href="/account" aria-label={t("nav.account")} title={t("nav.account")}
+          <Link href="/account?signin=1" aria-label={t("nav.account")} title={t("nav.account")}
             className={`flex min-h-10 items-center gap-1.5 rounded-full px-2.5 text-[12px] hover:bg-black/[0.05] hover:text-ink ${active("/account")}`}>
             <Icon name="user" size={17} /><span className="hidden md:inline">{t("nav.account")}</span>
           </Link>

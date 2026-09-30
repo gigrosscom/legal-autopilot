@@ -33,7 +33,7 @@ export function useSignedIn(): boolean | null {
 function SignInLink({ className }: { className: string }) {
   const t = useT();
   return (
-    <Link href="/account" className={className} aria-label={t("app.signIn")}>
+    <Link href="/account?signin=1" className={className} aria-label={t("app.signIn")}>
       <Icon name="login" size={18} /><span className="max-[359px]:sr-only">{t("app.signIn")}</span>
     </Link>
   );
