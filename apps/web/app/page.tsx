@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Composer, type Attached } from "@/components/Composer";
 import { Icon } from "@/components/ui";
 import { handOff } from "@/lib/handoff";
@@ -21,6 +21,25 @@ export default function Home() {
   useEffect(() => setShowTerms(!termsAccepted()), []);
 
   // four short, everyday tasks chosen by hand: the first thing a visitor reads is never someone's misfortune
+  // On wide screens the one-line title is sized to span exactly the message box below it (both edges line up).
+  const title = t("home.title");
+  const titleRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const span = titleRef.current;
+    const box = span?.parentElement?.parentElement;
+    if (!span || !box) return;
+    const fit = () => {
+      span.style.fontSize = "";
+      if (!matchMedia("(min-width: 1024px)").matches) return;
+      const size = parseFloat(getComputedStyle(span).fontSize);
+      span.style.fontSize = `${Math.min(64, (size * box.clientWidth) / span.offsetWidth)}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => ro.disconnect();
+  }, [title]);
   const shown = useMemo(() => [1, 2, 3, 4].map((i) => t(`helper.examples.${i}`)), [t]);
 
   function submit() {
@@ -32,11 +51,12 @@ export default function Home() {
 
   return (
     <section className="mx-auto flex min-h-[calc(100dvh-13rem)] max-w-5xl flex-col justify-center gap-8 py-6 md:gap-10">
-      {/* The lead takes exactly the title's width (w-fit block, the lead min-w-full w-0), so both read as one
-          block on every screen: two even lines on phones, one line each on wide screens. */}
-      <div className="mx-auto w-fit max-w-full space-y-3 text-center md:space-y-4">
-        <h1 className="text-[22px] min-[360px]:text-[29px] font-semibold leading-[1.15] tracking-[-0.01em] text-balance text-ink sm:text-[36px] lg:whitespace-nowrap lg:text-[44px]">{t("home.title")}</h1>
-        <p className="w-0 min-w-full text-[14px] min-[360px]:text-[16.5px] leading-[1.45] text-muted sm:text-[17.5px] lg:text-[21px]">{t("home.sub")}</p>
+      {/* Title and lead take the message box's width, so their edges line up with the box on wide screens. */}
+      <div className="mx-auto w-full max-w-3xl space-y-3 text-center md:space-y-4">
+        <h1 className="text-[22px] min-[360px]:text-[29px] font-semibold leading-[1.15] tracking-[-0.01em] text-balance text-ink sm:text-[36px] lg:whitespace-nowrap lg:text-[44px]">
+          <span ref={titleRef} className="lg:inline-block">{title}</span>
+        </h1>
+        <p className="text-[14px] min-[360px]:text-[16.5px] leading-[1.45] text-muted text-balance sm:text-[17.5px] lg:text-[21px]">{t("home.sub")}</p>
       </div>
 
       <div className="mx-auto w-full max-w-3xl space-y-4">
