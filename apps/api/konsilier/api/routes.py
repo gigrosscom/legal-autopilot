@@ -20,6 +20,7 @@ from .referral import attribute
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
+from ..core import suggestions
 from ..core.scenario import RESPONSE_CLASSES
 from .background import after_commit
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
@@ -99,17 +100,27 @@ def examples(topics: str = "", lang: str = "ru", limit: int = 4, country: str | 
     """Suggestions for the consultation chat: how people describe problems of the chosen topics (taxonomy prefixes,
     e.g. "family" or "administrative.fine_appeal"; empty — any). Taken from the offered scenarios' classification
     examples and the taxonomy's dispute examples, so every new scenario brings its own; a random pick, one example
-    per scenario or dispute first, so the four differ."""
+    per scenario or dispute first, so the four differ.
+
+    Suggestions are shown to strangers and become their message when tapped, so they are filtered
+    (``core.suggestions``): never death or violence; with no topic chosen, also no inheritance, family or criminal
+    areas and no illness, divorce, crime-victim or "cannot pay" stories, and only short tidy sentences — everyday,
+    low-sensitivity problems."""
     wanted = [t.strip() for t in topics.split(",") if t.strip()]
+    prompted = bool(wanted)
 
     def fits(tax: str | None) -> bool:
-        return not wanted or bool(tax) and any(tax == w or tax.startswith(w + ".") or tax.startswith(w + "_")
-                                               for w in wanted)
+        if not wanted:
+            return not suggestions.sensitive_area(tax)
+        return bool(tax) and any(tax == w or tax.startswith(w + ".") or tax.startswith(w + "_") for w in wanted)
+
+    def clean(texts: Any) -> list[str]:
+        return [t for t in texts or () if suggestions.allowed(t, prompted=prompted)]
     sources: list[list[str]] = []
     covered: set[str] = set()
     for sc in container.packs.published(country):
         if fits(sc.taxonomy):
-            ex = list(sc.classification.examples.get(lang) or ())
+            ex = clean(sc.classification.examples.get(lang))
             if ex:
                 sources.append(ex)
                 covered.add(sc.taxonomy or "")
@@ -118,8 +129,9 @@ def examples(topics: str = "", lang: str = "ru", limit: int = 4, country: str | 
                 (not country and pack.manifest.status != "live"):
             continue
         for d in pack.coverage.disputes.values():
-            if fits(d.id) and d.id not in covered and d.examples.get(lang):
-                sources.append(list(d.examples[lang]))
+            ex = clean(d.examples.get(lang)) if fits(d.id) and d.id not in covered else []
+            if ex:
+                sources.append(ex)
                 covered.add(d.id)
     rng = random.Random()
     for s in sources:
