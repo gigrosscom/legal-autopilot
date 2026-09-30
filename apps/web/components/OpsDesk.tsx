@@ -39,6 +39,11 @@ type Pay = {
   id: number; code: string; amount: number; currency: string | null; status: string; method: string;
   purpose: string | null; plan: string | null; case_id: string | null; case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
   claimed_at: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
+  way?: string | null; payer_phone?: string | null; buyer_name?: string | null; buyer_bin?: string | null;
+};
+const PAY_WAY: Record<string, string> = {
+  kaspi_transfer: "перевод на Kaspi", kaspi_link: "ссылка Kaspi Pay", kaspi_qr: "Kaspi QR",
+  kaspi_invoice: "счёт в Kaspi по номеру", bank_invoice: "счёт на оплату (банк)",
 };
 const PAY_PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ" };
 const PAY_STATUS: Record<string, string> = {
@@ -417,6 +422,15 @@ function Payments({ onChange }: { onChange: () => void }) {
             {p.client_email && <> · <a className="link" href={`mailto:${p.client_email}`}>{p.client_email}</a></>}
             {p.client_phone && <> · <a className="link" href={`tel:${p.client_phone.replace(/[^\d+]/g, "")}`}>{p.client_phone}</a></>}
           </p>
+          {p.way && (
+            <p>
+              Способ: <b>{PAY_WAY[p.way] ?? p.way}</b>
+              {p.way === "kaspi_invoice" && p.payer_phone && (
+                <> · выставьте счёт в Kaspi Pay на <span dir="ltr" className="font-mono">{p.payer_phone}</span></>
+              )}
+              {p.buyer_name && <> · {p.buyer_name}{p.buyer_bin ? `, БИН ${p.buyer_bin}` : ""}</>}
+            </p>
+          )}
           {p.decided_at && <p className="text-xs text-muted">Решение: {when(p.decided_at)} · {p.decided_by}{p.note ? ` · ${p.note}` : ""}</p>}
           {p.status !== "paid" && (
             <div className="flex flex-wrap gap-2">
