@@ -312,3 +312,39 @@ def test_business_dispute_prefers_a_business_scenario_when_offered(ctx):
         "text": "Я ИП, поставщик ТОО недопоставил товар по договору поставки, не хватает половины партии",
         "country": "KZ"})["case"]
     assert case["scenario"]["id"].startswith("kz.business.")
+
+
+def test_owner_review_queue_lists_pending_documents_and_reminds_once(ctx):
+    """A held document shows in the owner's queue (/v1/admin/reviews, the command centre in /ops); after 24 h the
+    desk is reminded once."""
+    from datetime import timedelta
+
+    from konsilier.core.models import utcnow
+
+    ctx.container.engine.config.self_service = False
+    api = web_user(ctx)
+    cid, _ = _universal_case(api)
+    case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
+    q = case["question"]
+    while q is not None:
+        out = api.answer(cid, "пропустить" if q["type"] == "evidence" or q["field"] in (
+            "applicant_iin", "event_date", "claim_amount") else {"amount": "450000"}.get(q["field"], "Иванов Иван"))
+        q = out["case"]["question"]
+    action = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
+    assert action["approval_status"] == "pending"
+
+    queue = ctx.client.get("/v1/admin/reviews", headers=ADMIN).json()
+    assert [r["action_id"] for r in queue] == [action["id"]]
+    assert queue[0]["case_id"] == cid and queue[0]["title"] and queue[0]["waiting_since"]
+    assert ctx.client.get("/v1/admin/reviews").status_code in (401, 403)  # owner only
+
+    job = ctx.container.scheduler.extra_jobs[-1]
+    with ctx.container.session_factory() as s:
+        assert job(s, utcnow()) == 0  # not 24 h yet
+        assert job(s, utcnow() + timedelta(hours=25)) == 1
+        s.commit()
+    with ctx.container.session_factory() as s:
+        assert job(s, utcnow() + timedelta(hours=26)) == 0  # once per document
+
+    admin_approve(ctx, action["id"])
+    assert ctx.client.get("/v1/admin/reviews", headers=ADMIN).json() == []
