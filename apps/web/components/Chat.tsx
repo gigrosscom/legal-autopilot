@@ -8,12 +8,12 @@ import { Composer, type Attached } from "@/components/Composer";
 import { EmergencyPanel } from "@/components/EmergencyPanel";
 import { Markdown } from "@/components/Markdown";
 import { Invite } from "@/components/Invite";
-import { Alert, Icon, type IconName } from "@/components/ui";
+import { Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
 import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
 import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
-import { TERMS_VERSION } from "@/lib/legal/terms";
+import { TERMS_VERSION, markTermsAccepted, termsAccepted } from "@/lib/legal/terms";
 import { SITUATIONS } from "@/lib/situations";
 import { canSpeak, speak, stopSpeaking } from "@/lib/voice";
 
@@ -34,13 +34,13 @@ function Bubble({ mine, at, seen, children }: { mine: boolean; at?: string; seen
       {!mine && ( // Konsiliér's small avatar beside its replies, as in Messenger
         <img src="/icons/icon-192.png" alt="" width={28} height={28} className="mb-0.5 h-7 w-7 shrink-0 rounded-full ring-1 ring-line" />
       )}
-      <div className={`relative min-w-0 max-w-[85%] rounded-[18px] px-3.5 pt-2 pb-1.5 text-[16px] leading-[1.5] text-ink shadow-[0_1px_1px_rgb(0_0_0/0.08)] sm:max-w-[75%] ${
-        mine ? "rounded-ee-[6px] bg-[#d9eafd]" : "rounded-es-[6px] bg-surface"}`}>
+      <div className={`relative min-w-0 max-w-[85%] rounded-[20px] px-3.5 pt-2 pb-1.5 text-[16px] leading-[1.5] sm:max-w-[75%] ${
+        mine ? "rounded-ee-[6px] bg-action text-white [&_a]:text-white" : "rounded-es-[6px] bg-[#f0f0f2] text-ink"}`}>
         <div className="space-y-2">{children}</div>
         {at && (
-          <span className="float-end ms-3 mt-1 flex translate-y-0.5 items-center gap-0.5 text-[11px] leading-none text-muted">
+          <span className={`float-end ms-3 mt-1 flex translate-y-0.5 items-center gap-0.5 text-[11px] leading-none ${mine ? "text-white/75" : "text-muted"}`}>
             {time(at)}
-            {mine && <span aria-hidden className={seen ? "text-brand" : ""}>{seen ? "✓✓" : "✓"}</span>}
+            {mine && <span aria-hidden>{seen ? "✓✓" : "✓"}</span>}
           </span>
         )}
         <span className="block clear-both" />
@@ -59,7 +59,7 @@ function DayChip({ iso }: { iso: string }) {
     : d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
   return (
     <div className="flex justify-center py-1">
-      <span className="rounded-lg bg-surface/90 px-3 py-1 text-xs font-medium text-ink-soft shadow-[0_1px_1px_rgb(0_0_0/0.06)]">{label}</span>
+      <span className="px-3 py-1 text-xs font-medium text-muted">{label}</span>
     </div>
   );
 }
@@ -98,10 +98,13 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [voiceMode, setVoiceMode] = useState(false);
   const [tts, setTts] = useState(false);
   const sentInitial = useRef(false);
+  const [showTerms, setShowTerms] = useState(false);  // only until the terms were accepted once
+  useEffect(() => setShowTerms(!termsAccepted()), []);
   const abort = useRef<AbortController | null>(null);  // «Стоп» while the answer is being written
   const [speakingId, setSpeakingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialCase) markTermsAccepted();  // an existing conversation: the terms were accepted with it
     if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => setError(errorText(e)));
   }, [initialCase]);
 
@@ -132,6 +135,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       method: "POST", body: JSON.stringify({ text, language: lang, country: "KZ", accept_terms: TERMS_VERSION }),
     });
     setCaseId(out.case.id);
+    markTermsAccepted();  // accepted with the first message: the line about the terms is not shown again
     window.history.replaceState(null, "", `/chat/${out.case.id}`);
     return out.case.id;
   }
@@ -284,7 +288,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       {left && left.limit > 0 && left.n <= REMAINING_FROM && (
         <p className="px-3 text-center text-xs text-muted">{t("chat.remaining", { n: left.n, limit: left.limit })}</p>
       )}
-      {!caseId && empty && (
+      {!caseId && empty && showTerms && (
         <p className="px-3 text-center text-xs text-muted">
           {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
         </p>
@@ -293,14 +297,14 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   );
 
   return (
-    <AppShell title={t("chat.brand")} subtitle={t("chat.subtitle")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar} wallpaper
+    <AppShell title={t("chat.brand")} subtitle={t("chat.subtitle")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar}
       avatar tabs={false} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
       <div className="space-y-1.5" aria-live="polite">
 
         {empty && (
           <div className="flex min-h-[55dvh] flex-col items-center justify-end gap-6 pb-2">
             <div className="space-y-4 text-center">
-              <img src="/icons/icon-192.png" alt="" width={72} height={72} className="mx-auto rounded-[22px] shadow-[0_2px_10px_rgb(0_0_0/0.08)]" />
+              <img src="/icons/icon-192.png" alt="" width={72} height={72} className="mx-auto rounded-full ring-1 ring-line" />
               <h2 className="text-[28px] font-semibold tracking-tight text-balance">{greeting(t)}</h2>
               {hint && <p className="mx-auto max-w-md text-[15px] text-muted">{hint}</p>}
             </div>
@@ -309,7 +313,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 {examples.map((e) => (
                   <li key={e}>
                     <button type="button" onClick={() => { setDraft(e); document.getElementById("chat-input")?.focus(); }}
-                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-surface px-4 py-3 text-start text-[16px] text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)] hover:bg-sand">
+                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-[#f0f0f2] px-4 py-3 text-start text-[16px] text-ink hover:bg-sand-deep">
                       <Icon name="chat" size={20} className="shrink-0 text-muted" />{e}
                     </button>
                   </li>
@@ -332,7 +336,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               <Bubble key={m.id} mine at={m.created_at} seen={seen}>
                 <p className="whitespace-pre-line">{m.text}</p>
                 {m.attachments.map((a) => (
-                  <p key={a.id} className="flex items-center gap-1.5 text-xs text-ink-soft"><Icon name="paperclip" size={14} />{a.filename}</p>
+                  <p key={a.id} className="flex items-center gap-1.5 text-xs text-white/85"><Icon name="paperclip" size={14} />{a.filename}</p>
                 ))}
               </Bubble>
             )];
@@ -345,7 +349,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                   {m.norms.map((n) => (
                     <li key={`${n.act_code}-${n.article}`}>
                       <a href={n.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full bg-sand px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
+                        className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-xs text-ink-soft hover:text-brand">
                         <Icon name="scroll" size={13} className="text-brand" />{t("chat.article", { n: n.article })} · {n.act}
                       </a>
                     </li>
@@ -355,7 +359,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               {m.id === offerId && caseId && (
                 // an action inside the reply, as business chats do: one clear button
                 <Link href={`/case/${caseId}`}
-                  className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-sand px-3 py-2 text-center hover:bg-sand-deep">
+                  className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-surface px-3 py-2 text-center hover:bg-white/70">
                   <span className="font-semibold text-ink">{t("chat.doc")}</span>
                   <span className="text-xs text-muted">{t("chat.docPrice")}</span>
                 </Link>
@@ -388,13 +392,17 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               </Bubble>
             )}
             <button type="button" onClick={retryFailed} disabled={busy}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-surface px-4 text-sm font-semibold shadow-[0_1px_1px_rgb(0_0_0/0.08)] hover:text-brand disabled:opacity-50">
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#f0f0f2] px-4 text-sm font-semibold hover:text-brand disabled:opacity-50">
               <Icon name="send" size={16} />{t("chat.retry")}
             </button>
           </div>
         )}
         {emergency && <EmergencyPanel info={emergency} onContinue={() => send(emergency.text, true)} />}
-        {error && <Alert tone="danger" role="alert">{error}</Alert>}
+        {error && (  // a quiet line, as the messengers show a message that did not go
+          <p role="alert" className="flex items-center justify-center gap-1.5 px-4 py-2 text-center text-[13px] text-danger">
+            <Icon name="alert" size={15} className="shrink-0" />{error}
+          </p>
+        )}
       </div>
     </AppShell>
   );

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Composer, type Attached } from "@/components/Composer";
 import { handOff } from "@/lib/handoff";
 import { useT } from "@/lib/i18n";
+import { termsAccepted } from "@/lib/legal/terms";
 
 /** The home page is the message box: what Konsiliér is in two lines, the box, a few examples. Sending opens the
  *  chat with the message already on its way. */
@@ -15,6 +16,8 @@ export default function Home() {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<Attached[]>([]);
   const [busy, setBusy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  useEffect(() => setShowTerms(!termsAccepted()), []);
 
   // four short, everyday tasks chosen by hand: the first thing a visitor reads is never someone's misfortune
   const shown = useMemo(() => [1, 2, 3, 4].map((i) => t(`helper.examples.${i}`)), [t]);
@@ -50,9 +53,11 @@ export default function Home() {
         )}
       </div>
 
-      <p className="text-center text-xs leading-relaxed text-muted">
-        {t("home.privacy")} {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
-      </p>
+      {showTerms && (  // until the terms were accepted with a first message
+        <p className="text-center text-xs leading-relaxed text-muted">
+          {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+        </p>
+      )}
     </section>
   );
 }
