@@ -90,7 +90,8 @@ export default function AccountPage() {
       {(signedInAlready || open) && (
       <section aria-labelledby="ways" className="space-y-3">
         <h2 id="ways" className="text-lg font-semibold">{t(signedInAlready ? "account.moreWaysTitle" : "account.waysTitle")}</h2>
-        {[...METHODS].sort((a, b) => Number(methods?.[b.id] ?? false) - Number(methods?.[a.id] ?? false)).map((m) => {
+        {/* only the ways that work on the server: a switched-off one is not shown at all (no «скоро») */}
+        {METHODS.filter((m) => methods?.[m.id]).map((m) => {
           const available = methods?.[m.id] ?? false;
           const isOpen = open === m.id;
           return (
