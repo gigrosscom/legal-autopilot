@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { ApiError, api, errorText, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -31,23 +31,34 @@ export function CodeForm({ kind, onDone, wide = false }: { kind: "email" | "phon
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const btn = wide ? "min-h-12 w-full" : undefined;
+  const btn = "min-h-12 w-full";
+  const [wait, setWait] = useState(0);  // seconds until the code can be sent again
+  const tried = useRef("");             // the code last checked, so a typed code is checked once
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(id);
+  }, [wait]);
 
   const send = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setBusy(true); setError(null);
     try {
       await api(`/v1/auth/${kind}/start`, { method: "POST", body: JSON.stringify({ target, language: lang }) });
-      setSent(true);
+      setSent(true); setWait(60); setCode(""); tried.current = "";
     } catch (err) { setError(authError(err)); } finally { setBusy(false); }
   };
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const verify = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    tried.current = code;
     setBusy(true); setError(null);
     try {
       onDone(await api<SignedIn>(`/v1/auth/${kind}/verify`, { method: "POST", body: JSON.stringify({ target, code }) }));
     } catch (err) { setError(authError(err)); } finally { setBusy(false); }
   };
+
+  // as in the messengers: the six digits in, the code is checked at once
+  useEffect(() => { if (sent && code.length === 6 && tried.current !== code && !busy) verify(); });
 
   return (
     <div className={`enter space-y-3 ${wide ? "" : "border-t border-line pt-3"}`}>
@@ -55,7 +66,7 @@ export function CodeForm({ kind, onDone, wide = false }: { kind: "email" | "phon
         <form onSubmit={send} className="space-y-3">
           <label className="block space-y-1 text-sm">
             <span className="font-medium">{t(`account.${kind}.label`)}</span>
-            <input className="input" dir="ltr" required value={target} onChange={(e) => setTarget(e.target.value)}
+            <input className="input min-h-12 text-[17px]" dir="ltr" required value={target} onChange={(e) => setTarget(e.target.value)}
               type={kind === "email" ? "email" : "tel"} autoComplete={kind === "email" ? "email" : "tel"} autoFocus={wide}
               inputMode={kind === "email" ? "email" : "tel"} placeholder={kind === "email" ? "name@mail.kz" : "+7 701 123 45 67"} />
           </label>
@@ -64,16 +75,20 @@ export function CodeForm({ kind, onDone, wide = false }: { kind: "email" | "phon
         </form>
       ) : (
         <form onSubmit={verify} className="space-y-3">
-          <p className="text-sm text-muted">{t(`account.${kind}.sent`, { target })}</p>
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">{t("account.codeLabel")}</span>
-            <input className="input max-w-40 text-lg tracking-[0.3em]" dir="ltr" required inputMode="numeric" autoFocus={wide}
-              autoComplete="one-time-code" maxLength={6} pattern="\d{6}" value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+          <p className="text-[15px] text-ink-soft">{t(`account.${kind}.sent`, { target })}</p>
+          <label className="block rounded-2xl border border-line bg-sand px-4 pt-2.5 pb-2 focus-within:border-brand">
+            <span className="block text-xs text-muted">{t("account.codeLabel")}</span>
+            <input className="w-full border-0 bg-transparent p-0 text-[26px] font-medium tracking-[0.35em] text-ink outline-none"
+              dir="ltr" required inputMode="numeric" autoFocus autoComplete="one-time-code" maxLength={6} pattern="\d{6}"
+              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} style={{ outline: "none" }} />
           </label>
-          <div className="flex flex-wrap gap-2">
-            <Button className={btn} disabled={busy || code.length !== 6} icon={busy ? "spinner" : "check"}>{t("account.confirm")}</Button>
-            <button type="button" className={`btn-ghost ${wide ? "w-full" : ""}`} onClick={() => { setSent(false); setCode(""); }}>{t("account.changeTarget")}</button>
+          <Button className={btn} disabled={busy || code.length !== 6} icon={busy ? "spinner" : undefined}>{busy ? "" : t("account.confirm")}</Button>
+          <div className="flex flex-col items-center gap-1 text-sm">
+            <button type="button" disabled={busy || wait > 0} onClick={() => send()}
+              className="min-h-10 font-semibold text-ink disabled:font-normal disabled:text-muted">
+              {wait > 0 ? t("account.resendIn", { n: wait }) : t("account.resend")}
+            </button>
+            <button type="button" className="min-h-10 text-muted hover:text-ink" onClick={() => { setSent(false); setCode(""); }}>{t("account.changeTarget")}</button>
           </div>
         </form>
       )}

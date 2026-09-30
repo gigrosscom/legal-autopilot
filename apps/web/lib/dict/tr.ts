@@ -666,6 +666,8 @@ const tr: Dict = {
     tick: "Hatırlatmaları çalıştır",
   },
   account: {
+    resendIn: "{n} sn sonra kodu tekrar gönder",
+    resend: "Kodu tekrar gönder",
     bonus: "Ücretsiz belgeleriniz: {n} — arkadaş davetleri için. Herhangi bir dosyanızda ödeme yapmadan hazırlanır.",
     eyebrow: "Hesap",
     title: "Giriş ve kimlik doğrulama",

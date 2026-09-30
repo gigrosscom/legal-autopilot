@@ -346,14 +346,11 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 </ul>
               )}
               {m.id === offerId && caseId && (
+                // an action inside the reply, as business chats do: one clear button
                 <Link href={`/case/${caseId}`}
-                  className="-mx-1.5 flex min-h-12 items-center gap-3 rounded-xl bg-sand px-3 py-2 hover:bg-sand-deep">
-                  <Icon name="document" size={20} className="shrink-0 text-brand" />
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <span className="block font-semibold text-brand">{t("chat.doc")}</span>
-                    <span className="block text-xs text-muted">{t("chat.docPrice")}</span>
-                  </span>
-                  <Icon name="arrowRight" size={18} className="shrink-0 text-muted rtl:-scale-x-100" />
+                  className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-sand px-3 py-2 text-center hover:bg-sand-deep">
+                  <span className="font-semibold text-ink">{t("chat.doc")}</span>
+                  <span className="text-xs text-muted">{t("chat.docPrice")}</span>
                 </Link>
               )}
             </Bubble>
