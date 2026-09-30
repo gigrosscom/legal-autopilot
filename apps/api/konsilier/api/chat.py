@@ -21,6 +21,7 @@ from ..config import Settings
 from ..container import Container
 from ..core.models import Case, ChatMessage, Evidence, User
 from ..core.pii import PiiVault
+from ..gemini import EmptyReply
 from .deps import current_user, get_container, get_session
 from .questions import _case_for, _context
 
@@ -251,6 +252,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                         if started and first_ms is None:
                             first_ms = int((time.perf_counter() - t_request) * 1000)
                         yield _sse(ev)
+                if result is None or not (result.text or "").strip():
+                    # a reply never ends empty: the fallback, else «busy» (the message goes back to the limit)
+                    raise EmptyReply(f"{provider}: empty reply")
                 used = provider
                 break
             except Exception as e:  # quota, API down, no credits, …: the fallback agent, else "try in a minute"

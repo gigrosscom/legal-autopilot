@@ -95,6 +95,17 @@ class Message:
     usage: Usage
 
 
+class EmptyReply(RuntimeError):
+    """The model finished without a word and without a tool call: for the chat that is a failed attempt, never a
+    reply (the next provider is asked, else the person is told to try again in a minute)."""
+
+
+def has_content(message: Any) -> bool:
+    """A reply with some text or a tool call (an empty or whitespace-only one is not an answer)."""
+    return any(getattr(b, "type", "") != "text" or (getattr(b, "text", "") or "").strip()
+               for b in getattr(message, "content", None) or [])
+
+
 def _schema(s: dict[str, Any]) -> dict[str, Any]:
     """JSON schema → the OpenAPI subset of function declarations (no additionalProperties)."""
     out = {k: v for k, v in s.items() if k != "additionalProperties"}
@@ -144,7 +155,15 @@ class _Stream:
                  thinking: str = ""):
         self._http, self._urls, self._body, self._headers, self._thinking = http, urls, body, headers, thinking
         self._final: Message | None = None
+        self._r: httpx.Response | None = None
+        self._closed = False
         self.attempts: list[dict[str, Any]] = []  # every HTTP try: model, status (or error), ms, pause after it
+
+    def close(self) -> None:
+        """Stop reading (another provider of the chain answered first); safe to call from another thread."""
+        self._closed = True
+        if self._r is not None:
+            self._r.close()
 
     def _body_for(self, url: str) -> dict[str, Any]:
         """The request for one model: Gemini 3 models get the chat's thinking level (least thinking → first words
@@ -172,7 +191,10 @@ class _Stream:
         blocks: list[Block] = []
         usage = Usage()
         finish = "STOP"
-        r = self._open()
+        r = self._r = self._open()
+        if self._closed:
+            r.close()
+            return
         try:
             for line in r.iter_lines():
                 if not line.startswith("data: "):
