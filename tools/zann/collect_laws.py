@@ -25,29 +25,22 @@ import hashlib
 import json
 import re
 import sys
-import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-import httpx
-
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "apps" / "api"))
 
-from konsilier.lawagent.sources import CODE_RE, ActNotFound, page_text  # noqa: E402
+from konsilier.lawagent.sources import CODE_RE, ActNotFound  # noqa: E402
+# shared with the server job (python -m konsilier.cli zann-corpus): page parsing and the polite fetcher
+from konsilier.zann.corpus import (  # noqa: E402,F401
+    BASE, LANGS, MIN_CHARS, USER_AGENT, PoliteFetcher, extract_act, looks_kazakh,
+)
 
-BASE = "https://old.adilet.zan.kz"
-USER_AGENT = "Konsilier.AI Zann corpus collector (+https://konsilier.com; research; 1 request / 3 s)"
-LANGS = {"ru": "rus", "kk": "kaz"}  # our code → the portal's path segment
 MAX_CODES = 5000  # a sanity limit per run (owner 30.09: laws from adilet are collected for Zann)
 ADILET_LINK_RE = re.compile(r"adilet\.zan\.kz/(?:rus|kaz|eng)/docs/([A-Z]\d{9,10}_?)")
-ARTICLE_TAG_RE = re.compile(r"(?is)<article\b[^>]*>(.*?)</article>")
-TITLE_RE = re.compile(r"(?is)<title>(.*?)</title>")
-KK_TITLE_SUFFIX_RE = re.compile(r"\s*-\s*\"?Әділет\"?\s*АҚЖ.*$")
-KK_LETTERS = set("әғқңөұүһіӘҒҚҢӨҰҮҺІ")
-MIN_CHARS = 300  # a shorter body means the portal has no text in this language (or a stub page)
 
 Fetch = Callable[[str], str]
 
@@ -73,26 +66,6 @@ def codes_from_packs(packs_dir: Path) -> list[str]:
             for code in ADILET_LINK_RE.findall(p.read_text("utf-8", errors="ignore")):
                 counts[code] = counts.get(code, 0) + 1
     return sorted(counts, key=lambda c: (-counts[c], c))
-
-
-def extract_act(raw: str) -> tuple[str, str]:
-    """(title, text) of the act from a portal page: only the <article> body, not menus and banners."""
-    m = TITLE_RE.search(raw)
-    head = f"<title>{m.group(1)}</title>" if m else ""
-    bodies = ARTICLE_TAG_RE.findall(raw)
-    if not bodies:
-        return page_text(raw)[0], ""
-    title, text = page_text(f"<html><head>{head}</head><body>{''.join(bodies)}</body></html>")
-    title = KK_TITLE_SUFFIX_RE.sub("", title).strip()  # page_text strips the ru suffix «- ИПС "Әділет"»
-    lines = [ln.strip() for ln in text.splitlines()]
-    text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
-    return title, text + "\n"
-
-
-def looks_kazakh(text: str) -> bool:
-    """True when Kazakh-specific letters are frequent enough (a Russian page mentions a few Kazakh names)."""
-    letters = sum(ch.isalpha() for ch in text)
-    return letters > 0 and sum(ch in KK_LETTERS for ch in text) / letters > 0.01
 
 
 def make_record(code: str, title: str, lang: str, url: str, text: str, now: datetime | None = None) -> Record:
@@ -136,43 +109,7 @@ def validate_codes(codes: Iterable[str]) -> list[str]:
     return seen
 
 
-# ---------- network ----------
-
-class PoliteFetcher:
-    """One request at a time, a pause between requests, retries with back-off on 429/5xx and network errors."""
-
-    def __init__(self, delay: float = 3.0, retries: int = 3, timeout: float = 60.0,
-                 sleep: Callable[[float], None] = time.sleep, client: httpx.Client | None = None):
-        self.delay, self.retries, self.sleep = delay, retries, sleep
-        self.client = client or httpx.Client(timeout=timeout, follow_redirects=True,
-                                             headers={"User-Agent": USER_AGENT})
-        self._last = 0.0
-
-    def __call__(self, url: str) -> str:
-        for attempt in range(self.retries + 1):
-            wait = self._last + self.delay - time.monotonic()
-            if wait > 0:
-                self.sleep(wait)
-            self._last = time.monotonic()
-            try:
-                r = self.client.get(url)
-            except httpx.TransportError:
-                if attempt == self.retries:
-                    raise
-                self.sleep(self.delay * 2 ** (attempt + 1))
-                continue
-            if r.status_code == 404:
-                raise ActNotFound(url)
-            if r.status_code == 429 or r.status_code >= 500:
-                if attempt == self.retries:
-                    r.raise_for_status()
-                retry_after = r.headers.get("Retry-After", "")
-                self.sleep(float(retry_after) if retry_after.isdigit() else self.delay * 2 ** (attempt + 1))
-                continue
-            r.raise_for_status()
-            return r.text
-        raise RuntimeError("unreachable")
-
+# ---------- network (PoliteFetcher: konsilier.zann.corpus) ----------
 
 def collect(codes: list[str], langs: list[str], out_dir: Path, manifest_path: Path, fetch: Fetch,
             force: bool = False, log: Callable[[str], None] = print) -> dict[str, int]:
