@@ -1332,8 +1332,10 @@ class CaseEngine:
                    action=action.action_id, note=note)
         pack = self.pack_of(case)
         key = "notifications.approved" if approved else "notifications.rejected"
-        self.notifier.notify(session, case, "approval", pack.t(case.language, key),
-                             sms="document_ready" if approved else None)
+        text = pack.t(case.language, key)
+        if not approved and note:  # what to fix, in the reviewer's words
+            text = f"{text}\n{note}"
+        self.notifier.notify(session, case, "approval", text, sms="document_ready" if approved else None)
 
     def mark_submitted(self, session: Session, case: Case, action: Action, actor: str,
                        via: str = "user_submits") -> None:

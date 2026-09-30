@@ -278,7 +278,7 @@ def test_credit_fraud_via_telegram_full_path(ctx):
         assert expected in text.replace(" ", " "), expected
     assert_no_pii_reached_llm(ctx, "Сейтказиева", "950505400789", "777 000 11 22")
     # telegram user was notified about the approval through the Telegram adapter
-    assert any("проверен юристом" in t for _, t in ctx.channels["telegram"].sent)
+    assert any("Документ проверен" in t for _, t in ctx.channels["telegram"].sent)
 
     sub = api.post(f"/v1/cases/{cid}/actions/{a1['id']}/submitted", json={})
     due = date.fromisoformat(sub["case"]["actions"][0]["deadline"]["due_date"])

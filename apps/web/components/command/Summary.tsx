@@ -3,6 +3,7 @@
 import { MdInline } from "@/components/Markdown";
 import { fmt, goalsOf, latestReport, moneyText, pendingOf, usd } from "./model";
 import { PaymentsToConfirm } from "./Payments";
+import { ReviewsToCheck } from "./Reviews";
 import { Card, H2, Loading, NoData, PageTitle, Progress, RowLink, Stat, TeamUnavailable, useCentre } from "./ui";
 import { liveValue, monthDay } from "./Goals";
 
@@ -70,6 +71,7 @@ export function Summary() {
         )}
       </section>
 
+      <ReviewsToCheck compact />
       <PaymentsToConfirm compact />
 
       <section className="space-y-3">

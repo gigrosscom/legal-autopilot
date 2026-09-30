@@ -219,10 +219,39 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         owner = session.get(User, case.owner_id)
         notify_team(container, f"Документ ждёт проверки: {action.action_id}",
                     f"Клиент ждёт документ по делу {case.id} (сценарий {case.scenario_id}). "
-                    f"Уверенность классификации: {case.qualification_confidence}.\n\n"
-                    f"Проверьте и одобрите или верните: {settings.public_site_url.rstrip('/')}/admin",
-                    desk="lawyers", test=bool(owner and owner.is_test))
+                    f"Клиенту обещано: обычно в течение 24 часов.\n\n"
+                    f"Проверьте и одобрите или верните: {settings.public_site_url.rstrip('/')}/ops?tab=ops",
+                    desk="clients", test=bool(owner and owner.is_test))
     engine.on_approval_needed = approval_needed
+
+    def approval_reminders(session: Any, now: Any) -> int:
+        """Scheduler job: a document still unchecked 24 h after it was held — remind the desk once."""
+        from datetime import timedelta
+
+        from sqlalchemy import select
+
+        from .core.models import Action, AuditLog, Case, User
+        from .team import notify_team
+
+        sent = 0
+        late = session.scalars(select(Action).where(Action.approval_status == "pending",
+                                                    Action.updated_at <= now - timedelta(hours=24)))
+        for action in late.all():
+            done = session.scalar(select(AuditLog.id).where(AuditLog.case_id == action.case_id,
+                                                            AuditLog.event == "approval_reminded").limit(1))
+            if done:
+                continue
+            case = session.get(Case, action.case_id)
+            owner = session.get(User, case.owner_id)
+            notify_team(container, f"Напоминание: документ ждёт проверки больше 24 часов ({action.action_id})",
+                        f"Клиенту обещали проверку в течение 24 часов. Дело {case.id}.\n\n"
+                        f"Открыть очередь: {settings.public_site_url.rstrip('/')}/ops?tab=ops",
+                        desk="clients", test=bool(owner and owner.is_test))
+            session.add(AuditLog(case_id=case.id, actor="scheduler", event="approval_reminded",
+                                 data={"action": action.action_id}))
+            sent += 1
+        return sent
+    scheduler.extra_jobs.append(approval_reminders)
     guard = getattr(engine.llm_provider, "guard", None)
     if guard is not None:
         from .team import notify_team

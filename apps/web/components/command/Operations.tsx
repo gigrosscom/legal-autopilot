@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MetricsTab } from "@/components/MetricsTab";
 import { OpsDesk } from "@/components/OpsDesk";
 import { PaymentsToConfirm } from "./Payments";
+import { ReviewsToCheck } from "./Reviews";
 import { H2, PageTitle, RowLink, useCentre } from "./ui";
 
 /** Everything the operations centre had: payments, the clients and lawyers desks, metrics, and the admin. */
@@ -12,7 +13,8 @@ export function Operations() {
   const [view, setView] = useState<"desk" | "metrics">("desk");
   return (
     <div className="space-y-8">
-      <PageTitle sub="Оплаты, обращения клиентов, заявки юристов и метрики.">Операции</PageTitle>
+      <PageTitle sub="Проверка документов, оплаты, обращения клиентов и метрики.">Операции</PageTitle>
+      <ReviewsToCheck />
       <PaymentsToConfirm />
       <section className="space-y-3">
         <div role="tablist" className="flex gap-2">

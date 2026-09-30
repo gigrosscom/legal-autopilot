@@ -183,6 +183,26 @@ def get_case(case_id: uuid.UUID, session: Session = Depends(get_session),
     return case_view(container.engine, session, _case(case_id, session), admin=True)
 
 
+@router.get("/reviews")
+def reviews(session: Session = Depends(get_session), container: Container = Depends(get_container)) -> list[dict[str, Any]]:
+    """Documents waiting for the owner's check (court documents and others the engine holds): oldest first."""
+    rows = session.scalars(select(Action).where(Action.approval_status == "pending").order_by(Action.updated_at))
+    out = []
+    for a in rows:
+        case = session.get(Case, a.case_id)
+        title = a.action_id
+        try:
+            pack = container.engine.pack_of(case)
+            title = pack.localized(container.engine.scenario_of(case).action(a.action_id).title, "ru")
+        except Exception:  # noqa: BLE001 — a card without a nice title is still a card
+            pass
+        out.append({"action_id": str(a.id), "case_id": str(case.id), "title": title,
+                    "scenario_id": case.scenario_id, "language": case.language,
+                    "waiting_since": a.updated_at.isoformat() if a.updated_at else None,
+                    "addressee": (a.addressee or {}).get("name"), "has_pdf": bool(a.pdf_key)})
+    return out
+
+
 @router.get("/actions/{action_id}/document")
 def download(action_id: uuid.UUID, format: Literal["docx", "pdf"] = "pdf", session: Session = Depends(get_session),
              container: Container = Depends(get_container)):

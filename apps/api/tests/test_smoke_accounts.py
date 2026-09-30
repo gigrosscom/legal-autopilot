@@ -68,7 +68,7 @@ def test_the_lawyer_is_told_when_a_document_waits_for_a_check(ctx):
     from .test_payment import ANSWERS, STORY
 
     st = ctx.container.settings
-    st.ops_lawyers_emails = "lawyer@konsilier.com"
+    st.ops_clients_emails = "owner@konsilier.com"  # the owner checks documents (decision 30.09)
     ctx.container.engine.config.approval_required_first_n = 50  # the first cases of a scenario are checked
     outbox = Outbox()
     ctx.container.email_sender = outbox
@@ -79,4 +79,4 @@ def test_the_lawyer_is_told_when_a_document_waits_for_a_check(ctx):
     action = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
     assert action["approval_status"] == "pending"
     to, subject, body = outbox.sent[-1]
-    assert to == "lawyer@konsilier.com" and "ждёт проверки" in subject and cid in body and "/admin" in body
+    assert to == "owner@konsilier.com" and "ждёт проверки" in subject and cid in body and "/ops" in body

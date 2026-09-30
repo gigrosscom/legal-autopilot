@@ -312,3 +312,48 @@ def test_business_dispute_prefers_a_business_scenario_when_offered(ctx):
         "text": "Я ИП, поставщик ТОО недопоставил товар по договору поставки, не хватает половины партии",
         "country": "KZ"})["case"]
     assert case["scenario"]["id"].startswith("kz.business.")
+
+
+def test_owner_review_queue_lists_pending_documents_and_reminds_once(ctx):
+    """A held document shows in the owner's queue (/v1/admin/reviews, the command centre in /ops); after 24 h the
+    desk is reminded once."""
+    from datetime import timedelta
+
+    from konsilier.core.models import utcnow
+
+    ctx.container.engine.config.self_service = False
+    api = web_user(ctx)
+    cid, _ = _universal_case(api)
+    case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
+    answers = {
+        "applicant_name": "Иванов Иван Иванович", "applicant_iin": "пропустить", "applicant_address": "Алматы, ул. Абая 1",
+        "applicant_phone": "+7 701 123 45 67", "respondent_name": "ТОО «Ромашка»", "event_date": "пропустить",
+        "problem_description": "Не платят зарплату с июня", "desired_outcome": "Выплатить долг по зарплате",
+        "amount": "450000", "claim_amount": "пропустить",
+    }
+    q = case["question"]
+    for _ in range(40):  # bounded: a rejected answer repeats the question
+        if q is None:
+            break
+        out = api.answer(cid, "пропустить" if q["type"] == "evidence" else answers[q["field"]])
+        assert out["reply"]["error"] is None, out["reply"]
+        q = out["case"]["question"]
+    assert q is None
+    action = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
+    assert action["approval_status"] == "pending"
+
+    queue = ctx.client.get("/v1/admin/reviews", headers=ADMIN).json()
+    assert [r["action_id"] for r in queue] == [action["id"]]
+    assert queue[0]["case_id"] == cid and queue[0]["title"] and queue[0]["waiting_since"]
+    assert ctx.client.get("/v1/admin/reviews").status_code in (401, 403)  # owner only
+
+    job = next(j for j in ctx.container.scheduler.extra_jobs if getattr(j, "__name__", "") == "approval_reminders")
+    with ctx.container.session_factory() as s:
+        assert job(s, utcnow()) == 0  # not 24 h yet
+        assert job(s, utcnow() + timedelta(hours=25)) == 1
+        s.commit()
+    with ctx.container.session_factory() as s:
+        assert job(s, utcnow() + timedelta(hours=26)) == 0  # once per document
+
+    admin_approve(ctx, action["id"])
+    assert ctx.client.get("/v1/admin/reviews", headers=ADMIN).json() == []
