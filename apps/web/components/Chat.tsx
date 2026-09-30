@@ -23,6 +23,48 @@ const REMAINING_FROM = 10;
 /** The marker a reply ends with when it offers a document; hidden while the reply streams in. */
 const OFFER = /\[?\[\s*DOC[A-Z]*\s*\]?\]?\s*$|\[\[?\s*$/;
 const clean = (text: string) => text.replace(OFFER, "").trimEnd();
+/** Between the short answer and the details (konsilier/chat.py MORE_MARKER); a half-typed one while streaming too. */
+const MORE = /\[?\[\s*MORE\s*\]?\]?/i;
+const MORE_TAIL = /\[\[?\s*M?O?R?E?\s*\]?$/i;
+/** Without the marker, a long reply still opens short: its first paragraph, the rest under «Подробнее». */
+const LONG_WORDS = 70;
+
+/** The short answer and the details of a reply (null when there is nothing more). */
+function splitReply(text: string): [string, string | null] {
+  const m = MORE.exec(text);
+  if (m) {
+    const short = text.slice(0, m.index).trim(), rest = text.slice(m.index + m[0].length).trim();
+    return short ? [short, rest || null] : [rest, null];
+  }
+  const paras = text.trim().split(/\n\s*\n/);
+  if (paras.length > 1 && text.split(/\s+/).length > LONG_WORDS) return [paras[0], paras.slice(1).join("\n\n")];
+  return [text, null];
+}
+
+/** A reply: the short answer, and «Подробнее» that opens the details in place. */
+function Reply({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const cleaned = clean(text);
+  if (streaming) {
+    // while it types: only the short answer; the details arrive hidden and open with «Подробнее» when it is done
+    const m = MORE.exec(cleaned);
+    const shown = (m ? cleaned.slice(0, m.index) : cleaned).replace(MORE_TAIL, "").trimEnd();
+    return shown ? <Markdown text={shown} /> : null;
+  }
+  const [short, rest] = splitReply(cleaned);
+  return (
+    <>
+      <Markdown text={short} />
+      {rest && (open ? <Markdown text={rest} /> : (
+        <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
+          className="inline-flex items-center gap-1 text-[15px] font-semibold text-[var(--chat-accent)] hover:underline">
+          {t("chat.more")}<Icon name="chevronDown" size={16} />
+        </button>
+      ))}
+    </>
+  );
+}
 
 const dayOf = (iso: string) => new Date(iso).toDateString();
 
@@ -320,7 +362,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           }
           return [day, (
             <Bubble key={m.id} mine={false} at={m.created_at}>
-              <Markdown text={clean(m.text)} />
+              <Reply text={m.text} />
               {m.norms.length > 0 && (
                 <ul className="flex flex-wrap gap-1.5">
                   {m.norms.map((n) => (
@@ -347,7 +389,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
         {streaming !== null && (
           <Bubble mine={false}>
-            {clean(streaming) ? <Markdown text={clean(streaming)} /> : (
+            {clean(streaming).replace(MORE_TAIL, "").trim() ? <Reply text={streaming} streaming /> : (
               <span className="flex items-center gap-2 text-muted">
                 {lookingUp ? t("chat.lookingUp") : t("chat.thinking")}
                 <span className="flex items-center gap-1" aria-hidden>
@@ -364,7 +406,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
           <div className="space-y-2">
             {failed.partial && (
               <Bubble mine={false}>
-                <Markdown text={clean(failed.partial)} />
+                <Markdown text={clean(failed.partial).replace(MORE, "\n\n").replace(MORE_TAIL, "")} />
                 <p className="text-xs text-muted">{t("chat.interrupted")}</p>
               </Bubble>
             )}

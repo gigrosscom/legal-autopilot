@@ -224,6 +224,7 @@ const tr: Dict = {
     },
   },
   chat: {
+    more: "Ayrıntılar",
     notice: "Bu, hukuki sorular için yapay zekâ asistanı Konsiliér ile bir sohbettir. İsimler ve belge numaraları yapay zekâ işlemeden önce gizlenir. Konsiliér avukatın yerini tutmaz.",
     subtitle: "Hukuki sorular için yapay zekâ asistanı",
     greet: {"morning": "Günaydın!", "day": "İyi günler!", "evening": "İyi akşamlar!", "night": "İyi geceler!"},
