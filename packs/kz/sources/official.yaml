@@ -1,0 +1,178 @@
+# Библиотека официальных страниц (docs/official-library.md): что краулер забирает ночью и что ищет чат.
+# Только эти домены (точное имя хоста; поддомены — отдельной записью). Страницы — только HTML; robots.txt
+# соблюдается; не чаще 1 запроса в секунду на домен.
+#
+# Проверено 29.09.2026 из среды разработки (curl, User-Agent KonsilierBot/1.0):
+# - www.gov.kz — страницы отдаются сервером (текст в HTML): «жизненные ситуации» (/situations/<n>/intro — вся
+#   ситуация на одной странице), стандарты услуг (/services/<n>), страницы ведомств. robots.txt закрывает
+#   /legalacts/, /page/, /uploads/, */search/.
+# - gfss.kz — ГФСС: социальные выплаты и отчисления, HTML. robots.txt не опубликован (отдаётся HTML) — всё открыто.
+# - enbek.kz — Электронная биржа труда: меры содействия занятости, HTML. robots.txt закрывает поиск, PDF.
+# - damu.kz — Фонд «Даму»: страницы программ HTML; список программ подгружается скриптом, поэтому он берётся из
+#   фрагмента load_programs.php (страница-«хаб»: из неё только ссылки, в поиск она не попадает).
+# - old.goszakup.gov.kz — портал госзакупок (старый интерфейс, HTML); robots.txt: Crawl-delay 5.
+# Не включены: egov.kz (новый сайт целиком рисуется скриптом — в HTML нет текста, старые /cms/ru/… ведут на главную),
+# zakup.gov.kz (новая платформа закупок — только скрипт), adilet.zan.kz (новый сайт — только скрипт; нормы закона
+# чат и так открывает живьём через инструменты юридического агента), www.gfss.kz (не открывается: 502).
+country: KZ
+max_pages_per_domain: 400
+max_depth: 2
+
+domains:
+  - domain: www.gov.kz
+    name: {ru: "gov.kz — единая платформа госорганов", kk: "gov.kz — мемлекеттік органдардың бірыңғай платформасы"}
+    about:
+      ru: "жизненные ситуации (рождение ребёнка, пособия, брак и развод, алименты, жильё, работа, пенсия, штрафы) и стандарты госуслуг: кто оказывает, документы, сроки"
+      kk: "өмірлік жағдайлар (бала туу, жәрдемақы, неке, алимент, тұрғын үй, жұмыс, зейнетақы, айыппұл) және мемлекеттік қызмет стандарттары"
+    lang: ru
+    keep_query: [lang]
+    default_query: {lang: ru}
+    include:
+      - '^/situations/\d+/intro'
+      - '^/services/\d+'
+      - '^/article/\d+'
+      - '^/memleket/entities/[a-z0-9-]+\?'
+      - '^/memleket/entities/[a-z0-9-]+/activities/\d+'
+    exclude:
+      - '[?&]lang=(en|kk)'
+      - '^/legalacts/'
+      - '^/uploads/'
+      - '/search'
+    # стандарты услуг вставлены в текст ситуаций как данные: {"id":…,"source_id":3042,"title":…}
+    link_patterns:
+      - match: '"source_id"\s*:\s*"?(\d+)'
+        url: 'https://www.gov.kz/services/{1}?lang=ru'
+  - domain: gfss.kz
+    name: {ru: "ГФСС — Государственный фонд социального страхования", kk: "МӘСҚ — Мемлекеттік әлеуметтік сақтандыру қоры"}
+    about:
+      ru: "социальные выплаты из фонда: по беременности и родам, по уходу за ребёнком до 1 года, по потере работы, по утрате трудоспособности, по потере кормильца; социальные отчисления"
+      kk: "қордан әлеуметтік төлемдер: жүктілік және босану, бала күтімі, жұмыстан айырылу, еңбек ету қабілетінен айырылу, асыраушысынан айырылу"
+    lang: ru
+    include:
+      - '^/ru/(socpayments|socotchisleniya|топ-вопросов)/'
+    exclude:
+      - '/retrieve/'
+      - '/списки-плательщиков'
+  - domain: enbek.kz
+    name: {ru: "Enbek.kz — электронная биржа труда", kk: "Enbek.kz — еңбектің электрондық биржасы"}
+    about:
+      ru: "меры содействия занятости: пособие по безработице, субсидируемые рабочие места, обучение, переселение, центры занятости"
+      kk: "жұмыспен қамтуға жәрдемдесу шаралары"
+    lang: ru
+    include:
+      - '^/ru/(how-to-get-state-employment-support|employment-services|czn-digital-services|resettlement|national-projects|page/)'
+    exclude:
+      - '/search/'
+      - '/vacancy/'
+  - domain: damu.kz
+    name: {ru: "Фонд «Даму»", kk: "«Даму» қоры"}
+    about:
+      ru: "поддержка бизнеса: субсидирование ставки, гарантии по кредитам, льготные кредиты и лизинг, обучение предпринимателей"
+      kk: "бизнесті қолдау: мөлшерлемені субсидиялау, кепілдіктер, жеңілдікті несиелер мен лизинг"
+    lang: ru
+    include:
+      - '^/ru/programmi/[a-z_]+/[a-z0-9_-]+'
+      - '^/ru/obratnaya-svyaz/faq'
+      - '^/bitrix/templates/[A-Za-z_]+/ajax/load_programs\.php'
+    keep_query: [TAB]
+    hubs:
+      - '/ajax/load_programs\.php'
+    link_patterns:
+      - match: 'href="/programmi/([a-z_]+/[a-z0-9_-]+)"'
+        url: 'https://damu.kz/ru/programmi/{1}'
+  - domain: old.goszakup.gov.kz
+    name: {ru: "Портал государственных закупок", kk: "Мемлекеттік сатып алу порталы"}
+    about:
+      ru: "государственные закупки: объявления, реестры жалоб и недобросовестных поставщиков, национальный режим, как стать поставщиком"
+      kk: "мемлекеттік сатып алу: хабарландырулар, шағымдар мен жосықсыз өнім берушілер тізілімдері"
+    lang: ru
+    include:
+      - '^/ru/welcome/'
+      - '^/ru/news/view/\d+'
+    drop:  # шапка портала на каждой странице
+      - '^Архив$'
+      - '^Количество зарегистрированных пользователей'
+      - '^KZ RU$'
+      - '^Помощь по платным услугам$'
+      - '^Внимание! Соединение с приложением прервано'
+      - '^Подождите, идет загрузка данных'
+    max_pages: 60
+
+seeds:
+  social_benefits:
+    - https://www.gov.kz/situations/1/intro?lang=ru      # рождение ребёнка (пособия и выплаты)
+    - https://www.gov.kz/situations/11/intro?lang=ru     # адресная социальная помощь
+    - https://www.gov.kz/situations/419/intro?lang=ru    # многодетные семьи
+    - https://www.gov.kz/situations/62/intro?lang=ru     # установление инвалидности
+    - https://www.gov.kz/situations/234/intro?lang=ru    # специальное социальное обслуживание на дому
+    - https://www.gov.kz/situations/233/intro?lang=ru    # оплата больничного листа
+    - https://www.gov.kz/situations/315/intro?lang=ru    # как рассчитать декретные
+    - https://www.gov.kz/situations/5/intro?lang=ru      # выход на пенсию
+    - https://www.gov.kz/situations/281/intro?lang=ru    # досрочная пенсия
+    - https://www.gov.kz/situations/17/intro?lang=ru     # утрата близких и погребение
+    - https://gfss.kz/ru/socpayments/
+    - https://gfss.kz/ru/socpayments/по-беременности-и-родам-усыновлениюудочерению-ребенка/
+    - https://gfss.kz/ru/socpayments/по-уходу-за-ребенком-до-1-года/
+    - https://gfss.kz/ru/socpayments/по-потере-работы/
+    - https://gfss.kz/ru/socpayments/по-утрате-трудоспособности/
+    - https://gfss.kz/ru/socpayments/по-потере-кормильца/
+    - https://gfss.kz/ru/топ-вопросов/топ-вопросов-по-социальным-выплатам/
+  business_support:
+    - https://damu.kz/bitrix/templates/Corp_Damu_copy/ajax/load_programs.php?TAB=all
+    - https://damu.kz/ru/programmi/subsidy/isker_aymak
+    - https://damu.kz/ru/obratnaya-svyaz/faq/
+    - https://www.gov.kz/situations/99/intro?lang=ru     # как открыть ТОО
+    - https://www.gov.kz/situations/338/intro?lang=ru    # государственно-частное партнёрство
+  education:
+    - https://www.gov.kz/situations/8/intro?lang=ru      # «Болашак»
+    - https://www.gov.kz/situations/246/intro?lang=ru    # поступление в магистратуру
+    - https://www.gov.kz/situations/15/intro?lang=ru     # поступление в школу
+    - https://www.gov.kz/situations/58/intro?lang=ru     # детский сад
+    - https://www.gov.kz/situations/146/intro?lang=ru    # признание зарубежного диплома
+    - https://www.gov.kz/situations/188/intro?lang=ru    # «С дипломом в село»
+  procurement:
+    - https://old.goszakup.gov.kz/ru/welcome/national_regime
+    - https://old.goszakup.gov.kz/ru/welcome/pay
+    - https://old.goszakup.gov.kz/ru/welcome/links
+  consumer_protection:
+    - https://www.gov.kz/memleket/entities/mti-kzpp?lang=ru
+    - https://www.gov.kz/situations/231/intro?lang=ru    # чужой кредит на ваше имя
+    - https://www.gov.kz/situations/236/intro?lang=ru    # финансовые пирамиды
+    - https://www.gov.kz/situations/421/intro?lang=ru    # защита персональных данных
+  labour:
+    - https://www.gov.kz/situations/18/intro?lang=ru     # устройство на работу
+    - https://www.gov.kz/situations/318/intro?lang=ru    # сокращение численности или штата
+    - https://www.gov.kz/situations/322/intro?lang=ru    # трудовые договоры в ЕСУТД
+    - https://www.gov.kz/situations/319/intro?lang=ru    # работа за рубежом
+    - https://www.gov.kz/memleket/entities/enbek?lang=ru
+    - https://enbek.kz/ru/how-to-get-state-employment-support
+    - https://enbek.kz/ru/employment-services
+  housing:
+    - https://www.gov.kz/situations/187/intro?lang=ru    # жилищная помощь
+    - https://www.gov.kz/situations/242/intro?lang=ru    # жилищный сертификат
+    - https://www.gov.kz/situations/240/intro?lang=ru    # программа «5-10-20»
+    - https://www.gov.kz/situations/237/intro?lang=ru    # аренда квартиры
+    - https://www.gov.kz/situations/10/intro?lang=ru     # покупка квартиры
+    - https://www.gov.kz/situations/342/intro?lang=ru    # ОСИ
+    - https://www.gov.kz/situations/100/intro?lang=ru    # перепланировка
+    - https://www.gov.kz/situations/3/intro?lang=ru      # земельный участок под ИЖС
+  fines:
+    - https://www.gov.kz/situations/147/intro?lang=ru    # штраф со скидкой 50%
+    - https://www.gov.kz/situations/12/intro?lang=ru     # владелец авто
+    - https://www.gov.kz/situations/59/intro?lang=ru     # ДТП
+  family:
+    - https://www.gov.kz/situations/148/intro?lang=ru    # алименты на ребёнка
+    - https://www.gov.kz/situations/6/intro?lang=ru      # расторжение брака
+    - https://www.gov.kz/situations/4/intro?lang=ru      # создание семьи
+    - https://www.gov.kz/situations/335/intro?lang=ru    # брачный договор
+    - https://www.gov.kz/situations/16/intro?lang=ru     # усыновление
+    - https://www.gov.kz/situations/144/intro?lang=ru    # имущество несовершеннолетнего
+    - https://www.gov.kz/situations/105/intro?lang=ru    # наследство
+  egov_howto:
+    - https://www.gov.kz/services/4362?lang=ru           # ЭЦП удалённо
+    - https://www.gov.kz/situations/21/intro?lang=ru     # паспорт
+    - https://www.gov.kz/situations/22/intro?lang=ru     # удостоверение личности
+    - https://www.gov.kz/situations/96/intro?lang=ru     # потеря документов
+    - https://www.gov.kz/situations/110/intro?lang=ru    # апостиль
+    - https://www.gov.kz/situations/13/intro?lang=ru     # коррупционные правонарушения
+    - https://www.gov.kz/situations/248/intro?lang=ru    # налоговый кошелёк

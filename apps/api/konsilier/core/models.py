@@ -9,10 +9,12 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    DDL,
     JSON,
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     Numeric,
@@ -20,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    event,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -558,3 +561,68 @@ class Subscription(Base):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class OfficialPage(Base):
+    """One page of the library of official pages (konsilier/official): fetched at night from the domains the
+    country pack allows, searched by the consultation chat. status: pending (found, not fetched yet) | ok | hub (read
+    for its links only) | gone (404/410) | error | skipped (not HTML, too little text, robots.txt, redirected off the
+    allowed domains)."""
+
+    __tablename__ = "official_pages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    country: Mapped[str] = mapped_column(String(2), index=True)
+    url: Mapped[str] = mapped_column(String(1024), unique=True)
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    topic: Mapped[str | None] = mapped_column(String(64))  # seed group of the pack's sources file
+    depth: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # link steps from a seed
+    title: Mapped[str | None] = mapped_column(String(500))
+    lang: Mapped[str | None] = mapped_column(String(8))
+    text: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str | None] = mapped_column(String(64))  # sha256 of the extracted text
+    etag: Mapped[str | None] = mapped_column(String(255))  # for the conditional GET of the next run
+    last_modified: Mapped[str | None] = mapped_column(String(64))
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # text last differed
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    error: Mapped[str | None] = mapped_column(String(500))
+
+
+class OfficialChunk(Base):
+    """A section of an official page (the text under one heading): what the chat's search returns. On PostgreSQL
+    the migration adds a generated full-text column ``tsv`` with a GIN index; SQLite (tests) is searched in Python."""
+
+    __tablename__ = "official_chunks"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    page_id: Mapped[int] = mapped_column(ForeignKey("official_pages.id", ondelete="CASCADE"), index=True)
+    country: Mapped[str] = mapped_column(String(2), index=True)
+    lang: Mapped[str | None] = mapped_column(String(8))
+    ord: Mapped[int] = mapped_column(Integer, default=0)
+    heading: Mapped[str | None] = mapped_column(String(500))
+    text: Mapped[str] = mapped_column(Text)
+
+
+# The same full-text column and index as migration 0021, for databases created from the models (tests on PostgreSQL).
+OFFICIAL_TSV = ("ALTER TABLE official_chunks ADD COLUMN tsv tsvector GENERATED ALWAYS AS (to_tsvector("
+                "CASE WHEN lang = 'ru' THEN 'russian'::regconfig ELSE 'simple'::regconfig END, "
+                "coalesce(heading, '') || ' ' || text)) STORED")
+event.listen(OfficialChunk.__table__, "after_create", DDL(OFFICIAL_TSV).execute_if(dialect="postgresql"))
+event.listen(OfficialChunk.__table__, "after_create",
+             DDL("CREATE INDEX ix_official_chunks_tsv ON official_chunks USING gin (tsv)").execute_if(
+                 dialect="postgresql"))
+
+
+class LLMUsage(Base):
+    """One call of the paid model: what it was for, its tokens and cost — the spend guard sums these."""
+
+    __tablename__ = "llm_usage"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    day: Mapped[str] = mapped_column(String(10), index=True)  # UTC, YYYY-MM-DD
+    month: Mapped[str] = mapped_column(String(7), index=True)  # YYYY-MM
+    task: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str] = mapped_column(String(80))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+

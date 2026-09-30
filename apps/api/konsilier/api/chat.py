@@ -83,7 +83,8 @@ def _reason(provider: str, e: Exception) -> str:
 
 def _view(m: ChatMessage) -> dict[str, Any]:
     return {"id": str(m.id), "role": m.role, "text": m.text, "created_at": m.created_at.isoformat(),
-            "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", [])}
+            "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", []),
+            "sources": m.meta.get("sources", [])}
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -151,6 +152,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     country = pack.localized(pack.manifest.name, "en") or pack.country
     portal = [s for s in pack.manifest.legal_sources if agent.portal_domain in str(s.url)]
     use_portal = bool(portal)
+    ctx["lang"] = lang
     ctx["key_acts"] = [{"code": a.code, "title": pack.localized(a.title, lang)} for s in portal for a in s.key_acts]
     case_pk, user_pk = case.id, user.id
     session.commit()  # the user's message is saved even if the reply fails
@@ -203,7 +205,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         text = vault.restore(result.text) if result else ""
         with container.session_factory() as s:
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
-                            meta={"provider": used, "norms": result.norms, "unchecked": result.unchecked,
+                            meta={"provider": used, "norms": result.norms, "sources": result.sources,
+                                  "unchecked": result.unchecked,
                                   "tool_calls": result.tool_calls, "usage": result.usage})
             s.add(m)
             c = s.get(Case, case_pk)

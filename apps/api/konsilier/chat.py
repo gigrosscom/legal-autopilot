@@ -1,8 +1,11 @@
 """Free consultation chat: a fast model talks with the person, collects the facts and explains the next steps.
 
 The chat answers in plain words and streams its reply. It may look up the official text of an article (the same
-portal tools as the legal agent, konsilier/lawagent) and the registry of bodies of the country pack; it is told
-never to state article numbers, deadlines, fees or addressees from memory. After the reply a check compares the
+portal tools as the legal agent, konsilier/lawagent), the registry of bodies of the country pack and the library of
+official pages (konsilier/official: state services, benefits, grants, tenders — refreshed at night, searched in
+milliseconds, never crawled during a conversation); it is told never to state article numbers, deadlines, fees or
+addressees from memory. Before the model is called the library is searched with the person's last message and the
+best excerpts go into the context, so every model benefits, whether or not it calls tools. After the reply a check compares the
 article numbers mentioned in it with the articles actually opened in this turn: anything not opened is flagged
 "unchecked" in the reply's meta for metrics and logs (the person is not shown a note). Documents are prepared by the case engine (a separate,
 paid step), not by the chat.
@@ -18,10 +21,13 @@ from typing import Any, Iterator
 
 from .lawagent.agent import LawAgent
 from .lawagent.sources import Adilet
+from .official.search import Hit
 
 log = logging.getLogger(__name__)
 
 HISTORY_TURNS = 20  # messages sent to the model; older ones are dropped
+PRE_HITS = 3  # library excerpts added to the context before the model is called
+TOOL_HITS = 5  # excerpts one official_sources call returns
 
 SYSTEM = """You are Konsiliér AI, a free assistant that helps people in {country} with legal questions.
 Talk like a patient, friendly consultant: short plain sentences, no legal jargon.
@@ -56,8 +62,8 @@ How to work
    - the steps: find the service or announcement, check eligibility, collect documents, apply before the
      deadline, keep the receipt, and what to do after a refusal.
    Amounts, income thresholds, deadlines and document lists change and depend on the programme: never state them
-   from memory — say plainly that they must be checked in the official service standard, programme rules or tender
-   documents. Never promise that a benefit, a grant, a place or a tender will be won. Konsiliér AI can prepare the
+   from memory. {official_rule}
+   Never promise that a benefit, a grant, a place or a tender will be won. Konsiliér AI can prepare the
    package (application, checklist, cover letter, business plan outline, inventory) with the same button. A refusal
    or a rejected bid is a dispute again: follow steps 3–5, and the body to complain to comes only from the forums
    tool.
@@ -71,6 +77,14 @@ PORTAL_RULE = ("State an article number only if you opened that article's text w
                "Find the act among the main acts listed below{search}.")
 NO_PORTAL_RULE = ("You have no access to the official texts here, so never state article numbers: name the law or "
                   "code by its title only.")
+OFFICIAL_RULE = ("For a question about a state service, a benefit, a grant or business support, an education grant, a "
+                 "public tender or an e-government procedure, first consult the official library: the excerpts given "
+                 "below for the last message, or official_sources with a short query. State an amount, a deadline, an "
+                 "income threshold or a document list only as an excerpt says it, and cite it as «По данным <domain>: "
+                 "…» (in the reply language) with the page link. If the library has nothing on the question, say so "
+                 "plainly and name the official portal to check (listed below); never fill the gap from memory.")
+NO_OFFICIAL_RULE = ("Say plainly that they must be checked in the official service standard, programme rules or tender "
+                    "documents.")
 
 # "статья 113", "ст. 113-1", "113-бап", "article 113", "madde 113", "المادة 113"
 ARTICLE_MENTION = re.compile(
@@ -85,6 +99,18 @@ class ChatResult:
     unchecked: bool = False
     tool_calls: int = 0
     usage: dict[str, int] = field(default_factory=dict)
+    sources: list[dict[str, str]] = field(default_factory=list)  # official pages the reply cites (url, title, domain)
+
+
+# Some open models slip a word of Chinese or Japanese into an answer in a Cyrillic language ("если 母亲 работала"). The
+# person never reads those scripts here, so such runs are dropped from the stream.
+_CJK = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]+ ?")
+
+
+def strip_foreign_script(text: str, language: str) -> str:
+    if not text or language.lower().startswith(("chinese", "japanese", "korean", "中", "日", "한")):
+        return text
+    return _CJK.sub("", text)
 
 
 def mentioned_articles(text: str) -> set[str]:
@@ -94,14 +120,23 @@ def mentioned_articles(text: str) -> set[str]:
 class ChatAgent:
     def __init__(self, client: Any, model: str, adilet: Adilet | None = None, *,
                  portal_domain: str = "adilet.zan.kz", max_turns: int = 6, max_tokens: int = 2000,
-                 web_search: bool = True):
+                 web_search: bool = True, library: Any = None):
         self.client, self.model, self.max_turns, self.max_tokens = client, model, max_turns, max_tokens
         self.portal_domain, self.web_search = portal_domain, web_search
+        self.library = library  # konsilier.official.search.OfficialLibrary, or None
         # the portal tools are the legal agent's; the chat reuses them rather than re-implementing
         self._law = LawAgent(client, model, adilet or Adilet(), portal_domain=portal_domain)
 
-    def tools(self, use_portal: bool) -> list[dict[str, Any]]:
+    def tools(self, use_portal: bool, use_library: bool = False) -> list[dict[str, Any]]:
         out = []
+        if use_library:
+            out.append({"name": "official_sources",
+                        "description": "Search the library of official state pages (services, benefits, grants, "
+                                       "business support, tenders, e-government how-tos). Returns excerpts with the "
+                                       "page URL, title and domain.",
+                        "input_schema": {"type": "object", "additionalProperties": False, "required": ["query"],
+                                         "properties": {"query": {"type": "string", "description":
+                                                                  "A few key words in the language of the pages"}}}})
         for t in self._law.tools():
             if t.get("name") == "web_search":
                 if use_portal and self.web_search:  # basic search variant: works on the fast model too
@@ -119,24 +154,43 @@ class ChatAgent:
         """Yield {"type": "text", "text"} chunks and {"type": "tool", "name"} markers; the last event is
         {"type": "done", "result": ChatResult}."""
         got: dict[tuple[str, str], Any] = {}
+        found: dict[str, Hit] = {}  # official pages seen in this turn, by URL
         case_note = json.dumps(context.get("case", {}), ensure_ascii=False)
         messages: list[dict[str, Any]] = [{"role": m["role"], "content": m["text"]} for m in history[-HISTORY_TURNS:]]
         if messages and messages[0]["role"] != "user":
             messages = messages[1:]
+        cc, lang = getattr(context.get("pack"), "country", None), context.get("lang")
+        use_library = self.library is not None and self.library.available(cc)
         search = " or with web_search on the official portal" if self.web_search else ""
         system = SYSTEM.format(country=country, language=language,
-                               portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE)
+                               portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE,
+                               official_rule=OFFICIAL_RULE if use_library else NO_OFFICIAL_RULE)
         if use_portal and context.get("key_acts"):
             system += "\n\nMain acts on the official portal (code — title):\n" + "\n".join(
                 f"{a['code']} — {a['title']}" for a in context["key_acts"])
+        if use_library:
+            portals = self.library.portals(cc, lang or "")
+            if portals:
+                system += "\n\nOfficial portals (domain — what is there):\n" + "\n".join(
+                    f"{p['domain']} — {p['name']}: {p['about']}" for p in portals)
+            # pre-retrieval: every model gets the best excerpts, also one that never calls tools
+            last = next((m["text"] for m in reversed(history) if m["role"] == "user"), "")
+            hits = self._library_search(last, cc, lang, PRE_HITS, found)
+            system += ("\n\nOfficial library excerpts for the last message (may be off-topic; cite what you use):\n"
+                       + json.dumps(hits, ensure_ascii=False) if hits else
+                       "\n\nThe official library found nothing for the last message as written; if it is about a "
+                       "state service, try official_sources with other key words.")
         system += "\n\nCase context (names and numbers are replaced by placeholders):\n" + case_note
         usage = {"input_tokens": 0, "output_tokens": 0}
         text_parts: list[str] = []
         calls = 0
         for _ in range(self.max_turns):
             with self.client.messages.stream(model=self.model, max_tokens=self.max_tokens, system=system,
-                                             tools=self.tools(use_portal), messages=messages) as s:
+                                             tools=self.tools(use_portal, use_library), messages=messages) as s:
                 for chunk in s.text_stream:
+                    chunk = strip_foreign_script(chunk, language)
+                    if not chunk:
+                        continue
                     text_parts.append(chunk)
                     yield {"type": "text", "text": chunk}
                 final = s.get_final_message()
@@ -152,8 +206,14 @@ class ChatAgent:
                     if b.type == "tool_use":
                         calls += 1
                         yield {"type": "tool", "name": b.name}
-                        results.append({"type": "tool_result", "tool_use_id": b.id,
-                                        "content": self._law._run_tool(b.name, dict(b.input), context, got)})
+                        if b.name == "official_sources" and use_library:
+                            hits = self._library_search(str(dict(b.input).get("query", "")), cc, lang, TOOL_HITS,
+                                                        found)
+                            content = (json.dumps(hits, ensure_ascii=False) if hits else
+                                       "nothing found in the official library: say so and name the portal to check")
+                        else:
+                            content = self._law._run_tool(b.name, dict(b.input), context, got)
+                        results.append({"type": "tool_result", "tool_use_id": b.id, "content": content})
                 messages.append({"role": "user", "content": results})
                 if text_parts and not text_parts[-1].endswith(("\n", " ")):
                     text_parts.append("\n\n")
@@ -163,7 +223,25 @@ class ChatAgent:
                 continue
             break
         text = "".join(text_parts).strip()
-        yield {"type": "done", "result": self._check(text, got, calls, usage)}
+        result = self._check(text, got, calls, usage)
+        result.sources = [{"url": h.url, "title": h.title, "domain": h.domain} for h in found.values()
+                          if h.url in text or h.domain in text]
+        yield {"type": "done", "result": result}
+
+    def _library_search(self, query: str, cc: str | None, lang: str | None, limit: int,
+                        found: dict[str, Hit]) -> list[dict[str, str]]:
+        """Excerpts of the official library for the model; never raises (the chat goes on without them)."""
+        if not query.strip() or not cc:
+            return []
+        try:
+            hits = self.library.search(query[:500], cc, lang, limit)
+        except Exception:
+            log.exception("official library search failed")
+            return []
+        for h in hits:
+            found.setdefault(h.url, h)
+        return [{"url": h.url, "domain": h.domain, "title": h.title, "section": h.heading, "excerpt": h.snippet}
+                for h in hits]
 
     @staticmethod
     def _check(text: str, got: dict[tuple[str, str], Any], calls: int, usage: dict[str, int]) -> ChatResult:

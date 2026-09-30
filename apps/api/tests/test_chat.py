@@ -381,3 +381,10 @@ def test_gemini_reply_is_counted_by_provider(ctx):
     assert ev[-1]["type"] == "done"
     chat = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["chat"]
     assert chat["gemini"] >= 1 and chat["anthropic_budget_usd"] == 10.0
+
+
+def test_a_stray_chinese_word_never_reaches_the_person():
+    from konsilier.chat import strip_foreign_script
+
+    assert strip_foreign_script("если 母亲 работала", "русском") == "если работала"
+    assert strip_foreign_script("обычный текст", "русском") == "обычный текст"

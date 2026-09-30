@@ -15,6 +15,8 @@ type Metrics = {
   countries: Record<string, number>;
   top_scenarios: [string, number][];
   weekly: { week: string; users: number; cases: number; documents: number; submitted: number }[];
+  claude?: { today_usd: number; month_usd: number; daily_budget_usd: number; monthly_budget_usd: number;
+    by_task: Record<string, { calls: number; cost_usd: number }> };
 };
 type Series = "cases" | "users" | "documents" | "submitted";
 
@@ -112,6 +114,8 @@ export function MetricsTab({ token }: { token: string }) {
         </details>
       </section>
 
+      {m.claude && <ClaudeSpend c={m.claude} />}
+
       <div className="grid gap-4 md:grid-cols-2">
         <section className="card space-y-2 text-sm">
           <h2 className="font-semibold">{t("metrics.topScenarios")}</h2>
@@ -131,5 +135,45 @@ export function MetricsTab({ token }: { token: string }) {
         </section>
       </div>
     </div>
+  );
+}
+
+/** The paid model's spend today and this month against the budgets set on the server. */
+function ClaudeSpend({ c }: { c: NonNullable<Metrics["claude"]> }) {
+  const t = useT();
+  const usd = (n: number) => `$${n.toFixed(2)}`;
+  const bar = (spent: number, budget: number) => {
+    const share = budget ? Math.min(1, spent / budget) : 0;
+    return (
+      <div className="h-2 rounded-full bg-sand" aria-hidden>
+        <div className={`h-2 rounded-full ${share >= 1 ? "bg-danger" : share >= 0.8 ? "bg-warning" : "bg-brand"}`}
+          style={{ width: `${Math.max(share * 100, spent ? 2 : 0)}%` }} />
+      </div>
+    );
+  };
+  const tasks = Object.entries(c.by_task).sort((a, b) => b[1].cost_usd - a[1].cost_usd);
+  return (
+    <section className="card space-y-3 text-sm" aria-labelledby="claude-h">
+      <div className="space-y-1">
+        <h2 id="claude-h" className="font-semibold">{t("metrics.claude.title")}</h2>
+        <p className="text-xs text-muted">{t("metrics.claude.lead")}</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-1">
+          <p className="flex justify-between"><span>{t("metrics.claude.today")}</span><span className="tabular-nums">{usd(c.today_usd)} / {usd(c.daily_budget_usd)}</span></p>
+          {bar(c.today_usd, c.daily_budget_usd)}
+        </div>
+        <div className="space-y-1">
+          <p className="flex justify-between"><span>{t("metrics.claude.month")}</span><span className="tabular-nums">{usd(c.month_usd)} / {usd(c.monthly_budget_usd)}</span></p>
+          {bar(c.month_usd, c.monthly_budget_usd)}
+        </div>
+      </div>
+      {tasks.length > 0 && (
+        <ul className="space-y-1">{tasks.map(([task, v]) => (
+          <li key={task} className="flex justify-between gap-2"><span className="truncate font-mono text-xs">{task}</span>
+            <span className="tabular-nums text-muted">{v.calls} · {usd(v.cost_usd)}</span></li>
+        ))}</ul>
+      )}
+    </section>
   );
 }

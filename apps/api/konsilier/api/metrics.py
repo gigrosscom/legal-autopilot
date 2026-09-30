@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 from ..container import Container
 from ..core.models import Action, Case, LawyerApplication, Outcome, User, WaitlistEntry
+from ..core.llm.spend import usage_summary
 from .chat import chat_usage_today
 from .deps import get_container, get_session, require_admin
 from .referral import referral_metrics
@@ -124,6 +125,8 @@ def compute(session: Session, weeks: int = 12, settings: Settings | None = None)
     }
     if settings is not None:  # consultation chat today: who answered, refusals, Claude spend against its budget
         out["chat"] = chat_usage_today(session, settings)
+        out["claude"] = usage_summary(session, daily_usd=settings.llm_daily_budget_usd,
+                                      monthly_usd=settings.llm_monthly_budget_usd)
     return out
 
 
