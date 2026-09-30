@@ -61,7 +61,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
           </Link>
           {avatar && <img src="/icons/icon-192.png" alt="" width={36} height={36} className="me-2 h-9 w-9 shrink-0 rounded-full ring-1 ring-line" />}
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold leading-tight">{title}</h1>
+            <h1 className="truncate text-[17px] font-bold leading-tight text-ink">{title}</h1>
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
           <NotificationBell className="lg:hidden" />

@@ -35,12 +35,12 @@ function Bubble({ mine, at, seen, children }: { mine: boolean; at?: string; seen
         <img src="/icons/icon-192.png" alt="" width={28} height={28} className="mb-0.5 h-7 w-7 shrink-0 rounded-full ring-1 ring-line" />
       )}
       <div className={`relative min-w-0 max-w-[85%] rounded-[20px] px-3.5 pt-2 pb-1.5 text-[17px] leading-[1.5] sm:max-w-[75%] ${
-        mine ? "rounded-ee-[6px] bg-action text-white [&_a]:text-white" : "rounded-es-[6px] bg-[#f0f0f2] text-ink"}`}>
+        mine ? "rounded-ee-[6px] bg-[var(--chat-out-bg)] text-[var(--chat-out-fg)] [&_a]:text-inherit" : "rounded-es-[6px] bg-[var(--chat-in-bg)] text-[var(--chat-in-fg)]"} shadow-[var(--chat-shadow)]`}>
         <div className="space-y-2">{children}</div>
         {at && (
-          <span className={`float-end ms-3 mt-1 flex translate-y-0.5 items-center gap-0.5 text-[11px] leading-none ${mine ? "text-white/75" : "text-muted"}`}>
+          <span className={`float-end ms-3 mt-1 flex translate-y-0.5 items-center gap-0.5 text-[11px] leading-none ${mine ? "text-[var(--chat-out-meta)]" : "text-muted"}`}>
             {time(at)}
-            {mine && <span aria-hidden>{seen ? "✓✓" : "✓"}</span>}
+            {mine && <span aria-hidden className={seen ? "text-[#53bdeb]" : ""}>{seen ? "✓✓" : "✓"}</span>}
           </span>
         )}
         <span className="block clear-both" />
@@ -297,7 +297,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   );
 
   return (
-    <AppShell title={t("chat.brand")} subtitle={t("chat.subtitle")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar}
+    <AppShell title={t("chat.brand")} subtitle={t("chat.subtitle")} back={caseId ? "/cases" : "/"} sections={sections} links={links} bar={bar} wallpaper
       avatar tabs={false} scrollKey={`${messages.length}-${streaming?.length ?? -1}-${!!error}-${!!failed}`}>
       <div className="space-y-1.5" aria-live="polite">
 
@@ -313,7 +313,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 {examples.map((e) => (
                   <li key={e}>
                     <button type="button" onClick={() => { setDraft(e); document.getElementById("chat-input")?.focus(); }}
-                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-[#f0f0f2] px-4 py-3 text-start text-[16px] text-ink hover:bg-sand-deep">
+                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-[var(--chat-in-bg)] px-4 py-3 text-start text-[17px] font-medium shadow-[var(--chat-shadow)] text-ink hover:bg-sand-deep">
                       <Icon name="chat" size={20} className="shrink-0 text-muted" />{e}
                     </button>
                   </li>
@@ -336,7 +336,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               <Bubble key={m.id} mine at={m.created_at} seen={seen}>
                 <p className="whitespace-pre-line">{m.text}</p>
                 {m.attachments.map((a) => (
-                  <p key={a.id} className="flex items-center gap-1.5 text-xs text-white/85"><Icon name="paperclip" size={14} />{a.filename}</p>
+                  <p key={a.id} className="flex items-center gap-1.5 text-xs opacity-85"><Icon name="paperclip" size={14} />{a.filename}</p>
                 ))}
               </Bubble>
             )];
@@ -359,8 +359,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               {m.id === offerId && caseId && (
                 // an action inside the reply, as business chats do: one clear button
                 <Link href={`/case/${caseId}`}
-                  className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-surface px-3 py-2 text-center hover:bg-white/70">
-                  <span className="font-semibold text-ink">{t("chat.doc")}</span>
+                  className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-[var(--chat-action-bg)] px-3 py-2 text-center hover:opacity-90">
+                  <span className="font-semibold text-[var(--chat-accent)]">{t("chat.doc")}</span>
                   <span className="text-xs text-muted">{t("chat.docPrice")}</span>
                 </Link>
               )}
@@ -392,7 +392,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               </Bubble>
             )}
             <button type="button" onClick={retryFailed} disabled={busy}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#f0f0f2] px-4 text-sm font-semibold hover:text-brand disabled:opacity-50">
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--chat-in-bg)] px-4 text-sm font-semibold shadow-[var(--chat-shadow)] hover:text-brand disabled:opacity-50">
               <Icon name="send" size={16} />{t("chat.retry")}
             </button>
           </div>
