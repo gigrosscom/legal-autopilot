@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     # new items of the desk are also e-mailed to these addresses.
     ops_lawyers_emails: str = "info@konsilier.com"  # lawyers desk: applications of advocates and lawyers
     ops_clients_emails: str = "info@konsilier.com"  # clients desk: questions, complaints, suggestions, lawyer requests
+    # Command centre (/ops, konsilier/api/command.py): the team's files (team/*.md, *.csv — sessions, decisions,
+    # backlog, reports) live in a git branch, not on the server. TEAM_DIR: read them from a local folder (a checkout
+    # of that branch; the folder that holds team/). Otherwise they are fetched from GitHub (TEAM_GITHUB_REPO at
+    # TEAM_GITHUB_REF) — with TEAM_GITHUB_TOKEN (read-only, contents) when the repository is private — and cached.
+    team_dir: str = ""
+    team_github_repo: str = "gigrosscom/legal-autopilot"
+    team_github_ref: str = "claude/ai-team"
+    team_github_token: str = ""
+    team_cache_seconds: int = 300
     terms_version: str = "2026-09-29"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
     # Document payment (konsilier/core/adapters/payment.py): manual_transfer — a transfer to the Kaspi number below,
     # confirmed by the clients desk in /ops; stub — every invoice is paid at once (tests, development only).

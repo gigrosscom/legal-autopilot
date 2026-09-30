@@ -1,0 +1,29 @@
+{
+  "id": "/ops",
+  "name": "Konsiliér Команда",
+  "short_name": "Команда",
+  "description": "Командный центр владельца Konsiliér AI: цели и курс, команда и сессии, задачи, решения, отчёты и операции.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/ops?source=app",
+  "scope": "/ops",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0084ff",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "related_applications": [{ "platform": "webapp", "url": "https://konsilier.com/ops.webmanifest" }],
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
+  "icons": [
+    { "src": "/icons/ops/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ops/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ops/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/ops/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Решения", "url": "/ops?tab=decisions&source=app", "icons": [{ "src": "/icons/ops/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Команда", "url": "/ops?tab=team&source=app", "icons": [{ "src": "/icons/ops/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Операции", "url": "/ops?tab=ops&source=app", "icons": [{ "src": "/icons/ops/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

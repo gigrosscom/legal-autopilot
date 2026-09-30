@@ -7,7 +7,7 @@
 
 ## Что уже готово в коде
 
-- Манифест `apps/web/app/manifest.ts`: название, иконки (в т.ч. maskable и монохромная), ярлыки (Новое дело, Мои дела,
+- Манифест `apps/web/app/manifest.webmanifest/route.ts`: название, иконки (в т.ч. maskable и монохромная), ярлыки (Новое дело, Мои дела,
   Чат), `share_target` (приём файлов из других приложений на Android).
 - Service worker `apps/web/public/sw.js`: офлайн-страница, push-уведомления, приём файлов.
 - Push с сервера: ключи VAPID (`python deploy/vapid_keys.py` → `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` в `.env`).

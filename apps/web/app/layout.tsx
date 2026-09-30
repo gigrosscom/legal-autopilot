@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Konsiliér AI", statusBarStyle: "default" },
   icons: { apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] },
   applicationName: "Konsiliér AI",
+  manifest: "/manifest.webmanifest", // app/manifest.webmanifest/route.ts; /ops links its own (app/ops/layout.tsx)
   formatDetection: { telephone: false },
 };
 
