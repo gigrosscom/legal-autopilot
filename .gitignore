@@ -8,6 +8,8 @@ node_modules/
 .next/
 out/
 data/
+# Zann corpus of law texts (tools/zann/collect_laws.py): never committed
+data/zann/
 *.db
 .DS_Store
 apps/web/next-env.d.ts
