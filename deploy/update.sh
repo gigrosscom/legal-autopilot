@@ -149,6 +149,9 @@ except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
         log "ncanode after restart: $NCA2 ps=$($DC ps -a --format '{{.State}}/{{.Status}}' ncanode 2>&1 | tail -1 || true)"
         ;;
       esac
+      # how busy the VM is: load average, memory in use, and free disk — slow checks above often mean a busy VM
+      HOST="load=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' '/' || true) mem=$(free -m 2>/dev/null | awk '/Mem:/{print $3"/"$2"MB"}' || true) disk=$(df -h / 2>/dev/null | awk 'NR==2{print $4}' || true)"
+      log "host $HOST"
       log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
