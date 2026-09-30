@@ -68,6 +68,9 @@ const ar: Dict = {
     step: { created: "أُنشئت", classified: "صُنّفت", intake_done: "اكتملت المقابلة", document_ready: "المستند جاهز", submitted: "قُدّمت", response: "وصل الرد", resolved_positive: "حُسمت لصالح العميل" },
   },
   pwa: {
+    openSafari: "فتح في Safari",
+    openChrome: "فتح في Chrome",
+    noHomeScreen: "لا يوجد «إضافة إلى الشاشة الرئيسية»؟ افتح في Safari",
     // after the browser's install dialog: where the icon is now
     done: {
       android: "تم — أيقونة Konsiliér AI على الشاشة الرئيسية وفي قائمة التطبيقات.",
@@ -84,9 +87,10 @@ const ar: Dict = {
     hint: {
       ios: "اضغط {share} واختر «إضافة إلى الشاشة الرئيسية»",
       ios26: "اضغط «•••»، ثم {share} و«إضافة إلى الشاشة الرئيسية»",
-      iosOther: "افتح {site} في Safari للتثبيت",
+      iosInApp: "لا يمكن تثبيت التطبيق هنا — افتح الموقع في Safari بلمسة واحدة",
+      androidInApp: "لا يمكن تثبيت التطبيق هنا — افتح الموقع في Chrome بلمسة واحدة",
       macSafari: "ملف ← «إضافة إلى Dock»",
-      menu: "قائمة المتصفح ⋮ ← «تثبيت التطبيق» مثبّت بالفعل؟ اضغط «فتح في التطبيق» في شريط العنوان.",
+      menu: "قائمة المتصفح ⋮ ← «تثبيت التطبيق». مثبّت بالفعل؟ اضغط «فتح في التطبيق» في شريط العنوان.",
       other: "افتح {site} في Chrome أو Edge للتثبيت",
     },
   },
