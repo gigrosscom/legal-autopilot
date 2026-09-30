@@ -8,8 +8,10 @@ type Pay = {
   id: number; code: string; amount: number; currency: string | null; status: string; purpose: string | null;
   case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
   claimed_at: string | null;
+  lawyer: { name: string | null; commission_pct: number | null; commission_amount: number | null; payout: number } | null;
 };
-const PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ" };
+const PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ", lawyer: "работа юриста, на счёт ТОО" };
+const sum = (n: number | null, currency: string | null) => `${(n ?? 0).toLocaleString("ru-RU")} ${currency === "KZT" ? "₸" : currency ?? ""}`;
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 /** Transfers the clients pressed «Оплатил(а)» for: find the code in the Kaspi comment and confirm. */
@@ -55,6 +57,11 @@ export function PaymentsToConfirm({ compact = false }: { compact?: boolean }) {
               {p.claimed_at ? ` · «оплатил(а)» ${when(p.claimed_at)}` : ` · счёт от ${when(p.created_at)}`}
               {p.client_phone ? ` · ${p.client_phone}` : p.client_email ? ` · ${p.client_email}` : ""}
             </p>
+            {p.lawyer && (
+              <p className="text-[15px]">
+                Юрист: {p.lawyer.name ?? "—"} · комиссия {p.lawyer.commission_pct ?? 0} % = {sum(p.lawyer.commission_amount, p.currency)} · к выплате юристу {sum(p.lawyer.payout, p.currency)}
+              </p>
+            )}
             <div className="flex gap-2">
               <button type="button" disabled={busy === p.id} onClick={() => decide(p.id, "paid")}
                 className="min-h-11 flex-1 rounded-full bg-action px-4 text-[16px] font-semibold text-white hover:bg-action-hover disabled:opacity-50">Оплата получена</button>

@@ -8,12 +8,9 @@ lawyer sign with ЭЦП (see api/signing.py).
 
 from __future__ import annotations
 
-import io
 import uuid
-from datetime import date
 from typing import Any, Literal
 
-from docx import Document
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -21,7 +18,9 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..team import notify_team
-from ..core.models import Agreement, Case, Identity, LawyerApplication, LawyerRequest, User
+from ..core import lawyer_pilot as pilot
+from ..core.lawyer_pilot import iin_identity, render_agreement  # noqa: F401 — kept importable from here
+from ..core.models import Agreement, Case, LawyerApplication, LawyerRequest, User
 from .deps import current_user, get_container, get_session, load_case, require_admin
 from .signing import agreement_view, signature_view
 from .views import case_view
@@ -30,65 +29,8 @@ router = APIRouter(prefix="/v1")
 admin_router = APIRouter(prefix="/v1/admin", dependencies=[Depends(require_admin)])
 
 
-def iin_identity(session: Session, user_id: uuid.UUID) -> Identity | None:
-    return session.scalar(select(Identity).where(Identity.user_id == user_id, Identity.kind == "iin"))
-
-
-def render_agreement(pack: Any, kind: str, lang: str, values: dict[str, str]) -> bytes:
-    """DOCX from the pack's template. Unreviewed templates carry a visible note; nothing is invented here."""
-    ags = pack.agreements
-    tpl = ags.templates[kind]
-    lang = lang if lang in tpl.body else pack.manifest.default_language
-    doc = Document()
-    if ags.reviewed_at is None and "unreviewed" in ags.footer:
-        doc.add_paragraph(pack.localized(ags.footer["unreviewed"], lang)).runs[0].italic = True
-    doc.add_heading(pack.localized(tpl.title, lang), level=1)
-    for para in tpl.body[lang]:
-        doc.add_paragraph(para.format(**values))
-    doc.add_paragraph(values["date"])
-    if "signed_with" in ags.footer:
-        doc.add_paragraph(pack.localized(ags.footer["signed_with"], lang)).runs[0].italic = True
-    buf = io.BytesIO()
-    doc.save(buf)
-    return buf.getvalue()
-
-
 def create_agreements(session: Session, container: Container, case: Case, app: LawyerApplication) -> list[Agreement]:
-    import hashlib
-
-    pack = container.engine.pack_of(case)
-    if pack.agreements is None:
-        return []
-    lang = pack.lang(case.language)
-    owner = session.get(User, case.owner_id)
-    ident = iin_identity(session, owner.id)
-    sc_title = ""
-    if case.scenario_id:
-        try:
-            sc_title = pack.localized(container.packs.scenario(case.scenario_id).title, lang)
-        except KeyError:
-            sc_title = ""
-    values = {
-        "customer_name": owner.display_name or (case.facts or {}).get("applicant_name") or "—",
-        "customer_id": ident.display if ident else "—",
-        "lawyer_name": app.ecp_name or app.full_name,
-        "lawyer_kind": pack.localized(pack.agreements.lawyer_kinds.get(app.kind, {"ru": app.kind}), lang),
-        "case_ref": str(case.id)[:8].upper(),
-        "case_title": sc_title or "—",
-        "date": date.today().strftime("%d.%m.%Y"),
-    }
-    out = []
-    for kind in pack.agreements.templates:
-        data = render_agreement(pack, kind, lang, values)
-        ag = Agreement(case_id=case.id, kind=kind, lawyer_application_id=app.id, docx_key="",
-                       sha256=hashlib.sha256(data).hexdigest(),
-                       template_reviewed=pack.agreements.reviewed_at is not None)
-        session.add(ag)
-        session.flush()
-        ag.docx_key = container.storage.put(f"cases/{case.id}/agreements/{ag.id}.docx", data,
-                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-        out.append(ag)
-    return out
+    return pilot.create_agreements(session, container.engine, case, app)
 
 
 # ------------------------------------------------------------------ customer side
@@ -196,14 +138,10 @@ def assign_lawyer(case_id: uuid.UUID, body: AssignIn, session: Session = Depends
     app = session.get(LawyerApplication, body.application_id)
     if case is None or app is None:
         raise HTTPException(404, "not found")
-    if app.status != "verified" or app.user_id is None or not app.iin_hash:
-        raise HTTPException(409, {"code": "lawyer_not_verified", "message": "lawyer_not_verified"})
-    if case.lawyer_application_id == app.id:
-        raise HTTPException(409, {"code": "already_assigned", "message": "already_assigned"})
-    case.lawyer_user_id, case.lawyer_application_id = app.user_id, app.id
-    ags = create_agreements(session, container, case, app)
-    container.engine.audit(session, case, "admin", "lawyer_assigned", application_id=app.id,
-                           agreements=[a.kind for a in ags])
+    try:
+        ags = pilot.assign(session, container.engine, case, app, "admin")
+    except pilot.PilotError as e:
+        raise HTTPException(409, {"code": e.code, "message": e.code}) from e
     pack = container.engine.pack_of(case)
     return {"lawyer": {"name": app.ecp_name or app.full_name},
             "agreements": [agreement_view(pack, a, pack.lang(case.language)) for a in ags]}
@@ -214,6 +152,7 @@ __all__ = ["router", "admin_router", "signature_view"]
 
 class LawyerRequestIn(BaseModel):
     lawyer_ref: str | None = Field(default=None, max_length=100)
+    application_id: int | None = None  # «Юрист по кнопке»: the pilot lawyer the request goes to
     full_name: str | None = Field(default=None, max_length=300)
     phone: str | None = Field(default=None, max_length=60)
     email: str | None = Field(default=None, max_length=300)
@@ -223,9 +162,11 @@ class LawyerRequestIn(BaseModel):
 @router.post("/cases/{case_id}/lawyer-request", status_code=201)
 def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depends(current_user),
                    session: Session = Depends(get_session), container: Container = Depends(get_container)) -> dict[str, Any]:
-    """«Обратиться»: register the case and the applicant's contacts for a lawyer. Direct booking opens later;
-    until then the team passes the request to a lawyer of the right field from the directory."""
+    """«Обратиться»: register the case and the applicant's contacts for a lawyer. With application_id (the closed
+    pilot «Юрист по кнопке», api/pilot.py) the request goes to that pilot lawyer at their current price, who accepts
+    or declines it; without it the team passes the request to a lawyer of the right field, as before."""
     from ..identity import form_rules as R
+    from .pilot import tell_lawyer
 
     case = load_case(case_id, session, user)
     phone, phone_err = R.normalize_kz_phone(body.phone)
@@ -234,18 +175,40 @@ def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depen
                                 "consent": None if body.consent else "required"}.items() if v}
     if errors:
         raise HTTPException(422, {"code": "invalid_request", "message": "invalid_request", "fields": errors})
-    req = LawyerRequest(case_id=case.id, user_id=user.id, lawyer_ref=body.lawyer_ref, full_name=R.clean(body.full_name),
-                        phone=phone,
-                        email=(body.email or "").strip() or None)
+    app = None
+    if body.application_id is not None:
+        app = session.get(LawyerApplication, body.application_id)
+        if not pilot.is_pilot_lawyer(app) or (case.jurisdiction and app.country != case.jurisdiction):
+            raise HTTPException(404, {"code": "lawyer_not_found", "message": "lawyer_not_found"})
+        if pilot.open_request(session, case) is not None:
+            raise HTTPException(409, {"code": "request_open", "message": "request_open"})
+    req = LawyerRequest(case_id=case.id, user_id=user.id,
+                        lawyer_ref=body.lawyer_ref or (f"lawyer-{app.id}" if app is not None else None),
+                        full_name=R.clean(body.full_name), phone=phone, email=(body.email or "").strip() or None,
+                        application_id=app.id if app is not None else None,
+                        price=app.price if app is not None else None)
     session.add(req)
     session.flush()
-    container.engine.audit(session, case, f"user:{user.id}", "lawyer_requested", request=req.id, lawyer=body.lawyer_ref)
-    notify_team(container, f"Заявка клиента юристу №{req.id}",
-                f"{req.full_name}, тел. {req.phone}{', ' + req.email if req.email else ''}\n"
-                f"Дело: {case.id}\nЮрист в каталоге: {body.lawyer_ref or '—'}\n\n"
-                f"Передайте дело проверенному юристу нужной специализации и сообщите клиенту.", desk="clients",
+    container.engine.audit(session, case, f"user:{user.id}", "lawyer_requested", request=req.id, lawyer=req.lawyer_ref,
+                           price=str(req.price) if req.price is not None else None)
+    if app is None:
+        notify_team(container, f"Заявка клиента юристу №{req.id}",
+                    f"{req.full_name}, тел. {req.phone}{', ' + req.email if req.email else ''}\n"
+                    f"Дело: {case.id}\nЮрист в каталоге: {body.lawyer_ref or '—'}\n\n"
+                    f"Передайте дело юристу нужной специализации и сообщите клиенту.", desk="clients",
+                    test=user.is_test)
+        return {"id": req.id, "case_id": str(case.id), "status": req.status}
+    currency = container.engine.pack_of(case).currency
+    tell_lawyer(session, container, app, "Konsiliér AI: новый запрос клиента",
+                f"{app.full_name}, клиент отправил вам запрос по делу (ваша цена {pilot.money(req.price)} {currency}). "
+                f"Откройте кабинет юриста, чтобы принять или отклонить его: https://konsilier.com/lawyer",
                 test=user.is_test)
-    return {"id": req.id, "case_id": str(case.id), "status": req.status}
+    notify_team(container, f"«Юрист по кнопке»: запрос №{req.id} юристу {pilot.lawyer_name(app)}",
+                f"Клиент: {req.full_name}, тел. {req.phone}\nДело: {case.id}\nЦена юриста: {req.price} {currency}\n\n"
+                f"Юрист получил уведомление и принимает или отклоняет запрос в своём кабинете.", desk="clients",
+                test=user.is_test)
+    return {"id": req.id, "case_id": str(case.id), "status": req.status,
+            "request": pilot.request_view(session, container.engine, req)}
 
 
 @admin_router.get("/lawyer-requests")

@@ -1,8 +1,10 @@
 "use client";
 
+import { LAWYERS_PUBLIC } from "@/lib/features";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Agreements } from "@/components/Agreements";
+import { LawyerRequests } from "@/components/LawyerRequests";
 import { LawyerSteps, type LawyerStatus } from "@/components/LawyerSteps";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
 import { ApiError, api, downloadFile, errorText, type CaseLawyer, type CaseView } from "@/lib/api";
@@ -39,6 +41,9 @@ export default function LawyerCabinet() {
           rejectReason: me.applications[0]?.reject_reason ?? null }} />
       )}
 
+      {me?.verified && <LawyerRequests />}
+
+      {cases && cases.length > 0 && <h2 className="text-xl font-semibold">{t("lawyer.casesTitle")}</h2>}
       {cases && cases.length === 0 && <p className="text-muted">{t("lawyer.noCases")}</p>}
       {cases?.map((c) => (
         <section key={c.id} className="space-y-3" aria-labelledby={`case-${c.id}`}>
@@ -72,7 +77,7 @@ export default function LawyerCabinet() {
         </section>
       ))}
 
-      <p className="text-sm text-muted"><Link className="link" href="/for-lawyers">{t("lawyer.aboutProgram")}</Link></p>
+      {LAWYERS_PUBLIC && <p className="text-sm text-muted"><Link className="link" href="/for-lawyers">{t("lawyer.aboutProgram")}</Link></p>}
     </div>
   );
 }

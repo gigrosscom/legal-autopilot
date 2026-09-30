@@ -99,7 +99,8 @@ def money(amount: Decimal) -> str:
 
 ITEM_RU = {"document": "Подготовка юридического документа в сервисе Konsilier AI",
            "case": "«Дело под ключ»: подготовка документов по одному делу в сервисе Konsilier AI",
-           "plan": "Доступ к сервису Konsilier AI по тарифу"}
+           "plan": "Доступ к сервису Konsilier AI по тарифу",
+           "lawyer": "Оплата услуг юриста через сервис Konsilier AI"}
 
 
 def bill_fields(req: Requisites, inv: Any, *, item: str, issued: date, words: BillWords) -> dict[str, Any]:

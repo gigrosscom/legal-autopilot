@@ -34,18 +34,19 @@ const norm = (s: string) => s.toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е").sp
 const APP_STATUS: Record<string, string> = { new: "Новая", verified: "Подтверждена", rejected: "Отклонена" };
 const TICKET_KIND: Record<string, string> = { question: "Вопрос", complaint: "Жалоба", suggestion: "Предложение", data: "Мои данные", plan: "Заявка на тариф" };
 const TICKET_STATUS: Record<string, string> = { new: "Новое", in_progress: "В работе", done: "Решено" };
-const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Передана юристу", closed: "Закрыта" };
+const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Передана юристу", accepted: "Юрист принял", declined: "Юрист отказал", paid: "Оплачена", closed: "Закрыта" };
 type Pay = {
   id: number; code: string; amount: number; currency: string | null; status: string; method: string;
   purpose: string | null; plan: string | null; case_id: string | null; case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
   claimed_at: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
   way?: string | null; payer_phone?: string | null; buyer_name?: string | null; buyer_bin?: string | null;
+  lawyer?: { name: string | null; commission_pct: number | null; commission_amount: number | null; payout: number } | null;
 };
 const PAY_WAY: Record<string, string> = {
   kaspi_transfer: "перевод на Kaspi", kaspi_link: "ссылка Kaspi Pay", kaspi_qr: "Kaspi QR",
   kaspi_invoice: "счёт в Kaspi по номеру", bank_invoice: "счёт на оплату (банк)",
 };
-const PAY_PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ" };
+const PAY_PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ", lawyer: "работа юриста, на счёт ТОО" };
 const PAY_STATUS: Record<string, string> = {
   awaiting_confirmation: "Ждёт подтверждения", pending: "Не оплачен", not_found: "Не найдена", paid: "Оплачен",
   cancelled: "Отменён",
@@ -429,6 +430,11 @@ function Payments({ onChange }: { onChange: () => void }) {
                 <> · выставьте счёт в Kaspi Pay на <span dir="ltr" className="font-mono">{p.payer_phone}</span></>
               )}
               {p.buyer_name && <> · {p.buyer_name}{p.buyer_bin ? `, БИН ${p.buyer_bin}` : ""}</>}
+            </p>
+          )}
+          {p.lawyer && (
+            <p>
+              Юрист: <b>{p.lawyer.name ?? "—"}</b> · комиссия {p.lawyer.commission_pct ?? 0} % = {money(p.lawyer.commission_amount ?? 0, p.currency)} · к выплате юристу {money(p.lawyer.payout, p.currency)}
             </p>
           )}
           {p.decided_at && <p className="text-xs text-muted">Решение: {when(p.decided_at)} · {p.decided_by}{p.note ? ` · ${p.note}` : ""}</p>}

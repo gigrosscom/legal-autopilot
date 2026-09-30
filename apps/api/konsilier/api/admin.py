@@ -310,4 +310,5 @@ def lawyer_applications(session: Session = Depends(get_session)) -> list[dict[st
              "organization": r.organization, "license_number": r.license_number, "city": r.city,
              "specializations": r.specializations, "contact": r.contact, "message": r.message,
              "referral_code": r.referral_code, "referred_by": r.referred_by, "wants_expert": r.wants_expert, "invited": counts.get(r.referral_code, 0),
-             "status": r.status, "ecp_verified": bool(r.iin_hash), "ecp_name": r.ecp_name} for r in rows]
+             "status": r.status, "ecp_verified": bool(r.iin_hash), "ecp_name": r.ecp_name,
+             "desk_note": r.desk_note} for r in rows]

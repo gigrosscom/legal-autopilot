@@ -582,7 +582,8 @@ def training_consent(case_id: uuid.UUID, body: TrainingConsentIn, user: User = D
     return {"case": case_view(container.engine, session, case)}
 
 
-PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа"}
+PURPOSE_RU = {"document": "Оплата документа", "case": "Оплата «Дело под ключ»", "plan": "Оплата тарифа",
+              "lawyer": "Оплата юриста (на счёт ТОО)"}
 
 
 class PaymentIn(BaseModel):
@@ -951,6 +952,7 @@ class LawyerApplicationIn(BaseModel):
     referred_by: str | None = Field(default=None, max_length=16)
     wants_expert: bool = False
     website: str | None = Field(default=None, max_length=300)  # honeypot: hidden from people, bots fill it
+    invite: str | None = Field(default=None, max_length=100)  # the owner's private pilot link (/join?t=)
 
 
 APPS_PER_IP_HOUR = 5
@@ -1046,13 +1048,18 @@ def apply_as_lawyer(body: LawyerApplicationIn, request: Request, response: Respo
         city=clean(body.city), specializations=body.specializations, phone=phone, email=email,
         contact=email or phone, message=(body.message or "").strip() or None, wants_expert=body.wants_expert,
         referral_code=code, referred_by=ref, ip_hash=ip_hash)
+    from ..core.lawyer_pilot import invite_valid
+    invited_pilot = invite_valid(container.settings.identity_secret, body.invite, utcnow())
+    if invited_pilot:
+        app_row.desk_note = "Пришёл по закрытой ссылке пилота «Юрист по кнопке»."
     if user is not None:  # the application belongs to this browser's account, even before ЭЦП
         app_row.user_id = user.id
     if ident is not None:  # applied signed in with ЭЦП: who they are, per the certificate
         app_row.iin_hash, app_row.ecp_name = ident.subject_hash, user.display_name
     session.add(app_row)
     session.flush()
-    notify_team(container, f"Новая заявка юриста №{app_row.id}: {app_row.full_name}",
+    notify_team(container, f"Новая заявка юриста №{app_row.id}: {app_row.full_name}"
+                 + (" (пилот, по ссылке)" if invited_pilot else ""),
                  f"{app_row.full_name} ({app_row.kind})\nОрганизация: {app_row.organization or '—'}\n"
                  f"Лицензия / удостоверение: {app_row.license_number or '—'}\nГород: {app_row.city or '—'}\n"
                  f"Телефон: {app_row.phone}\nE-mail: {app_row.email or '—'}\n"
