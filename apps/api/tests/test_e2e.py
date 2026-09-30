@@ -415,15 +415,9 @@ def test_client_errors_are_stored_for_admin(ctx):
 
 
 def test_postal_address_is_checked_softly():
-    # QA BUG-10: a company name and a BIN given as the address are asked again; ordinary addresses pass
-    from konsilier.core.fields import FieldError, normalize
-    from konsilier.core.scenario.schema import IntakeField
-    f = IntakeField(name="seller_address")
+    # QA BUG-10: a company name or a BIN given as a party's postal address is asked again; ordinary addresses pass
+    from konsilier.core.fields import looks_like_address
     for ok in ("г. Алматы, пр. Достык, 10", "Астана, ул. Кенесары 40, кв. 12", "050000, Алматы, Абая 1"):
-        assert normalize(f, ok) == ok
+        assert looks_like_address(ok)
     for bad in ("ТОО «Тест-Компания», БИН 123456789012", "Алматы", "магазин Технодом"):
-        try:
-            normalize(f, bad)
-            raise AssertionError(bad)
-        except FieldError as e:
-            assert e.code == "address"
+        assert not looks_like_address(bad)

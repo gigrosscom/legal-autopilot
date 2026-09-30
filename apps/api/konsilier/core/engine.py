@@ -26,7 +26,7 @@ from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
 from .deadlines import DeadlineScheduler
 from .documents import PdfConverter, render_docx
-from .fields import FieldError, display, normalize
+from .fields import FieldError, display, looks_like_address, normalize
 from .llm import Attachment, LLMProvider, RedactingLLM
 from .generic import GenericRef, is_generic
 from .models import (
@@ -440,6 +440,8 @@ class CaseEngine:
         errors: dict[str, str] = {}
         facts = dict(case.facts)
         today = pack.local_now().date()
+        # the postal addresses of the parties to a document (not a hotel or a university abroad)
+        party_addresses = {p.address_field for p in sc.parties.values() if p.address_field}
         for name, raw in values.items():
             try:
                 f = sc.field(name)
@@ -448,7 +450,10 @@ class CaseEngine:
             if f.type == "evidence" or (name in facts and not overwrite):
                 continue
             try:
-                facts[name] = normalize(f, raw, today=today)
+                value = normalize(f, raw, today=today)
+                if name in party_addresses and not looks_like_address(str(value)):
+                    raise FieldError("address")  # QA BUG-10: a name or a BIN given instead of the postal address
+                facts[name] = value
             except FieldError as e:
                 errors[name] = e.code
                 continue
