@@ -50,21 +50,23 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
       onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
   );
 
+  // Quick replies, as in Messenger: rounded blue-outlined choices above the box, never cut off.
+  const pill = "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-4 text-[16px] font-semibold";
+  const dim = busy ? "pointer-events-none opacity-50" : "";
+
   if (type === "evidence") {
     const uploaded = (question?.uploaded ?? 0) > 0;
     return (
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-brand px-3 font-semibold text-white ${busy ? "pointer-events-none opacity-50" : ""}`}>
-            <Icon name="camera" size={20} />{t("app.photo")}{fileInput(true)}
-          </label>
-          <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line bg-surface px-3 font-semibold ${busy ? "pointer-events-none opacity-50" : ""}`}>
-            <Icon name="upload" size={20} />{t("app.file")}{fileInput(false)}
-          </label>
-        </div>
+      <div className="flex flex-wrap gap-2 pb-1">
+        <label className={`${pill} bg-[var(--chat-accent)] text-white ${dim}`}>
+          <Icon name="camera" size={19} />{t("app.photo")}{fileInput(true)}
+        </label>
+        <label className={`${pill} border border-[var(--chat-accent)] text-[var(--chat-accent)] ${dim}`}>
+          <Icon name="upload" size={19} />{t("app.file")}{fileInput(false)}
+        </label>
         {(uploaded || question?.optional) && (
           <button type="button" disabled={busy} onClick={uploaded ? onDone : onSkip}
-            className="min-h-12 w-full rounded-2xl border border-line bg-surface font-semibold hover:border-brand disabled:opacity-50">
+            className={`${pill} border border-line text-ink ${dim}`}>
             {uploaded ? t("case.doneUploading") : t("case.skip")}
           </button>
         )}
@@ -72,7 +74,7 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
     );
   }
 
-  const common = "min-h-12 w-full min-w-0 rounded-2xl border border-line bg-sand px-4 text-base outline-none focus:border-brand focus:bg-surface";
+  const common = "min-h-11 w-full min-w-0 rounded-[22px] border-0 bg-[var(--chat-field)] px-4 text-[18px] text-black outline-none placeholder:text-[#6b6b70]";
   let field;
   if (type === "date") {
     const y = new Date(); y.setDate(y.getDate() - 1);
@@ -81,12 +83,12 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
         <div className="flex gap-2">
           {[[t("app.today"), today], [t("app.yesterday"), iso(y)]].map(([label, v]) => (
             <button key={v} type="button" disabled={busy} onClick={() => setValue(v)}
-              className={`min-h-10 rounded-full border px-4 text-sm font-medium ${value === v ? "border-brand bg-brand-50 text-brand" : "border-line bg-surface"}`}>{label}</button>
+              className={`min-h-10 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
           ))}
         </div>
         <label className="relative block">
           <span className="sr-only">{question?.text}</span>
-          <Icon name="calendar" size={20} className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-brand" />
+          <Icon name="calendar" size={20} className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-[var(--chat-accent)]" />
           <input type="date" max={today} value={value} onChange={(e) => setValue(e.target.value)}
             className={`${common} ps-12`} aria-describedby="answer-hint" />
         </label>
@@ -140,38 +142,39 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
         <span className="sr-only">{question?.text ?? placeholder}</span>
         <textarea ref={box} rows={1} value={value} onChange={(e) => setValue(e.target.value)} enterKeyHint="enter"
           placeholder={placeholder ?? t("case.answerPlaceholder")}
-          className={`${common} block max-h-40 resize-none py-3 leading-snug`} />
+          className={`${common} block max-h-40 resize-none py-2.5 leading-snug`} />
       </label>
     );
   }
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); send(); }} className="space-y-2">
-      {question && type !== "longtext" && (
-        <p id="answer-hint" className="px-1 text-xs text-muted">
+      {question && type !== "longtext" && !(type === "text" && !digitsOnly(question.pattern)) && (
+        <p id="answer-hint" className="px-1 text-[13px] text-muted">
           {type === "text" && digitsOnly(question.pattern) ? t("app.hint.digits", { n: digitsOnly(question.pattern)! }) : t(`app.hint.${type}`)}
         </p>
       )}
-      <div className="flex items-end gap-2">
+      {question?.optional && (
+        <div className="flex">
+          <button type="button" disabled={busy} onClick={onSkip}
+            className={`${pill} border border-[var(--chat-accent)] text-[var(--chat-accent)] ${dim}`}>{t("case.skip")}</button>
+        </div>
+      )}
+      <div className="flex items-end gap-1">
         <label title={t("chat.attach")}
-          className={`flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink ${busy ? "pointer-events-none opacity-50" : ""}`}>
-          <Icon name="paperclip" size={22} /><span className="sr-only">{t("chat.attach")}</span>{fileInput(false)}
+          className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-[var(--chat-accent)] ${dim}`}>
+          <Icon name="plus" size={24} /><span className="sr-only">{t("chat.attach")}</span>{fileInput(false)}
         </label>
         <label title={t("app.photo")}
-          className={`hidden h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-sand hover:text-ink pointer-coarse:flex ${busy ? "pointer-events-none opacity-50" : ""}`}>
-          <Icon name="camera" size={22} /><span className="sr-only">{t("app.photo")}</span>{fileInput(true)}
+          className={`hidden h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-[var(--chat-accent)] pointer-coarse:flex ${dim}`}>
+          <Icon name="camera" size={23} /><span className="sr-only">{t("app.photo")}</span>{fileInput(true)}
         </label>
         {field}
         <button type="submit" disabled={busy || !out} aria-label={t("case.send")}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40">
-          <Icon name={busy ? "spinner" : "send"} size={20} />
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--chat-accent)] disabled:text-muted">
+          <Icon name={busy ? "spinner" : "send"} size={24} />
         </button>
       </div>
-      {question?.optional && (
-        <button type="button" disabled={busy} onClick={onSkip} className="px-1 text-sm font-medium text-brand disabled:opacity-50">
-          {t("case.skip")}
-        </button>
-      )}
     </form>
   );
 }
