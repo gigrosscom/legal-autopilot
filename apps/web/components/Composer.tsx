@@ -44,7 +44,6 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     setInterim("");
     if (!busy && hasText) onSubmit();
   };
-  const mic = dictation.supported && !hasText && !dictation.transcribing;
 
   const attach = (
     <label title={t("chat.attach")}
@@ -54,24 +53,29 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
     </label>
   );
-  const action = dictation.transcribing ? (
+  // as in ChatGPT: the microphone and «send» side by side; send turns blue once there is something to send
+  const micButton = dictation.transcribing ? (
     <span role="status" title={t("chat.transcribing")}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink">
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink">
       <Icon name="spinner" size={20} /><span className="sr-only">{t("chat.transcribing")}</span>
     </span>
-  ) : mic || dictation.listening ? (
+  ) : dictation.supported ? (
     <button type="button" onClick={dictation.listening ? dictation.stop : dictation.start} disabled={busy}
       aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening
-        ? "bg-danger text-white motion-safe:animate-pulse" : "bg-ink text-white hover:opacity-90"}`}>
-      <Icon name={dictation.listening ? "stop" : "mic"} size={20} />
+        ? "bg-danger text-white motion-safe:animate-pulse" : "text-ink hover:bg-sand"}`}>
+      <Icon name={dictation.listening ? "stop" : "mic"} size={21} />
       <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
     </button>
-  ) : (
-    <button type="submit" disabled={busy || !hasText} title={t("chat.send")}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white disabled:opacity-25">
-      <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
-    </button>
+  ) : null;
+  const action = (
+    <span className="flex shrink-0 items-center gap-1">
+      {micButton}
+      <button type="submit" disabled={busy || !hasText || dictation.transcribing} title={t("chat.send")}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white transition-colors disabled:bg-sand-deep disabled:text-muted">
+        <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
+      </button>
+    </span>
   );
 
   return (
