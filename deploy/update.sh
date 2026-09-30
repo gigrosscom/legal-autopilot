@@ -29,6 +29,16 @@ main() {
   fi
   [ -f .env ] || { log "no .env yet, waiting"; return 0; }
 
+  # Self-heal: Docker marks a hung container "unhealthy" but never restarts it. NCANode (ЭЦП checks) hung that way
+  # after ~2 days (30.09). Checked on every run of this timer (every couple of minutes), costs one docker inspect.
+  for svc in ncanode; do
+    CID=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps -q "$svc" 2>/dev/null | head -1 || true)
+    if [ -n "$CID" ] && [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$CID" 2>/dev/null || true)" = "unhealthy" ]; then
+      log "$svc unhealthy: restarting"
+      timeout 60 docker restart "$CID" >/dev/null 2>&1 || log "$svc restart failed"
+    fi
+  done
+
   git fetch --quiet origin "$BRANCH"
   LOCAL=$(git rev-parse HEAD)
   REMOTE=$(git rev-parse "origin/$BRANCH")
