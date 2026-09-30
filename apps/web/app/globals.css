@@ -238,11 +238,35 @@ footer {
 .wave-bar { animation: wave 0.9s ease-in-out infinite; transform-origin: center; }
 @media (prefers-reduced-motion: reduce) { .wave-bar { animation: none; transform: scaleY(0.5); } }
 
-/* the chat's background, as in the messengers: a warm light tone with a faint pattern */
-:root { --chat-bg: #f2efe9; }
-.chat-wallpaper {
-  background-color: var(--chat-bg);
-  background-image: radial-gradient(rgb(0 0 0 / 0.045) 1px, transparent 1.2px), radial-gradient(rgb(0 0 0 / 0.03) 1px, transparent 1.2px);
-  background-size: 22px 22px, 22px 22px;
-  background-position: 0 0, 11px 11px;
+/* The chat's look — two to choose from, both with strong colours and crisp text:
+   messenger (white, vivid blue) and whatsapp (warm wallpaper, green). Set on <html data-look>. */
+:root, [data-look="messenger"] {
+  --chat-bg: #ffffff;
+  --chat-in-bg: #f0f0f0;
+  --chat-in-fg: #050505;
+  --chat-out-bg: #0084ff;
+  --chat-out-fg: #ffffff;
+  --chat-out-meta: rgb(255 255 255 / 0.85);
+  --chat-accent: #0084ff;
+  --chat-shadow: none;
+  --chat-field: #f0f0f0;
+  --chat-action-bg: #ffffff;
+}
+[data-look="whatsapp"] {
+  --chat-bg: #efeae2;
+  --chat-in-bg: #ffffff;
+  --chat-in-fg: #111b21;
+  --chat-out-bg: #d9fdd3;
+  --chat-out-fg: #111b21;
+  --chat-out-meta: #667781;
+  --chat-accent: #00a884;
+  --chat-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13);
+  --chat-field: #ffffff;
+  --chat-action-bg: #f0f2f5;
+}
+.chat-wallpaper { background-color: var(--chat-bg); }
+[data-look="whatsapp"] .chat-wallpaper {
+  background-image: radial-gradient(rgb(0 0 0 / 0.05) 1.2px, transparent 1.4px), radial-gradient(rgb(0 0 0 / 0.035) 1px, transparent 1.2px);
+  background-size: 24px 24px, 24px 24px;
+  background-position: 0 0, 12px 12px;
 }

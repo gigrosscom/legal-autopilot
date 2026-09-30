@@ -66,7 +66,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   const attach = (
     <label title={t("chat.attach")}
       className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-sand ${
-        large ? "h-10 w-10 text-ink" : "h-11 w-10 text-action"} ${busy ? "pointer-events-none opacity-40" : ""}`}>
+        large ? "h-10 w-10 text-ink" : "h-11 w-10 text-[var(--chat-accent)]"} ${busy ? "pointer-events-none opacity-40" : ""}`}>
       <Icon name="plus" size={large ? 22 : 24} /><span className="sr-only">{t("chat.attach")}</span>
       <input type="file" multiple accept="image/*,application/pdf,text/plain,.doc,.docx" className="sr-only" disabled={busy}
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
@@ -184,23 +184,23 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
     </button>
   ) : dictation.transcribing ? (
-    <span role="status" title={t("chat.transcribing")} className={`${round} text-action`}>
+    <span role="status" title={t("chat.transcribing")} className={`${round} text-[var(--chat-accent)]`}>
       <Icon name="spinner" size={22} /><span className="sr-only">{t("chat.transcribing")}</span>
     </span>
   ) : !hasText && dictation.supported ? (
-    <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-action text-white`}>
+    <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-[var(--chat-accent)] text-white`}>
       <Icon name="mic" size={21} /><span className="sr-only">{t("chat.mic")}</span>
     </button>
   ) : (
     // as in Messenger: a plain paper plane in the brand colour
     <button type="submit" disabled={busy || !hasText} title={t("chat.send")}
-      className={`${round} text-action hover:bg-sand disabled:text-muted`}>
+      className={`${round} text-[var(--chat-accent)] hover:bg-sand disabled:text-muted`}>
       <Icon name={busy ? "spinner" : "send"} size={24} /><span className="sr-only">{t("chat.send")}</span>
     </button>
   );
   const camera = (
     <label title={t("helper.photo")}
-      className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-action ${busy ? "pointer-events-none opacity-40" : ""}`}>
+      className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-[var(--chat-accent)] ${busy ? "pointer-events-none opacity-40" : ""}`}>
       <Icon name="camera" size={23} /><span className="sr-only">{t("helper.photo")}</span>
       <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy}
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
@@ -214,11 +214,11 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       <div className="flex items-end gap-1">
         {!dictation.listening && (folded ? (
           <button type="button" onClick={() => setTools(true)} title={t("chat.attach")}
-            className="flex h-11 w-9 shrink-0 items-center justify-center text-action">
+            className="flex h-11 w-9 shrink-0 items-center justify-center text-[var(--chat-accent)]">
             <Icon name="chevronDown" size={22} className="-rotate-90 rtl:rotate-90" /><span className="sr-only">{t("chat.attach")}</span>
           </button>
         ) : <>{attach}{camera}</>)}
-        <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] bg-sand-deep/60 focus-within:bg-sand-deep/80">
+        <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] bg-[var(--chat-field)] shadow-[var(--chat-shadow)]">
           {dictation.listening ? recording : textarea}
         </div>
         {!dictation.listening && main}
