@@ -68,6 +68,9 @@ const tr: Dict = {
     step: { created: "Oluşturuldu", classified: "Sınıflandırıldı", intake_done: "Görüşme tamam", document_ready: "Belge hazır", submitted: "Sunuldu", response: "Yanıt alındı", resolved_positive: "Lehine sonuçlandı" },
   },
   pwa: {
+    openSafari: "Safari'de aç",
+    openChrome: "Chrome'da aç",
+    noHomeScreen: "“Ana Ekrana Ekle” yok mu? Safari'de aç",
     // after the browser's install dialog: where the icon is now
     done: {
       android: "Tamam — Konsiliér AI simgesi ana ekranda ve uygulama listesinde.",
@@ -84,9 +87,10 @@ const tr: Dict = {
     hint: {
       ios: "{share} simgesine dokunun ve “Ana Ekrana Ekle”yi seçin",
       ios26: "“•••”, ardından {share} ve “Ana Ekrana Ekle”ye dokunun",
-      iosOther: "Yüklemek için {site} adresini Safari'de açın",
+      iosInApp: "Uygulama burada yüklenemez — siteyi tek dokunuşla Safari'de açın",
+      androidInApp: "Uygulama burada yüklenemez — siteyi tek dokunuşla Chrome'da açın",
       macSafari: "Dosya → “Dock'a Ekle”",
-      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle” Zaten yüklüyse adres çubuğundaki “Uygulamada aç” düğmesine tıklayın.",
+      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle”. Zaten yüklüyse adres çubuğundaki “Uygulamada aç”a tıklayın.",
       other: "Yüklemek için {site} adresini Chrome veya Edge'de açın",
     },
   },

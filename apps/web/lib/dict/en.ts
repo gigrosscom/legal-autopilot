@@ -68,6 +68,9 @@ const en: Dict = {
     step: { created: "Created", classified: "Classified", intake_done: "Interview done", document_ready: "Document ready", submitted: "Filed", response: "Reply received", resolved_positive: "Resolved in favour" },
   },
   pwa: {
+    openSafari: "Open in Safari",
+    openChrome: "Open in Chrome",
+    noHomeScreen: "No “Add to Home Screen”? Open in Safari",
     // after the browser's install dialog: where the icon is now
     done: {
       android: "Done — the Konsiliér AI icon is on your home screen and in the app list.",
@@ -84,9 +87,10 @@ const en: Dict = {
     hint: {
       ios: "Tap {share} and choose “Add to Home Screen”",
       ios26: "Tap “•••”, then {share} and “Add to Home Screen”",
-      iosOther: "Open {site} in Safari to install",
+      iosInApp: "Apps can't be installed here — open the site in Safari with one tap",
+      androidInApp: "Apps can't be installed here — open the site in Chrome with one tap",
       macSafari: "File → “Add to Dock”",
-      menu: "Browser menu ⋮ → “Install app” Already installed? Click “Open in app” in the address bar.",
+      menu: "Browser menu ⋮ → “Install app”. Already installed? Click “Open in app” in the address bar.",
       other: "Open {site} in Chrome or Edge to install",
     },
   },
