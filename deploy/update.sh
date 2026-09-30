@@ -130,6 +130,25 @@ except Exception as e:
       # «Написать нам»: the API route answers 401 without sign-in (route alive), the page on the site answers 200.
       SUP_API=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$API_DOMAIN/v1/support") || true
       SUP_WEB=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE_DOMAIN/support") || true
+      # ЭЦП checks (NCANode) not answering: say why on the console — container state, memory, its last log lines —
+      # restart it once and check again after it has loaded the certificate lists (Java, ~1–2 min).
+      case "$AUTH" in *ncanode=200*|*ncanode=400*|*ncanode=off*) ;; *)
+        DC="docker compose -f deploy/docker-compose.prod.yml --env-file .env"
+        NCA_PS=$($DC ps -a --format '{{.State}}/{{.Status}}' ncanode 2>&1 | tail -1 || true)
+        MEM=$(free -m 2>/dev/null | awk '/Mem:/{print $3"/"$2"MB"}' || true)
+        NCA_LOG=$($DC logs --tail 4 --no-log-prefix ncanode 2>&1 | tr '\n' ' ' | tr -s ' ' | cut -c1-280 || true)
+        log "ncanode diag: ps=$NCA_PS mem=$MEM log=$NCA_LOG"
+        timeout 60 $DC restart ncanode >/dev/null 2>&1 || true
+        sleep 120
+        NCA2=$(timeout 60 $DC exec -T api python -c "
+import httpx
+from konsilier.config import get_settings
+s = get_settings()
+try: print(httpx.post(s.ncanode_url.rstrip('/') + '/cms/verify', json={'cms': 'AA=='}, timeout=30).status_code)
+except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
+        log "ncanode after restart: $NCA2 ps=$($DC ps -a --format '{{.State}}/{{.Status}}' ncanode 2>&1 | tail -1 || true)"
+        ;;
+      esac
       log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
     else
