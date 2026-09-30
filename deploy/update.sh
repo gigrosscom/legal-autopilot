@@ -200,5 +200,21 @@ print(f'replies={len(first)} first_s=p50:{q(first, .5)},p90:{q(first, .9)} total
 " </dev/null 2>&1 | tail -1) || true
     log "chatspeed ${SPEED:-unavailable}"
   fi
+
+  # Every 15 minutes: progress of the Zann law corpus (counts only).
+  ZSTAMP=/run/konsilier-zann.stamp
+  if [ -z "$(find "$ZSTAMP" -mmin -14 2>/dev/null)" ]; then
+    touch "$ZSTAMP"
+    ZANN=$(timeout 60 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+from konsilier.config import get_settings
+from konsilier.container import build_container
+from konsilier.zann.corpus import corpus_metrics
+c = build_container(get_settings())
+with c.session_factory() as s:
+    z = corpus_metrics(s)
+print(f\"enabled={c.settings.zann_corpus_enabled} acts={z['acts']} done={z['acts_done']} pending={z['acts_pending']} error={z['acts_error']} files={z['files']} mb={round(z['bytes'] / 1e6, 1)} types={z['done_by_type']} last={z['last_fetched_at']}\")
+" </dev/null 2>&1 | tail -1) || true
+    log "zann ${ZANN:-unavailable}"
+  fi
 }
 main "$@"
