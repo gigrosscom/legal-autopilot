@@ -413,3 +413,24 @@ def test_reply_follows_interface_language_not_pack_fallback(ctx):
     client.turns = [(["Сәлем."], "end_turn", [])]
     _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "?", "language": "de"}))
     assert "ISO 639-1 code 'ru'" in client.calls[-1]["system"]  # an unsupported one falls back to the case's
+
+
+def test_chat_opens_the_case_at_once_and_qualifies_it_afterwards(ctx):
+    """The chat's first message must not wait for the scenario (an LLM call): the case opens with `defer`, the
+    scenario is worked out afterwards (background job; called directly here)."""
+    import uuid
+
+    from konsilier.core.models import Case
+
+    from .test_e2e import web_user
+
+    api = web_user(ctx)
+    out = api.post("/v1/cases", expect=201, json={
+        "text": "Купил телефон в магазине, сломался, продавец не возвращает деньги", "country": "KZ", "defer": True})
+    cid = out["case"]["id"]
+    assert out["case"]["scenario"] is None and out["reply"]["message"] == ""
+    with ctx.container.session_factory() as s:
+        ctx.container.engine.qualify_later(s, uuid.UUID(cid))
+        s.commit()
+        assert s.get(Case, uuid.UUID(cid)).scenario_id == "kz.consumer.refund"
+    assert api.get(f"/v1/cases/{cid}").json()["scenario"]["id"] == "kz.consumer.refund"
