@@ -544,6 +544,12 @@ class Invoice(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # operator's decision
     decided_by: Mapped[str | None] = mapped_column(String(200))  # operator's e-mail
     desk_note: Mapped[str | None] = mapped_column(Text)
+    # the way the person chose (adapters/payment.py WAYS); None — the transfer, as before
+    pay_way: Mapped[str | None] = mapped_column(String(24))
+    payer_phone: Mapped[str | None] = mapped_column(String(20))  # kaspi_invoice: the Kaspi number to bill
+    buyer_name: Mapped[str | None] = mapped_column(String(300))  # bank_invoice: the paying company / ИП
+    buyer_bin: Mapped[str | None] = mapped_column(String(12))
+    buyer_address: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

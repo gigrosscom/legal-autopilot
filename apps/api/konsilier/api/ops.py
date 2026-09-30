@@ -10,7 +10,7 @@ Which e-mails operate which desk: settings OPS_LAWYERS_EMAILS / OPS_CLIENTS_EMAI
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -273,7 +273,8 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
             "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,
             "created_at": inv.created_at.isoformat(), "claimed_at": inv.claimed_at.isoformat() if inv.claimed_at else None,
             "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
-            "note": inv.desk_note}
+            "note": inv.desk_note, "way": inv.pay_way, "payer_phone": inv.payer_phone,
+            "buyer_name": inv.buyer_name, "buyer_bin": inv.buyer_bin}
 
 
 @router.get("/clients/payments")
@@ -299,6 +300,47 @@ def decide_payment(invoice_id: int, body: PaymentDecision, session: Session = De
     return decide_invoice(session, container, invoice_id, op.email or "operator", body.decision == "paid", body.note)
 
 
+WAY_RECEIPT = {"kaspi_transfer": "перевод Kaspi", "kaspi_link": "Kaspi Pay, ссылка", "kaspi_qr": "Kaspi QR",
+               "kaspi_invoice": "счёт Kaspi", "bank_invoice": "банковский перевод по счёту"}
+
+
+def receipt_text(session: Session, container: Container, inv: Invoice, where: str) -> str:
+    """PAYMENT_RECEIPT_EMAIL: the letter after the desk confirms — amount, date, what was bought, the link. It is a
+    payment confirmation, not a fiscal receipt (that comes from a cash register: Kaspi Касса for Kaspi Pay)."""
+    from ..core.bill import ITEM_RU, money
+
+    st = container.settings
+    item = ITEM_RU.get(inv.purpose, ITEM_RU["document"])
+    if inv.purpose == "plan":
+        item = f"{item} «{PLAN_RU.get(inv.plan or '', inv.plan)}»"
+    elif inv.case_id is not None:
+        case = session.get(Case, inv.case_id)
+        if case is not None and case.scenario_id:
+            try:
+                item += f" — {container.engine.pack_of(case).localized(container.engine.scenario_of(case).title, 'ru')}"
+            except Exception:  # noqa: BLE001 — a removed scenario must not stop the letter
+                pass
+    at = inv.decided_at or inv.created_at
+    at = at if at.tzinfo else at.replace(tzinfo=timezone.utc)
+    when = at.astimezone(timezone(timedelta(hours=5))).strftime("%d.%m.%Y %H:%M")
+    currency = "₸" if (inv.currency or "KZT") == "KZT" else inv.currency
+    lines = ["Оплата получена. Спасибо!", "",
+             f"Сумма: {money(inv.amount)} {currency}",
+             f"Дата: {when} (Алматы)",
+             f"За что: {item}",
+             f"Код платежа: {inv.code}, счёт № {inv.id}"]
+    if inv.pay_way in WAY_RECEIPT:
+        lines.append(f"Способ: {WAY_RECEIPT[inv.pay_way]}")
+    if st.payment_llp_name:
+        lines.append(f"Продавец: {st.payment_llp_name}" + (f", БИН {st.payment_llp_bin}" if st.payment_llp_bin else ""))
+    lines += ["", (f"Тариф подключён: {where}" if inv.purpose == "plan"
+                   else f"Документ готовится автоматически и появится в карточке дела: {where}"), "",
+              "Это письмо — подтверждение оплаты, а не фискальный чек."]
+    if st.payment_kaspi_kassa and inv.pay_way in ("kaspi_link", "kaspi_qr", "kaspi_invoice"):
+        lines.append("Фискальный чек за оплату через Kaspi Pay приходит в приложение Kaspi.kz.")
+    return "\n".join(lines)
+
+
 def decide_invoice(session: Session, container: Container, invoice_id: int, decided_by: str, paid: bool,
                    note: str | None) -> dict[str, Any]:
     """Payment found (the document is made right away) or not found; the client is told by e-mail. Used by the
@@ -320,7 +362,9 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
     owner = session.get(User, inv.user_id)
     if owner is not None and owner.email and container.email_sender is not None:
         where = (f"https://konsilier.com/case/{inv.case_id}" if inv.case_id else "https://konsilier.com/plans")
-        if paid:
+        if paid and container.settings.payment_receipt_email:
+            text = receipt_text(session, container, inv, where)
+        elif paid:
             text = (f"Оплата получена. Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}» подключён: {where}"
                     if inv.purpose == "plan" else f"Оплата получена. Документ готовится автоматически и появится в "
                                                   f"карточке дела: {where}")

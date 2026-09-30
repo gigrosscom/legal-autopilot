@@ -988,6 +988,49 @@ class CaseEngine:
                 self.audit(session, session.get(Case, inv.case_id), actor, "payment_claimed", invoice=inv.code)
         return inv
 
+    def way_view(self, inv: Invoice | None) -> dict[str, Any]:
+        """The way the person chose for this bill and what they gave for it."""
+        if inv is None:
+            return {"way": None, "payer_phone": None, "buyer": None}
+        buyer = ({"name": inv.buyer_name, "bin": inv.buyer_bin, "address": inv.buyer_address}
+                 if inv.buyer_name else None)
+        return {"way": inv.pay_way, "payer_phone": inv.payer_phone, "buyer": buyer}
+
+    def choose_way(self, session: Session, inv: Invoice | None, way: str, actor: str, *, phone: str | None = None,
+                   buyer_name: str | None = None, buyer_bin: str | None = None,
+                   buyer_address: str | None = None) -> Invoice:
+        """The person picks how to pay the open bill (adapters/payment.py WAYS). kaspi_invoice: the Kaspi number to
+        bill — the request goes to the clients desk at once (awaiting_confirmation), which sends the Kaspi bill and
+        confirms the payment. bank_invoice: the paying company's name and БИН/ИИН for «Счёт на оплату»."""
+        from .adapters.payment import kz_phone, valid_bin
+
+        if inv is None or inv.status not in self.OPEN:
+            raise EngineError("no_open_invoice")
+        if not self.payments.way_available(way):
+            raise EngineError("way_unavailable")
+        if inv.status == "awaiting_confirmation" and way != inv.pay_way:
+            raise EngineError("invoice_awaiting_confirmation")
+        if way == "kaspi_invoice":
+            number = kz_phone(phone)
+            if number is None:
+                raise EngineError("invalid_phone")
+            inv.payer_phone = number
+        if way == "bank_invoice":
+            name, bin_ = (buyer_name or "").strip(), valid_bin(buyer_bin)
+            if len(name) < 3 or len(name) > 300:
+                raise EngineError("invalid_buyer")
+            if bin_ is None:
+                raise EngineError("invalid_bin")
+            inv.buyer_name, inv.buyer_bin = name, bin_
+            inv.buyer_address = (buyer_address or "").strip()[:300] or None
+        inv.pay_way = way
+        case = session.get(Case, inv.case_id) if inv.case_id is not None else None
+        if case is not None:
+            self.audit(session, case, actor, "payment_way", invoice=inv.code, way=way)
+        if way == "kaspi_invoice":
+            self.claim_payment(session, inv, actor)
+        return inv
+
     def decide_payment(self, session: Session, inv: Invoice, operator: str, received: bool,
                        note: str | None = None) -> None:
         """The clients desk found the transfer (→ paid) or did not (→ not_found); the person is told either way."""
@@ -1077,7 +1120,8 @@ class CaseEngine:
         if inv is None:
             return None
         view = {"id": inv.id, "code": inv.code, "purpose": inv.purpose, "plan": inv.plan, "amount": float(inv.amount),
-                "currency": inv.currency, "status": inv.status, "recipient_name": None, "kaspi_phone": None}
+                "currency": inv.currency, "status": inv.status, "recipient_name": None, "kaspi_phone": None,
+                "ways": [], **self.way_view(inv)}
         if inv.status in self.OPEN:
             view.update(self.payments.details())
         return view
@@ -1095,7 +1139,8 @@ class CaseEngine:
             "amount": float(inv.amount if inv is not None else price[0]), "currency": price[1], "status": status,
             "purpose": inv.purpose if inv is not None else None, "method": self.payments.method,
             "available": self.payments.available(), "code": inv.code if inv is not None else None,
-            "recipient_name": None, "kaspi_phone": None,
+            "invoice_id": inv.id if inv is not None else None, "recipient_name": None, "kaspi_phone": None,
+            "ways": [], **self.way_view(inv),
             "options": [] if case.paid else [
                 {"purpose": "document", "amount": float(price[0])},
                 {"purpose": "case", "amount": float(self.config.case_price)}],

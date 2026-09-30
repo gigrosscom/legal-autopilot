@@ -18,7 +18,7 @@ from ..container import Container
 from ..team import notify_team
 from .referral import attribute
 from ..core.engine import OUTCOME_RESULTS, EngineError
-from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, LawyerApplication, Notification, User, WaitlistEntry,
+from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, Invoice, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
 from ..core import suggestions
 from ..core.scenario import RESPONSE_CLASSES
@@ -593,12 +593,26 @@ def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(cur
     return {"case": case_view(container.engine, session, case)}
 
 
+WAY_RU = {"kaspi_transfer": "перевод на Kaspi", "kaspi_link": "ссылка Kaspi Pay", "kaspi_qr": "Kaspi QR",
+          "kaspi_invoice": "счёт в Kaspi по номеру телефона", "bank_invoice": "счёт на оплату (банковский перевод)"}
+
+
 def _tell_desk_claimed(container: Container, inv, where: str) -> None:
+    if inv.pay_way == "kaspi_invoice":
+        notify_team(container, f"{PURPOSE_RU.get(inv.purpose, 'Оплата')} {inv.code}: выставьте счёт в Kaspi Pay",
+                    f"Клиент просит счёт в Kaspi на номер {inv.payer_phone}.\n"
+                    f"Сумма: {inv.amount} {inv.currency or ''}. В тексте счёта: «Konsilier AI, код {inv.code}».\n"
+                    f"Счёт №{inv.id}, {where}.\n\n"
+                    f"Kaspi Pay → Удалённая оплата → Выставить счёт (счёт живёт 24 часа). Когда клиент оплатит — "
+                    f"отметьте «Оплата получена» в оперативном центре: https://konsilier.com/ops", desk="clients",
+                    also=container.settings.payment_notify_emails)
+        return
+    way = f" ({WAY_RU[inv.pay_way]})" if inv.pay_way in WAY_RU else ""
     notify_team(container, f"{PURPOSE_RU.get(inv.purpose, 'Оплата')} {inv.code}: проверьте перевод",
-                f"Клиент сообщил о переводе {inv.amount} {inv.currency or ''} с кодом {inv.code} в комментарии.\n"
+                f"Клиент сообщил об оплате{way} {inv.amount} {inv.currency or ''} с кодом {inv.code} в комментарии.\n"
                 f"Счёт №{inv.id}, {where}.\n\n"
-                f"Найдите перевод в Kaspi и отметьте «Оплата получена» или «Не найдена» в оперативном центре: "
-                f"https://konsilier.com/ops", desk="clients",
+                f"Найдите платёж в Kaspi Pay (или в выписке банка) и отметьте «Оплата получена» или «Не найдена» в "
+                f"оперативном центре: https://konsilier.com/ops", desk="clients",
                 also=container.settings.payment_notify_emails)
 
 
@@ -663,6 +677,117 @@ def plan_claim(user: User = Depends(current_user), session: Session = Depends(ge
     if inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     return plans_view(container, session, user)
+
+
+# ------------------------------------------------------------------ ways to pay (docs/kaspi-pay-plan.md)
+class WayIn(BaseModel):
+    way: Literal["kaspi_transfer", "kaspi_link", "kaspi_qr", "kaspi_invoice", "bank_invoice"]
+    phone: str | None = Field(default=None, max_length=40)  # kaspi_invoice
+    buyer_name: str | None = Field(default=None, max_length=300)  # bank_invoice
+    buyer_bin: str | None = Field(default=None, max_length=20)
+    buyer_address: str | None = Field(default=None, max_length=300)
+
+
+def _own_invoice(session: Session, user: User, invoice_id: int) -> Invoice:
+    inv = session.get(Invoice, invoice_id)
+    if inv is None or inv.user_id != user.id:
+        raise HTTPException(404, "invoice not found")
+    return inv
+
+
+@router.post("/invoices/{invoice_id}/way")
+def choose_way(invoice_id: int, body: WayIn, user: User = Depends(current_user),
+               session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """How the person pays the open bill: Kaspi transfer / link / QR (then «Оплатить» as before), a bill to their
+    Kaspi number (the desk is told at once) or «Счёт на оплату» for a company (then the PDF below)."""
+    inv = _own_invoice(session, user, invoice_id)
+    before = inv.status
+    try:
+        container.engine.choose_way(session, inv, body.way, f"user:{user.id}", phone=body.phone,
+                                    buyer_name=body.buyer_name, buyer_bin=body.buyer_bin,
+                                    buyer_address=body.buyer_address)
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    if before != inv.status == "awaiting_confirmation" and not user.is_test:
+        _tell_desk_claimed(container, inv, f"дело {inv.case_id}" if inv.case_id else
+                           f"тариф «{inv.plan}», клиент {user.email or user.phone}")
+    if inv.case_id is not None:
+        return {"case": case_view(container.engine, session, session.get(Case, inv.case_id))}
+    return plans_view(container, session, user)
+
+
+PLAN_NAMES = {"biz": "Бизнес", "bizpro": "Бизнес Про"}
+
+
+@router.get("/invoices/{invoice_id}/bill")
+def invoice_bill(invoice_id: int, format: Literal["pdf", "docx"] = "pdf", user: User = Depends(current_user),
+                 session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """«Счёт на оплату» (PDF; Word where the PDF converter is not installed) with the company's requisites."""
+    from ..core.bill import ITEM_RU, bill_fields, make_bill_docx
+
+    inv = _own_invoice(session, user, invoice_id)
+    if inv.pay_way != "bank_invoice" or not inv.buyer_name or inv.status == "cancelled":
+        raise HTTPException(409, {"code": "no_bank_invoice", "message": "choose «Счёт на оплату» first"})
+    req = getattr(container.engine.payments, "requisites", None)
+    if req is None or not req.complete():
+        raise HTTPException(409, {"code": "way_unavailable", "message": "way_unavailable"})
+    item = ITEM_RU.get(inv.purpose, ITEM_RU["document"])
+    if inv.purpose == "plan":
+        item = f"{item} «{PLAN_NAMES.get(inv.plan or '', inv.plan)}»"
+    docx = make_bill_docx(bill_fields(req, inv, item=item, issued=inv.created_at.date()))
+    name = f"schet-{inv.id}"
+    if format == "pdf":
+        pdf = container.engine.pdf.convert(docx) if container.engine.pdf is not None else None
+        if pdf:
+            return Response(pdf, media_type="application/pdf",
+                            headers={"Content-Disposition": f'attachment; filename="{name}.pdf"'})
+    return Response(docx, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    headers={"Content-Disposition": f'attachment; filename="{name}.docx"'})
+
+
+@router.post("/payments/kaspi/webhook")
+async def kaspi_webhook(request: Request, container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Automatic confirmation, prepared for when Kaspi issues its protocol under a contract (Kaspi has no public
+    API). Off (404) until PAYMENT_KASPI_WEBHOOK and the secret are set. Our own shape for now, to be mapped to Kaspi's
+    once known: body {"code": payment code, "status": "paid", "amount": 1990, "txn_id": "…"}, header
+    X-Konsilier-Signature = hex HMAC-SHA256 of the raw body with PAYMENT_KASPI_WEBHOOK_SECRET."""
+    st = container.settings
+    if not (st.payment_kaspi_webhook and st.payment_kaspi_webhook_secret):
+        raise HTTPException(404, "not found")
+    raw = await request.body()
+    return await run_in_threadpool(_kaspi_event, container, raw, request.headers.get("X-Konsilier-Signature", ""))
+
+
+def _kaspi_event(container: Container, raw: bytes, signature: str) -> dict[str, Any]:
+    import hashlib
+    import hmac
+    import json
+
+    from .ops import decide_invoice
+
+    want = hmac.new(container.settings.payment_kaspi_webhook_secret.encode(), raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(want, signature):
+        raise HTTPException(401, "bad signature")
+    try:
+        data = json.loads(raw)
+        code, status, amount = str(data["code"]), str(data["status"]), Decimal(str(data["amount"]))
+    except (ValueError, KeyError, TypeError, ArithmeticError) as e:
+        raise HTTPException(422, "bad payload") from e
+    with container.session_factory() as session:
+        inv = session.scalar(select(Invoice).where(Invoice.code == code))
+        if inv is None:
+            raise HTTPException(404, "invoice not found")
+        if status != "paid" or inv.status in ("paid", "cancelled"):
+            return {"ok": True, "status": inv.status}
+        if amount != Decimal(inv.amount):  # a wrong amount goes to the desk, not straight to «paid»
+            inv.desk_note = f"Kaspi: пришло {amount}, ожидалось {inv.amount}, txn {data.get('txn_id')}"
+            container.engine.claim_payment(session, inv, "kaspi:webhook")
+            session.commit()
+            return {"ok": True, "status": inv.status}
+        view = decide_invoice(session, container, inv.id, "kaspi:webhook", True, f"Kaspi txn {data.get('txn_id')}")
+        session.commit()
+        return {"ok": True, "status": view["status"]}
 
 
 def _load_action(case: Case, action_id: uuid.UUID, session: Session) -> Action:
