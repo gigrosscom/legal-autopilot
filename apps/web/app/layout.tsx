@@ -29,9 +29,19 @@ export const viewport: Viewport = {
   themeColor: "#ffffff", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
 };
 
+// Chrome / Edge / Samsung Internet fire `beforeinstallprompt` once per page load — often before React and the app's
+// code have loaded, so a listener in a component misses it and «Установить» has no dialog to open. This inline script
+// runs with the HTML: it keeps the event for the button (components/InstallApp.tsx) and stops the browser's mini-bar.
+const INSTALL_CAPTURE =
+  "addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__konsilierInstall=e});"
+  + "addEventListener('appinstalled',function(){window.__konsilierInstall=null});";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ru" dir="ltr" translate="no" className={`notranslate ${inter.variable} ${arabic.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} />
+      </head>
       <body className="flex min-h-screen flex-col antialiased">
         <LangProvider>
           <SiteChrome>{children}</SiteChrome>
