@@ -68,6 +68,13 @@ const tr: Dict = {
     step: { created: "Oluşturuldu", classified: "Sınıflandırıldı", intake_done: "Görüşme tamam", document_ready: "Belge hazır", submitted: "Sunuldu", response: "Yanıt alındı", resolved_positive: "Lehine sonuçlandı" },
   },
   pwa: {
+    // after the browser's install dialog: where the icon is now
+    done: {
+      android: "Tamam — Konsiliér AI simgesi ana ekranda ve uygulama listesinde.",
+      windows: "Tamam — Konsiliér AI masaüstünde ve Başlat menüsünde. Tarayıcı sorarsa “Masaüstü kısayolu”nu işaretleyin.",
+      mac: "Tamam — Konsiliér AI Launchpad'de ve Uygulamalar klasöründe. Dock'ta tutmak için: Dock'taki simgeye sağ tıklayın → Seçenekler → Dock'ta Tut.",
+      other: "Tamam — Konsiliér AI yüklendi ve ayrı bir pencerede açılır.",
+    },
     install: "Yükle",
     offlineTitle: "İnternet bağlantısı yok",
     offlineText: "Dosyalarınız sunucuda kayıtlı. Bağlantı gelince sayfayı yenileyin — her şey yerinde olacak.",
@@ -79,7 +86,7 @@ const tr: Dict = {
       ios26: "“•••”, ardından {share} ve “Ana Ekrana Ekle”ye dokunun",
       iosOther: "Yüklemek için {site} adresini Safari'de açın",
       macSafari: "Dosya → “Dock'a Ekle”",
-      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle”",
+      menu: "Tarayıcı menüsü ⋮ → “Uygulamayı yükle” Zaten yüklüyse adres çubuğundaki “Uygulamada aç” düğmesine tıklayın.",
       other: "Yüklemek için {site} adresini Chrome veya Edge'de açın",
     },
   },
@@ -114,7 +121,7 @@ const tr: Dict = {
   appPage: {
     title: "Konsiliér AI telefonunuzda",
     lead: "Ekranınızda kendi simgesi ve süre bildirimleri — tek dokunuşla.",
-    installed: "Uygulama bu cihazda zaten yüklü.",
+    installed: "Uygulama bu cihazda zaten yüklü. Masaüstünden, Dock'tan veya adres çubuğundaki “Uygulamada aç” düğmesiyle açın.",
     qrAlt: "Uygulama sayfasının QR kodu",
     qrTitle: "Telefonunuzda açın",
     qrText: "Kamerayı koda tutun ve “Yükle”ye dokunun.",

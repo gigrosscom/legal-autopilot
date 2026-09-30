@@ -68,6 +68,13 @@ const en: Dict = {
     step: { created: "Created", classified: "Classified", intake_done: "Interview done", document_ready: "Document ready", submitted: "Filed", response: "Reply received", resolved_positive: "Resolved in favour" },
   },
   pwa: {
+    // after the browser's install dialog: where the icon is now
+    done: {
+      android: "Done — the Konsiliér AI icon is on your home screen and in the app list.",
+      windows: "Done — Konsiliér AI is on the desktop and in the Start menu. If the browser asks, tick “Desktop shortcut”.",
+      mac: "Done — Konsiliér AI is in Launchpad and Applications. To keep it in the Dock: right-click its Dock icon → Options → Keep in Dock.",
+      other: "Done — Konsiliér AI is installed and opens in its own window.",
+    },
     install: "Install",
     offlineTitle: "No internet connection",
     offlineText: "Your cases are saved on the server. Reload the page once you're back online — everything will be there.",
@@ -79,7 +86,7 @@ const en: Dict = {
       ios26: "Tap “•••”, then {share} and “Add to Home Screen”",
       iosOther: "Open {site} in Safari to install",
       macSafari: "File → “Add to Dock”",
-      menu: "Browser menu ⋮ → “Install app”",
+      menu: "Browser menu ⋮ → “Install app” Already installed? Click “Open in app” in the address bar.",
       other: "Open {site} in Chrome or Edge to install",
     },
   },
@@ -114,7 +121,7 @@ const en: Dict = {
   appPage: {
     title: "Konsiliér AI on your phone",
     lead: "Its own icon on your screen and deadline alerts — one tap away.",
-    installed: "The app is already installed on this device.",
+    installed: "The app is already installed on this device. Open it from the desktop, the Dock or “Open in app” in the address bar.",
     qrAlt: "QR code of the app page",
     qrTitle: "Open it on your phone",
     qrText: "Point your camera at the code and tap “Install”.",
