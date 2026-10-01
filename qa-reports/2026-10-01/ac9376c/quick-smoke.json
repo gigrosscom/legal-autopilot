@@ -1,0 +1,99 @@
+{
+ "user": 200,
+ "chat": {
+  "ttft": 3.31,
+  "chars": 1068,
+  "offer": true
+ },
+ "draft": [
+  200,
+  5.9
+ ],
+ "facts": 200,
+ "payment": {
+  "st": 200,
+  "t": 6.6,
+  "amount": 1990.0,
+  "currency": "KZT",
+  "status": "pending",
+  "method": "manual_transfer",
+  "code": "KA-J4E7UB",
+  "ways": [
+   {
+    "id": "kaspi_transfer"
+   },
+   {
+    "id": "kaspi_link",
+    "url": "https://pay.kaspi.kz/pay/vip7ojwg"
+   },
+   {
+    "id": "bank_invoice",
+    "seller": "ТОО «KONSILIER AI»"
+   }
+  ],
+  "way": null,
+  "kaspi_phone": "+77027059917",
+  "recipient_name": "Салтанат Т.",
+  "available": true
+ },
+ "me_before": {
+  "display_name": null,
+  "identities": []
+ },
+ "auth_methods": {
+  "email": true,
+  "phone": false,
+  "ecp": true,
+  "egov": true,
+  "google": true,
+  "apple": false
+ },
+ "smoke_email": [
+  200,
+  "{'email': 'delivered+qa1790873837@resend.dev'}"
+ ],
+ "me_after": {
+  "identities": 1
+ },
+ "claim": [
+  200,
+  null
+ ],
+ "confirm": [
+  200,
+  "paid"
+ ],
+ "case_after": {
+  "status": "action_ready",
+  "stage": "action_ready",
+  "needs_review": false,
+  "pay": "none",
+  "actions": [
+   {
+    "action_id": "claim_to_seller",
+    "status": "ready",
+    "approval_status": "not_required",
+    "downloadable": true
+   }
+  ]
+ },
+ "doc": {
+  "paid_to_doc": 3.9,
+  "t": 12.3,
+  "downloadable": true
+ },
+ "dl_pdf": [
+  200,
+  32660
+ ],
+ "dl_docx": [
+  200,
+  38382
+ ],
+ "page/": 200,
+ "page/start": 200,
+ "page/ops": 200,
+ "page/account": 200,
+ "page/documents": 200,
+ "case": "a9330102-1d95-4d5d-8be0-7e93ea543170"
+}
