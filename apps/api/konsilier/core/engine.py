@@ -114,8 +114,10 @@ class EngineConfig:
     self_service: bool = True
     self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement", "motion")
     extract_images_with_llm: bool = False
-    # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap
-    intake_max_questions: int = 4
+    # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap;
+    # -1 = no questions on the site: the draft at once, filled from the story, the chat and the files (owner 01.10,
+    # «3 клика»); the Telegram bot keeps the questions (it has no draft screen)
+    intake_max_questions: int = -1
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
@@ -330,6 +332,12 @@ class CaseEngine:
         intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language),
                        first_action=pack.localized(sc.actions[0].title, case.language))
         reply = self._next_step(session, case, sc, pack)
+        if reply.intake_complete and self.config.intake_max_questions < 0:  # «3 клика»: straight to the draft
+            reply.message = pack.t(case.language, "interview.intro_draft",
+                                   scenario=pack.localized(sc.title, case.language),
+                                   first_action=pack.localized(sc.actions[0].title, case.language),
+                                   default=reply.message)
+            return reply
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply
 
@@ -505,7 +513,10 @@ class CaseEngine:
                              error="facts_not_labels")
         missing = self.missing_fields(case, sc)
         cap = self.config.intake_max_questions
-        if missing and cap and int((case.taxonomy or {}).get("asked", 0)) >= cap:
+        in_bot = getattr(case.owner, "channel", None) == "telegram"
+        if cap < 0 and in_bot:
+            cap = 4
+        if missing and (cap < 0 or (cap and int((case.taxonomy or {}).get("asked", 0)) >= cap)):
             # PM 01.10: the draft after a few questions; what is still unknown stays a blank filled in the draft
             case.skipped_fields = [*(case.skipped_fields or []),
                                    *(DRAFT + n for n in missing if not sc.field(n).optional)]

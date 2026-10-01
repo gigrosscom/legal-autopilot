@@ -337,7 +337,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFiles={upload}
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
-    bar = <NextStepBar c={c} busy={busy} post={post} openPay={() => setPayOpen(true)} run={run} setCase={setCase} />;
+    // owner 01.10 («3 клика»): one document by default — the bill is made at once; «Дело под ключ» is a link
+    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
+      setPayOpen(true);
+      if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
+    }} />;
   }
 
   return (
@@ -446,7 +450,7 @@ function FactsPanel({ c }: { c: CaseView }) {
 
 /** What to do now once the document stage has started: submitted? got a reply? close the case. */
 function NextStepBar({ c, busy, post, openPay, run, setCase }: {
-  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>; openPay: () => void;
+  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>; openPay: (purpose?: string) => void;
   run: (fn: () => Promise<void>) => Promise<boolean>; setCase: (c: CaseView) => void;
 }) {
   const t = useT();
@@ -470,7 +474,18 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
   );
 
   if (c.status === "qualified") {
-    return prepareOrPay(t("case.prepare"));
+    const whole = pay?.options.find((o) => o.purpose === "case");
+    return (
+      <div className="space-y-1">
+        {prepareOrPay(t("case.prepare"))}
+        {needsPay && pay!.available && pay!.status === "none" && whole && (
+          <button type="button" disabled={busy} onClick={() => openPay("case")}
+            className="w-full py-1 text-center text-sm text-muted underline">
+            {t("payment.option.case", { price: money(whole.amount, pay!.currency) })}
+          </button>
+        )}
+      </div>
+    );
   }
   if (c.status === "action_ready" && last) {
     if (last.approval_status === "pending" || last.approval_status === "rejected") {

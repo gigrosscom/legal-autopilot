@@ -283,7 +283,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             return
         text = vault.restore(result.text) if result else ""
         text = one_more_marker(text)  # QA BUG-05: a second [[MORE]] (after a tool call) never reaches the client
-        if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text):
+        # owner 30.09: not in the first reply — unless the person asks for a document or attached documents (01.10)
+        if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text) and not body.attachments:
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)
         timing = {**(getattr(result, "timing", None) or {}), "queue_ms": queue_ms}
