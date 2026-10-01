@@ -273,6 +273,16 @@ function EgovForm({ onDone }: { onDone: (r: SignedIn) => void }) {
 
 /** «Войти или зарегистрироваться»: one sheet with the three ways — Google, Apple (when set up) and e-mail with a code.
  *  Signing in and signing up are the same step: a new person gets an account, a known one gets theirs back. */
+function Soon({ icon, label }: { icon: IconName; label: string }) {
+  const t = useT();
+  return (
+    <button type="button" disabled aria-disabled="true"
+      className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-muted">
+      <Icon name={icon} size={20} />{label}<span className="rounded-full bg-sand px-2 py-0.5 text-xs font-medium">{t("account.methodSoon")}</span>
+    </button>
+  );
+}
+
 function SignInSheet({ methods, onClose, onDone, onOther }: {
   methods: AuthMethods; onClose: () => void; onDone: (r: SignedIn) => void; onOther: (m: Method) => void;
 }) {
@@ -300,6 +310,9 @@ function SignInSheet({ methods, onClose, onDone, onOther }: {
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand hover:bg-sand-deep"><Icon name="x" size={20} /></button>
         </div>
         <ProviderSignIn google={!!methods.google} apple={!!methods.apple} onDone={onDone} />
+        {/* owner 01.10: every way is listed; one not connected yet shows, but does not let in */}
+        {!methods.google && <Soon icon="globe" label={t("account.withGoogle")} />}
+        {!methods.apple && <Soon icon="user" label={t("account.withApple")} />}
         {methods.email && (email ? <CodeForm kind="email" onDone={onDone} wide /> : (
           <button type="button" onClick={() => setEmail(true)}
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
@@ -317,6 +330,8 @@ function SignInSheet({ methods, onClose, onDone, onOther }: {
             <Icon name="smartphone" size={20} />{t("account.withEgov")}
           </button>
         )}
+        {!methods.ecp && <Soon icon="key" label={t("account.withEcp")} />}
+        {!methods.egov && <Soon icon="smartphone" label={t("account.withEgov")} />}
       </div>
     </div>,
     document.body,
