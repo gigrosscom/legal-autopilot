@@ -263,7 +263,7 @@ class Settings(BaseSettings):
     # the pack's courier.yaml. COURIER_PROVIDER: auto (cdek when its keys are set, else alemtat when its key and
     # contract card are set, else manual) | cdek | alemtat | manual — manual: the order waits in /ops, the duty
     # operator orders the courier and enters the tracking number and statuses. Keys only from the environment.
-    courier_enabled: bool = True
+    courier_enabled: bool = False  # off until the owner turns the pilot on (COURIER_ENABLED=true)
     courier_provider: str = "auto"
     cdek_client_id: str = ""
     cdek_client_secret: str = ""

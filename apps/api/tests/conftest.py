@@ -22,6 +22,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 # Beta scenarios (tender bid, admission, visa, business…) are on in tests and dev, off in production.
 os.environ.setdefault("EXPERIMENTAL_SCENARIOS", "true")
 os.environ.setdefault("BETA_SCENARIOS_OFF", "")  # tests cover every beta scenario; production keeps study and visas off
+os.environ.setdefault("COURIER_ENABLED", "true")  # the courier pilot is off by default in production; tests cover it
 
 
 @pytest.fixture
