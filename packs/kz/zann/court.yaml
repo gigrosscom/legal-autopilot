@@ -1,0 +1,65 @@
+# Court practice for Zann from this country's open sources, read by konsilier/zann/court.py (docs/zann-court.md).
+# Owner 01.10.2026: «брать всё, что открыто и доступно» — collected politely, kept on our server, anonymised
+# (packs/kz/zann/anonymize.yaml) before any training use or transfer abroad.
+#
+# Checked live 01.10.2026: sud.kz and sud.gov.kz pages are server-rendered, open without login or captcha;
+# robots.txt: Crawl-delay 10 (honoured on top of ZANN_COURT_PAUSE), /search/ and /user/ closed.
+# NOT here: the bank of court acts office.sud.kz/courtActs — its search is behind Google reCAPTCHA, never bypassed.
+# Acts obtained lawfully (Smart Bridge, saved by hand) come in through `zann-court-import` (source «acts»).
+
+court: Верховный Суд Республики Казахстан   # who published the documents of every source below
+hosts: [sud.kz, www.sud.kz, sud.gov.kz]       # file links elsewhere are not followed
+# Never fetched, whatever a page links to. office.sud.kz: the bank of court acts — captcha on its search, and mass
+# collection from it is paused until a separate owner decision (01.10.2026). Local imports (zann-court-import) stay.
+blocked_hosts: [office.sud.kz]
+
+# parser: library_tree — a tree of groups and years (index), each leaf lists items with attached files;
+#         files — a page that links documents (pdf/doc/docx/rtf) in its content;
+#         years — an index of per-year pages (year_link), each a «files» page.
+sources:
+  np:  # normative resolutions of the Supreme Court: DOCX ru + kk at sud.gov.kz/library/download/<id>
+    rank: 0
+    parser: library_tree
+    seeds: [{url: "https://sud.kz/rus/legislation", kind: index}]
+    leaf_link: /legislation/
+    file_link: /library/download/
+    year_label: "Год:"
+    lost_marker: /79696/   # the group «Утратившие силу» (lost force): collected after everything in force
+  review:  # practice reviews and generalisations (PDF / DOCX / DOC)
+    rank: 1
+    parser: files
+    seeds:
+      - {url: "https://sud.kz/rus/content/obzory-sudebnoy-praktiki", kind: leaf}
+      - {url: "https://sud.kz/kaz/content/sot-praktikasyna-sholu", kind: leaf}
+  bulletin:  # bulletins of the Supreme Court, a page per year (2013–), PDF with a text layer
+    rank: 2
+    parser: years
+    seeds: [{url: "https://sud.kz/rus/kategoriya/byulleten-vs", kind: index}]
+    year_link: 'href="((?:https?://sud\.kz)?/(?:rus|kaz)/content/byullet[a-z-]*-za-(\d{4})-god)"'
+imported_rank: 3   # court acts imported from a lawful export
+
+# The page's own content: after `start`, before the first of `end` (menus and sidebars repeat links).
+page:
+  start: 'id="page-title"'
+  end: [region-sidebar-second, 'id="footer"', region-bottom]
+
+# Our scenarios first (owner 01.10.2026), checked in this order, the first match wins (title, else the text's start);
+# fines before state bodies: both say «административн…». Anything else is «other», collected last.
+categories:
+  - {name: consumer, pattern: 'потребител|тұтынушы'}
+  - {name: labour, pattern: 'трудов|еңбек|заработн|увольн|жалақ|работодател|жұмыс беруш'}
+  - {name: housing, pattern: 'жилищ|жиль|жилое|жилого|аренд|найм|наём|выселен|тұрғын\s*үй|жалға|үй-жай|самовольн\w*\s+постро'}
+  - {name: alimony, pattern: 'алимент|брак|супруг|семейн|отбасы|неке|детей|ребен|ребён|баланы|балалар'}
+  - {name: fines, pattern: 'административн\w*\s+правонаруш|КоАП|ӘҚБтК|әкімшілік\s+құқық\s+бұзушылы|штраф|айыппұл'}
+  - {name: state, pattern: 'АППК|ӘРПК|административн\w*\s+(?:дел|иск|процед|судопроизвод|юстиц|орган)|публично-правов|государственн\w*\s+орган|госорган|акимат|әкімдік|бездейств|әрекетсіздік|әкімшілік\s+(?:сот|іс)|судебн\w*\s+исполнител|сот\s+орындаушы|налогов|салық|земельн|жер\s+'}
+  - {name: credit, pattern: 'кредит|займ|заем|заём|банк|несие|қарыз|залог|кепіл|ипотек|микрофинанс|коллектор|страхов'}
+
+# Dates and numbers in titles: «от 15 ноября 2024 года № 5»
+months: [января, февраля, марта, апреля, мая, июня, июля, августа, сентября, октября, ноября, декабря]
+number_pattern: '№\s*([\w./-]{1,20})'
+
+# Language of a document: a hint in the file name, else the share of letters only one language has.
+lang:
+  default: ru
+  hints: {kk: 'каз|қаз|kaz|_kz\b|\bkk\b', ru: 'рус|rus|_ru\b'}
+  letters: {kk: "әғқңөұүһіӘҒҚҢӨҰҮҺІ"}

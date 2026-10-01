@@ -186,6 +186,14 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                                   ZoneInfo(settings.zann_corpus_tz),
                                                   hour=settings.zann_corpus_hour,
                                                   minutes=settings.zann_corpus_minutes))
+    if settings.zann_court_enabled:  # off by default: court practice from sud.kz (docs/zann-court.md)
+        from zoneinfo import ZoneInfo
+
+        from .zann import court
+
+        scheduler.extra_jobs.append(court.make_job(lambda: court.build_collector(settings, factory, storage),
+                                                   ZoneInfo(settings.zann_court_tz), hour=settings.zann_court_hour,
+                                                   minutes=settings.zann_court_minutes))
     from .transcribe import GeminiTranscriber, SlidingLimiter
 
     container.transcribe_limits = (SlidingLimiter(settings.transcribe_per_user_hour),

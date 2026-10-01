@@ -182,6 +182,22 @@ class Settings(BaseSettings):
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
     zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
+    # Zann court practice (konsilier/zann/court.py, docs/zann-court.md; owner 01.10.2026): what a country's courts
+    # publish openly — sources, categories and anonymisation rules are pack data (packs/<cc>/zann/court.yaml,
+    # anonymize.yaml); originals and texts gzip under zann/court/ in our storage only. Off by default.
+    # ZANN_COURT_COUNTRY: the pack (empty: the only pack with zann/court.yaml). ZANN_COURT_SOURCES: empty = all the
+    # pack's sources. ZANN_COURT_HOUR: local hour of the nightly run (4:00–4:50, after the corpus and the official
+    # crawl), -1 = continuous. ZANN_COURT_PAUSE: seconds between requests (≥ 0.5); a site's robots.txt Crawl-delay
+    # is applied on top. ZANN_COURT_MAX_MB: larger files are skipped.
+    zann_court_enabled: bool = False
+    zann_court_country: str = ""
+    zann_court_hour: int = 4
+    zann_court_minutes: int = 50
+    zann_court_pause: float = 1.0
+    zann_court_sources: str = ""
+    zann_court_refresh_days: int = 30  # walk the pages again for new documents (0 = never)
+    zann_court_max_mb: float = 60.0
+    zann_court_tz: str = "Asia/Almaty"
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"

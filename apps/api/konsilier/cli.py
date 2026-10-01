@@ -11,6 +11,10 @@
     python -m konsilier.cli official-crawl [CC] [--limit N] [--minutes M]  # refresh the library of official pages
     python -m konsilier.cli official-search "query" [CC] [--lang ru] [--limit N]
     python -m konsilier.cli zann-corpus [--limit N] [--minutes M] [--discover]  # Zann law corpus from adilet
+    python -m konsilier.cli zann-court [--limit N] [--minutes M] [--discover]   # court practice from sud.kz
+    python -m konsilier.cli zann-court-import DIR [--category C] [--court NAME]  # court acts from a lawful export
+    python -m konsilier.cli zann-court-export OUT.jsonl [--source np,review] [--category labour] [--limit N]
+                                                         # anonymised texts only (originals never leave the server)
 """
 
 from __future__ import annotations
@@ -31,6 +35,12 @@ def main(argv: list[str]) -> int:
         return official_search(argv[1:])
     if argv and argv[0] == "zann-corpus":
         return zann_corpus(argv[1:])
+    if argv and argv[0] == "zann-court":
+        return zann_court(argv[1:])
+    if argv and argv[0] == "zann-court-import" and len(argv) > 1:
+        return zann_court_import(argv[1:])
+    if argv and argv[0] == "zann-court-export" and len(argv) > 1:
+        return zann_court_export(argv[1:])
     if argv and argv[0] == "zann-bench":
         return zann_bench(argv[1:])
     if argv and argv[0] == "zann-export" and len(argv) > 1:
@@ -233,6 +243,81 @@ def zann_corpus(args: list[str]) -> int:
     with container.session_factory() as s:
         print("corpus:", json.dumps(corpus_metrics(s), ensure_ascii=False))
     return 1 if stats.stopped == "robots" else 0
+
+
+def zann_court(args: list[str]) -> int:
+    """Collect court practice from sud.kz now (the job does the same, time-boxed): --discover walks only the pages
+    (document links, no files); --limit N downloads at most N documents; --minutes M stops after M minutes."""
+    import json
+    from dataclasses import asdict
+
+    from .container import build_container
+    from .zann.court import build_collector, court_metrics
+
+    settings = get_settings()
+    container = build_container(settings)
+    collector = build_collector(settings, container.session_factory, container.storage)
+    limit, minutes = _opt(args, "--limit"), _opt(args, "--minutes")
+    stats = collector.run(budget_seconds=float(minutes) * 60 if minutes else None,
+                          limit=int(limit) if limit else None, discover_only="--discover" in args)
+    print("run:", json.dumps(asdict(stats), ensure_ascii=False))
+    with container.session_factory() as s:
+        print("court:", json.dumps(court_metrics(s), ensure_ascii=False))
+    return 1 if stats.stopped == "robots" else 0
+
+
+def zann_court_import(args: list[str]) -> int:
+    """Court acts obtained lawfully (Smart Bridge, files saved by hand) → our storage: every .pdf/.docx/.rtf/.txt/
+    .html in DIR; an optional <file>.json next to a file gives its court, category, date, number, title, url."""
+    import json
+
+    from .container import build_container
+    from .zann.court import build_collector
+
+    settings = get_settings()
+    container = build_container(settings)
+    collector = build_collector(settings, container.session_factory, container.storage)
+    folder = Path(_positional(args, ("--category", "--court"))[0])
+    n = 0
+    for f in sorted(folder.iterdir()):
+        if f.suffix.lower() not in (".pdf", ".docx", ".rtf", ".txt", ".html", ".htm", ".doc"):
+            continue
+        side = f.with_suffix(f.suffix + ".json")
+        meta = json.loads(side.read_text("utf-8")) if side.exists() else {}
+        if _opt(args, "--category"):
+            meta.setdefault("category", _opt(args, "--category"))
+        if _opt(args, "--court"):
+            meta.setdefault("court", _opt(args, "--court"))
+        collector.import_file(f.name, f.read_bytes(), meta)
+        n += 1
+    collector.write_manifest()
+    print(f"imported {n} file(s)")
+    return 0
+
+
+def zann_court_export(args: list[str]) -> int:
+    """Anonymised court-practice texts as JSON lines: the only form in which they may leave the server."""
+    import json
+
+    from .container import build_container
+    from .zann.anonymize import load_rules
+    from .zann.court import export_anonymised, pick_country
+
+    settings = get_settings()
+    container = build_container(settings)
+    rules = load_rules(settings.packs_dir, pick_country(settings.packs_dir, settings.zann_court_country))
+    out = Path(_positional(args, ("--source", "--category", "--limit"))[0])
+    split = lambda v: tuple(x.strip() for x in (v or "").split(",") if x.strip())  # noqa: E731
+    limit = _opt(args, "--limit")
+    n = 0
+    with out.open("w", encoding="utf-8") as fh:
+        for rec in export_anonymised(container.session_factory, container.storage, rules,
+                                     sources=split(_opt(args, "--source")), categories=split(_opt(args, "--category")),
+                                     limit=int(limit) if limit else None):
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            n += 1
+    print(f"{n} anonymised document(s) → {out}")
+    return 0
 
 
 def official_search(args: list[str]) -> int:
