@@ -316,6 +316,9 @@ class Filing(TimestampMixin, Base):
     receipt_key: Mapped[str | None] = mapped_column(String(300))
     receipt_sha256: Mapped[str | None] = mapped_column(String(64))
     followup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # «Ответили?» a day later
+    # e-mail: the token in claims+<token>@… and «[K-<token>]» in the subject, so a reply finds its case
+    reply_token: Mapped[str | None] = mapped_column(String(16), index=True)
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Agreement(TimestampMixin, Base):

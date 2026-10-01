@@ -78,7 +78,7 @@ def test_send_happy_path_with_attachments_reply_to_copy_and_deadline(case):
     assert r.status_code == 422 and r.json()["detail"]["code"] == "confirm_required"
     out = api.post(url(cid, aid, "/email"), json={"to": "shop@example.kz", "confirm": True})
     sent = ctx.container.claims_mailer.sent[0]
-    assert sent["to"] == "shop@example.kz" and sent["reply_to"] == CLIENT and sent["cc"] == [CLIENT]
+    assert sent["to"] == "shop@example.kz" and sent["reply_to"] == [CLIENT] and sent["cc"] == [CLIENT]
     names = [n for n, _ in sent["attachments"]]
     assert len(names) == 2 and names[1].endswith(".cms")
     doc = sent["attachments"][0][1]
@@ -326,3 +326,88 @@ def test_resend_payload_has_attachments_reply_to_and_copy(monkeypatch):
 def test_find_in_text_ignores_our_and_public_sites():
     found = find_in_text("see konsilier.com and egov.kz, write to a@konsilier.com; shop: best-shop.kz")
     assert found == [("website", "best-shop.kz")]
+
+
+# ------------------------------------------------------------------ «3 клика»: we choose the route, one button
+def _receipt_with_contacts(ctx, cid, text="Seller Widget Corp, sales@widget.kz, tel +7 701 555 44 33"):
+    with ctx.container.session_factory() as s:
+        s.add(Evidence(case_id=uuid.UUID(cid), kind="receipt", filename="check.pdf", content_type="application/pdf",
+                       text=text, extracted_facts={}))
+        s.commit()
+
+
+def test_route_is_chosen_and_one_button_sends_the_email_by_itself(case):
+    ctx, api, cid, aid = case
+    _receipt_with_contacts(ctx, cid)
+    plan = api.get(url(cid, aid, "/send")).json()
+    route = plan["route"]
+    assert [(s["channel"], s["auto"]) for s in route] == [("email", True), ("whatsapp", False)]
+    assert route[1]["href"].startswith("https://wa.me/77015554433?text=")
+    r = ctx.client.post(url(cid, aid, "/send/go"), headers=api.h, json={})
+    assert r.status_code == 422  # no instruction without the button
+    out = api.post(url(cid, aid, "/send/go"), json={"confirm": True})
+    assert [f["recipient"] for f in out["sent"]] == ["sales@widget.kz"] and out["errors"] == []
+    assert ctx.container.claims_mailer.sent[0]["to"] == "sales@widget.kz"
+    assert out["case"]["actions"][0]["status"] == "submitted"
+    with ctx.container.session_factory() as s:
+        assert s.query(Filing).one().consent_text_version == "go-v1"
+    again = api.post(url(cid, aid, "/send/go"), json={"confirm": True})  # pressed twice: nothing new
+    assert again["sent"] == [] and len(ctx.container.claims_mailer.sent) == 1
+
+
+def test_one_button_without_found_email_sends_nothing_and_offers_manual(case):
+    ctx, api, cid, aid = case
+    out = api.post(url(cid, aid, "/send/go"), json={"confirm": True})
+    assert out["sent"] == [] and [s["channel"] for s in out["steps"]] == ["manual"]
+    assert ctx.container.claims_mailer.sent == []
+
+
+def test_state_body_goes_to_eotinish_step(case):
+    ctx, api, cid, aid = case
+    _receipt_with_contacts(ctx, cid)
+    with ctx.container.session_factory() as s:
+        s.get(Action, uuid.UUID(aid)).addressee = {"kind": "authority", "name": "Department", "email": "dep@gov.xx"}
+        s.commit()
+    route = api.get(url(cid, aid, "/send")).json()["route"]
+    assert [s["channel"] for s in route] == ["gov"]
+    assert api.post(url(cid, aid, "/send/go"), json={"confirm": True})["sent"] == []
+
+
+def received(token: str, to: str | None = None) -> bytes:
+    return json.dumps({"type": "email.received", "created_at": "2026-10-02T10:00:00Z",
+                       "data": {"email_id": "in_1", "from": "Widget Corp <sales@widget.kz>",
+                                "to": [to or f"claims+{token}@konsilier.com"], "subject": "Re: claim",
+                                "text": "We will refund you."}}).encode()
+
+
+def test_reply_comes_into_the_case_when_inbound_is_on(case):
+    ctx, api, cid, aid = case
+    ctx.settings.resend_webhook_secret = SECRET
+    ctx.settings.claims_inbound = True
+    api.post(url(cid, aid, "/email"), json={"to": "shop@example.kz", "confirm": True})
+    sent = ctx.container.claims_mailer.sent[0]
+    token = sent["reply_to"][1].split("+")[1].split("@")[0]
+    assert sent["reply_to"][0] == CLIENT and f"[K-{token}]" in sent["subject"]
+    raw = received(token)
+    out = ctx.client.post("/v1/webhooks/resend", content=raw, headers=svix_headers(raw)).json()
+    assert out["matched"] is True and out["replied"] is True
+    again = ctx.client.post("/v1/webhooks/resend", content=raw, headers=svix_headers(raw, msg_id="msg_2")).json()
+    assert "replied" not in again  # the same reply once
+    view = api.get(f"/v1/cases/{cid}").json()
+    assert view["actions"][0]["filings"][0]["replied_at"]
+    assert any(e["kind"] == "response" for e in view["evidence"])
+    with ctx.container.session_factory() as s:
+        ev = s.query(Evidence).filter(Evidence.kind == "response").one()
+        assert "We will refund you." in (ev.text or "")
+        # «Ответили?» is not asked: the reply came by itself
+        assert followups(ctx.container)(s, datetime.now(timezone.utc) + timedelta(hours=25)) == 0
+
+
+def test_reply_is_ignored_while_inbound_is_off(case):
+    ctx, api, cid, aid = case
+    ctx.settings.resend_webhook_secret = SECRET
+    api.post(url(cid, aid, "/email"), json={"to": "shop@example.kz", "confirm": True})
+    assert ctx.container.claims_mailer.sent[0]["reply_to"] == [CLIENT]  # no claims+token address while off
+    raw = received("abcdef1234")
+    assert ctx.client.post("/v1/webhooks/resend", content=raw,
+                           headers=svix_headers(raw)).json()["matched"] is False

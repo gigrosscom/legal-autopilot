@@ -45,6 +45,8 @@ def upgrade() -> None:
         sa.Column("receipt_key", sa.String(300), nullable=True),
         sa.Column("receipt_sha256", sa.String(64), nullable=True),
         sa.Column("followup_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("reply_token", sa.String(16), nullable=True),
+        sa.Column("replied_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -53,9 +55,10 @@ def upgrade() -> None:
     op.create_index("ix_filings_user_id", "filings", ["user_id"])
     op.create_index("ix_filings_status", "filings", ["status"])
     op.create_index("ix_filings_external_id", "filings", ["external_id"])
+    op.create_index("ix_filings_reply_token", "filings", ["reply_token"])
 
 
 def downgrade() -> None:
-    for ix in ("external_id", "status", "user_id", "action_id", "case_id"):
+    for ix in ("reply_token", "external_id", "status", "user_id", "action_id", "case_id"):
         op.drop_index(f"ix_filings_{ix}", table_name="filings")
     op.drop_table("filings")

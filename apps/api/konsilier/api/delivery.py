@@ -20,6 +20,7 @@ import hmac
 import json
 import logging
 import re
+import secrets
 import time
 import uuid
 from dataclasses import dataclass
@@ -68,6 +69,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "delivered": "Письмо «{title}» доставлено на {to}.",
         "message": "Здравствуйте!\nНаправляю вам документ «{title}» — PDF прилагаю.\n"
                    "Прошу рассмотреть его и ответить в установленный срок.{name}",
+        "replied": "Пришёл ответ на «{title}» от {sender}. Он сохранён в деле — откройте дело и отметьте, что в нём.",
         "followup": "Прошли сутки с отправки «{title}». Вам ответили? Откройте дело и отметьте ответ — или подождём "
                     "до срока, мы напомним.",
     },
@@ -81,6 +83,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "delivered": "«{title}» хаты {to} мекенжайына жеткізілді.",
         "message": "Сәлеметсіз бе!\nСізге «{title}» құжатын жіберемін — PDF қоса беріліп отыр.\n"
                    "Оны қарап, белгіленген мерзімде жауап беруіңізді сұраймын.{name}",
+        "replied": "«{title}» хатына {sender} жауап берді. Жауап іске сақталды — істі ашып, онда не жазылғанын белгілеңіз.",
         "followup": "«{title}» жіберілгеннен бері бір тәулік өтті. Сізге жауап берді ме? Істі ашып, жауапты белгілеңіз — "
                     "әйтпесе мерзімге дейін күтеміз, еске саламыз.",
     },
@@ -96,6 +99,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "delivered": "The letter “{title}” was delivered to {to}.",
         "message": "Hello,\nI am sending you the document “{title}” — the PDF is attached.\n"
                    "Please review it and reply within the applicable time limit.{name}",
+        "replied": "A reply to “{title}” came from {sender}. It is saved in the case — open the case and record what it says.",
         "followup": "A day has passed since you sent “{title}”. Have they replied? Open the case and record the "
                     "reply — or we wait until the deadline and remind you.",
     },
@@ -127,7 +131,7 @@ def confirmed_email(session: Session, user: User) -> str | None:
 
 def filing_view(f: Filing) -> dict[str, Any]:
     return {"id": str(f.id), "channel": f.channel, "recipient": f.recipient, "status": f.status,
-            "has_receipt": bool(f.receipt_key),
+            "has_receipt": bool(f.receipt_key), "replied_at": f.replied_at.isoformat() if f.replied_at else None,
             "sent_at": f.sent_at.isoformat() if f.sent_at else None,
             "delivered_at": f.delivered_at.isoformat() if f.delivered_at else None,
             "created_at": f.created_at.isoformat() if f.created_at else None,
@@ -172,12 +176,23 @@ def _count(session: Session, *where: Any) -> int:
 @dataclass
 class Letter:
     to: str
-    reply_to: str
+    reply_to: list[str]
+    copy_to: str
     subject: str
     text: str
     attachments: list[tuple[str, bytes]]
     doc_sha256: str
     signature_id: uuid.UUID | None
+    token: str
+
+
+def inbound_address(container: Container, token: str) -> str | None:
+    """claims+<token>@domain, when replies are received by Resend (CLAIMS_INBOUND): a reply sent to it is attached
+    to the case by itself. Off → None (replies go only to the client)."""
+    if not container.settings.claims_inbound:
+        return None
+    m = re.search(r"([A-Za-z0-9._-]+)@([A-Za-z0-9.-]+)", container.settings.claims_email_from)
+    return f"{m.group(1)}+{token}@{m.group(2)}" if m else None
 
 
 def _main_file(container: Container, session: Session, action: Action) -> tuple[str, bytes]:
@@ -192,10 +207,11 @@ def _main_file(container: Container, session: Session, action: Action) -> tuple[
 
 
 def build_letter(container: Container, session: Session, case: Case, action: Action, user: User,
-                 to: str) -> Letter:
+                 to: str, token: str | None = None) -> Letter:
     reply = confirmed_email(session, user)
     if not reply:
         raise _http(409, "email_required")
+    token = token or secrets.token_hex(5)
     engine = container.engine
     sc, pack = engine.scenario_of(case), engine.pack_of(case)
     spec = sc.action(action.action_id)
@@ -212,8 +228,11 @@ def build_letter(container: Container, session: Session, case: Case, action: Act
     name = (sig.signer_name if sig is not None else None) or user.display_name or reply
     text = tx["body"].format(to=tx["to"].format(to=addressee) if addressee else "", title=title,
                              signed=tx["signed"] if sig is not None else "", reply=reply, name=name)
-    return Letter(to=to, reply_to=reply, subject=title[:300], text=text, attachments=files,
-                  doc_sha256=hashlib.sha256(doc).hexdigest(), signature_id=sig.id if sig is not None else None)
+    inbound = inbound_address(container, token)
+    subject = title[:280] + (f" [K-{token}]" if inbound else "")
+    return Letter(to=to, reply_to=[reply, inbound] if inbound else [reply], copy_to=reply, subject=subject,
+                  text=text, attachments=files, doc_sha256=hashlib.sha256(doc).hexdigest(),
+                  signature_id=sig.id if sig is not None else None, token=token)
 
 
 def _check(container: Container, session: Session, case: Case, action: Action, user: User, to: str) -> str:
@@ -259,29 +278,25 @@ def preview(case_id: uuid.UUID, action_id: uuid.UUID, body: EmailIn, user: User 
     case, action = _load(session, user, case_id, action_id)
     to = _check(container, session, case, action, user, body.to)
     letter = build_letter(container, session, case, action, user, to)
-    return {"from": container.settings.claims_email_from, "to": letter.to, "reply_to": letter.reply_to,
-            "cc": letter.reply_to, "subject": letter.subject, "text": letter.text,
+    return {"from": container.settings.claims_email_from, "to": letter.to, "reply_to": letter.reply_to[0],
+            "cc": letter.copy_to, "subject": letter.subject, "text": letter.text,
             "attachments": [{"name": n, "size": len(d)} for n, d in letter.attachments],
             "state": send_state(container, session, case, action)}
 
 
-@router.post("/cases/{case_id}/actions/{action_id}/email")
-def send(case_id: uuid.UUID, action_id: uuid.UUID, body: SendIn, user: User = Depends(current_user),
-         session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    from .views import case_view
-
-    case, action = _load(session, user, case_id, action_id)
-    to = _check(container, session, case, action, user, body.to)
-    if not body.confirm:
-        raise _http(422, "confirm_required")
+def send_email(container: Container, session: Session, case: Case, action: Action, user: User, to: str, *,
+               consent: str = CONSENT_VERSION) -> Filing:
+    """One letter to one address, with its proof. Raises (after keeping the failed attempt) when Resend refuses."""
+    to = _check(container, session, case, action, user, to)
     _limits(container, session, case, action, user)
     letter = build_letter(container, session, case, action, user, to)
     now = utcnow()
     filing = Filing(case_id=case.id, action_id=action.id, user_id=user.id, signature_id=letter.signature_id,
-                    channel="email", recipient=letter.to, reply_to=letter.reply_to, cc=letter.reply_to,
-                    sender=container.settings.claims_email_from, subject=letter.subject, body=letter.text,
-                    status="sending", doc_sha256=letter.doc_sha256, consent_text_version=CONSENT_VERSION,
-                    consent_at=now, events=[{"at": now.isoformat(), "type": "confirmed", "source": "client"}],
+                    channel="email", recipient=letter.to, reply_to=", ".join(letter.reply_to)[:254],
+                    cc=letter.copy_to, sender=container.settings.claims_email_from, subject=letter.subject,
+                    body=letter.text, status="sending", doc_sha256=letter.doc_sha256, reply_token=letter.token,
+                    consent_text_version=consent, consent_at=now,
+                    events=[{"at": now.isoformat(), "type": "confirmed", "source": "client"}],
                     attachments=[{"name": n, "size": len(d), "sha256": hashlib.sha256(d).hexdigest()}
                                  for n, d in letter.attachments])
     session.add(filing)
@@ -289,7 +304,7 @@ def send(case_id: uuid.UUID, action_id: uuid.UUID, body: SendIn, user: User = De
     actor = f"user:{user.id}"
     try:
         external = container.claims_mailer.send_letter(
-            to=letter.to, subject=letter.subject, text=letter.text, reply_to=letter.reply_to, cc=[letter.reply_to],
+            to=letter.to, subject=letter.subject, text=letter.text, reply_to=letter.reply_to, cc=[letter.copy_to],
             attachments=letter.attachments, idempotency_key=f"filing-{filing.id}")
     except SendError as e:
         filing.status, filing.error = "failed", str(e)[:300]
@@ -304,6 +319,19 @@ def send(case_id: uuid.UUID, action_id: uuid.UUID, body: SendIn, user: User = De
                            doc_sha256=letter.doc_sha256, resend_id=external)
     _mark_filed(container, session, case, action, actor, "email")
     session.flush()
+    return filing
+
+
+@router.post("/cases/{case_id}/actions/{action_id}/email")
+def send(case_id: uuid.UUID, action_id: uuid.UUID, body: SendIn, user: User = Depends(current_user),
+         session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    from .views import case_view
+
+    case, action = _load(session, user, case_id, action_id)
+    _check(container, session, case, action, user, body.to)
+    if not body.confirm:
+        raise _http(422, "confirm_required")
+    filing = send_email(container, session, case, action, user, body.to)
     return {"filing": filing_view(filing), "case": case_view(container.engine, session, case)}
 
 
@@ -357,10 +385,93 @@ def send_plan(case_id: uuid.UUID, action_id: uuid.UUID, user: User = Depends(cur
     contacts = find_contacts(case, action, own=own,
                              evidence_label=lambda kind: pack.t(lang, f"evidence.{kind}", default=kind),
                              id_labels=pack.t(lang, "contacts.id_labels", default=""))
-    return {"contacts": contacts, "message": short_message(container, case, action, user),
-            "email": send_state(container, session, case, action),
+    email = send_state(container, session, case, action)
+    return {"contacts": contacts, "message": short_message(container, case, action, user), "email": email,
+            "route": route_plan(action, contacts, email, short_message(container, case, action, user)),
             "reply_to": confirmed_email(session, user),
             "filings": filings_of(session, case.id).get(action.id, [])}
+
+
+GOV_KINDS = ("authority", "forum")
+
+
+def route_plan(action: Action, contacts: list[dict[str, Any]], email: dict[str, Any],
+               message: str) -> list[dict[str, Any]]:
+    """«Принцип 3 клика» (owner 01.10.2026): WE pick where the document goes. A state body → eOtinish (a step of its
+    own, done on eotinish.kz); the other side → e-mail if an address was found (sent by us at once, `auto`), and one
+    messenger (WhatsApp, else Telegram, else Instagram) as one button. Nothing found → the client adds an address."""
+    addressee = action.addressee or {}
+    steps: list[dict[str, Any]] = []
+    if addressee.get("kind") in GOV_KINDS:
+        steps.append({"channel": "gov", "to": addressee.get("name") or "", "auto": False,
+                      "href": addressee.get("submit_url")})
+        return steps
+    first = {k: next((c["value"] for c in contacts if c["kind"] in kinds), None)
+             for k, kinds in (("email", ("email",)), ("whatsapp", ("whatsapp", "phone")),
+                              ("telegram", ("telegram",)), ("instagram", ("instagram",)))}
+    if first["email"]:
+        steps.append({"channel": "email", "to": first["email"], "auto": bool(email.get("available")),
+                      "reason": email.get("reason")})
+    from urllib.parse import quote
+
+    if first["whatsapp"]:
+        steps.append({"channel": "whatsapp", "to": first["whatsapp"], "auto": False,
+                      "href": f"https://wa.me/{re.sub(r'[^0-9]', '', first['whatsapp'])}?text={quote(message)}"})
+    elif first["telegram"]:
+        steps.append({"channel": "telegram", "to": f"@{first['telegram']}", "auto": False,
+                      "href": f"https://t.me/{first['telegram']}"})
+    elif first["instagram"]:
+        steps.append({"channel": "instagram", "to": f"@{first['instagram']}", "auto": False,
+                      "href": f"https://ig.me/m/{first['instagram']}"})
+    if not steps:
+        steps.append({"channel": "manual", "to": "", "auto": False})
+    return steps
+
+
+class GoIn(BaseModel):
+    confirm: bool = False  # «Подписать и отправить» / «Отправить»: the client's instruction
+
+
+@router.post("/cases/{case_id}/actions/{action_id}/send/go")
+def send_go(case_id: uuid.UUID, action_id: uuid.UUID, body: GoIn, user: User = Depends(current_user),
+            session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """The one button: everything that can go without the client goes now (e-mail to the address found in the
+    case); the rest of the plan (a messenger, eOtinish) comes back as steps of one tap each."""
+    from ..contacts import find_contacts
+    from .views import case_view
+
+    if not body.confirm:
+        raise _http(422, "confirm_required")
+    case, action = _load(session, user, case_id, action_id)
+    _require_sendable(container, case, action)
+    pack = container.engine.pack_of(case)
+    lang = pack.lang(case.language)
+    contacts = find_contacts(case, action, own={x for x in (user.email, user.phone) if x},
+                             evidence_label=lambda kind: pack.t(lang, f"evidence.{kind}", default=kind),
+                             id_labels=pack.t(lang, "contacts.id_labels", default=""))
+    message = short_message(container, case, action, user)
+    steps = route_plan(action, contacts, send_state(container, session, case, action), message)
+    sent, errors = [], []
+    for step in steps:
+        if not step["auto"]:
+            continue
+        done = session.scalar(select(Filing.id).where(Filing.action_id == action.id, Filing.channel == "email",
+                                                      Filing.recipient == step["to"], Filing.status != "failed"))
+        if done is not None:  # pressed twice: the letter has gone already
+            step["done"] = True
+            continue
+        if not confirmed_email(session, user):
+            raise _http(409, "email_required")  # the reply must reach the client: confirm the e-mail, then again
+        try:
+            filing = send_email(container, session, case, action, user, step["to"], consent="go-v1")
+        except HTTPException as e:
+            detail = e.detail if isinstance(e.detail, dict) else {}
+            errors.append({"channel": step["channel"], "to": step["to"], "code": detail.get("code", "send_failed")})
+            continue
+        step["done"] = True
+        sent.append(filing_view(filing))
+    return {"sent": sent, "errors": errors, "steps": steps, "message": message,
+            "case": case_view(container.engine, session, case)}
 
 
 async def _read_receipt(file: UploadFile | None) -> tuple[bytes, str, str] | None:
@@ -492,6 +603,9 @@ def followups(container: Container) -> Any:
             if action is None or case is None or action.status != "submitted" \
                     or case.status != "awaiting_response" or action.responded_at is not None:
                 continue
+            if session.scalar(select(Filing.id).where(Filing.action_id == f.action_id,
+                                                      Filing.replied_at.is_not(None)).limit(1)):
+                continue  # the reply came by itself (claims+<token>@…)
             engine = container.engine
             title = engine.pack_of(case).localized(engine.scenario_of(case).action(action.action_id).title,
                                                    case.language)
@@ -543,6 +657,8 @@ def _resend_event(container: Container, raw: bytes) -> dict[str, Any]:
         raise HTTPException(422, "bad payload") from e
     if not email_id:
         return {"ok": True, "matched": False}
+    if kind == "email.received":
+        return _inbound(container, data, email_id)
     with container.session_factory() as session:
         filing = session.scalar(select(Filing).where(Filing.external_id == email_id))
         if filing is None:  # a sign-in code or another letter of ours
@@ -571,3 +687,49 @@ def _resend_event(container: Container, raw: bytes) -> dict[str, Any]:
                                        _texts(case.language)[filing.status].format(title=title, to=filing.recipient))
         session.commit()
         return {"ok": True, "matched": True, "status": filing.status}
+
+
+TOKEN_IN_ADDRESS = re.compile(r"\+([0-9a-f]{6,16})@", re.IGNORECASE)
+TOKEN_IN_SUBJECT = re.compile(r"\[K-([0-9a-f]{6,16})\]", re.IGNORECASE)
+
+
+def _inbound(container: Container, data: dict[str, Any], email_id: str) -> dict[str, Any]:
+    """A reply of the other side to claims+<token>@… (Resend «email.received», CLAIMS_INBOUND): a copy goes into
+    the case as a response document, the sending is marked «ответили», the client is told."""
+    if not container.settings.claims_inbound:
+        return {"ok": True, "matched": False}
+    rcpt = " ".join(str(x) for key in ("to", "cc") for x in (data.get(key) or []) if x)
+    m = TOKEN_IN_ADDRESS.search(rcpt) or TOKEN_IN_SUBJECT.search(str(data.get("subject") or ""))
+    if not m:
+        return {"ok": True, "matched": False}
+    sender = str(data.get("from") or "")[:200]
+    with container.session_factory() as session:
+        filing = session.scalar(select(Filing).where(Filing.reply_token == m.group(1).lower()))
+        if filing is None:
+            return {"ok": True, "matched": False}
+        if any(e.get("id") == email_id for e in filing.events or []):
+            return {"ok": True, "matched": True, "status": filing.status}  # the same webhook again
+        now = utcnow()
+        filing.replied_at = filing.replied_at or now
+        filing.events = [*(filing.events or []), {"at": now.isoformat(), "type": "replied", "source": "resend",
+                                                  "id": email_id, "from": sender}]
+        case = session.get(Case, filing.case_id)
+        engine = container.engine
+        text = str(data.get("text") or "")
+        fetch = getattr(container.claims_mailer, "received", None)
+        if not text and fetch is not None:
+            try:
+                text = fetch(email_id) or ""
+            except Exception as e:  # noqa: BLE001 — the reply is still marked; the text is in the client's mail
+                log.warning("inbound: could not fetch the reply: %s", e.__class__.__name__)
+        body = f"From: {sender}\nSubject: {data.get('subject') or ''}\n\n{text}".strip()
+        engine.add_evidence(session, case, kind="response", filename=f"reply-{now:%Y%m%d-%H%M}.txt",
+                            content_type="text/plain", data=body.encode())
+        action = session.get(Action, filing.action_id)
+        title = engine.pack_of(case).localized(engine.scenario_of(case).action(action.action_id).title,
+                                               case.language) if action else ""
+        engine.audit(session, case, "resend", "email_replied", filing=str(filing.id))
+        engine.notifier.notify(session, case, "delivery",
+                               _texts(case.language)["replied"].format(title=title, sender=sender))
+        session.commit()
+        return {"ok": True, "matched": True, "status": filing.status, "replied": True}

@@ -31,12 +31,12 @@ class ResendEmail:
     def send(self, to: str, subject: str, text: str) -> None:
         self._post({"from": self.sender, "to": [to], "subject": subject, "text": text})
 
-    def send_letter(self, *, to: str, subject: str, text: str, reply_to: str | None = None,
+    def send_letter(self, *, to: str, subject: str, text: str, reply_to: str | list[str] | None = None,
                     cc: list[str] | None = None, attachments: list[tuple[str, bytes]] | None = None,
                     idempotency_key: str | None = None) -> str | None:
         payload: dict = {"from": self.sender, "to": [to], "subject": subject, "text": text}
         if reply_to:
-            payload["reply_to"] = [reply_to]
+            payload["reply_to"] = [reply_to] if isinstance(reply_to, str) else list(reply_to)
         if cc:
             payload["cc"] = list(cc)
         if attachments:
@@ -47,6 +47,15 @@ class ResendEmail:
             return str(r.json().get("id") or "") or None
         except ValueError:
             return None
+
+    def received(self, email_id: str) -> str | None:
+        """The text of a letter Resend received for us (inbound, «email.received»)."""
+        r = httpx.get(f"https://api.resend.com/emails/receiving/{email_id}", timeout=15,
+                      headers={"Authorization": f"Bearer {self.api_key}"})
+        if r.status_code >= 300:
+            raise SendError(f"resend {r.status_code}")
+        data = r.json()
+        return data.get("text") or data.get("html")
 
     def _post(self, payload: dict, idempotency_key: str | None = None) -> httpx.Response:
         headers = {"Authorization": f"Bearer {self.api_key}"}
