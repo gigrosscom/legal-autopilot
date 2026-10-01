@@ -1,0 +1,2635 @@
+[
+ {
+  "code": "K01",
+  "sc_expected": "kz.consumer.refund",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 2,
+  "case": "adc3c606-86b9-4c6c-aae0-ebf74f798385",
+  "ttft": 3.94,
+  "ans_chars": 1158,
+  "uploads": [
+   201,
+   201
+  ],
+  "sc_got": "kz.consumer.refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 7.1,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-MUXZK5",
+   "invoice_id": 51,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 8.2,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.7,
+  "t_doc": 10.3,
+  "doc_title": "Претензия продавцу о возврате денег",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    32454
+   ],
+   "docx": [
+    200,
+    38315
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 5,
+  "t_total": 12.4
+ },
+ {
+  "code": "K02",
+  "sc_expected": "kz.consumer.non_delivery",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "e25eb4d6-63f5-409e-b146-c94f44df8368",
+  "ttft": 1.47,
+  "ans_chars": 1356,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.non_delivery",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 3.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-YCJQ8H",
+   "invoice_id": 52,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.8,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 6.2,
+  "doc_title": "Претензия продавцу о возврате предоплаты",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    31730
+   ],
+   "docx": [
+    200,
+    38200
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 8.1
+ },
+ {
+  "code": "K03",
+  "sc_expected": "kz.consumer.air_ticket",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "871b4176-dfda-4f7f-9912-5e165a0930fb",
+  "ttft": 4.2,
+  "ans_chars": 2305,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.air_ticket",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 13.0,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-NZ7F7V",
+   "invoice_id": 53,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 14.1,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.6,
+  "t_doc": 16.1,
+  "doc_title": "Претензия о возврате платы за авиабилет",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 16.5
+ },
+ {
+  "code": "K04",
+  "sc_expected": "kz.consumer.education_refund",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "a0643fba-32a5-4f6c-ac71-4c14ebb804f7",
+  "ttft": 1.61,
+  "ans_chars": 935,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.education_refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 3.6,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-7G2MQ2",
+   "invoice_id": 54,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.6,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.6,
+  "t_doc": 6.7,
+  "doc_title": "Заявление об отказе от договора и претензия о возврате денег",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    35502
+   ],
+   "docx": [
+    200,
+    38652
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 8.7
+ },
+ {
+  "code": "K05",
+  "sc_expected": "kz.consumer.poor_service",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "74b9ef7d-d241-4c31-b5b7-9c8d954f1301",
+  "ttft": 1.6,
+  "ans_chars": 1219,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.poor_service",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 4.1,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-S2GP48",
+   "invoice_id": 55,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 5.1,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.7,
+  "t_doc": 7.2,
+  "doc_title": "Претензия исполнителю о недостатках работы или услуги",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    34019
+   ],
+   "docx": [
+    200,
+    38523
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 9.3
+ },
+ {
+  "code": "K06",
+  "sc_expected": "kz.consumer.paid_medical",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "580a3a32-a176-43b7-b026-a0109b57e88f",
+  "ttft": 1.26,
+  "ans_chars": 1257,
+  "sc_got": "kz.consumer.paid_medical",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 3.4,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-F7N4CP",
+   "invoice_id": 56,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 5.8,
+  "doc_title": "Претензия клинике",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    30762
+   ],
+   "docx": [
+    200,
+    38247
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 7.9
+ },
+ {
+  "code": "K07",
+  "sc_expected": "kz.consumer.refund",
+  "lang": "kk",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "95494372-b063-404a-9594-111b045b7a4e",
+  "ttft": 3.25,
+  "ans_chars": 904,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.9,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-U5BFBK",
+   "invoice_id": 57,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.0,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 8.4,
+  "doc_title": "Сатушыға ақшаны қайтару туралы талап-арыз",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 9.1
+ },
+ {
+  "code": "K08",
+  "sc_expected": "kz.labor.unpaid_wages",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "bb1b2b00-363f-42d9-9bc2-fe1512263e9e",
+  "ttft": 4.97,
+  "ans_chars": 67,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.labor.unpaid_wages",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.4,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-KDPFKX",
+   "invoice_id": 58,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.6,
+  "t_doc": 9.4,
+  "doc_title": "Письменное требование работодателю о выплате",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 9.9
+ },
+ {
+  "code": "K09",
+  "sc_expected": "kz.labor.final_settlement",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "b1063085-fe57-47cc-8a5d-093af46d36c5",
+  "ttft": 2.09,
+  "ans_chars": 1128,
+  "sc_got": "kz.labor.final_settlement",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 4.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-FFJZ5J",
+   "invoice_id": 59,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.7,
+  "t_doc": 7.0,
+  "doc_title": "Письменное требование работодателю о выплате расчёта",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    30490
+   ],
+   "docx": [
+    200,
+    38261
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 9.2
+ },
+ {
+  "code": "K10",
+  "sc_expected": "kz.labor.dismissal",
+  "lang": "ru",
+  "prod": "case",
+  "docs_n": 1,
+  "case": "15187c11-8c6c-4556-9e40-183603f22c4d",
+  "ttft": 1.36,
+  "ans_chars": 1482,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.labor.dismissal",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 3.7,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 9990.0,
+   "currency": "KZT",
+   "code": "KA-WFUKKQ",
+   "invoice_id": 60,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.6,
+  "t_doc": 6.4,
+  "doc_title": "Заявление работодателю об отмене приказа об увольнении",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    31197
+   ],
+   "docx": [
+    200,
+    38284
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": true,
+  "taps": 4,
+  "t_total": 8.5
+ },
+ {
+  "code": "K11",
+  "sc_expected": "kz.labor.unpaid_wages",
+  "lang": "kk",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "5450b9a0-a4b4-4544-aa88-0665499d807b",
+  "ttft": 1.2,
+  "ans_chars": 656,
+  "sc_got": "kz.labor.unpaid_wages",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 3.1,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-XFQMQN",
+   "invoice_id": 61,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 3.8,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 5.1,
+  "doc_title": "Жұмыс берушіге төлем туралы жазбаша талап",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 5.6
+ },
+ {
+  "code": "K12",
+  "sc_expected": "kz.housing.deposit_return",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 2,
+  "case": "9290416c-9ae3-4be3-b6a0-048e2c90dab6",
+  "ttft": 3.3,
+  "ans_chars": 1193,
+  "uploads": [
+   201,
+   201
+  ],
+  "sc_got": "kz.housing.deposit_return",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-ZBU5NR",
+   "invoice_id": 62,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.5,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 7.9,
+  "doc_title": "Претензия наймодателю о возврате депозита",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 5,
+  "t_total": 8.2
+ },
+ {
+  "code": "K13",
+  "sc_expected": "kz.housing.utility_billing",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "d3cb4807-9ec3-4c4d-8655-b529abd4d461",
+  "ttft": 3.35,
+  "ans_chars": 1244,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.housing.utility_billing",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-Y57SAJ",
+   "invoice_id": 63,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 7.8,
+  "doc_title": "Заявление поставщику о перерасчёте",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 8.2
+ },
+ {
+  "code": "K14",
+  "sc_expected": "kz.housing.management_company",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "6838a9c9-79c2-4ec3-a496-4275fcbda967",
+  "ttft": 4.53,
+  "ans_chars": 1294,
+  "sc_got": "kz.housing.management_company",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 7.3,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-33CSS4",
+   "invoice_id": 64,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 8.0,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.7,
+  "t_doc": 10.1,
+  "doc_title": "Письменное требование управляющей компании (ОСИ)",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    31431
+   ],
+   "docx": [
+    200,
+    38420
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 12.2
+ },
+ {
+  "code": "K15",
+  "sc_expected": "kz.family.alimony",
+  "lang": "ru",
+  "prod": "case",
+  "docs_n": 1,
+  "case": "ebc7e147-f896-4c4c-b846-f08e4c6e846b",
+  "ttft": 2.4,
+  "ans_chars": 1204,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.family.alimony",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 4.6,
+  "pay_status": 422,
+  "pay_err": {
+   "detail": {
+    "code": "applicant_data_required",
+    "message": "applicant_data_required",
+    "fields": [
+     {
+      "field": "respondent_address",
+      "label": "Адрес",
+      "type": "text",
+      "pattern": null
+     },
+     {
+      "field": "applicant_name",
+      "label": "ФИО заявителя",
+      "type": "text",
+      "pattern": null
+     },
+     {
+      "field": "applicant_iin",
+      "label": "ИИН",
+      "type": "text",
+      "pattern": "^\\d{12}$"
+     },
+     {
+      "field": "applicant_birth_date",
+      "label": "Дата рождения",
+      "type": "date",
+      "pattern": null
+     },
+     {
+      "field": "applicant_address",
+      "label": "Адрес заявителя",
+      "type": "text",
+      "pattern": null
+     },
+     {
+      "field": "applicant_phone",
+      "label": "Телефон",
+      "type": "phone",
+      "pattern": null
+     }
+    ]
+   }
+  },
+  "invoice": {
+   "amount": null,
+   "currency": null,
+   "code": null,
+   "invoice_id": null,
+   "ways": []
+  },
+  "t_invoice": 7.2,
+  "claim": 409,
+  "confirm": 409,
+  "result": "✅ на проверке владельца*",
+  "t_total": 7.7,
+  "note": "дошёл только после ручного ввода поля children_info (BUG-16)"
+ },
+ {
+  "code": "K16",
+  "sc_expected": "kz.money.credit_fraud",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "dc27c14f-a97b-4fb1-be9f-a0c88112feb7",
+  "ttft": 1.38,
+  "ans_chars": 1533,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.money.credit_fraud",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 4.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-J5YMWP",
+   "invoice_id": 65,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.7,
+  "t_doc": 7.0,
+  "doc_title": "Заявление в банк / МФО о мошенническом займе",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    34882
+   ],
+   "docx": [
+    200,
+    38695
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 9.1
+ },
+ {
+  "code": "K17",
+  "sc_expected": "kz.finance.unauthorized_debit",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "fb2d431d-92f5-4216-b331-51cae9e35794",
+  "ttft": 1.6,
+  "ans_chars": 1174,
+  "sc_got": "kz.finance.unauthorized_debit",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 4.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-9PE3UE",
+   "invoice_id": 66,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 5.5,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 6.8,
+  "doc_title": "Заявление в банк о несанкционированном списании",
+  "downloadable": true,
+  "approval": "not_required",
+  "download": {
+   "pdf": [
+    200,
+    29777
+   ],
+   "docx": [
+    200,
+    38169
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ документ+карта",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 8.9
+ },
+ {
+  "code": "K18",
+  "sc_expected": "kz.finance.debt_collectors",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "b29b9c15-233c-4904-9b99-d3612a923cd5",
+  "ttft": 1.75,
+  "ans_chars": 1178,
+  "sc_got": "kz.finance.debt_collectors",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 3.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-CNBPHX",
+   "invoice_id": 67,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 5.8,
+  "doc_title": "Требование коллекторскому агентству",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 6.2
+ },
+ {
+  "code": "K19",
+  "sc_expected": "kz.finance.imposed_insurance",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "a4d25c29-f7fc-48e9-a318-05a9073e3401",
+  "ttft": 1.86,
+  "ans_chars": 1330,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.money.credit_fraud",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 4.3,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-6FEUCY",
+   "invoice_id": 68,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 4.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 6.4,
+  "doc_title": "Заявление в банк / МФО о мошенническом займе",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 6.8
+ },
+ {
+  "code": "K20",
+  "sc_expected": "kz.finance.loan_restructuring",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "1632f93b-23c8-4542-ba0d-8bf4a8a56e34",
+  "ttft": 4.38,
+  "ans_chars": 1494,
+  "sc_got": "kz.money.credit_fraud",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-TB68QV",
+   "invoice_id": 69,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 8.3,
+  "doc_title": "Заявление в банк / МФО о мошенническом займе",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 8.7
+ },
+ {
+  "code": "K21",
+  "sc_expected": "kz.administrative.fine_appeal",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "60af8141-e3fd-4832-8ec9-6484eabf5edb",
+  "ttft": 3.27,
+  "ans_chars": 1067,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.administrative.fine_appeal",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 11.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-97E2AK",
+   "invoice_id": 70,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 12.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 13.9,
+  "doc_title": "Жалоба на постановление о штрафе",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 14.3
+ },
+ {
+  "code": "K22",
+  "sc_expected": "kz.civil.road_accident",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "df5ac31f-cd68-4e8e-83e8-6e0a2e6438da",
+  "ttft": 4.08,
+  "ans_chars": 1255,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.civil.road_accident",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.3,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-8BHERD",
+   "invoice_id": 71,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.0,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.2,
+  "t_doc": 8.6,
+  "doc_title": "Заявление в страховую компанию о страховой выплате",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 9.0
+ },
+ {
+  "code": "K23",
+  "sc_expected": "kz.gov.inaction_complaint",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "83ced8c0-8ef8-48a8-a85e-95e9f04805e7",
+  "ttft": 4.07,
+  "ans_chars": 1119,
+  "sc_got": "kz.gov.inaction_complaint",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.9,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-4E35PC",
+   "invoice_id": 72,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.5,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 7.9,
+  "doc_title": "Жалоба на бездействие",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 8.3
+ },
+ {
+  "code": "K24",
+  "sc_expected": "kz.social.benefit_refusal_appeal",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "5c965228-0927-4190-97f9-16e7639943f2",
+  "ttft": 4.31,
+  "ans_chars": 1201,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.social.benefit_application",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 17.3,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-V9EM3G",
+   "invoice_id": 73,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 17.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 19.3,
+  "doc_title": "Пакет документов для оформления выплаты",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 3,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 19.7
+ },
+ {
+  "code": "K25",
+  "sc_expected": "kz.social.benefit_application",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "6ce9d68c-acf8-41ab-8939-3e1b0d67bb9b",
+  "ttft": 3.62,
+  "ans_chars": 1199,
+  "sc_got": "kz.social.benefit_application",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.4,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-D7BRHT",
+   "invoice_id": 74,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.1,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 7.5,
+  "doc_title": "Пакет документов для оформления выплаты",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 3,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 7.9
+ },
+ {
+  "code": "K26",
+  "sc_expected": "kz.services.ip_registration",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "5a5f1eb5-b21f-4127-bcc3-28d6d32e5732",
+  "ttft": 3.47,
+  "ans_chars": 1571,
+  "sc_got": "kz.services.ip_registration",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 8.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-MSXZ5W",
+   "invoice_id": 75,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 9.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 10.8,
+  "doc_title": "Пакет для регистрации ИП",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 3,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 11.3
+ },
+ {
+  "code": "K27",
+  "sc_expected": "kz.services.ip_closure",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "fad27df8-a973-43f7-9103-a8bdc0049479",
+  "ttft": 4.22,
+  "ans_chars": 795,
+  "sc_got": "kz.services.ip_closure",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-927CJE",
+   "invoice_id": 76,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 8.2,
+  "doc_title": "Пакет для закрытия ИП",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 3,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 8.6
+ },
+ {
+  "code": "K28",
+  "sc_expected": "kz.business.debt_claim",
+  "lang": "ru",
+  "prod": "case",
+  "docs_n": 2,
+  "case": "cb61a8c7-fbe5-4591-8cfb-a53b231a688a",
+  "ttft": 4.34,
+  "ans_chars": 811,
+  "uploads": [
+   201,
+   201
+  ],
+  "sc_got": "kz.consumer.refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 9990.0,
+   "currency": "KZT",
+   "code": "KA-4D5MMC",
+   "invoice_id": 77,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.2,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 8.5,
+  "doc_title": "Претензия продавцу о возврате денег",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": true,
+  "taps": 5,
+  "t_total": 8.9
+ },
+ {
+  "code": "K29",
+  "sc_expected": "kz.business.supply_claim",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "eb6699f1-7b9a-4a6f-afcb-f46e86919de1",
+  "ttft": 3.95,
+  "ans_chars": 2092,
+  "sc_got": "kz.business.supply_claim",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 10.3,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-JD8U4A",
+   "invoice_id": 78,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 10.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 12.2,
+  "doc_title": "Претензия поставщику по договору поставки",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 12.6
+ },
+ {
+  "code": "K30",
+  "sc_expected": "kz.business.lease_termination",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "2459ebe4-546e-46d9-8532-9ac694b3eb05",
+  "ttft": 4.29,
+  "ans_chars": 1387,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.business.lease_termination",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.1,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-R9UEEC",
+   "invoice_id": 79,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 6.7,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 8.1,
+  "doc_title": "Предложение о расторжении договора аренды и возврате обеспечительного платежа",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 8.5
+ },
+ {
+  "code": "K31",
+  "sc_expected": "kz.business.procurement_complaint",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "5b96938a-61ca-4bbc-a4fa-0ee2e65b8b83",
+  "ttft": 4.2,
+  "ans_chars": 1333,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.services.tender_application",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 9.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-764TKM",
+   "invoice_id": 80,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 9.8,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 11.1,
+  "doc_title": "Пакет документов к заявке на госзакупки",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 3,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 11.5
+ },
+ {
+  "code": "K32",
+  "sc_expected": "kz.business.state_grant",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "4c894d49-0e73-4d99-8452-a240df2ec198",
+  "ttft": 4.62,
+  "ans_chars": 1281,
+  "sc_got": null,
+  "status_after_chat": "intake",
+  "questions": 0,
+  "draft": 404,
+  "t_draft": null,
+  "result": "тупик: нет документа",
+  "status_final": "intake",
+  "t_total": 37.0
+ },
+ {
+  "code": "K33",
+  "sc_expected": "kz.business.inspection_complaint",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "82930a7a-c381-49e3-b330-d0120b0e0832",
+  "ttft": 5.06,
+  "ans_chars": 1473,
+  "sc_got": "kz.business.inspection_complaint",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.9,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-RTFGQD",
+   "invoice_id": 81,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.5,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 8.9,
+  "doc_title": "Жалоба на решение (действия) органа контроля и надзора",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 9.3
+ },
+ {
+  "code": "K34",
+  "sc_expected": "kz.business.tax_audit_appeal",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "d51e589d-5ad7-4508-b09e-e6c7879b8890",
+  "ttft": 5.48,
+  "ans_chars": 1149,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.business.tax_audit_appeal",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 7.8,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-DRKQAU",
+   "invoice_id": 82,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 8.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 9.7,
+  "doc_title": "Жалоба на уведомление о результатах налоговой проверки",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 10.1
+ },
+ {
+  "code": "K35",
+  "sc_expected": "kz.services.tender_application",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "b01f4875-bf8d-49e6-980f-3fc9ccce35b1",
+  "ttft": 3.1,
+  "ans_chars": 1110,
+  "sc_got": "kz.services.tender_application",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.7,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-UYNF47",
+   "invoice_id": 83,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.4,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 8.7,
+  "doc_title": "Пакет документов к заявке на госзакупки",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 3,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 9.1
+ },
+ {
+  "code": "K36",
+  "sc_expected": "kz.consumer.refund",
+  "lang": "ru",
+  "prod": "case",
+  "docs_n": 1,
+  "case": "b6284e21-c404-4da2-b7b5-59424598d38d",
+  "ttft": 4.23,
+  "ans_chars": 1550,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.5,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 9990.0,
+   "currency": "KZT",
+   "code": "KA-APG26U",
+   "invoice_id": 84,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.5,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.1,
+  "t_doc": 9.0,
+  "doc_title": "Претензия продавцу о возврате денег",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": true,
+  "taps": 4,
+  "t_total": 9.6
+ },
+ {
+  "code": "K37",
+  "sc_expected": "kz.housing.deposit_return",
+  "lang": "kk",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "58060ab2-35f1-4946-90f8-dc42f0e5a5e5",
+  "ttft": 4.17,
+  "ans_chars": 1159,
+  "sc_got": null,
+  "status_after_chat": "intake",
+  "questions": 0,
+  "draft": 404,
+  "t_draft": null,
+  "result": "тупик: нет документа",
+  "status_final": "intake",
+  "t_total": 37.1
+ },
+ {
+  "code": "K38",
+  "sc_expected": "kz.labor.dismissal",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "a2f424bc-c265-45f6-ae80-d7a3bc6ecb46",
+  "ttft": 4.33,
+  "ans_chars": 2174,
+  "sc_got": null,
+  "status_after_chat": "intake",
+  "questions": 0,
+  "draft": 404,
+  "t_draft": null,
+  "result": "тупик: нет документа",
+  "status_final": "intake",
+  "t_total": 41.5
+ },
+ {
+  "code": "K39",
+  "sc_expected": "kz.finance.unauthorized_debit",
+  "lang": "kk",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "23ac816f-a5a5-4de2-b499-58e4bd73135f",
+  "ttft": 3.88,
+  "ans_chars": 541,
+  "sc_got": "kz.finance.unauthorized_debit",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.3,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-ZQG9XG",
+   "invoice_id": 85,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 5.9,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 7.3,
+  "doc_title": "Банкке рұқсатсыз есептен шығару туралы арыз",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 7.8
+ },
+ {
+  "code": "K40",
+  "sc_expected": "kz.consumer.poor_service",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "606e52e2-7b9e-4b3c-9bde-5109c07a1144",
+  "ttft": 3.45,
+  "ans_chars": 1166,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.poor_service",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 8.6,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-YXN89H",
+   "invoice_id": 86,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 9.7,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 11.0,
+  "doc_title": "Претензия исполнителю о недостатках работы или услуги",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 11.4
+ },
+ {
+  "code": "K41",
+  "sc_expected": "kz.consumer.non_delivery",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "b46a870a-ecdc-45bb-bcb9-8c2fdd860aea",
+  "ttft": 5.21,
+  "ans_chars": 902,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.non_delivery",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.9,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-NCNV4D",
+   "invoice_id": 87,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 8.0,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 9.3,
+  "doc_title": "Претензия продавцу о возврате предоплаты",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 9.7
+ },
+ {
+  "code": "K42",
+  "sc_expected": "kz.family.alimony",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "b0642686-9f58-4686-a8d3-8ef4f7d36e51",
+  "ttft": 4.45,
+  "ans_chars": 148,
+  "sc_got": "kz.family.alimony",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.4,
+  "pay_status": 422,
+  "pay_err": {
+   "detail": {
+    "code": "applicant_data_required",
+    "message": "applicant_data_required",
+    "fields": [
+     {
+      "field": "respondent_address",
+      "label": "Адрес",
+      "type": "text",
+      "pattern": null
+     },
+     {
+      "field": "children_info",
+      "label": "Дети",
+      "type": "longtext",
+      "pattern": null
+     },
+     {
+      "field": "applicant_name",
+      "label": "ФИО заявителя",
+      "type": "text",
+      "pattern": null
+     },
+     {
+      "field": "applicant_iin",
+      "label": "ИИН",
+      "type": "text",
+      "pattern": "^\\d{12}$"
+     },
+     {
+      "field": "applicant_birth_date",
+      "label": "Дата рождения",
+      "type": "date",
+      "pattern": null
+     },
+     {
+      "field": "applicant_address",
+      "label": "Адрес заявителя",
+      "type": "text",
+      "pattern": null
+     },
+     {
+      "field": "applicant_phone",
+      "label": "Телефон",
+      "type": "phone",
+      "pattern": null
+     }
+    ]
+   }
+  },
+  "invoice": {
+   "amount": null,
+   "currency": null,
+   "code": null,
+   "invoice_id": null,
+   "ways": []
+  },
+  "t_invoice": 7.8,
+  "claim": 409,
+  "confirm": 409,
+  "result": "оплата не подтверждена (409)",
+  "t_total": 8.2
+ },
+ {
+  "code": "K43",
+  "sc_expected": "kz.money.credit_fraud",
+  "lang": "kk",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "87398268-3d60-4c88-bdb4-93da2420e97f",
+  "ttft": 4.08,
+  "ans_chars": 1544,
+  "sc_got": "kz.money.credit_fraud",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 13.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-826UQR",
+   "invoice_id": 88,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 13.8,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 15.2,
+  "doc_title": "Банкке / МҚҰ-ға алаяқтық қарыз туралы арыз",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 15.6
+ },
+ {
+  "code": "K44",
+  "sc_expected": "kz.administrative.fine_appeal",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "93ab50e1-5758-4288-825d-7cbb1f19d25e",
+  "ttft": 6.47,
+  "ans_chars": 1115,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.administrative.fine_appeal",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 8.7,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-JJMJ9T",
+   "invoice_id": 89,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 9.3,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 10.7,
+  "doc_title": "Жалоба на постановление о штрафе",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 4,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 11.1
+ },
+ {
+  "code": "K45",
+  "sc_expected": "kz.housing.utility_billing",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "dcd15361-b966-439a-b90f-c60fc3fd5de7",
+  "ttft": 3.63,
+  "ans_chars": 1451,
+  "sc_got": "kz.housing.utility_billing",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 7.2,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-J5W94V",
+   "invoice_id": 90,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.8,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 9.1,
+  "doc_title": "Заявление поставщику о перерасчёте",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 9.5
+ },
+ {
+  "code": "K46",
+  "sc_expected": "kz.civil.road_accident",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "637377ef-66c7-4d76-9034-9df7f894ac46",
+  "ttft": 3.12,
+  "ans_chars": 1160,
+  "sc_got": "kz.civil.road_accident",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 5.1,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-QBMPYW",
+   "invoice_id": 91,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 5.7,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 7.1,
+  "doc_title": "Заявление в страховую компанию о страховой выплате",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 7.5
+ },
+ {
+  "code": "K47",
+  "sc_expected": "kz.consumer.education_refund",
+  "lang": "kk",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "82655595-43f7-49c1-98a2-9a8802bc71db",
+  "ttft": 3.54,
+  "ans_chars": 1011,
+  "sc_got": "kz.consumer.education_refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 6.0,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-QPZ6PW",
+   "invoice_id": 92,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 7.1,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 1.0,
+  "t_doc": 8.4,
+  "doc_title": "Шарттан бас тарту туралы арыз және ақшаны қайтару туралы талап-арыз",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 8.8
+ },
+ {
+  "code": "K48",
+  "sc_expected": "kz.finance.debt_collectors",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 0,
+  "case": "bd02cd9e-8d81-418b-8d19-bb214f365176",
+  "ttft": 3.28,
+  "ans_chars": 1911,
+  "sc_got": "kz.finance.debt_collectors",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 8.7,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-P5RUMJ",
+   "invoice_id": 93,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 9.3,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 10.6,
+  "doc_title": "Требование коллекторскому агентству",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 3,
+  "t_total": 11.0
+ },
+ {
+  "code": "K49",
+  "sc_expected": "kz.labor.unpaid_wages",
+  "lang": "ru",
+  "prod": "case",
+  "docs_n": 0,
+  "case": "118917f3-7e43-4349-8b47-687ee4ec723c",
+  "ttft": 4.33,
+  "ans_chars": 165,
+  "sc_got": null,
+  "status_after_chat": "intake",
+  "questions": 0,
+  "draft": 404,
+  "t_draft": null,
+  "result": "тупик: нет документа",
+  "status_final": "intake",
+  "t_total": 35.8
+ },
+ {
+  "code": "K50",
+  "sc_expected": "kz.consumer.refund",
+  "lang": "ru",
+  "prod": "document",
+  "docs_n": 1,
+  "case": "6e27bc66-ea76-4551-8429-0d5ad88832ee",
+  "ttft": 4.11,
+  "ans_chars": 2031,
+  "uploads": [
+   201
+  ],
+  "sc_got": "kz.consumer.refund",
+  "status_after_chat": "qualified",
+  "questions": 0,
+  "draft": 200,
+  "t_draft": 15.0,
+  "pay_status": 200,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-E97G8D",
+   "invoice_id": 94,
+   "ways": [
+    "kaspi_link",
+    "bank_invoice"
+   ]
+  },
+  "t_invoice": 16.0,
+  "claim": 200,
+  "confirm": 200,
+  "paid_to_doc_s": 0.9,
+  "t_doc": 17.4,
+  "doc_title": "Претензия продавцу о возврате денег",
+  "downloadable": false,
+  "approval": "pending",
+  "download": {
+   "pdf": [
+    409,
+    88
+   ],
+   "docx": [
+    409,
+    88
+   ]
+  },
+  "roadmap_steps": 5,
+  "next_action": "email_or_user_submits",
+  "deadline": null,
+  "has_roadmap": true,
+  "has_plan": false,
+  "result": "✅ на проверке владельца",
+  "case_paid": false,
+  "taps": 4,
+  "t_total": 17.8
+ }
+]
