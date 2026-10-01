@@ -89,12 +89,11 @@ def test_guide_record_and_deadline_from_entered_date(ctx):
     step = case["actions"][-1]
     assert step["submitted_via"] == "eotinish" and step["filed"]["number"] == "ЖТ-2026-01234567"
     assert step["submitted_at"].startswith(filed_on.isoformat())
-    # АППК, ст. 76 — 15 working days, counted from the date the person entered, not from today
-    due = pack.add_days(filed_on, None, 15)
-    assert step["deadline"]["due_date"] == due.isoformat()
+    # no response term for this step: the lawyer removed «15 рабочих дней» (not in the consumer law, 01.10.2026);
+    # a term set in the pack would run from the date the person entered (engine.mark_submitted, submitted_on)
+    assert step["deadline"] is None
     with ctx.container.session_factory() as s:
-        dl = s.scalar(select(Deadline).where(Deadline.action_id == uuid.UUID(a["id"])))
-        assert dl.due_date == due and dl.remind_before_days  # reminders run as for «Документ подан»
+        assert s.scalar(select(Deadline).where(Deadline.action_id == uuid.UUID(a["id"]))) is None
         row = s.scalar(select(Filing).where(Filing.action_id == uuid.UUID(a["id"])))
         act = s.get(Action, uuid.UUID(a["id"]))
         data = ctx.container.storage.get(act.pdf_key or act.docx_key)
@@ -130,11 +129,10 @@ def test_validation_of_number_date_and_receipt(ctx):
     assert r.status_code == 422 and r.json()["detail"]["code"] == "bad_receipt"
     # nothing was recorded by the refused attempts
     assert api.get(f"/v1/cases/{cid}").json()["actions"][-1]["submitted_at"] is None
-    # today is fine; the deadline starts today
+    # today is fine (no response term on this step since the lawyer's check of 01.10)
     out = post(number="№ 12345").json()
     assert out["filing"]["number"] == "№ 12345"
-    due = ctx.container.packs.pack("KZ").add_days(today, None, 15)
-    assert out["case"]["actions"][-1]["deadline"]["due_date"] == due.isoformat()
+    assert out["case"]["actions"][-1]["submitted_at"].startswith(today.isoformat())
 
 
 def test_only_own_case(ctx):
@@ -205,7 +203,7 @@ def test_proof_text_is_read_and_confirmed_in_one_tap(ctx):
     assert out["filing"]["source"] == "receipt_read" and out["filing"]["receipt_evidence_id"] == got["evidence_id"]
     step = out["case"]["actions"][-1]
     assert step["submitted_at"].startswith(filed_on.isoformat())
-    assert step["deadline"]["due_date"] == pack.add_days(filed_on, None, 15).isoformat()
+    assert step["deadline"] is None  # no term in the pack for this step (lawyer, 01.10.2026)
 
 
 def test_proof_pasted_text_and_corrected_value(ctx):
