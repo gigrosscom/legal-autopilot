@@ -38,7 +38,7 @@ function writeToken(v: string | null) {
   try { if (v) localStorage.setItem(TOKEN_KEY, v); else localStorage.removeItem(TOKEN_KEY); } catch {}
 }
 
-/** «Konsiliér Команда»: the owner's command centre, one app for the phone and the computer. */
+/** «Konsiliér Ops»: the owner's command centre, one app for the phone and the computer. */
 export function CommandCentre() {
   const [token, setToken] = useState<string | null | undefined>(undefined);
   useEffect(() => { setToken(readToken()); }, []);
@@ -68,7 +68,7 @@ function SignIn({ onDone }: { onDone: (token: string) => void }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/ops/icon-192.png" alt="" width={72} height={72} className="mx-auto rounded-[18px]" />
         <div>
-          <h1 className="text-[28px] font-semibold">Konsiliér Команда</h1>
+          <h1 className="text-[28px] font-semibold">Konsiliér Ops</h1>
           <p className="mt-2 text-[16px] text-muted">Командный центр владельца. Войдите ключом администратора — он задан в настройках сервера (ADMIN_TOKEN). Ключ хранится только на этом устройстве.</p>
         </div>
         <input type="password" autoComplete="current-password" value={value} onChange={(e) => setValue(e.target.value)}
@@ -177,7 +177,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
           </ul>
         </nav>
         <div className="mt-auto space-y-2 border-t border-line pt-4">
-          <InstallButton storeKey={INSTALL_KEY} icon="smartphone" label="Установить"
+          <InstallButton storeKey={INSTALL_KEY} icon="smartphone" label="Установить на рабочий стол"
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-action px-3 text-[15px] font-semibold text-white hover:bg-action-hover" />
           <button type="button" onClick={load} disabled={loading}
             className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-[15px] text-ink-soft hover:bg-sand-deep disabled:opacity-60">
@@ -198,7 +198,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
           <div className="flex min-w-0 items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/ops/icon-192.png" alt="" width={30} height={30} className="rounded-[8px]" />
-            <p className="truncate text-[17px] font-semibold">Команда</p>
+            <p className="truncate text-[17px] font-semibold">Konsiliér Ops</p>
           </div>
           <div className="flex items-center gap-1">
             <InstallButton storeKey={INSTALL_KEY} label="Установить"
