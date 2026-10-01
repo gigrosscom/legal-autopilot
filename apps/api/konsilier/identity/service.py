@@ -45,7 +45,8 @@ class Identities:
         return norm.keyed_hash(self.secret, kind, value)
 
     # ------------------------------------------------------------ one-time codes (email / phone)
-    def issue_code(self, session: Session, user: User, kind: str, target: str, ip: str | None) -> tuple[str, LoginChallenge]:
+    def issue_code(self, session: Session, user: User | None, kind: str, target: str,
+                   ip: str | None) -> tuple[str, LoginChallenge]:
         now = _now()
         target_hash = self.h(kind, target)
         ip_hash = self.h("ip", ip) if ip else None
@@ -63,7 +64,7 @@ class Identities:
         if n_target >= PER_TARGET_PER_HOUR or n_ip >= PER_IP_PER_HOUR:
             raise AuthError("rate_limited", 429, retry_after=3600)
         code = f"{secrets.randbelow(1_000_000):06d}"
-        ch = LoginChallenge(kind=kind, user_id=user.id, target_hash=target_hash, ip_hash=ip_hash,
+        ch = LoginChallenge(kind=kind, user_id=user.id if user else None, target_hash=target_hash, ip_hash=ip_hash,
                             secret_hash=self.h("code", f"{target_hash}:{code}"), expires_at=now + CODE_TTL)
         session.add(ch)
         session.flush()

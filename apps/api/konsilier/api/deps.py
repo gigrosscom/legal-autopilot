@@ -48,9 +48,20 @@ def optional_user(authorization: str | None = Header(default=None),
 
 def require_admin(x_admin_token: str | None = Header(default=None),
                   container: Container = Depends(get_container)) -> str:
-    if not x_admin_token or not hmac.compare_digest(x_admin_token, container.settings.admin_token):
-        raise HTTPException(403, "admin token required")
-    return "admin"
+    """The ADMIN_TOKEN key, or a «Konsiliér Ops» session from the e-mail code sign-in (api/ops_login.py)."""
+    if x_admin_token and hmac.compare_digest(x_admin_token, container.settings.admin_token):
+        return "admin"
+    if x_admin_token and x_admin_token.startswith(OPS_SESSION_PREFIX):
+        from .ops_login import session_owner
+
+        with container.session_factory() as session:
+            email = session_owner(session, container, x_admin_token)
+        if email:
+            return "admin"
+    raise HTTPException(403, "admin token required")
+
+
+OPS_SESSION_PREFIX = "ops_"
 
 
 def require_bot(x_bot_secret: str | None = Header(default=None),

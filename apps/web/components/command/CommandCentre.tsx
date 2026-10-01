@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { InstallButton } from "@/components/InstallApp";
 import { ThemePicker } from "@/components/ThemePicker";
 import { Icon, type IconName } from "@/components/ui";
-import { adminApi, ApiError, errorText } from "@/lib/api";
+import { adminApi, API_URL, ApiError, errorText } from "@/lib/api";
 import type { Bundle } from "@/lib/team";
 import { Deals } from "./Deals";
 import { Decisions } from "./Decisions";
@@ -47,17 +47,51 @@ function writeToken(v: string | null) {
 export function CommandCentre() {
   const [token, setToken] = useState<string | null | undefined>(undefined);
   useEffect(() => { setToken(readToken()); }, []);
-  const signOut = useCallback(() => { writeToken(null); setToken(null); }, []);
+  const signOut = useCallback(() => {
+    // a code sign-in session ends on the server too («Выйти» revokes it); the key stays as it is
+    const t = readToken();
+    if (t?.startsWith("ops_")) fetch(`${API_URL}/v1/ops-auth/logout`, { method: "POST", headers: { "X-Admin-Token": t } }).catch(() => {});
+    writeToken(null); setToken(null);
+  }, []);
   if (token === undefined) return null;
   if (!token) return <SignIn onDone={(t) => { writeToken(t); setToken(t); }} />;
   return <Centre token={token} onSignOut={signOut} />;
 }
 
+/** The ops sign-in API (api/ops_login.py): no client account, no bearer — just the e-mail and the code. */
+async function opsAuth<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_URL}/v1/ops-auth/${path}`, body === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, data?.detail ?? "error");
+  return data as T;
+}
+
+const CODE_ERRORS: Record<string, string> = {
+  wrong_code: "Код не подошёл — проверьте и введите ещё раз.",
+  code_expired: "Код устарел — запросите новый.",
+  too_many_attempts: "Слишком много попыток — запросите новый код.",
+  too_soon: "Код уже отправлен — подождите минуту и запросите снова.",
+  rate_limited: "Слишком много кодов за час — попробуйте позже.",
+  send_failed: "Письмо не ушло — попробуйте ещё раз или войдите ключом.",
+};
+
+/** Sign-in (owner 01.10): a code to the owner's e-mail (OWNER_EMAILS) → a 30-day session; the ADMIN_TOKEN key stays
+ *  as «Войти ключом». */
 function SignIn({ onDone }: { onDone: (token: string) => void }) {
+  const [mode, setMode] = useState<"email" | "key" | null>(null);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  async function submit(e: React.FormEvent) {
+  useEffect(() => {
+    opsAuth<{ email: boolean }>("methods").then((m) => setMode(m.email ? "email" : "key")).catch(() => setMode("key"));
+  }, []);
+  const failed = (err: unknown) => setError(err instanceof ApiError && err.code && CODE_ERRORS[err.code] ? CODE_ERRORS[err.code] : errorText(err));
+
+  async function submitKey(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
@@ -67,26 +101,68 @@ function SignIn({ onDone }: { onDone: (token: string) => void }) {
       setError(err instanceof ApiError && err.status === 403 ? "Ключ не подошёл." : errorText(err));
     } finally { setBusy(false); }
   }
+  async function sendCode(e?: React.FormEvent) {
+    e?.preventDefault();
+    setBusy(true); setError(null);
+    try { await opsAuth("start", { email: email.trim() }); setSent(true); setCode(""); } catch (err) { failed(err); } finally { setBusy(false); }
+  }
+  async function checkCode(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try {
+      const r = await opsAuth<{ token: string }>("verify", { email: email.trim(), code: code.trim() });
+      onDone(r.token);
+    } catch (err) { failed(err); } finally { setBusy(false); }
+  }
+
+  const field = "min-h-12 w-full rounded-full bg-sand px-5 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-accent";
+  const primary = "min-h-12 w-full rounded-full bg-action text-[17px] font-semibold text-white hover:bg-action-hover disabled:opacity-50";
   return (
     <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-10">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-5 text-center">
+      <div className="w-full max-w-sm space-y-5 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/ops/icon-192.png" alt="" width={72} height={72} className="mx-auto rounded-[18px]" />
         <div>
           <h1 className="text-[28px] font-semibold">Konsiliér Ops</h1>
-          <p className="mt-2 text-[16px] text-muted">Командный центр владельца. Войдите ключом администратора — он задан в настройках сервера (ADMIN_TOKEN). Ключ хранится только на этом устройстве.</p>
+          <p className="mt-2 text-[16px] text-muted">
+            {mode === "key" ? "Командный центр владельца. Войдите ключом администратора — он задан в настройках сервера (ADMIN_TOKEN). Ключ хранится только на этом устройстве."
+              : sent ? `Мы отправили код на ${email.trim()}. Введите его — вход сохранится на этом устройстве на 30 дней.`
+                : "Командный центр владельца. Введите вашу почту — пришлём код для входа."}
+          </p>
         </div>
-        <input type="password" autoComplete="current-password" value={value} onChange={(e) => setValue(e.target.value)}
-          placeholder="Ключ администратора" aria-label="Ключ администратора"
-          className="min-h-12 w-full rounded-full bg-sand px-5 text-[17px] outline-none placeholder:text-muted focus:ring-2 focus:ring-accent" />
+        {mode === "email" && !sent && (
+          <form onSubmit={sendCode} className="space-y-3">
+            <input type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="Электронная почта" aria-label="Электронная почта" className={field} />
+            <button type="submit" disabled={busy || !email.trim()} className={primary}>{busy ? "Отправляем…" : "Получить код"}</button>
+          </form>
+        )}
+        {mode === "email" && sent && (
+          <form onSubmit={checkCode} className="space-y-3">
+            <input autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="Код из письма" aria-label="Код из письма" className={`${field} text-center font-mono tracking-[0.3em] placeholder:font-sans placeholder:tracking-normal`} />
+            <button type="submit" disabled={busy || code.length < 6} className={primary}>{busy ? "Проверяем…" : "Войти"}</button>
+            <div className="flex justify-center gap-4 text-[15px]">
+              <button type="button" onClick={() => sendCode()} disabled={busy} className="text-action hover:underline">Отправить ещё раз</button>
+              <button type="button" onClick={() => { setSent(false); setError(null); }} className="text-muted hover:underline">Другая почта</button>
+            </div>
+          </form>
+        )}
+        {mode === "key" && (
+          <form onSubmit={submitKey} className="space-y-3">
+            <input type="password" autoComplete="current-password" value={value} onChange={(e) => setValue(e.target.value)}
+              placeholder="Ключ администратора" aria-label="Ключ администратора" className={field} />
+            <button type="submit" disabled={busy || !value.trim()} className={primary}>{busy ? "Проверяем…" : "Войти"}</button>
+          </form>
+        )}
         {error && <p role="alert" className="text-danger">{error}</p>}
-        <button type="submit" disabled={busy || !value.trim()}
-          className="min-h-12 w-full rounded-full bg-action text-[17px] font-semibold text-white hover:bg-action-hover disabled:opacity-50">
-          {busy ? "Проверяем…" : "Войти"}
-        </button>
+        {mode && (
+          <button type="button" onClick={() => { setMode(mode === "key" ? "email" : "key"); setError(null); }}
+            className="text-[15px] text-muted underline">{mode === "key" ? "Войти по коду на почту" : "Войти ключом"}</button>
+        )}
         <InstallButton storeKey={INSTALL_KEY} icon="smartphone" label="Установить на рабочий стол"
           className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface text-[17px] font-semibold text-action hover:bg-sand" />
-      </form>
+      </div>
     </main>
   );
 }
