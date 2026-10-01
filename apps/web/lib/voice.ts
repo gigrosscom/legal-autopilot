@@ -10,6 +10,8 @@ import { ApiError, NetworkError, transcribeAudio } from "./api";
 // Speech synthesis (reading replies aloud) is the device's own.
 const LOCALES: Record<string, string> = { ru: "ru-RU", kk: "kk-KZ", en: "en-US", tr: "tr-TR", ar: "ar-SA" };
 export const MAX_RECORDING_MS = 120_000; // the server accepts about two minutes
+const LIVE_EVERY_MS = 1500; // the recording fallback: live text this often while speaking
+const LIVE_FIRST_MS = 600; // …and the first time this soon after the recording starts
 const MAX_SPEECH_MS = 600_000; // built-in recognition is restarted after pauses for up to ten minutes
 
 /** Two pieces of dictated text with one space between them. */
@@ -72,8 +74,9 @@ function uploadErrorCode(e: unknown): string {
 
 /**
  * Voice input on every device. While listening, `onText(text)` receives everything said since `start()`, interim
- * words included, each time it changes (so the box can show it live); with the recording fallback the whole text
- * arrives once, after `stop()` (or the 2-minute limit) and the upload (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
+ * words included, each time it changes (so the box can show it live); with the recording fallback the text so far
+ * arrives every ~1.5 s while speaking and the final text after `stop()` (or the 2-minute limit) and the upload
+ * (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
  * no_speech, mic_failed, transcribe_unavailable, transcribe_busy, transcribe_failed, transcribe_network,
  * too_many_transcriptions, audio_too_large.
  */
@@ -86,6 +89,9 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [startedAt, setStartedAt] = useState(0);  // Date.now() when the dictation began, for the timer
+  // the microphone's loudness while recording, newest last (0..1), for the wave; empty → the wave just animates
+  const [levels, setLevels] = useState<number[]>([]);
+  const meter = useRef<(() => void) | null>(null);
   const stopped = useRef(true);  // the person pressed stop (or an error ended it): no automatic restart
   const speechBroken = useRef(false); // Web Speech exists but its service fails here (WebViews, Brave…)
   const alive = useRef(true);
@@ -113,6 +119,8 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
       return;
     }
     if (!alive.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+    meter.current?.();
+    meter.current = listenLevels(stream, setLevels);
     const type = recorderType();
     let r: MediaRecorder;
     try {
@@ -124,7 +132,33 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
     }
     const chunks: Blob[] = [];
     r.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    // Live text (owner 01.10, iPhone app): while recording, the audio so far is sent every ~1.5 s and what the server
+    // hears so far is shown in the box; one request at a time, the final text after «Стоп» replaces it. A busy or
+    // limited server just pauses the live text — the final transcription is unaffected.
+    const mimeOf = () => r.mimeType || type || "audio/webm";
+    let inFlight = false, sentChunks = 0, pauseUntil = 0, finished = false, lastSent = 0;
+    const began = Date.now();
+    const live = setInterval(async () => {
+      const now = Date.now();
+      // the first words as soon as there is a little audio (the person sees it work), then every LIVE_EVERY_MS
+      const due = sentChunks === 0 ? now - began >= LIVE_FIRST_MS : now - lastSent >= LIVE_EVERY_MS;
+      if (finished || inFlight || !due || chunks.length === sentChunks || now < pauseUntil) return;
+      inFlight = true;
+      sentChunks = chunks.length;
+      lastSent = now;
+      const mime = mimeOf();
+      try {
+        const text = (await transcribeAudio(new Blob(chunks, { type: mime.split(";")[0] }), langRef.current,
+          `voice.${extension(mime)}`, true)).trim();
+        if (!finished && alive.current && text) cb.current(text);
+      } catch {
+        pauseUntil = Date.now() + 10_000;  // busy or over the limit: try again a little later
+      } finally { inFlight = false; }
+    }, 200);
     r.onstop = async () => {
+      finished = true;
+      clearInterval(live);
+      meter.current?.(); meter.current = null;
       stream.getTracks().forEach((t) => t.stop());
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       recorder.current = null;
@@ -145,7 +179,7 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
       }
     };
     recorder.current = r;
-    r.start(1000); // a chunk every second: nothing is lost if the recorder is stopped abruptly
+    r.start(500); // a chunk every half second: the live text has audio early, nothing is lost on an abrupt stop
     setListening(true);
     timer.current = setTimeout(() => { if (r.state !== "inactive") r.stop(); }, MAX_RECORDING_MS);
   }, []);
@@ -219,13 +253,40 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
   }, [listening, transcribing, startRecording]);
 
   useEffect(() => () => {
+    meter.current?.();
     stopped.current = true;
     rec.current?.stop();
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  return { supported, listening, transcribing, error, startedAt, start, stop };
+  return { supported, listening, transcribing, error, startedAt, levels, start, stop };
+}
+
+const WAVE_POINTS = 28;
+
+/** The loudness of the recording, ~12 times a second, as the last WAVE_POINTS values (0..1). Returns the stop. */
+function listenLevels(stream: MediaStream, set: (v: number[]) => void): () => void {
+  const Ctx = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
+    ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctx) return () => {};
+  let ctx: AudioContext;
+  try { ctx = new Ctx(); } catch { return () => {}; }
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  source.connect(analyser);
+  const data = new Uint8Array(analyser.fftSize);
+  let points: number[] = [];
+  const timer = setInterval(() => {
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+    const level = Math.min(1, Math.sqrt(sum / data.length) * 4);  // speech is quiet: scaled up to fill the bar
+    points = [...points, level].slice(-WAVE_POINTS);
+    set(points);
+  }, 80);
+  return () => { clearInterval(timer); set([]); try { source.disconnect(); void ctx.close(); } catch { /* closed */ } };
 }
 
 /** Former name, kept for existing callers: the same hook (now with the recording fallback). */

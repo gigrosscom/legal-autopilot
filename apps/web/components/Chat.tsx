@@ -47,7 +47,18 @@ function splitReply(text: string): [string, string | null] {
   return [text, null];
 }
 
-/** A reply: the short answer, and «Подробнее» that opens the details in place. */
+/** The question a reply ends with (konsilier/chat.py: one clarifying question, after the details) stays visible
+ * under «Подробнее» instead of hiding in the details: [the details without it, the question]. */
+function closingQuestion(details: string): [string | null, string | null] {
+  const paras = details.trim().split(/\n\s*\n/);
+  const last = paras[paras.length - 1].trim();
+  if (!/\?[*_»"')]*$/.test(last) || last.length > 300 || /^\s*(\d+[.)]|[-*•])\s/.test(last)) {
+    return [details, null];
+  }
+  return [paras.length > 1 ? paras.slice(0, -1).join("\n\n") : null, last];
+}
+
+/** A reply: the short answer, «Подробнее» that opens the details in place, and the closing question. */
 function Reply({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -58,7 +69,8 @@ function Reply({ text, streaming = false }: { text: string; streaming?: boolean 
     const shown = (m ? cleaned.slice(0, m.index) : cleaned).replace(MORE_TAIL, "").trimEnd();
     return shown ? <Markdown text={shown} /> : null;
   }
-  const [short, rest] = splitReply(cleaned);
+  const [short, details] = splitReply(cleaned);
+  const [rest, ask] = details ? closingQuestion(details) : [null, null];
   return (
     <>
       <Markdown text={short} />
@@ -68,6 +80,7 @@ function Reply({ text, streaming = false }: { text: string; streaming?: boolean 
           {t("chat.more")}<Icon name="chevronDown" size={16} />
         </button>
       ))}
+      {ask && <Markdown text={ask} />}
     </>
   );
 }

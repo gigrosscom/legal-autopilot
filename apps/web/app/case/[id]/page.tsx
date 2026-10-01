@@ -995,6 +995,7 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
     <div className="card space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">{a.sequence}. {a.title}</h3>
+        {a.paid && !a.response_label && <Badge tone="brand" icon="checkCircle">{t("case.paid")}</Badge>}
         {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
       </div>
       {a.downloadable && a.filing

@@ -30,6 +30,9 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   const root = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLElement>(null);
   const [below, setBelow] = useState(false);  // scrolled up: the «down» button shows
+  // a field in the conversation (the draft's blanks, a form in a card) is being typed in: the keyboard must not
+  // carry the page to its end, and the bottom bar must not cover the field (owner 01.10, iPhone)
+  const [field, setField] = useState(false);
 
   useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [scrollKey]);
 
@@ -43,7 +46,9 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
       el.style.height = `${vv.height}px`;
       el.style.transform = `translateY(${vv.offsetTop}px)`;
       setKeyboard(window.innerHeight - vv.height > 150);  // the tab bar gives its room to the keyboard
-      end.current?.scrollIntoView({ block: "end" });
+      const typing = contentField(scroller.current);
+      if (typing) typing.scrollIntoView({ block: "center" });  // the field stays in sight above the keyboard
+      else end.current?.scrollIntoView({ block: "end" });
     };
     fit();
     vv.addEventListener("resize", fit);
@@ -72,7 +77,15 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
         </div>
       </header>
 
-      <main id="main" ref={scroller} onScroll={(e) => {
+      <main id="main" ref={scroller}
+        onFocus={(e) => {
+          const el = contentField(e.currentTarget);
+          setField(!!el);
+          // after the keyboard has opened (iOS animates it ~300 ms): the field in the middle of what is left
+          if (el) [60, 350].forEach((ms) => setTimeout(() => { if (document.activeElement === el) el.scrollIntoView({ block: "center" }); }, ms));
+        }}
+        onBlur={(e) => { const box = e.currentTarget; setTimeout(() => setField(!!contentField(box)), 0); }}
+        onScroll={(e) => {
         const el = e.currentTarget;
         setBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 240);
       }}
@@ -90,7 +103,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
         )}
       </main>
 
-      {bar && (
+      {bar && !(keyboard && field) && (
         <div className={`${wallpaper ? "bg-[var(--chat-bg)]" : "bg-surface"} ${keyboard ? "pb-2" : tabs ? "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]" : "pb-[max(env(safe-area-inset-bottom),0.5rem)] lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
           <div className="mx-auto max-w-3xl px-3 pt-2 lg:px-8">{bar}</div>
         </div>
@@ -165,4 +178,11 @@ function MoreSheet({ sections, links, onClose }: { sections: MoreSection[]; link
       </div>
     </div>
   );
+}
+
+/** The focused text field inside the conversation, if any (not the input bar below it). */
+function contentField(box: HTMLElement | null): HTMLElement | null {
+  const el = document.activeElement;
+  if (!box || !(el instanceof HTMLElement) || !box.contains(el)) return null;
+  return el.matches("input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select, [contenteditable=true]") ? el : null;
 }
