@@ -68,35 +68,32 @@ curl -H "X-Admin-Token: …" "https://…/v1/zann/search?q=расчёт при �
 
 ## bench_run.py — Zann-Bench на открытых моделях NVIDIA API Catalog
 
-Открытые модели каталога (Qwen, Llama, Gemma, Nemotron; список — `--models`, что доступно — `--list-models`)
-отвечают на правовые вопросы теста дважды: **с нашим поиском** (RAG: 5 статей из индекса Zann в запросе) и **без
-него**. Ключ — только из переменной среды `NVIDIA_API_KEY` (в файлы и в командную строку не пишется). Бесплатный
-уровень — до 40 запросов в минуту: скрипт сам держит не больше `--rpm` (максимум 40).
+Открытые модели каталога (что реально обслуживается — `--list-models` и пробный запрос: на 01.10.2026 Qwen,
+Llama 3.3/4 и Mistral отвечают 404/410) отвечают на вопросы Zann-Bench **без поиска** и **с нашим поиском** (5
+статей из индекса Zann в запросе) с системным промптом чата (`konsilier/chat.py`). Ключ — только из переменной
+среды `NVIDIA_API_KEY`. Бесплатный уровень — до 40 запросов в минуту: один ограничитель на процесс, считая повторы
+(`--rpm`, максимум 40; два процесса сразу — делите лимит, например 10 + 30).
+
+**Только открытая часть.** Раннер читает только строки `split == "open"`; скрытые (`hidden`) отбрасываются при
+чтении и никогда не попадают в промпт, судье, сырой файл или отчёт (тест `test_hidden_items_*`).
 
 ```
-export NVIDIA_API_KEY=…                                  # ключ владельца, на сервере
-python tools/zann/bench_run.py --list-models
-python tools/zann/bench_run.py --bench team/zann/bench/kz-v1.jsonl \
-    --index-db "$DATABASE_URL"                           # RAG + проверка «есть ли статья в корпусе»
-python tools/zann/bench_run.py --bench … --models meta/llama-3.3-70b-instruct --mode norag --limit 20
-python tools/zann/bench_run.py --bench … --dry-run       # без сети и ключа: фальшивая модель
+python tools/zann/collect_laws.py --from-packs          # тексты актов (вежливо, 3 с между запросами)
+python tools/zann/local_index.py                         # → data/zann/index.sqlite (статьи для поиска и проверки)
+R="python tools/zann/bench_run.py --bench kz-v1.jsonl --index-db sqlite:///data/zann/index.sqlite"
+$R --mode norag --models google/gemma-4-31b-it,nvidia/nemotron-3-ultra-550b-a55b   # ответы → data/zann/bench-<дата>.jsonl
+$R --mode rag --models google/gemma-4-31b-it                                       # повторный запуск доделывает ошибки
+$R --judge google/gemma-4-31b-it                         # LLM-судья: красные флаги и выдумки (отдельные колонки)
+$R --report-only                                         # пересчитать оценки и записать таблицы
+$R --dry-run                                             # без сети и ключа: фальшивая модель
 ```
 
-**Формат вопроса** (`kz-v1.jsonl`, одна строка — один вопрос):
+**Что считается** (формат набора — `team/zann/bench/README.md`): норма (`must_cite`: акт + статья = 1, только акт =
+⅓), адресат и документ (классы ключевых слов), срок (число + единица), обязательные элементы, факты, передача
+юристу, язык ответа; выдуманная норма (статьи нет в корпусе, «Жилищный кодекс», право РФ) обнуляет вопрос. Отдельно —
+итог с LLM-судьёй. Задержка — время самого HTTP-вызова, без очереди ограничителя. Разбивки — по категориям, типам,
+языкам, сложности и `verified`.
 
-```json
-{"id": "kz-qa-ru-001", "lang": "ru", "question": "…", "reference_answer": "…",
- "act": "K1500000414", "article": "113", "act_title": "Трудовой кодекс Республики Казахстан",
- "accept": [["K1500000414", "113-1"]], "verified_by": null, "source": "team", "note": ""}
-```
-
-Обязательные поля: `id, lang (ru|kk), question, reference_answer, act (код adilet), article`. `act_title` —
-название акта на языке вопроса: по нему узнаётся акт в ответе модели, если нет базы индекса. `accept` — другие
-верные пары (акт, статья). `verified_by` — имя юриста, проверившего эталон (пусто — не проверен).
-
-**Что считается.** Цитата верна — ответ называет ожидаемую статью ожидаемого акта (или пару из `accept`).
-Выдуманная норма — статьи нет в корпусе (с `--index-db`) или номер верный, а акт другой. Пересечение — F1 слов
-ответа и эталона. Время — секунды на ответ (p50 / p95). Для режима RAG ещё — нашёл ли поиск нужную статью.
-
-**Результат:** `docs/zann-bench-<дата>.md` (таблица модель × режим и по языкам) и сырые ответы
-`data/zann/bench-<дата>.jsonl` (не в git). Тест без сети: `cd apps/api && python -m pytest tests/test_zann_bench_run.py`.
+**Результат:** таблицы `data/zann/bench-<дата>-tables.md` и сырые ответы `data/zann/bench-<дата>.jsonl` (не в
+git); отчёт с выводами — `docs/zann-bench-<дата>.md`. Тест без сети: `cd apps/api && python -m pytest
+tests/test_zann_bench_run.py`.
