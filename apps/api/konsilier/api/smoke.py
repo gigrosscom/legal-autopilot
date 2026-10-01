@@ -8,13 +8,14 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import EngineError
 from ..core.models import Case, Invoice, User
 from .background import after_commit
-from .deps import get_container, get_session
+from .deps import current_user, get_container, get_session
 from .views import case_view
 
 router = APIRouter(prefix="/v1/smoke")
@@ -32,6 +33,23 @@ def test_user(session: Session = Depends(get_session)) -> dict[str, Any]:
     session.add(user)
     session.flush()
     return {"token": user.api_token, "user_id": str(user.id)}
+
+
+class SmokeEmail(BaseModel):
+    email: str = Field(max_length=200)
+
+
+@router.post("/email", dependencies=[Depends(smoke)])
+def confirm_test_email(body: SmokeEmail, user: User = Depends(current_user), session: Session = Depends(get_session),
+                       container: Container = Depends(get_container)) -> dict[str, Any]:
+    """A test user's e-mail as if confirmed by a code — for the sending wizard's check (Reply-To and the copy). Only
+    Resend's test sinks (…@resend.dev) are accepted, so no real mailbox can be attached this way."""
+    email = body.email.strip().lower()
+    if not user.is_test or not email.endswith("@resend.dev"):
+        raise HTTPException(404, "not found")
+    container.identities.link_or_login(session, user, "email", email, email)
+    session.flush()
+    return {"email": email}
 
 
 @router.post("/cases/{case_id}/payment/confirm", dependencies=[Depends(smoke)])
