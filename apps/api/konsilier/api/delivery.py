@@ -129,6 +129,14 @@ def confirmed_email(session: Session, user: User) -> str | None:
     return user.email if has else None
 
 
+def addressee_of(action: Action) -> dict[str, Any]:
+    """The addressee organisation of the step for the filing record (``body`` / ``body_key``)."""
+    a = action.addressee or {}
+    name = a.get("name")
+    return {"body": str(name)[:500] if name else None,
+            "body_key": f"{a['kind']}:{a['key']}"[:100] if a.get("key") and a.get("kind") else None}
+
+
 def filing_view(f: Filing) -> dict[str, Any]:
     return {"id": str(f.id), "channel": f.channel, "recipient": f.recipient, "status": f.status,
             "has_receipt": bool(f.receipt_key), "replied_at": f.replied_at.isoformat() if f.replied_at else None,
@@ -140,8 +148,11 @@ def filing_view(f: Filing) -> dict[str, Any]:
 
 
 def filings_of(session: Session, case_id: uuid.UUID) -> dict[uuid.UUID, list[dict[str, Any]]]:
+    """Letters and the client's own sendings per document. The registered appeal on the appeal portal (the row with
+    an appeal number) is shown on its own (``filed`` in the case view, core/appeal_portal.py)."""
     out: dict[uuid.UUID, list[dict[str, Any]]] = {}
-    for f in session.scalars(select(Filing).where(Filing.case_id == case_id).order_by(Filing.created_at)):
+    for f in session.scalars(select(Filing).where(Filing.case_id == case_id, Filing.appeal_number.is_(None))
+                             .order_by(Filing.created_at)):
         out.setdefault(f.action_id, []).append(filing_view(f))
     return out
 
@@ -293,9 +304,9 @@ def send_email(container: Container, session: Session, case: Case, action: Actio
     letter = build_letter(container, session, case, action, user, to)
     now = utcnow()
     filing = Filing(case_id=case.id, action_id=action.id, user_id=user.id, signature_id=letter.signature_id,
-                    channel="email", recipient=letter.to, reply_to=", ".join(letter.reply_to)[:254],
+                    channel="email", recipient=letter.to, **addressee_of(action), reply_to=", ".join(letter.reply_to)[:254],
                     cc=letter.copy_to, sender=container.settings.claims_email_from, subject=letter.subject,
-                    body=letter.text, status="sending", doc_sha256=letter.doc_sha256, reply_token=letter.token,
+                    message=letter.text, status="sending", doc_sha256=letter.doc_sha256, reply_token=letter.token,
                     consent_text_version=consent, consent_at=now,
                     events=[{"at": now.isoformat(), "type": "confirmed", "source": "client"}],
                     attachments=[{"name": n, "size": len(d), "sha256": hashlib.sha256(d).hexdigest()}
@@ -388,7 +399,8 @@ def send_plan(case_id: uuid.UUID, action_id: uuid.UUID, user: User = Depends(cur
                              id_labels=pack.t(lang, "contacts.id_labels", default=""))
     email = send_state(container, session, case, action)
     return {"contacts": contacts, "message": short_message(container, case, action, user), "email": email,
-            "route": route_plan(action, contacts, email, short_message(container, case, action, user)),
+            "route": route_plan(action, contacts, email, short_message(container, case, action, user),
+                                *_portal(session, container, case, action)),
             "reply_to": confirmed_email(session, user),
             "filings": filings_of(session, case.id).get(action.id, [])}
 
@@ -396,13 +408,30 @@ def send_plan(case_id: uuid.UUID, action_id: uuid.UUID, user: User = Depends(cur
 GOV_KINDS = ("authority", "forum")
 
 
+def _portal(session: Session, container: Container, case: Case, action: Action) -> tuple[dict[str, Any] | None, bool]:
+    """The appeal portal target of the step (None → not filed there) and whether it is filed there already."""
+    from ..core.appeal_portal import portal_filing, portal_target
+
+    target = portal_target(container.engine.pack_of(case), case.language, action)
+    return target, target is not None and portal_filing(session, action.id) is not None
+
+
 def route_plan(action: Action, contacts: list[dict[str, Any]], email: dict[str, Any],
-               message: str) -> list[dict[str, Any]]:
+               message: str, portal: dict[str, Any] | None = None, filed: bool = False) -> list[dict[str, Any]]:
     """«Принцип 3 клика» (owner 01.10.2026): WE pick where the document goes. A state body → the state portal (a step of its
     own, done on the portal by the client); the other side → e-mail if an address was found (sent by us at once, `auto`), and one
-    messenger (WhatsApp, else Telegram, else Instagram) as one button. Nothing found → the client adds an address."""
+    messenger (WhatsApp, else Telegram, else Instagram) as one button. Nothing found → the client adds an address.
+
+    ``portal`` — the appeal portal target of the step (core/appeal_portal.py ``portal_target``): the step is
+    ``channel = "portal"`` and the wizard opens the portal bridge (what to pick, the text, the PDF, then the number
+    and date read from the confirmation); ``filed`` — the appeal is registered there already."""
     addressee = action.addressee or {}
     steps: list[dict[str, Any]] = []
+    if portal is not None:
+        steps.append({"channel": "portal", "to": portal.get("recipient") or portal.get("body") or "",
+                      "portal": portal.get("name"), "auto": False, "href": portal.get("portal"),
+                      **({"done": True} if filed else {})})
+        return steps
     if addressee.get("kind") in GOV_KINDS:
         steps.append({"channel": "gov", "to": addressee.get("name") or "", "auto": False,
                       "href": addressee.get("submit_url")})
@@ -451,7 +480,8 @@ def send_go(case_id: uuid.UUID, action_id: uuid.UUID, body: GoIn, user: User = D
                              evidence_label=lambda kind: pack.t(lang, f"evidence.{kind}", default=kind),
                              id_labels=pack.t(lang, "contacts.id_labels", default=""))
     message = short_message(container, case, action, user)
-    steps = route_plan(action, contacts, send_state(container, session, case, action), message)
+    steps = route_plan(action, contacts, send_state(container, session, case, action), message,
+                       *_portal(session, container, case, action))
     sent, errors = [], []
     for step in steps:
         if not step["auto"]:
@@ -520,11 +550,12 @@ async def send_proof(case_id: uuid.UUID, action_id: uuid.UUID, channel: str = Fo
         if _count(session, Filing.user_id == user.id, Filing.created_at >= now - timedelta(hours=1)) \
                 >= container.settings.email_send_per_user_hour:
             raise _http(429, "too_many")
-        if _count(session, Filing.action_id == action.id, Filing.channel != "email") >= MAX_PROOFS_PER_DOCUMENT:
+        if _count(session, Filing.action_id == action.id, Filing.channel != "email",
+                  Filing.appeal_number.is_(None)) >= MAX_PROOFS_PER_DOCUMENT:
             raise _http(429, "limit_document")
         _, doc = _main_file(container, session, action)
         filing = Filing(case_id=case.id, action_id=action.id, user_id=user.id, channel=channel,
-                        recipient=recipient.strip()[:254], status="sent", doc_sha256=hashlib.sha256(doc).hexdigest(),
+                        recipient=recipient.strip()[:254], **addressee_of(action), status="sent", doc_sha256=hashlib.sha256(doc).hexdigest(),
                         sent_at=now, attachments=[], events=[{"at": now.isoformat(), "type": "sent", "source": "client"}])
         session.add(filing)
         session.flush()
@@ -561,6 +592,8 @@ async def add_receipt(case_id: uuid.UUID, filing_id: uuid.UUID, file: UploadFile
         case, filing = _load_filing(session, user, case_id, filing_id)
         if filing.channel == "email":
             raise _http(409, "email_has_statuses")
+        if filing.appeal_number:  # the portal's confirmation is case evidence: .../portal-filing/receipt
+            raise _http(409, "portal_receipt")
         if len(filing.events or []) >= 20:
             raise _http(429, "too_many")
         _store_receipt(container, filing, receipt)

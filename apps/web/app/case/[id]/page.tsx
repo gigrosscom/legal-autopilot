@@ -15,6 +15,7 @@ import { SendWizard } from "@/components/SendWizard";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
 import { DraftPreview } from "@/components/DraftPreview";
+import { EotinishBridge, EotinishFiled } from "@/components/EotinishBridge";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
@@ -909,6 +910,9 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
   if (a.kind === "handoff") {
     return <div className="card flex items-center gap-2 text-sm"><Icon name="lawyer" className="text-brand" />{a.title}</div>;
   }
+  const notSubmitted = !a.submitted_at && !["submitted", "responded"].includes(a.status);
+  const wizard = a.downloadable && !!a.email_send && a.email_send.reason !== "payment_required"
+    && ["ready", "submitted"].includes(a.status);
   return (
     <div className="card space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -919,9 +923,13 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
         ? <FilingCard id={a.id} f={a.filing} />
         : a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
       {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
-      {a.downloadable && a.email_send && a.email_send.reason !== "payment_required"
-        && ["ready", "submitted"].includes(a.status) && <SendWizard caseId={caseId} a={a} onCase={onCase} />}
-      {a.downloadable && !a.submitted_at && !["submitted", "responded"].includes(a.status) && <SubmitOnline caseId={caseId} a={a} />}
+      {/* One sending block: the wizard plans the route (e-mail, a messenger, or the appeal portal for a state body
+          — its step opens the portal bridge inside the wizard). Without the wizard (a free document) the portal
+          bridge stands alone; the registered appeal is shown with its number and date. */}
+      {wizard && <SendWizard caseId={caseId} a={a} onCase={onCase} />}
+      {a.downloadable && !wizard && a.appeal_portal && !a.filed && notSubmitted && <EotinishBridge caseId={caseId} a={a} onCase={onCase} />}
+      {a.filed && <EotinishFiled caseId={caseId} a={a} onCase={onCase} />}
+      {a.downloadable && !a.appeal_portal && notSubmitted && <SubmitOnline caseId={caseId} a={a} />}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold">{a.filing ? t("filing.stepByStep") : t("case.instructions")}</p>

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..core import ai, qualifier
 from ..core.engine import CaseEngine, EngineError
+from ..core.appeal_portal import filing_record, portal_filings, portal_target
 from ..core.fields import display
 from ..core.filing import filing_view
 from ..core.models import AuditLog, Case, Consent, Deadline
@@ -122,7 +123,10 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         from .delivery import filings_of, send_state
 
         container = getattr(engine.notifier, "outbound", None)  # the container (settings, the claims mailer)
+        # one `filings` table (docs/integrations-plan.md, 7.3): letters and messenger sendings (several per document)
+        # and the registered appeal on the appeal portal (one per document, with its number and date)
         filings = filings_of(session, case.id)
+        registered = portal_filings(session, case.id)
         for a in case.actions:
             spec = sc.action(a.action_id)
             dl = deadlines.get(a.id)
@@ -155,6 +159,9 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "email_send": send_state(container, session, case, a)
                 if container is not None and a.kind == "document" else None,
                 "filings": filings.get(a.id, []),
+                # manual filing on the appeal portal: what to pick there (None → not filed there) and the record
+                "appeal_portal": portal_target(pack, lang, a),
+                "filed": filing_record(registered[a.id]) if a.id in registered else None,
             })
         view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
         view["deadline"] = response_deadline(case, deadlines, pack)

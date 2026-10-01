@@ -97,6 +97,10 @@ class HeuristicMockProvider:
                 break
         return {"values": values}
 
+    def _extract_filing_proof(self, p: dict[str, Any]) -> dict[str, Any]:
+        """The mock cannot see images: a portal confirmation sent as a photo reads as «nothing found»."""
+        return {"number": None, "date": None}
+
     def _extract_evidence(self, p: dict[str, Any]) -> dict[str, Any]:
         text: str = p.get("text") or ""
         fields = {f["name"]: f for f in p["fields"]}

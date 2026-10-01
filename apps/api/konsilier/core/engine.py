@@ -13,7 +13,7 @@ import logging
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -1490,9 +1490,10 @@ class CaseEngine:
         self.notifier.notify(session, case, "approval", text, sms="document_ready" if approved else None)
 
     def mark_submitted(self, session: Session, case: Case, action: Action, actor: str,
-                       via: str = "user_submits", *, sent: bool = False) -> None:
-        """The document has reached the addressee: the response deadline and its reminders start today. `sent`:
-        the letter has already gone out (api/delivery.py, «Отправить по e-mail»), so nothing is sent here."""
+                       via: str = "user_submits", submitted_on: date | None = None, *, sent: bool = False) -> None:
+        """The document went to its addressee. ``submitted_on`` — the filing date the person entered (manual filing
+        on the appeal portal): the response deadline runs from it, not from today. ``sent``: the letter has already
+        gone out (api/delivery.py, «Отправить по e-mail»), so nothing is sent here."""
         if action.kind != "document" or action.status != "ready":
             raise EngineError("document_not_ready")
         if case.status != S.ACTION_READY.value:
@@ -1515,15 +1516,25 @@ class CaseEngine:
             adapter.submit(to_email=(action.addressee or {}).get("email"), subject=pack.localized(spec.title, case.language),
                            body=pack.t(case.language, "email.body"), reply_to=user.email, attachments=files)
         now = utcnow()
-        action.status, action.submitted_at, action.submitted_via = "submitted", now, via
+        start = now.astimezone(pack.tz).date()
+        submitted_at = now
+        if submitted_on is not None and submitted_on != start:
+            # a past filing date: midday local time of that day (the time of day is not known)
+            submitted_at = datetime.combine(submitted_on, time(12), tzinfo=pack.tz).astimezone(timezone.utc)
+            start = submitted_on
+        action.status, action.submitted_at, action.submitted_via = "submitted", submitted_at, via
         self.transition(session, case, S.SUBMITTED, actor, action=spec.id, via=via)
-        if spec.deadline:
-            start = now.astimezone(pack.tz).date()
-            due = pack.add_days(start, spec.deadline.calendar_days, spec.deadline.business_days)
-            remind = list(spec.deadline.remind_before_days or pack.manifest.reminder_before_days)
-            self.scheduler.schedule(session, case, action, due, spec.deadline.norm_ref, remind)
+        rd = spec.deadline
+        if rd is None and (action.addressee or {}).get("kind") == "forum":
+            # a state body from the forum registry: its own term to answer (e.g. АППК, ст. 76 — 15 working days)
+            forum = self.action_forum(case, spec)
+            rd = forum.response_deadline if forum is not None else None
+        if rd:
+            due = pack.add_days(start, rd.calendar_days, rd.business_days)
+            remind = list(rd.remind_before_days or pack.manifest.reminder_before_days)
+            self.scheduler.schedule(session, case, action, due, rd.norm_ref, remind)
             self.audit(session, case, "system", "deadline_created", action=spec.id, due=due.isoformat(),
-                       norm_ref=spec.deadline.norm_ref)
+                       norm_ref=rd.norm_ref)
         self.transition(session, case, S.AWAITING_RESPONSE, "system", action=spec.id)
 
     def record_response(self, session: Session, case: Case, action: Action, *, text: str | None,

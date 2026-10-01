@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CodeForm } from "@/components/CodeForm";
+import { EotinishBridge } from "@/components/EotinishBridge";
 import { SignDocument } from "@/components/SignDocument";
 import { Badge, Button, Icon, type IconName } from "@/components/ui";
 import type { Tone } from "@/components/ui/Badge";
@@ -39,11 +40,13 @@ const STATUS_TONE: Record<Delivery["status"], Tone> = {
 };
 
 const STEP_ICON: Record<RouteStep["channel"], IconName> = {
-  email: "mail", whatsapp: "chat", telegram: "send", instagram: "camera", gov: "landmark", manual: "plus",
+  email: "mail", whatsapp: "chat", telegram: "send", instagram: "camera", gov: "landmark", portal: "landmark", manual: "plus",
 };
 
 /** «Принцип 3 клика» (owner 01.10.2026): the server chooses where the document goes (e-mail to the address found
- *  in the case, one messenger, eOtinish for a state body); the client sees «Куда отправим» and presses ONE button.
+ *  in the case, one messenger, the appeal portal — eOtinish in KZ — for a state body); the client sees «Куда отправим»
+ *  and presses ONE button. A portal step opens the portal bridge (EotinishBridge) right here: what to pick, the text,
+ *  the PDF, then the number and date read from the portal's confirmation.
  *  With ЭЦП available the button signs first (the existing signing flow), then sends; without it the press itself
  *  is the client's instruction (consent text shown). E-mail goes at once; a messenger is one tap afterwards. */
 export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCase?: (c: CaseView) => void }) {
@@ -60,6 +63,7 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messenger, setMessenger] = useState<Route | null>(null);
+  const [portalOpen, setPortalOpen] = useState(false);
   const signed = (a.signatures ?? []).length > 0;
 
   useEffect(() => {
@@ -96,9 +100,17 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
     } finally { setBusy(false); }
   }
 
+  // a state body on the appeal portal: nothing goes by itself — the person files there in their own name, signing
+  // with their own ЭЦП on the portal, so the button opens the portal bridge (no signing step here)
+  const portalStep = steps.find((s) => s.channel === "portal");
+  const portalOnly = !!portalStep && steps.every((s) => s.channel === "portal");
+  const portalName = portalStep?.portal ?? "";
+  const canFile = !!a.appeal_portal && !a.filed && !portalStep?.done;
   const press = () => (canSign && !signed ? setSigning(true) : go());
   const stepText = (s: RouteStep) => {
     if (s.channel === "gov") return t("send.plan.gov", { to: s.to });
+    if (s.channel === "portal") return s.done ? t("send.plan.portalDone", { portal: s.portal ?? "" })
+      : t("send.plan.portal", { portal: s.portal ?? "", to: s.to });
     if (s.channel === "manual") return t("send.plan.manual");
     if (s.channel === "email") return s.auto ? t("send.plan.emailAuto", { to: s.to }) : t("send.plan.emailOff", { to: s.to });
     return t("send.plan.messenger", { app: t(`send.channels.${s.channel}`), to: s.to });
@@ -115,7 +127,9 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
           {steps.map((s) => (
             <li key={`${s.channel}-${s.to}`} className="flex items-start gap-2 text-sm">
               <Icon name={s.done ? "checkCircle" : STEP_ICON[s.channel]} size={18} className="mt-0.5 shrink-0 text-brand" />
-              <span className="min-w-0 break-words">{stepText(s)}</span>
+              {s.channel === "portal" && canFile && !portalOpen
+                ? <button type="button" className="min-w-0 break-words text-start underline decoration-dotted" onClick={() => setPortalOpen(true)}>{stepText(s)}</button>
+                : <span className="min-w-0 break-words">{stepText(s)}</span>}
             </li>
           ))}
         </ul>
@@ -132,7 +146,11 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
             lead={t("send.plan.signLead")} onSigned={() => go()} />
           <button type="button" className="text-xs text-muted underline" disabled={busy} onClick={go}>{t("send.plan.noSign")}</button>
         </div>
-      ) : !sentNow && (
+      ) : portalOnly ? (canFile && !portalOpen && (
+        <Button className="min-h-12 w-full" icon="landmark" onClick={() => setPortalOpen(true)}>
+          {t("send.plan.portalGo", { portal: portalName })}
+        </Button>
+      )) : !sentNow && (
         <div className="space-y-2">
           <p className="text-xs text-muted">{t("send.consent")}</p>
           <Button className="min-h-12 w-full" icon={busy ? "spinner" : canSign && !signed ? "key" : "send"} disabled={busy} onClick={press}>
@@ -140,6 +158,7 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
           </Button>
         </div>
       )}
+      {portalOpen && canFile && <EotinishBridge caseId={caseId} a={a} onCase={onCase} startOpen />}
 
       {sentNow && messengers.map((s) => (
         <div key={s.channel} className="space-y-2 rounded-2xl bg-brand-50 p-3">
