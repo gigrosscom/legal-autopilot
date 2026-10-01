@@ -5,7 +5,7 @@ import { Icon, type IconName } from "@/components/ui";
 import type { Bundle } from "@/lib/team";
 import type { Metrics } from "./model";
 
-export type TabKey = "home" | "deals" | "questions" | "goals" | "team" | "tasks" | "decisions" | "reports" | "ops";
+export type TabKey = "home" | "deals" | "documents" | "questions" | "goals" | "team" | "tasks" | "decisions" | "reports" | "ops";
 
 export type Centre = {
   token: string;

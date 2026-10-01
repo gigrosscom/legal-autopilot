@@ -33,6 +33,12 @@ export function Deals() {
   const load = useCallback(() => adminApi<DealsBoard>("/v1/admin/deals", token).then((r) => { setB(r); setError(null); })
     .catch((e) => setError(errorText(e))), [token]);
   useEffect(() => { load(); }, [load]);
+  // /ops?tab=deals&deal=<case id> (a link from «Документы»): that deal's card opens at once
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get("deal");
+    const d = want && b?.columns.flatMap((c) => c.cards).find((x) => x.id === want);
+    if (d) { setOpen(d); setCol(d.column); }
+  }, [b]);
 
   return (
     <div className="space-y-6">
