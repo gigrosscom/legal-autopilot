@@ -21,7 +21,7 @@ from .referral import attribute
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, Invoice, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
-from ..core import suggestions
+from ..core import ai, suggestions
 from ..core.scenario import RESPONSE_CLASSES
 from .background import after_commit
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
@@ -649,6 +649,18 @@ class PaymentIn(BaseModel):
     purpose: Literal["document", "case"]
 
 
+def applicant_blanks(container: Container, case: Case) -> list[dict[str, Any]]:
+    """The applicant's personal data still blank in the draft (name, ID number, address, phone): asked right before
+    paying. Other blanks (the other side's details) may stay and be filled in the draft."""
+    if not case.scenario_id:
+        return []
+    engine = container.engine
+    sc, pack = engine.scenario_of(case), engine.pack_of(case)
+    return [{"field": n, "label": ai.field_label(sc, pack, case.language, n), "type": sc.field(n).type,
+             "pattern": sc.field(n).pattern}
+            for n in engine.draft_blanks(case, sc) if sc.field(n).pii]
+
+
 CONFIRMED_CONTACTS = {"phone", "email", "iin", "google", "apple"}
 CHANNEL_DOWN = timedelta(minutes=30)
 
@@ -675,6 +687,10 @@ def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(cur
     """A bill for one document (scenario price) or «Дело под ключ» (every document of the case). The owner confirms
     a phone first: the document and deadline reminders reach them, and the case is not lost with the browser."""
     case = load_case(case_id, session, user)
+    missing = applicant_blanks(container, case)
+    if missing:  # PM 01.10: the applicant's own data on one screen right before paying, never a bill with «[ФИО]»
+        raise HTTPException(422, {"code": "applicant_data_required", "message": "applicant_data_required",
+                                  "fields": missing})
     methods = contact_to_confirm(container, session.get(User, case.owner_id))
     if methods:
         raise HTTPException(422, {"code": "contact_required", "message": "contact_required", "methods": methods})

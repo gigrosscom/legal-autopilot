@@ -149,6 +149,10 @@ PATH3 = [  # owner 01.10, KPI: from the question to the document in 3 minutes �
 ]
 
 
+APPLICANT = {"applicant_name": "Тестов Тест Тестович", "applicant_iin": "900101300123",
+             "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 700 000 00 00"}
+
+
 def path3(api: Api, boot: Api) -> int:
     """The client's path as the site runs it after «3 клика» (PR #121), timed from the first message to the document
     file, with the taps it takes: send (with the files) · «Составить документ» · «Подготовить документ» (the bill) ·
@@ -171,11 +175,16 @@ def path3(api: Api, boot: Api) -> int:
                 answered += 1
                 taps += 1
             taps += 1  # «Составить документ» → the draft
-            blanks = 0
+            blanks, own = 0, {}
             try:
-                blanks = len(api.call("GET", f"/v1/cases/{cid}/draft").get("blanks", []))
+                fields = api.call("GET", f"/v1/cases/{cid}/draft").get("blanks", [])
+                blanks = len(fields)
+                own = {f["field"]: APPLICANT[f["field"]] for f in fields if f["field"] in APPLICANT}
             except SystemExit:
                 pass
+            if own:  # the applicant's own data, one screen right before paying (PM 01.10)
+                api.call("POST", f"/v1/cases/{cid}/facts", {"values": own})
+                taps += 1
             if case["status"] != "qualified":
                 raise SystemExit(f"status {case['status']}")
             pay = api.call("POST", f"/v1/cases/{cid}/payment", {"purpose": "document"})["case"]["payment"]

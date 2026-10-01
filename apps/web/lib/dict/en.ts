@@ -998,6 +998,7 @@ const en: Dict = {
     hintCta: "Confirm email",
   },
   payment: {
+    applicant: { title: "Your details for the document", lead: "They appear in the document as the applicant's details. Fill them in once and we go on to payment.", continue: "Continue to payment" },
     contact: {
       phone: "Your phone — we will send the document and remind you of the deadline",
       email: "Your email — we will send the document and remind you of the deadline",
