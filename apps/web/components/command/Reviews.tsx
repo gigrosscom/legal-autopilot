@@ -6,7 +6,7 @@ import { Card, Chip, H2, Loading, useCentre } from "./ui";
 
 type Review = {
   action_id: string; case_id: string; title: string; scenario_id: string | null; language: string;
-  waiting_since: string | null; addressee: string | null; has_pdf: boolean;
+  waiting_since: string | null; addressee: string | null; has_pdf: boolean; check_note?: string | null;
 };
 const hoursSince = (iso: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000) : 0);
 
@@ -82,6 +82,10 @@ export function ReviewsToCheck({ compact = false }: { compact?: boolean }) {
               <p className="text-[15px] text-muted">
                 {r.addressee ? `Кому: ${r.addressee} · ` : ""}язык {r.language} · дело {r.case_id.slice(0, 8)}
               </p>
+              {r.check_note && (
+                // the legal self-check stopped it: what to fix before giving it (owner 01.10)
+                <p role="note" className="rounded-xl bg-warning-50 p-3 text-[15px] text-warning">{r.check_note}</p>
+              )}
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => show(r.action_id)} aria-expanded={open === r.action_id}
                   className="min-h-10 rounded-full bg-surface px-4 text-[15px] font-medium ring-1 ring-line">{open === r.action_id ? "Скрыть текст" : "Читать текст"}</button>

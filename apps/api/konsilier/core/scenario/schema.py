@@ -230,9 +230,15 @@ class PricingSpec(_Strict):
     currency: str | None = None
 
 
+SUBJECTS = ("goods", "service", "work", "other")
+
+
 class ClassificationSpec(_Strict):
     keywords: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     examples: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # what the dispute is about (owner 01.10, lawyer D-19): goods (a physical item), service (incl. digital content,
+    # subscriptions, tokens, online access, courses), work (repair, building). Empty → any subject
+    subject: tuple[Literal["goods", "service", "work", "other"], ...] = ()
 
 
 class SourceRef(_Strict):

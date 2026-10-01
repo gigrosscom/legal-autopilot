@@ -65,7 +65,9 @@ def _nullable_values_schema(names: list[str]) -> dict[str, Any]:
 
 
 def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, JurisdictionPack],
-            text: str, lang: str) -> tuple[str | None, float, str]:
+            text: str, lang: str, details: dict[str, Any] | None = None) -> tuple[str | None, float, str]:
+    """`details` (when given) gets what the model decided before the scenario: subject (goods / service / work /
+    other), channel (online / offline), counterparty (person / business / state) — owner 01.10, lawyer D-19."""
     if not scenarios:
         return None, 0.0, "no published scenarios"
     options = []
@@ -80,16 +82,20 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
             "summary": pack.localized(sc.summary, lang) if sc.summary else "",
             "keywords": keywords,
             "examples": examples,
+            "subject": list(sc.classification.subject),
         })
     ids = [o["id"] for o in options]
     schema = {
         "type": "object",
         "properties": {
+            "subject": {"type": "string", "enum": ["goods", "service", "work", "other"]},
+            "channel": {"type": "string", "enum": ["online", "offline", "unknown"]},
+            "counterparty": {"type": "string", "enum": ["person", "business", "state", "unknown"]},
             "scenario_id": {"anyOf": [{"type": "string", "enum": ids}, {"type": "null"}]},
             "confidence": {"type": "number"},
             "reason": {"type": "string"},
         },
-        "required": ["scenario_id", "confidence", "reason"],
+        "required": ["subject", "channel", "counterparty", "scenario_id", "confidence", "reason"],
         "additionalProperties": False,
     }
     system = (
@@ -100,6 +106,13 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
         "a phone model, a chain store, a marketplace app). Work out what actually happened and what "
         "the person wants; judge by meaning, not by exact wording or the keyword list. The examples "
         "show typical phrasing.\n"
+        "First decide, before choosing (owner 01.10): 'subject' — goods (a physical item: a phone, a fridge, "
+        "clothes, a car), service (anything without a physical result: tokens or credits of a service, a "
+        "subscription, access to an online service or an app, a course, a ticket, a medical or beauty service, "
+        "communication, delivery of a service), work (a repair, building, sewing to order) or other; 'channel' — "
+        "online or offline; 'counterparty' — a private person, a business (shop, company, sole trader) or a state "
+        "body. Then choose only a scenario whose 'subject' list contains that subject (an empty list fits any); "
+        "a service is never a goods scenario, even if the person wrote 'купил'.\n"
         "Return null only when the problem is clearly about something none of the scenarios cover. "
         "If a scenario plausibly fits but details are missing, choose it with a lower confidence — "
         "missing details are asked later. Confidence 0..1: >= 0.8 when the situation clearly matches "
@@ -112,9 +125,17 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
         log.warning("qualify failed, falling back to scenario keywords: %s", e)
         return _keyword_qualify(options, text, f"llm_error: {str(e)[:300]}")
     sid = out.get("scenario_id")
+    subject = out.get("subject")
+    if details is not None:
+        details.update({k: out.get(k) for k in ("subject", "channel", "counterparty") if out.get(k)})
     if sid not in ids:
         return None, 0.0, out.get("reason", "")
-    return sid, max(0.0, min(1.0, float(out.get("confidence", 0)))), out.get("reason", "")
+    confidence = max(0.0, min(1.0, float(out.get("confidence", 0))))
+    allowed = next(o["subject"] for o in options if o["id"] == sid)
+    if subject and allowed and subject not in allowed:
+        # the model's own subject does not fit the scenario it chose: never a confident document from it
+        return sid, min(confidence, 0.3), f"subject {subject} not in {allowed}; {out.get('reason', '')}"
+    return sid, confidence, out.get("reason", "")
 
 
 def _keyword_qualify(options: list[dict[str, Any]], text: str,

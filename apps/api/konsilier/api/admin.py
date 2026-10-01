@@ -199,7 +199,9 @@ def reviews(session: Session = Depends(get_session), container: Container = Depe
         out.append({"action_id": str(a.id), "case_id": str(case.id), "title": title,
                     "scenario_id": case.scenario_id, "language": case.language,
                     "waiting_since": a.updated_at.isoformat() if a.updated_at else None,
-                    "addressee": (a.addressee or {}).get("name"), "has_pdf": bool(a.pdf_key)})
+                    "addressee": (a.addressee or {}).get("name"), "has_pdf": bool(a.pdf_key),
+                    # why it waits: the legal self-check's reasons (core/legal_check.py), if it stopped it
+                    "check_note": a.approval_note if (a.approval_note or "").startswith("Самопроверка") else None})
     return out
 
 

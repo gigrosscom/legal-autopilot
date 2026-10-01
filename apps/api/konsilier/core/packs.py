@@ -98,6 +98,8 @@ class PackManifest(BaseModel):
     id_number_sex: IdSexRule | None = None  # the applicant's grammatical gender from their id number, if it tells
     # the official layout of the documents (core/docstyle.DocStyle fields: font, size, margins…); empty → defaults
     document_style: dict[str, Any] = Field(default_factory=dict)
+    # the legal self-check before a document is given (core/legal_check.py): subject words, goods-only norms…
+    legal_check: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("legal_sources")
     @classmethod

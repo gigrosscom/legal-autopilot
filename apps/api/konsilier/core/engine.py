@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, package, polish, qualifier, safety
+from . import ai, legal_check, package, polish, qualifier, safety
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -302,8 +302,11 @@ class CaseEngine:
         if business:
             candidates = [s for s in candidates if "applicant" in s.parties and s.parties["applicant"].kind == "business"]
             self.audit(session, case, "system", "business_applicant")
-        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
-                                   else (None, 0.0, "no business scenario"))
+        details: dict[str, Any] = {}
+        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language, details)
+                                   if candidates else (None, 0.0, "no business scenario"))
+        if details:  # subject / channel / counterparty: kept for the legal self-check before a document
+            case.taxonomy = {**(case.taxonomy or {}), **details}
         case.qualification_confidence = confidence
         if sid is None:
             case.needs_review = True
@@ -1422,7 +1425,20 @@ class CaseEngine:
                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         pdf = None if self.defer_pdf else self.pdf.convert(docx)
         action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
-        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf))
+        problems = self.legal_problems(case, sc, pack, spec, docx, addressee)
+        if problems:  # the lawyer's rules are broken: not given — the owner checks it in /ops with the reasons
+            action.approval_note = "Самопроверка: " + " ".join(problems)
+            self.audit(session, case, "system", "legal_check_failed", action=spec.id, problems=problems)
+        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf),
+                                   force_review=bool(problems))
+
+    def legal_problems(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec, docx: bytes,
+                       addressee: dict[str, Any]) -> list[str]:
+        """The legal self-check of the finished document (core/legal_check.py, the pack's legal_check rules)."""
+        if not pack.manifest.legal_check:
+            return []
+        return legal_check.check(case, sc, spec, docx_text(docx), addressee, pack.manifest.legal_check,
+                                 case.currency or pack.currency, self._own_contacts(case, sc))
 
     def _ensure_text(self, case: Case, sc: Scenario, pack: JurisdictionPack, title: str) -> None:
         """The written parts of the document (statement of circumstances, demands): the slow LLM step. Kept on the
@@ -1476,14 +1492,14 @@ class CaseEngine:
 
     def _finish_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
                        action: Action, actor: str, addressee: dict[str, Any], ctx: dict[str, Any],
-                       pdf: bool) -> Action:
+                       pdf: bool, force_review: bool = False) -> Action:
         lang = case.language
         action.addressee = addressee
         action.instructions = [
             s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
                                                       spec.instructions.get(pack.manifest.default_language) or ())
         ]
-        if self.approval_required(session, case, spec):
+        if force_review or self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"
             if self.on_approval_needed is not None:
                 try:
