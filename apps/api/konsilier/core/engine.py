@@ -21,7 +21,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, package, polish, qualifier, safety
+from . import ai, legal_check, package, polish, qualifier, safety, triage
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -225,7 +225,7 @@ class CaseEngine:
         case = session.get(Case, case_id)
         if case is None or case.scenario_id or case.taxonomy:
             return
-        self._qualify_and_continue(session, case, case.initial_text or "")
+        self._qualify_and_continue(session, case, case.initial_text or "", ask=False)
         if "emergency" in ((case.taxonomy or {}).get("flags") or []):
             self.audit(session, case, "system", "emergency_detected", by="llm")
         # what was told in the chat while the scenario was being worked out goes into the case too (PM 01.10)
@@ -299,7 +299,9 @@ class CaseEngine:
             return self._next_step(session, case, self.scenario_of(case), pack)
         return Reply(message="")
 
-    def _qualify_and_continue(self, session: Session, case: Case, text: str) -> Reply:
+    def _qualify_and_continue(self, session: Session, case: Case, text: str, ask: bool = True) -> Reply:
+        """`ask`: the reply reaches the person (not the chat's background run), so an unsure triage may ask its one
+        clarifying question first."""
         llm = self.llm_for(case)
         candidates = self.packs.published(case.jurisdiction)
         # a sole trader or a company in a dispute with a business: never a consumer scenario (consumer law does
@@ -309,9 +311,26 @@ class CaseEngine:
         if business:
             candidates = [s for s in candidates if "applicant" in s.parties and s.parties["applicant"].kind == "business"]
             self.audit(session, case, "system", "business_applicant")
-        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
-                                   else (None, 0.0, "no business scenario"))
+        details: dict[str, Any] = {}
+        rules = next((p.triage for p in self.packs.packs.values() if p.triage
+                      and (not case.jurisdiction or p.country == case.jurisdiction.upper())), {})
+        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language, details, rules)
+                                   if candidates else (None, 0.0, "no business scenario"))
+        model_triage = details.pop("_triage", None) or {}
+        if details:  # subject / channel / counterparty: kept for the legal self-check before a document
+            case.taxonomy = {**(case.taxonomy or {}), **details}
         case.qualification_confidence = confidence
+        if rules:  # «юридический разбор» (owner 01.10): kept in the case, in the log and shown in /ops
+            found = triage.result(rules, model_triage, text, sid, confidence, reason)
+            asked = bool((case.taxonomy or {}).get("triage_asked"))
+            case.taxonomy = {**(case.taxonomy or {}), "triage": found}
+            self.audit(session, case, "system", "triage", **found)
+            if ask and sid and confidence < float(rules.get("min_confidence", 0.7)) and found["question"] and not asked:
+                # unsure: one clarifying question before the draft; the answer is added to the story and the
+                # scenario is chosen again (handle_message), never asked twice
+                case.taxonomy = {**case.taxonomy, "triage_asked": True}
+                self._save_vault(case, llm)
+                return Reply(message=found["question"])
         if sid is None:
             case.needs_review = True
             self.audit(session, case, "system", "qualification_failed", reason=reason)
@@ -1500,7 +1519,20 @@ class CaseEngine:
                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         pdf = None if self.defer_pdf else self.pdf.convert(docx)
         action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
-        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf))
+        problems = self.legal_problems(case, sc, pack, spec, docx, addressee)
+        if problems:  # the lawyer's rules are broken: not given — the owner checks it in /ops with the reasons
+            action.approval_note = "Самопроверка: " + " ".join(problems)
+            self.audit(session, case, "system", "legal_check_failed", action=spec.id, problems=problems)
+        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf),
+                                   force_review=bool(problems))
+
+    def legal_problems(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec, docx: bytes,
+                       addressee: dict[str, Any]) -> list[str]:
+        """The legal self-check of the finished document (core/legal_check.py, the pack's legal_check rules)."""
+        if not pack.manifest.legal_check:
+            return []
+        return legal_check.check(case, sc, spec, docx_text(docx), addressee, pack.manifest.legal_check,
+                                 case.currency or pack.currency, self._own_contacts(case, sc))
 
     def _ensure_text(self, case: Case, sc: Scenario, pack: JurisdictionPack, title: str) -> None:
         """The written parts of the document (statement of circumstances, demands): the slow LLM step. Kept on the
@@ -1554,14 +1586,14 @@ class CaseEngine:
 
     def _finish_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
                        action: Action, actor: str, addressee: dict[str, Any], ctx: dict[str, Any],
-                       pdf: bool) -> Action:
+                       pdf: bool, force_review: bool = False) -> Action:
         lang = case.language
         action.addressee = addressee
         action.instructions = [
             s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
                                                       spec.instructions.get(pack.manifest.default_language) or ())
         ]
-        if self.approval_required(session, case, spec):
+        if force_review or self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"
             if self.on_approval_needed is not None:
                 try:

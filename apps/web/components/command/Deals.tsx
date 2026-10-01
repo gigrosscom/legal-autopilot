@@ -91,7 +91,18 @@ export function Deals() {
 
 type Fact = { field: string; label: string; value: string };
 type CaseFull = { id: string; facts?: Fact[]; evidence?: { id: string; filename: string; kind: string }[]; status: string;
-  log?: { from: string; text: string; at?: string }[] };
+  log?: { from: string; text: string; at?: string }[]; triage?: Triage | null };
+type Route = { files_to: string | null; first: string | null; authority: string | null; court: string | null;
+  court_level: string | null; pretrial: string | null; pretrial_note?: string | null; answer_days: string | null };
+/** «Юридический разбор» of the first message (owner 01.10; rules — packs/kz/triage.yaml). */
+type Triage = {
+  category: string | null; subcategory: string | null; subject: string | null; client_kind: string | null;
+  respondent_kind: string | null; channel: string | null; scenario_id: string | null; confidence: number;
+  missing: string[]; question: string | null; reason: string; route: Route | null; agrees: boolean;
+  by_words: { scenario_id: string | null; category: string | null; hits: string[] };
+};
+const FILES_TO: Record<string, string> = { respondent: "сам ответчик", authority: "уполномоченный орган", court: "суд", police: "полиция (клиент сам)" };
+const PRETRIAL: Record<string, string> = { required: "обязателен", none: "не нужен" };
 
 function DealDetail({ deal, onClose }: { deal: Deal; onClose: () => void }) {
   const { token } = useCentre();
@@ -161,6 +172,7 @@ function DealDetail({ deal, onClose }: { deal: Deal; onClose: () => void }) {
         )}
         {error && <p role="alert" className="text-danger">{error}</p>}
         {!c && !error && <Loading />}
+        {c?.triage && <TriageView t={c.triage} />}
         {c?.facts && c.facts.length > 0 && (
           <section className="space-y-1">
             <h3 className="font-semibold">Данные дела</h3>
@@ -192,5 +204,39 @@ function DealDetail({ deal, onClose }: { deal: Deal; onClose: () => void }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** What the first message was read as, before the scenario: for the owner and the lawyer's daily check. */
+function TriageView({ t }: { t: Triage }) {
+  const r = t.route;
+  const row = (label: string, value: string | null | undefined) => [
+    <dt key={`${label}-l`} className="text-muted">{label}</dt>, <dd key={`${label}-v`}>{value || "—"}</dd>];
+  const pct = Math.round(t.confidence * 100);
+  return (
+    <section className="space-y-2">
+      <h3 className="flex flex-wrap items-center gap-2 font-semibold">
+        Юридический разбор
+        <span className={`rounded-full px-2 text-[13px] font-medium ${t.confidence < 0.7 ? "bg-warning-50 text-warning" : "bg-success-50 text-success"}`}>
+          уверенность {pct} %
+        </span>
+        {!t.agrees && <span className="rounded-full bg-warning-50 px-2 text-[13px] font-medium text-warning">правила говорят: {t.by_words.scenario_id ?? "—"}</span>}
+      </h3>
+      <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-1 text-[15px]">
+        {row("Категория", [t.category, t.subcategory].filter(Boolean).join(" / "))}
+        {row("Предмет", t.subject)}
+        {row("Стороны", [t.client_kind, t.respondent_kind].filter(Boolean).join(" → ") + (t.channel ? ` · ${t.channel}` : ""))}
+        {row("Сценарий", t.scenario_id ?? "нет сценария")}
+        {row("Куда подаётся", r?.files_to ? FILES_TO[r.files_to] ?? r.files_to : null)}
+        {row("Сначала", r?.first)}
+        {row("Орган", r?.authority)}
+        {row("Суд", [r?.court, r?.court_level].filter(Boolean).join(" · "))}
+        {row("Досудебный порядок", r?.pretrial ? `${PRETRIAL[r.pretrial] ?? r.pretrial}${r.pretrial_note ? ` — ${r.pretrial_note}` : ""}` : null)}
+        {row("Срок ответа", r?.answer_days)}
+        {t.missing.length > 0 && row("Не хватает", t.missing.join("; "))}
+        {t.question && row("Уточняющий вопрос", t.question)}
+      </dl>
+      {t.reason && <p className="text-[13px] text-muted">{t.reason}</p>}
+    </section>
   );
 }
