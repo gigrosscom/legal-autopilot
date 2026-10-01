@@ -16,12 +16,24 @@ const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-di
 
 /** Transfers the clients pressed «Оплатил(а)» for: find the code in the Kaspi comment and confirm. */
 export function PaymentsToConfirm({ compact = false }: { compact?: boolean }) {
+  return <PaymentList compact={compact} status="awaiting_confirmation" title="Оплаты ждут подтверждения"
+    empty="Нет оплат, ждущих подтверждения." hint="Найдите в Kaspi перевод на эту сумму с кодом в комментарии. Клиент получит письмо, документ готовится сразу." />;
+}
+
+/** Owner 02.10 (PAYMENT_TRUST_MODE): documents given on «Оплатил(а)» without a check — reconcile each with Kaspi.
+ *  «Не найдена»: the document stays with the client, who gets a reminder to pay. */
+export function PaymentsOnTrust({ compact = false }: { compact?: boolean }) {
+  return <PaymentList compact={compact} status="on_trust" title="Выдано на доверии — сверьте с Kaspi"
+    empty="Нет документов, выданных на доверии без сверки." hint="Документ уже у клиента. Найдите в Kaspi перевод на эту сумму с кодом в комментарии. «Не найдена» — клиенту уйдёт напоминание оплатить." />;
+}
+
+function PaymentList({ compact, status, title, empty, hint }: { compact: boolean; status: string; title: string; empty: string; hint: string }) {
   const { token, reload } = useCentre();
   const [rows, setRows] = useState<Pay[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
-  const load = useCallback(() => adminApi<Pay[]>("/v1/admin/payments?status=awaiting_confirmation", token)
-    .then((r) => { setRows(r); setError(null); }).catch((e) => setError(errorText(e))), [token]);
+  const load = useCallback(() => adminApi<Pay[]>(`/v1/admin/payments?status=${status}`, token)
+    .then((r) => { setRows(r); setError(null); }).catch((e) => setError(errorText(e))), [token, status]);
   useEffect(() => { load(); }, [load]);
 
   async function decide(id: number, decision: "paid" | "not_found") {
@@ -38,12 +50,12 @@ export function PaymentsToConfirm({ compact = false }: { compact?: boolean }) {
 
   return (
     <section className="space-y-3">
-      <H2 count={rows?.length}>Оплаты ждут подтверждения</H2>
+      <H2 count={rows?.length}>{title}</H2>
       {error && <p role="alert" className="text-danger">{error}</p>}
       {!rows && !error && <Loading />}
-      {rows?.length === 0 && <p className="text-muted">Нет оплат, ждущих подтверждения.</p>}
+      {rows?.length === 0 && <p className="text-muted">{empty}</p>}
       {!compact && rows && rows.length > 0 && (
-        <p className="text-[15px] text-muted">Найдите в Kaspi перевод на эту сумму с кодом в комментарии. Клиент получит письмо, документ готовится сразу.</p>
+        <p className="text-[15px] text-muted">{hint}</p>
       )}
       <ul className="space-y-3">
         {rows?.map((p) => (

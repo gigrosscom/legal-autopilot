@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..container import Container
+from ..core.engine import TRUST
 from ..core.models import Invoice
 from .deps import get_container, get_session, require_admin
 from .ops import _test_users, decide_invoice, invoice_view
@@ -231,7 +232,9 @@ def payments(status: str | None = "awaiting_confirmation", session: Session = De
     """The clients desk's document payments by transfer (same list as /v1/ops/clients/payments), for the owner."""
     q = select(Invoice).where(Invoice.method != "stub", Invoice.user_id.not_in(_test_users())) \
         .order_by(Invoice.created_at.desc()).limit(200)
-    if status:
+    if status == "on_trust":  # owner 02.10: documents given on trust, not yet reconciled with Kaspi
+        q = q.where(Invoice.status == "paid", Invoice.decided_by == TRUST)
+    elif status:
         q = q.where(Invoice.status == status)
     return [invoice_view(session, container, inv) for inv in session.scalars(q).all()]
 

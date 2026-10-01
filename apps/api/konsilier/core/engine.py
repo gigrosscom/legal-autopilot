@@ -131,6 +131,12 @@ class EngineConfig:
     # Kaspi Pay pushes are on (PAYMENT_KASPI_PUSH_TOKEN, konsilier/kaspi_parse.py): a Kaspi link / QR bill whose
     # «Оплатить» no push matched within UNPAID_AFTER stops the person's new bills until it is paid (owner 01.10)
     kaspi_push: bool = False
+    # owner 02.10 (PAYMENT_TRUST_MODE): «Оплатил(а)» on a document bill is taken as paid — the document is given at
+    # once and the desk reconciles later; the referral bonus waits for the real confirmation
+    trust_payments: bool = False
+
+
+TRUST = "trust"  # Invoice.decided_by of a bill paid on trust and not yet reconciled by the desk
 
 
 class CaseEngine:
@@ -1134,7 +1140,7 @@ class CaseEngine:
             self._apply_paid(session, inv)
         return inv
 
-    def _apply_paid(self, session: Session, inv: Invoice) -> None:
+    def _apply_paid(self, session: Session, inv: Invoice, referral: bool = True) -> None:
         """What a paid bill gives: a document credit, the whole case, or a subscription period (and, for an invited
         person's first payment, the referral bonus). A lawyer bill puts the lawyer on the case and nothing else."""
         if inv.purpose == "lawyer":
@@ -1142,7 +1148,8 @@ class CaseEngine:
 
             lawyer_pilot.apply_paid(session, self, inv)
             return
-        self._referral_bonus(session, inv)
+        if referral:
+            self._referral_bonus(session, inv)
         if inv.purpose == "plan":
             now = utcnow()
             latest = session.scalar(select(func.max(Subscription.ends_at)).where(
@@ -1193,7 +1200,25 @@ class CaseEngine:
             inv.status, inv.claimed_at = "awaiting_confirmation", utcnow()
             if inv.case_id is not None:
                 self.audit(session, session.get(Case, inv.case_id), actor, "payment_claimed", invoice=inv.code)
+        if inv.status == "awaiting_confirmation" and self.config.trust_payments and inv.case_id is not None \
+                and inv.purpose in ("document", "case"):
+            self._pay_on_trust(session, inv, actor)
         return inv
+
+    def _pay_on_trust(self, session: Session, inv: Invoice, actor: str) -> None:
+        """Owner 02.10: the person's «Оплатил(а)» is taken as paid — the document is given now; the bill stays marked
+        (decided_by=trust, the time of the press in claimed_at) for the desk to reconcile with Kaspi later. The
+        referral bonus is given only when the money is found."""
+        inv.status, inv.decided_at, inv.decided_by = "paid", utcnow(), TRUST
+        inv.desk_note = "выдано на доверии"
+        self._apply_paid(session, inv, referral=False)
+        case = session.get(Case, inv.case_id)
+        self.audit(session, case, actor, "paid_on_trust", invoice=inv.code)
+        pack = self.pack_of(case)
+        self.notifier.notify(session, case, "payment", pack.t(
+            pack.lang(case.language), "notifications.paid_on_trust",
+            default="Спасибо! Документ готов. Мы сверим оплату в течение дня. Если оплата не дошла, пришлём ссылку "
+                    "для оплаты."))
 
     def billing_pack(self, session: Session, inv: Invoice) -> JurisdictionPack | None:
         """The pack whose country words a bill uses: the case's, else the one pack plans are sold in."""
@@ -1250,6 +1275,9 @@ class CaseEngine:
     def decide_payment(self, session: Session, inv: Invoice, operator: str, received: bool,
                        note: str | None = None) -> None:
         """The clients desk found the transfer (→ paid) or did not (→ not_found); the person is told either way."""
+        if inv.status == "paid" and inv.decided_by == TRUST:
+            self._reconcile_trusted(session, inv, operator, received, note)
+            return
         if inv.status == "paid":
             raise EngineError("already_paid")
         if inv.status == "cancelled":
@@ -1278,6 +1306,34 @@ class CaseEngine:
         self.audit(session, case, f"ops:{operator}", "payment_confirmed" if received else "payment_not_found",
                    invoice=inv.code)
         self.notifier.notify(session, case, "payment", text, sms="payment_confirmed" if received else None)
+
+    def _reconcile_trusted(self, session: Session, inv: Invoice, operator: str, received: bool,
+                           note: str | None) -> None:
+        """A bill paid on trust, checked against Kaspi. Found: it counts as confirmed (and the referral bonus is
+        given). Not found: the document already given stays, an unused document of the bill is taken back, and the
+        person is asked to pay (owner 02.10: «если оплата не дошла, пришлём ссылку для оплаты»). decided_at is kept:
+        it marks when the document was paid for, so nothing is prepared twice."""
+        inv.decided_by = operator
+        inv.desk_note = f"выдано на доверии; {'оплата найдена' if received else 'оплата не найдена'}" + (f"; {note}" if note else "")
+        case = session.get(Case, inv.case_id) if inv.case_id is not None else None
+        if received:
+            self._referral_bonus(session, inv)
+            if case is not None:
+                self.audit(session, case, f"ops:{operator}", "payment_confirmed", invoice=inv.code, on_trust=True)
+            return
+        inv.status = "not_found"
+        if case is None:
+            return
+        if inv.purpose == "document" and case.doc_credits > 0:
+            case.doc_credits -= 1
+        if inv.purpose == "case":
+            case.paid = False
+        self.audit(session, case, f"ops:{operator}", "payment_not_found", invoice=inv.code, on_trust=True)
+        pack = self.pack_of(case)
+        self.notifier.notify(session, case, "payment", pack.t(
+            pack.lang(case.language), "notifications.payment_owed", code=inv.code,
+            default=f"Мы не нашли оплату за документ (код {inv.code}). Пожалуйста, оплатите его: откройте дело и "
+                    f"нажмите «Оплатить» — там сумма и реквизиты."))
 
     def prepare_paid_documents(self, session: Session, now: datetime, *, after: timedelta = timedelta(seconds=90),
                                within: timedelta = timedelta(days=2)) -> int:

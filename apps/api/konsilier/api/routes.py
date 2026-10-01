@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from ..container import Container
 from ..team import notify_team
 from .referral import attribute
-from ..core.engine import OUTCOME_RESULTS, EngineError
+from ..core.engine import OUTCOME_RESULTS, TRUST, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, Invoice, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
 from ..core import ai, suggestions
@@ -748,6 +748,9 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
         pass  # its Kaspi Pay push came first: paid now, nothing for the desk
     elif inv.status == "awaiting_confirmation" and not user.is_test and not push_confirms(container, inv):
         _tell_desk_claimed(container, inv, f"дело {case.id}")
+    elif inv.status == "paid" and inv.decided_by == TRUST and not user.is_test:
+        # owner 02.10: the document is given on trust — the desk reconciles it with Kaspi later in /ops
+        _tell_desk_claimed(container, inv, f"дело {case.id}; документ выдан на доверии — сверьте оплату")
     if not case.narrative:
         prewrite_later(session, container, case.id)
     return {"case": case_view(container.engine, session, case)}

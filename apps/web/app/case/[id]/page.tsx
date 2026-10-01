@@ -235,6 +235,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       if (then === "claim") {
         const claimed = await api<{ case: CaseView }>(`/v1/cases/${id}/payment/claim`, { method: "POST", body: "{}" });
         setCase(claimed.case);
+        if (claimed.case.payment?.status === "paid") paidOnClaim.current = true;  // on trust (owner 02.10)
       }
       if (then === "bill") {
         const blob = await fetchFile(`/v1/invoices/${invoice}/bill?format=pdf`);
@@ -267,6 +268,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const payStatus = c?.payment?.status;
   const prepareRef = useRef(post);
   prepareRef.current = post;
+  // owner 02.10 (documents on trust): «Оплатил(а)» comes back already paid — the document is made at once
+  const paidOnClaim = useRef(false);
+  useEffect(() => {
+    if (payStatus !== "paid" || !paidOnClaim.current) return;
+    paidOnClaim.current = false;
+    prepareRef.current("/actions/next").then(() => setPayOpen(false));
+  }, [payStatus]);
   useEffect(() => {
     if (payStatus !== "awaiting_confirmation") return;
     let paidChecks = 0;
@@ -398,7 +406,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
           applicant={applicant?.fields ?? null} caseId={c.id}
           onApplicant={async () => { const purpose = applicant?.purpose ?? "document"; setApplicant(null); await choosePayment(purpose); }}
-          onContact={contactConfirmed} onContactDown={contactDown} onChoose={choosePayment} onClaim={() => post("/payment/claim")} onWay={chooseWay} />
+          onContact={contactConfirmed} onContactDown={contactDown} onChoose={choosePayment} onClaim={() => { paidOnClaim.current = true; post("/payment/claim"); }} onWay={chooseWay} />
       )}
 
       {ack && (

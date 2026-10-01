@@ -151,7 +151,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                             lawyer_pay_link=getattr(settings, "payment_kaspi_pay_link", "") or "",
                             lawyer_pay_account=settings.lawyer_payment_account or "",
                             company_name=getattr(settings, "payment_llp_name", "") or "",
-                            kaspi_push=bool(getattr(settings, "payment_kaspi_push_token", ""))),
+                            kaspi_push=bool(getattr(settings, "payment_kaspi_push_token", "")),
+                            trust_payments=bool(getattr(settings, "payment_trust_mode", False))),
     )
     engine.defer_pdf = settings.background_jobs == "thread"
     container = Container(settings, db, factory, packs, storage, scheduler, notifier, engine,

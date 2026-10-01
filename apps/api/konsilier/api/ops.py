@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..core.engine import EngineError
+from ..core.engine import TRUST, EngineError
 from ..core.models import (Case, Invoice, LawyerApplication, LawyerRequest, Notification, SupportTicket,
                            TicketMessage, User)
 from ..team import Desk, desks_of
@@ -275,6 +275,7 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
             "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,
             "created_at": inv.created_at.isoformat(), "claimed_at": inv.claimed_at.isoformat() if inv.claimed_at else None,
             "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
+            "on_trust": inv.status == "paid" and inv.decided_by == TRUST,
             "note": inv.desk_note, "way": inv.pay_way, "payer_phone": inv.payer_phone,
             "buyer_name": inv.buyer_name, "buyer_bin": inv.buyer_bin, "lawyer": lawyer_invoice_line(session, inv)}
 
@@ -285,7 +286,9 @@ def payments(status: str | None = "awaiting_confirmation", session: Session = De
              _: User = Depends(operator("clients"))) -> list[dict[str, Any]]:
     q = select(Invoice).where(Invoice.method != "stub", Invoice.user_id.not_in(_test_users())) \
         .order_by(Invoice.created_at.desc()).limit(500)
-    if status:
+    if status == "on_trust":  # owner 02.10: documents given on trust, not yet reconciled with Kaspi
+        q = q.where(Invoice.status == "paid", Invoice.decided_by == TRUST)
+    elif status:
         q = q.where(Invoice.status == status)
     return [invoice_view(session, container, inv) for inv in session.scalars(q).all()]
 

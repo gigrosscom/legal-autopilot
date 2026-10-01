@@ -141,6 +141,10 @@ class Settings(BaseSettings):
     # one push of the bill's amount within 60 min of «Оплатить» marks it paid at once. Empty → the endpoint is 404,
     # no 15-minute reminder and no stop on new bills (the desk confirms by hand, as before).
     payment_kaspi_push_token: str = ""
+    # Owner 02.10: documents on trust until the payment channel is set up — «Оплатил(а)» counts as paid at once and the
+    # document is given; the desk reconciles later in /ops (confirmed / not found → a reminder to pay). Off again
+    # (PAYMENT_TRUST_MODE=false) once payments are confirmed automatically — no new code.
+    payment_trust_mode: bool = False
     # «Юрист по кнопке» (closed pilot): the client pays the lawyer's price to the COMPANY's account only — the Kaspi
     # Pay link of the ТОО (PAYMENT_KASPI_PAY_LINK, https://…) or the company's requisites below (name, tax number, IBAN,
     # bank as plain text). Never the Kaspi Gold of PAYMENT_KASPI_PHONE: with neither set, lawyer payment is off.

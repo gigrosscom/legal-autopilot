@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { MetricsTab } from "@/components/MetricsTab";
 import { OpsDesk } from "@/components/OpsDesk";
-import { PaymentsToConfirm } from "./Payments";
+import { PaymentsOnTrust, PaymentsToConfirm } from "./Payments";
 import { PilotLawyers } from "./PilotLawyers";
 import { ReviewsToCheck } from "./Reviews";
 import { H2, PageTitle, RowLink, useCentre } from "./ui";
@@ -17,6 +17,7 @@ export function Operations() {
       <PageTitle sub="Проверка документов, оплаты, обращения клиентов и метрики.">Операции</PageTitle>
       <ReviewsToCheck />
       <PaymentsToConfirm />
+      <PaymentsOnTrust />
       <PilotLawyers />
       <section className="space-y-3">
         <div role="tablist" className="flex gap-2">

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..container import Container
+from ..core.engine import TRUST
 from ..core.models import Action, Case, Invoice, LawyerApplication, Outcome, User, WaitlistEntry
 from ..core.llm.spend import usage_summary
 from ..zann.corpus import corpus_metrics
@@ -149,9 +150,12 @@ def payment_metrics(session: Session, tests: set[Any], now: datetime) -> dict[st
     """Real payments only (the test «stub» method and test accounts are left out): paid bills, paying clients,
     revenue by currency (all time and today, UTC), and bills waiting for the desk's confirmation."""
     rows = [i for i in session.execute(select(Invoice.user_id, Invoice.status, Invoice.amount, Invoice.currency,
-                                              Invoice.purpose, Invoice.decided_at)
+                                              Invoice.purpose, Invoice.decided_at, Invoice.decided_by)
                                        .where(Invoice.method != "stub")).all() if i.user_id not in tests]
-    paid = [i for i in rows if i.status == "paid"]
+    # owner 02.10: a document given on trust is not revenue until the desk finds the money — the KPI «оплаченные
+    # документы» counts confirmed payments only; the trusted ones are counted apart
+    on_trust = [i for i in rows if i.status == "paid" and i.decided_by == TRUST]
+    paid = [i for i in rows if i.status == "paid" and i.decided_by != TRUST]
     today = now.date()
 
     def revenue(items: list[Any]) -> dict[str, str]:
@@ -168,6 +172,8 @@ def payment_metrics(session: Session, tests: set[Any], now: datetime) -> dict[st
         "revenue": revenue(paid),
         "revenue_today": revenue(paid_today),
         "awaiting_confirmation": sum(1 for i in rows if i.status == "awaiting_confirmation"),
+        "on_trust": len(on_trust),
+        "on_trust_amount": revenue(on_trust),
     }
 
 
