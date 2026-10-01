@@ -55,6 +55,8 @@ export type EotinishTarget = {
   verified: boolean;
 };
 export type EotinishGuide = EotinishTarget & { text: string; has_pdf: boolean; filing: FilingRecord | null };
+/** What was read from the portal's confirmation (POST .../portal-filing/proof); it is kept as the receipt. */
+export type PortalProof = { evidence_id: string; number: string | null; filed_on: string | null; found: boolean; read_by: "text" | "model" | null };
 export type FilingRecord = {
   id: string; channel: string; body: string; appeal_type: string | null; category: string | null;
   number: string; filed_at: string; receipt_evidence_id: string | null; doc_sha256: string | null;

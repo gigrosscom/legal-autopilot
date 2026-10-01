@@ -163,6 +163,23 @@ class PortalRecipient(BaseModel):
     verified_on: date | None = None  # when it was checked against the form on the portal
 
 
+class PortalProof(BaseModel):
+    """How the portal's confirmation (SMS, e-mail, receipt, screenshot) shows the appeal number."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    # a regex whose group 1 is the number; matched case-insensitively. Default: «№ <number>» / «N <number>»
+    number_pattern: str = r"(?:№|\bN[o°]?\.?)\s*([0-9A-Za-z][0-9A-Za-z\-/.]{1,62})"
+
+    @field_validator("number_pattern")
+    @classmethod
+    def _compiles(cls, v: str) -> str:
+        import re
+
+        if re.compile(v).groups < 1:
+            raise ValueError("number_pattern needs a capture group for the number")
+        return v
+
+
 class AppealPortalGuide(BaseModel):
     """Manual filing on the official appeal portal (packs/<cc>/appeal_portal.yaml): the person files there
     themselves; we show what to choose and track the deadline from the date they enter."""
@@ -172,6 +189,7 @@ class AppealPortalGuide(BaseModel):
     channel: str = Field(pattern=r"^[a-z_]{2,32}$")  # Action.submitted_via / Filing.channel
     portal: str
     recipients: dict[str, PortalRecipient]  # "forum:<id>" | "authority:<key>"
+    proof: PortalProof = Field(default_factory=lambda: PortalProof())
 
     @field_validator("portal")
     @classmethod

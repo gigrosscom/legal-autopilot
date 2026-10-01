@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { FilePicker } from "@/components/FilePicker";
 import { Alert, Button, Icon } from "@/components/ui";
-import { ApiError, api, downloadFile, errorText, type CaseAction, type CaseView, type EotinishGuide } from "@/lib/api";
+import { ApiError, api, downloadFile, errorText, type CaseAction, type CaseView, type EotinishGuide, type PortalProof } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
 /** Today in the person's own calendar, as YYYY-MM-DD (the value of a date input). */
@@ -14,9 +14,11 @@ function today(): string {
 
 const ERR_CODES = ["bad_number", "date_in_future", "date_before_document", "bad_receipt", "already_filed"];
 
-/** Manual eOtinish bridge (owner's decision 01.10.2026): the person files the appeal on eotinish.kz themselves, in
- *  their own name. We show what to pick in the portal's form, the ready text and the file, then take the appeal
- *  number and date (and the receipt) — the response deadline and reminders run from that date. */
+/** Manual eOtinish bridge (owner's decisions 01.10.2026): the person files the appeal on eotinish.kz themselves, in
+ *  their own name. We show what to pick in the portal's form, the ready text and the file. Then («3 клика») the
+ *  person attaches the portal's confirmation — screenshot, PDF or the notification e-mail/SMS text — and we read the
+ *  appeal number and date for a one-tap confirmation; typing them is only the fallback when reading fails. The
+ *  response deadline and reminders run from that date. */
 export function EotinishBridge({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCase?: (c: CaseView) => void }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -26,7 +28,9 @@ export function EotinishBridge({ caseId, a, onCase }: { caseId: string; a: CaseA
   const [copied, setCopied] = useState(false);
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(today());
-  const [receipt, setReceipt] = useState<File | null>(null);
+  const [proof, setProof] = useState<PortalProof | null>(null);
+  const [manual, setManual] = useState(false);
+  const [paste, setPaste] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const target = a.appeal_portal;
   if (!target) return null;
@@ -44,30 +48,45 @@ export function EotinishBridge({ caseId, a, onCase }: { caseId: string; a: CaseA
   const fmt = a.has_pdf || guide?.has_pdf ? "pdf" : "docx";
   const file = `/v1/cases/${caseId}/actions/${a.id}/document?format=${fmt}`;
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // «3 клика»: the confirmation (screenshot, PDF, notification e-mail or its text) is read for the number and date
+  const readProof = async (file: File | null, text?: string) => {
     setBusy(true);
     setError(null);
     try {
-      let receiptId: string | null = null;
-      if (receipt) {
-        const form = new FormData();
-        form.append("file", receipt);
-        form.append("kind", "filing_receipt");
-        const up = await api<{ evidence: { id: string } }>(`/v1/cases/${caseId}/evidence`, { method: "POST", body: form });
-        receiptId = up.evidence.id;
-      }
+      const form = new FormData();
+      if (file) form.append("file", file);
+      else form.append("text", text ?? "");
+      const got = await api<PortalProof>(`/v1/cases/${caseId}/actions/${a.id}/portal-filing/proof`, { method: "POST", body: form });
+      setProof(got);
+      setNumber(got.number ?? "");
+      setDate(got.filed_on ?? today());
+      setManual(!got.found);
+      setPaste(null);
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirm = async (n: string, d: string) => {
+    setBusy(true);
+    setError(null);
+    try {
       const out = await api<{ case: CaseView }>(`/v1/cases/${caseId}/actions/${a.id}/portal-filing`, {
-        method: "POST", body: JSON.stringify({ number, filed_on: date, receipt_evidence_id: receiptId }) });
+        method: "POST", body: JSON.stringify({ number: n, filed_on: d, receipt_evidence_id: proof?.evidence_id ?? null }) });
       onCase?.(out.case);
       setOpen(false);
     } catch (err) {
       const code = err instanceof ApiError ? err.code : null;
       setError(code && ERR_CODES.includes(code) ? t(`eotinish.err.${code}`) : errorText(err));
+      setManual(true);
     } finally {
       setBusy(false);
     }
   };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); void confirm(number, date); };
+  const shown = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("ru-RU");
 
   const step = (i: number, title: string, body: ReactNode) => (
     <li className="flex gap-3">
@@ -137,29 +156,65 @@ export function EotinishBridge({ caseId, a, onCase }: { caseId: string; a: CaseA
             </>
           ))}
           {step(5, t("eotinish.s5"), (
-            <form className="space-y-3" onSubmit={submit}>
-              <label className="block text-sm">
-                <span className="text-xs text-muted">{t("eotinish.number")}</span>
-                <input className="input mt-1 w-full" required maxLength={64} value={number} autoComplete="off"
-                  placeholder={t("eotinish.numberHint")} onChange={(e) => setNumber(e.target.value)} />
-              </label>
-              <label className="block text-sm">
-                <span className="text-xs text-muted">{t("eotinish.date")}</span>
-                <input type="date" className="input mt-1 w-full" required max={today()} value={date}
-                  onChange={(e) => setDate(e.target.value)} />
-              </label>
-              <div className="space-y-2">
-                <p className="text-xs text-muted">{t("eotinish.receipt")}</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <FilePicker disabled={busy} onFile={setReceipt} attachLabel={t("eotinish.receiptAttach")} />
-                  {receipt && <span className="flex items-center gap-1 text-xs text-ink"><Icon name="paperclip" size={14} />{receipt.name}</span>}
+            <div className="space-y-3">
+              {!proof && !manual && (
+                <>
+                  <p className="text-xs text-muted">{t("eotinish.proofLead")}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FilePicker disabled={busy} onFile={(f) => void readProof(f)} attachLabel={t("eotinish.proofAttach")} />
+                  </div>
+                  {paste === null ? (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      <button type="button" className="link" onClick={() => setPaste("")}>{t("eotinish.proofPaste")}</button>
+                      <button type="button" className="link" onClick={() => setManual(true)}>{t("eotinish.proofManual")}</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <textarea className="input w-full" rows={4} value={paste} aria-label={t("eotinish.proofPaste")}
+                        placeholder={t("eotinish.proofPasteHint")} onChange={(e) => setPaste(e.target.value)} />
+                      <Button type="button" variant="secondary" icon="sparkle" disabled={busy || !paste.trim()}
+                        onClick={() => void readProof(null, paste)}>{t("eotinish.proofRead")}</Button>
+                    </div>
+                  )}
+                  {busy && <p className="flex items-center gap-2 text-sm text-muted"><Icon name="spinner" size={16} className="animate-spin" />{t("eotinish.proofReading")}</p>}
+                </>
+              )}
+              {proof?.found && !manual && (
+                <div className="space-y-3 rounded-xl bg-surface p-3">
+                  <p className="text-xs text-muted">{t("eotinish.proofFound")}</p>
+                  <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                    <div><dt className="text-xs text-muted">{t("eotinish.number")}</dt><dd className="font-semibold tabular-nums">{proof.number}</dd></div>
+                    <div><dt className="text-xs text-muted">{t("eotinish.date")}</dt><dd className="font-semibold tabular-nums">{shown(proof.filed_on!)}</dd></div>
+                  </dl>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" className="min-h-11 flex-1" icon="check" disabled={busy}
+                      onClick={() => void confirm(proof.number!, proof.filed_on!)}>{t("eotinish.proofConfirm")}</Button>
+                    <Button type="button" variant="secondary" className="min-h-11" disabled={busy} onClick={() => setManual(true)}>{t("eotinish.proofEdit")}</Button>
+                  </div>
+                  <p className="text-xs text-muted">{t("eotinish.saveHint")}</p>
                 </div>
-              </div>
-              <Button type="submit" className="min-h-11 w-full sm:w-auto" icon="check" disabled={busy || !number.trim() || !date}>
-                {t("eotinish.save")}
-              </Button>
-              <p className="text-xs text-muted">{t("eotinish.saveHint")}</p>
-            </form>
+              )}
+              {manual && (
+                <form className="space-y-3" onSubmit={submit}>
+                  {proof && !proof.found && <Alert tone="info" icon="info">{t("eotinish.proofNotFound")}</Alert>}
+                  <label className="block text-sm">
+                    <span className="text-xs text-muted">{t("eotinish.number")}</span>
+                    <input className="input mt-1 w-full" required maxLength={64} value={number} autoComplete="off"
+                      placeholder={t("eotinish.numberHint")} onChange={(e) => setNumber(e.target.value)} />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-xs text-muted">{t("eotinish.date")}</span>
+                    <input type="date" className="input mt-1 w-full" required max={today()} value={date}
+                      onChange={(e) => setDate(e.target.value)} />
+                  </label>
+                  {proof && <p className="flex items-center gap-1.5 text-xs text-muted"><Icon name="paperclip" size={14} />{t("eotinish.receiptSaved")}</p>}
+                  <Button type="submit" className="min-h-11 w-full sm:w-auto" icon="check" disabled={busy || !number.trim() || !date}>
+                    {t("eotinish.save")}
+                  </Button>
+                  <p className="text-xs text-muted">{t("eotinish.saveHint")}</p>
+                </form>
+              )}
+            </div>
           ))}
         </ol>
       )}

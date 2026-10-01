@@ -17,17 +17,19 @@ from datetime import date, timedelta
 from typing import Any
 
 from docx import Document
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..container import Container
+from ..core.appeal_portal import filing_record, portal_target, read_filing_proof
 from ..core.engine import EngineError
-from ..core.appeal_portal import filing_record, portal_target
+from ..core.llm.base import Attachment
 from ..core.models import Action, Case, Evidence, Filing, User
 from .deps import current_user, get_container, get_session, load_case
-from .routes import _load_action, engine_error
+from .routes import _load_action, _read_upload, engine_error
 from .views import case_view
 
 router = APIRouter(prefix="/v1")
@@ -89,6 +91,57 @@ def _receipt(session: Session, case: Case, evidence_id: uuid.UUID | None) -> Evi
     return ev
 
 
+def _source(receipt: Evidence | None, number: str, filed_on: date) -> str:
+    """``receipt_read`` when the person confirmed what we read from the confirmation unchanged, else
+    ``client_entered`` (typed or corrected by hand)."""
+    got = (receipt.extracted_facts or {}) if receipt is not None else {}
+    if got.get("appeal_number") == number and got.get("filed_on") == filed_on.isoformat():
+        return "receipt_read"
+    return "client_entered"
+
+
+@router.post("/cases/{case_id}/actions/{action_id}/portal-filing/proof", status_code=201)
+async def portal_proof(case_id: uuid.UUID, action_id: uuid.UUID, file: UploadFile | None = File(default=None),
+                       text: str | None = Form(default=None, max_length=20000),
+                       user: User = Depends(current_user), session: Session = Depends(get_session),
+                       container: Container = Depends(get_container)) -> dict[str, Any]:
+    """«3 клика»: the person uploads the portal's confirmation (screenshot, PDF, the notification e-mail) or pastes
+    its text; we keep it in the case as the receipt and read the appeal number and date from it, for a one-tap
+    confirmation. Nothing is recorded as filed until the person confirms (``POST .../portal-filing``)."""
+    case = load_case(case_id, session, user)
+    action = _load_action(case, action_id, session)
+    _ready_action(container, case, action)
+    if file is not None:
+        data, ctype = await _read_upload(file)
+        name = file.filename or "confirmation"
+    elif text and text.strip():
+        data, ctype, name = text.strip().encode(), "text/plain", "confirmation.txt"
+    else:
+        raise HTTPException(422, {"code": "no_proof", "message": "attach the confirmation or paste its text"})
+    engine = container.engine
+    pack = engine.pack_of(case)
+
+    def read() -> tuple[Evidence, dict[str, Any]]:  # a photo goes to the model: off the event loop
+        ev = engine.add_evidence(session, case, kind="filing_receipt", filename=name, content_type=ctype, data=data)
+        scan = ctype.startswith("image/") or (ctype == "application/pdf" and not ev.text)
+        attachments = (Attachment(ctype, data, name),) if scan and engine.config.extract_images_with_llm else ()
+        llm = engine.llm_for(case)
+        got = read_filing_proof(llm, pack.appeal_portal, pack.lang(case.language), ev.text, attachments,
+                                pack.local_now().date())
+        engine._save_vault(case, llm)
+        return ev, got
+    ev, got = await run_in_threadpool(read)
+    number, filed_on = got["number"], got["filed_on"]
+    ev.extracted_facts = {"appeal_number": number, "filed_on": filed_on.isoformat() if filed_on else None,
+                          "read_by": got["source"]}
+    ev.confirmed = False
+    engine.audit(session, case, f"user:{user.id}", "filing_proof_read", action=action.action_id,
+                 found=bool(number and filed_on), read_by=got["source"])
+    session.flush()
+    return {"evidence_id": str(ev.id), "number": number, "filed_on": filed_on.isoformat() if filed_on else None,
+            "found": bool(number and filed_on), "read_by": got["source"]}
+
+
 @router.post("/cases/{case_id}/actions/{action_id}/portal-filing", status_code=201)
 def portal_filed(case_id: uuid.UUID, action_id: uuid.UUID, body: PortalFiledIn,
                    user: User = Depends(current_user), session: Session = Depends(get_session),
@@ -125,7 +178,7 @@ def portal_filed(case_id: uuid.UUID, action_id: uuid.UUID, body: PortalFiledIn,
                appeal_type=target["appeal_type"], category=(target["category"] or None),
                external_id=number, filed_at=body.filed_on,
                receipt_evidence_id=receipt.id if receipt else None,
-               doc_format=fmt if key else None, doc_sha256=sha, source="client_entered")
+               doc_format=fmt if key else None, doc_sha256=sha, source=_source(receipt, number, body.filed_on))
     session.add(f)
     container.engine.audit(session, case, f"user:{user.id}", "filing_recorded", action=action.action_id,
                            channel=target["channel"], number=number, filed_at=body.filed_on.isoformat(),

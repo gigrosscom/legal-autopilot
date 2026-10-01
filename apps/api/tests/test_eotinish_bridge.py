@@ -156,3 +156,96 @@ def test_only_own_case(ctx):
     assert ctx.client.post(url + "/receipt", headers=other.h, json={"evidence_id": up}).status_code == 404
     out = api.post(url + "/receipt", json={"evidence_id": up})
     assert out["filing"]["receipt_evidence_id"] == up
+
+
+# ---------------------------------------------------------------- «3 клика»: the number and date are read, not typed
+# A typical eOtinish confirmation. The portal does not publish its number format; its interface prints
+# «№{{appealNumber}}, поданного {{appealCreatedDate}}» (eotinish.kz/ru/faq, texts checked 01.10.2026).
+def _confirmation(d) -> str:
+    return (f"eOtinish: Ваше обращение принято. Обращение № ЖТ-2026-00012345 от {d.strftime('%d.%m.%Y')}. "
+            "Срок рассмотрения — 15 рабочих дней. Тел. для справок +7 701 123 45 67.")
+
+
+def test_number_and_date_found_in_confirmation_texts():
+    from datetime import date
+
+    from konsilier.core.appeal_portal import find_number_and_date
+
+    g, today = KZ.appeal_portal, date(2026, 10, 1)
+    cases = {
+        "Обращение № ЖТ-2026-00012345 от 01.10.2026": ("ЖТ-2026-00012345", date(2026, 10, 1)),
+        "Номер обращения: ЖТ-2026-00012345. Дата регистрации 30.09.2026": ("ЖТ-2026-00012345", date(2026, 9, 30)),
+        "Жалоба подается в связи с истечением срока обращения №ЗТ-Ж-2026-77, поданного 2026-09-01":
+            ("ЗТ-Ж-2026-77", date(2026, 9, 1)),
+        "Өтініш нөмірі ЖТ-2026-1, 01.10.2026": ("ЖТ-2026-1", date(2026, 10, 1)),
+        "номер телефона +77011234567": (None, None),
+        "№ ЖТ-2026-5 от 05.10.2026": ("ЖТ-2026-5", None),  # a future date is never taken
+    }
+    for text, want in cases.items():
+        assert find_number_and_date(g, text, today) == want, text
+
+
+def test_proof_text_is_read_and_confirmed_in_one_tap(ctx):
+    api, cid, a = _to_authority_step(ctx)
+    pack = ctx.container.packs.pack("KZ")
+    _backdate(ctx, a["id"], 10)
+    filed_on = pack.local_now().date() - timedelta(days=2)
+    url = f"/v1/cases/{cid}/actions/{a['id']}/portal-filing"
+    # the notification e-mail / SMS forwarded as a text file
+    got = api.post(url + "/proof", expect=201,
+                   files={"file": ("eotinish.txt", _confirmation(filed_on).encode(), "text/plain")})
+    assert got == {"evidence_id": got["evidence_id"], "number": "ЖТ-2026-00012345",
+                   "filed_on": filed_on.isoformat(), "found": True, "read_by": "text"}
+    # nothing is filed until the person confirms
+    assert api.get(f"/v1/cases/{cid}").json()["actions"][-1]["submitted_at"] is None
+    out = api.post(url, expect=201, json={"number": got["number"], "filed_on": got["filed_on"],
+                                          "receipt_evidence_id": got["evidence_id"]})
+    assert out["filing"]["source"] == "receipt_read" and out["filing"]["receipt_evidence_id"] == got["evidence_id"]
+    step = out["case"]["actions"][-1]
+    assert step["submitted_at"].startswith(filed_on.isoformat())
+    assert step["deadline"]["due_date"] == pack.add_days(filed_on, None, 15).isoformat()
+
+
+def test_proof_pasted_text_and_corrected_value(ctx):
+    api, cid, a = _to_authority_step(ctx)
+    today = ctx.container.packs.pack("KZ").local_now().date()
+    url = f"/v1/cases/{cid}/actions/{a['id']}/portal-filing"
+    got = api.post(url + "/proof", expect=201, data={"text": _confirmation(today)})
+    assert got["found"] and got["number"] == "ЖТ-2026-00012345"
+    # corrected by hand → recorded as entered by the person
+    out = api.post(url, expect=201, json={"number": "ЖТ-2026-00012346", "filed_on": today.isoformat(),
+                                          "receipt_evidence_id": got["evidence_id"]})
+    assert out["filing"]["source"] == "client_entered"
+    # empty request
+    assert ctx.client.post(url + "/proof", headers=api.h, data={"text": "  "}).status_code == 422
+
+
+def test_proof_screenshot_read_by_model_or_falls_back_to_manual(ctx):
+    api, cid, a = _to_authority_step(ctx)
+    today = ctx.container.packs.pack("KZ").local_now().date()
+    url = f"/v1/cases/{cid}/actions/{a['id']}/portal-filing"
+    png = ("screen.png", b"\x89PNG\r\n\x1a\nscreenshot", "image/png")
+
+    # image reading off (or the model sees nothing): no number → the manual fields are the fallback
+    got = api.post(url + "/proof", expect=201, files={"file": png})
+    assert got["found"] is False and got["number"] is None and got["read_by"] is None and got["evidence_id"]
+
+    # a fake extractor standing in for the model that reads screenshots (EXTRACT_IMAGES_WITH_LLM on)
+    ctx.container.engine.config.extract_images_with_llm = True
+    seen = []
+
+    def fake(p):
+        seen.append(p)
+        return {"number": "ЖТ-2026-00012345", "date": today.isoformat()}
+    ctx.llm._extract_filing_proof = fake
+    got = api.post(url + "/proof", expect=201, files={"file": png})
+    assert seen and got["found"] and got["read_by"] == "model"
+    assert got["number"] == "ЖТ-2026-00012345" and got["filed_on"] == today.isoformat()
+    # the model's future date is not trusted
+    ctx.llm._extract_filing_proof = lambda p: {"number": "ЖТ-1", "date": (today + timedelta(days=3)).isoformat()}
+    got = api.post(url + "/proof", expect=201, files={"file": png})
+    assert got["number"] == "ЖТ-1" and got["filed_on"] is None and got["found"] is False
+    # someone else can not upload proofs into this case
+    other = web_user(ctx)
+    r = ctx.client.post(url + "/proof", headers=other.h, data={"text": _confirmation(today)})
+    assert r.status_code == 404
