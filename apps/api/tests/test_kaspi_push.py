@@ -39,7 +39,8 @@ def pressed_pay(ctx, phone: str):
         s.get(User, s.get(Invoice, pay["invoice_id"]).user_id).email = "client@mail.kz"
         s.commit()
     api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
-    assert api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]["status"] == "awaiting_confirmation"
+    api.post(f"/v1/cases/{cid}/payment/claim")
+    assert status(ctx, pay["invoice_id"]) == "awaiting_confirmation"  # «ждёт сверки» (one-tap may show it as given)
     return api, cid, pay
 
 
