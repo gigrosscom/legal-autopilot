@@ -26,6 +26,8 @@ ANSWERS = {
     "seller_address": "Алматы, пр. Достык 10", "lender_address": "пропустить", "respondent_address": "Алматы, пр. Достык 10",
     "respondent_bin": "пропустить", "respondent_iin": "пропустить", "children_info": "Иванова Алия, 01.02.2018",
     "decision_number": "№ 123 от 01.09.2026",
+    "appeal_date": "01.08.2026", "appeal_number": "пропустить", "appeal_subject": "Ремонт дороги",
+    "higher_authority": "пропустить",
 }
 
 
