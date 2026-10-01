@@ -377,7 +377,7 @@ def test_packs_and_waitlist(ctx):
         "kz.consumer.refund", "kz.money.credit_fraud", "kz.labor.unpaid_wages", "kz.administrative.fine_appeal",
         "kz.gov.inaction_complaint",
         "kz.family.alimony", "kz.consumer.non_delivery", "kz.consumer.poor_service", "kz.consumer.air_ticket",
-        "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
+        "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.consumer.service_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
         "kz.housing.deposit_return", "kz.housing.management_company", "kz.housing.utility_billing",
         "kz.finance.debt_collectors", "kz.finance.imposed_insurance", "kz.finance.loan_restructuring",
         "kz.finance.unauthorized_debit", "kz.civil.road_accident"}

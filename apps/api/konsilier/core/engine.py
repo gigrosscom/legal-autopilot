@@ -26,6 +26,7 @@ from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
 from .deadlines import DeadlineScheduler
 from .documents import PdfConverter, docx_text, render_docx
+from .docstyle import DocStyle
 from .fields import FieldError, display, looks_like_address, normalize
 from .llm import Attachment, LLMProvider, RedactingLLM
 from .generic import GenericRef, is_generic
@@ -492,7 +493,8 @@ class CaseEngine:
             docx = render_docx(pack.packs_root / spec.template, ctx,
                                ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                                draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                               if sc.is_draft else None, finish=self._finishing(case, sc, pack))
+                               if sc.is_draft else None, finish=self._finishing(case, sc, pack),
+                               style=self.doc_style(pack), lang=lang)
             action.addressee = addressee  # where «Отправить» sends it: never the client's own e-mail
             base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
             action.docx_key = self.storage.put(f"{base}.docx", docx,
@@ -1384,6 +1386,12 @@ class CaseEngine:
                                            rule.female)
         return gender
 
+    @staticmethod
+    def doc_style(pack: JurisdictionPack) -> DocStyle:
+        """The pack's official layout (document_style), over the defaults; unknown keys are ignored."""
+        known = DocStyle.__dataclass_fields__
+        return DocStyle(**{k: v for k, v in (pack.manifest.document_style or {}).items() if k in known})
+
     def _finishing(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> Any:
         """The last pass over the document's text: gendered forms in brackets resolved for the applicant, amounts
         with the currency sign and in words (owner 01.10)."""
@@ -1407,7 +1415,8 @@ class CaseEngine:
         docx = render_docx(pack.packs_root / spec.template, ctx,
                            ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                            draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                           if sc.is_draft else None, finish=self._finishing(case, sc, pack))
+                           if sc.is_draft else None, finish=self._finishing(case, sc, pack), style=self.doc_style(pack),
+                           lang=lang)
         base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
         action.docx_key = self.storage.put(f"{base}.docx", docx,
                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")

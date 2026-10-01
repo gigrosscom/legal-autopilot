@@ -16,7 +16,7 @@ from konsilier.core.polish import (amounts_in_words, gender_forms, gender_from_i
 
 from .test_e2e import web_user
 
-STORY = "Купил токены в интернет-сервисе ИИ антропик за 10352 тенге 17.09.2026, сервис не работает, деньги не возвращают"
+STORY = "Купил смартфон в магазине антропик за 10352 тенге 17.09.2026, сломался, продавец не возвращает деньги"
 FACTS = {"seller_name": "антропик", "goods_description": "токены для ИИ-сервиса", "applicant_name": "Ахметов Ерлан Серикович",
          "applicant_phone": "+7 701 555 12 12", "seller_email": "client.self@mail.kz",
          "seller_address": "интернет сервис ии антропик", "applicant_address": "алматы сейдимбек 222",
@@ -80,10 +80,30 @@ def test_a_real_seller_email_and_address_stay(ctx):
     assert addressee["email"] == "support@seller.kz"
 
 
-def test_services_are_not_called_defective_goods():  # 6: the narrative's rule (the norms go to the lawyer)
+def test_services_are_not_called_defective_goods():  # 6: the narrative's rule
     import inspect
     src = inspect.getsource(ai.write_narrative)
     assert "услуга не оказана" in src and "never called a 'товар'" in src
+
+
+def test_a_service_goes_to_the_service_scenario_with_the_lawyers_norms(ctx):
+    """6 (lawyer 01.10, D-19): tokens, subscriptions, online services are a SERVICE — kz.consumer.service_refund:
+    ГК (ОсЧ) ст. 683, 686; ЗПП ст. 8-1, 42-4; never ЗПП ст. 30; no ID copy, no ИИН in the claim (D-18)."""
+    cases = {"Купил токены в интернет-сервисе ИИ антропик за 10352 тенге, сервис не работает, деньги не возвращают":
+             "kz.consumer.service_refund",
+             "С карты списали за подписку, я её не продлевал, хочу вернуть деньги": "kz.consumer.service_refund",
+             "Купил телефон в магазине, через неделю сломался, продавец не возвращает деньги": "kz.consumer.refund"}
+    for text, sid in cases.items():
+        api = web_user(ctx)
+        assert api.post("/v1/cases", expect=201, json={"text": text, "country": "KZ"})["case"]["scenario"]["id"] == sid
+    sc = ctx.container.packs.scenario("kz.consumer.service_refund")
+    claim = sc.action("claim_to_provider")
+    refs = " ".join(claim.norm_refs)
+    assert "статья 683" in refs and "статья 686" in refs and "статья 8-1" in refs and "статья 42-4" in refs
+    assert "статья 30" not in refs and claim.deadline.calendar_days == 10
+    names = {f.name for f in sc.intake}
+    assert "identity_document" not in names and "applicant_iin" not in names
+    assert "identity_document" not in {f.name for f in ctx.container.packs.scenario("kz.consumer.refund").intake}
 
 
 def test_polish_helpers():
@@ -121,3 +141,41 @@ def test_admin_rebuild_without_a_new_payment(ctx):
     assert "client.self@mail.kz" not in text and "₸ (десять тысяч" in text
     with ctx.container.session_factory() as s:
         assert s.scalar(select(func.count()).select_from(Invoice)) == bills  # no new bill
+
+
+def test_official_layout(ctx):
+    """The lawyer's rules D-23…D-31: Times New Roman 14, margins 25/15/20/20 mm, justified text with a 1.25 cm first
+    line, «Кому» bold on the right, the document's name and heading bold and centred, «прошу:» bold with demands «1.»,
+    the date in words on the left and «И. Фамилия» on the right, page numbers from page 2 at the top, one small AI
+    line at the end."""
+    import io
+
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Cm, Mm, Pt
+
+    claim_text(ctx)
+    with ctx.container.session_factory() as s:
+        a = s.scalars(select(Action)).first()
+        doc = Document(io.BytesIO(ctx.container.storage.get(a.docx_key)))
+    sec = doc.sections[0]
+    near = lambda a, b: abs(a - b) < Mm(0.1)  # noqa: E731 — DOCX stores twips
+    assert near(sec.left_margin, Mm(25)) and near(sec.right_margin, Mm(15)) and near(sec.top_margin, Mm(20))
+    assert sec.different_first_page_header_footer and "PAGE" in sec.header._element.xml
+    ps = [p for p in doc.paragraphs if p.text.strip()]
+    title = next(p for p in ps if p.text == "ПРЕТЕНЗИЯ")
+    assert title.alignment == WD_ALIGN_PARAGRAPH.CENTER and all(r.font.bold for r in title.runs)
+    assert abs(ps[0].paragraph_format.left_indent - Cm(8)) < Mm(0.1)  # «Кому» on the right, in bold
+    assert ps[0].text.startswith("Кому") and all(r.font.bold for r in ps[0].runs)
+    sub = ps[ps.index(next(p for p in ps if p.text == "ПРЕТЕНЗИЯ")) + 1]
+    assert sub.alignment == WD_ALIGN_PARAGRAPH.CENTER and all(r.font.bold for r in sub.runs)
+    ask = next(p for p in ps if p.text.endswith("прошу:"))
+    assert all(r.font.bold for r in ask.runs)
+    demand = ps[ps.index(ask) + 1]
+    assert demand.text.startswith("1. Вернуть") and demand.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY
+    assert abs(demand.paragraph_format.first_line_indent - Cm(1.25)) < Mm(0.1)
+    run = demand.runs[0]
+    assert run.font.name == "Times New Roman" and run.font.size == Pt(14)
+    sign = next(p for p in ps if "______________" in p.text)
+    assert sign.text.endswith("______________ Е. Ахметов") and " года\t" in sign.text  # «1 октября 2026 года»
+    assert ps[-1].text.startswith("Подготовлено с помощью ИИ") and ps[-1].runs[0].font.size == Pt(8)

@@ -43,7 +43,7 @@ def _ok_ref(ref: str, titles: set[str]) -> bool:
 
 def test_twenty_published_scenarios_all_drafts(kz):
     published = [sc for sc in kz.scenarios.values() if sc.published]
-    assert len(published) == 21  # + kz.gov.inaction_complaint (QA BUG-12, 01.10)
+    assert len(published) == 22  # + kz.gov.inaction_complaint (QA BUG-12), kz.consumer.service_refund (юрист, 01.10)
     for sc in published:
         assert sc.reviewed_at is None, f"{sc.id}: sign-off comes only from a lawyer"
         assert set(sc.languages) == {"ru", "kk"}

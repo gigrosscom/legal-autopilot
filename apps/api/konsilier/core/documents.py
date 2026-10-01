@@ -20,11 +20,15 @@ from docx import Document
 from docx.shared import Pt
 from docxtpl import DocxTemplate
 
+from . import docstyle
+from .docstyle import DocStyle
+
 log = logging.getLogger(__name__)
 
 
 def render_docx(template_path: Path, context: dict[str, Any], ai_label: str,
-                draft_disclaimer: str | None, finish: Callable[[str], str] | None = None) -> bytes:
+                draft_disclaimer: str | None, finish: Callable[[str], str] | None = None,
+                style: DocStyle | None = None, lang: str = "ru") -> bytes:
     """`draft_disclaimer` (a scenario not reviewed by a lawyer) is no longer printed: the document carries one AI line
     in the footer (owner 01.10); the argument stays for the callers."""
     tpl = DocxTemplate(str(template_path))
@@ -42,7 +46,9 @@ def render_docx(template_path: Path, context: dict[str, Any], ai_label: str,
                 p.runs[0].text = new
                 for r in p.runs[1:]:
                     r.text = ""
-    if ai_label:
+    if style is not None:  # the official layout; the AI line is the last small line of the last page
+        docstyle.apply(doc, style, ai_label, lang)
+    elif ai_label:
         for section in doc.sections:
             fp = section.footer.add_paragraph()
             frun = fp.add_run(ai_label)
