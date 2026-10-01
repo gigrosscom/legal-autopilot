@@ -1,0 +1,230 @@
+[
+ {
+  "scenario": "Возврат за товар",
+  "chat_short": "Вы имеете полное право вернуть некачественный товар, обменять его или потребовать возврата денег, так как холодильник не морозит. Направьте магазину письменную претензию с требованием вернуть деньги, приложив чек.\n\n[[MORE]]\n\n1. Подготовьте письменную претензию в двух экземплярах на имя руководителя ",
+  "draft_head": "Кому: Мечта\nАдрес: [Адрес продавца]\nОт: [ФИО заявителя]\nАдрес: [Адрес заявителя]\nТел.: [Телефон]\nПРЕТЕНЗИЯ\nо возврате уплаченной денежной суммы\n05.09.2026 мной приобретен(а) «Холодильник» у Мечта на сумму 380 000 KZT.\nХолодильник не морозит, магазин отказывается вернуть деньги\nНа основании изложенного прошу:\nвернуть уплаченную мной денежную сумму в размере 380 000 KZT за «Холодильник» в установленный законом срок и сообщить о принятом решении письменно.",
+  "t_draft": 7.0,
+  "clicks_draft": 2,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "status": "pending",
+   "code": "KA-AZ3HGS",
+   "method": "manual_transfer"
+  },
+  "t_invoice": 7.4,
+  "clicks_invoice": 4,
+  "case_id": "b5965b63-e119-410f-9501-d0c3602f1e1d",
+  "events": [
+   {
+    "t": 1.1,
+    "step": "case",
+    "st": 201,
+    "dt": 0.22
+   },
+   {
+    "t": 3.3,
+    "step": "chat",
+    "ttft": 1.3,
+    "total": 2.14,
+    "chars": 948,
+    "offer": true
+   },
+   {
+    "t": 6.7,
+    "step": "case_open",
+    "status": "qualified",
+    "scenario": "kz.consumer.refund",
+    "q": null,
+    "prop": "prepare_action"
+   },
+   {
+    "t": 7.0,
+    "step": "draft",
+    "st": 200,
+    "dt": 0.28,
+    "visible": 457,
+    "blanks": [
+     "seller_address",
+     "applicant_name",
+     "applicant_address",
+     "applicant_phone"
+    ],
+    "keys": [
+     "title",
+     "blanks",
+     "visible",
+     "hidden",
+     "paid"
+    ]
+   },
+   {
+    "t": 7.2,
+    "step": "actions_next",
+    "st": 200,
+    "dt": 0.22,
+    "payment": true,
+    "err": null
+   },
+   {
+    "t": 7.4,
+    "step": "payment",
+    "st": 200,
+    "dt": 0.22,
+    "err": null
+   }
+  ]
+ },
+ {
+  "scenario": "Невыплата зарплаты",
+  "chat_short": "Вы имеете право получить всю задержанную зарплату и компенсацию за задержку. **Обратитесь с письменным заявлением в согласительную комиссию работодателя или сразу в государственную инспекцию труда.**\n\n[[MORE]]\n1. Подготовьте трудовой договор, справку о задолженности по зарплате (если есть) и копию п",
+  "draft_head": "Кому: ТОО «Строй-Альфа»\nОт: [ФИО заявителя]\nАдрес: [Адрес заявителя]\nТел.: [Телефон]\nЗАЯВЛЕНИЕ\nПисьменное требование работодателю о выплате расчёта\nДата увольнения: 01.09.2026. Сумма: 900 000 KZT.\nРаботодатель не выплатил зарплату за 3 месяца\nПрошу:\nвыплатить мне все суммы, причитающиеся при прекращении трудового договора, в размере 900 000 KZT, а также пеню за период задержки платежа; выдать расчётный лист с указанием составных частей выплаты; о принятом решении сообщить мне письменно.",
+  "t_draft": 7.4,
+  "clicks_draft": 2,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "status": "pending",
+   "code": "KA-BF6P6P",
+   "method": "manual_transfer"
+  },
+  "t_invoice": 7.9,
+  "clicks_invoice": 4,
+  "case_id": "a96d7d87-4849-4fd1-8699-356962230559",
+  "events": [
+   {
+    "t": 0.4,
+    "step": "case",
+    "st": 201,
+    "dt": 0.21
+   },
+   {
+    "t": 3.7,
+    "step": "chat",
+    "ttft": 2.59,
+    "total": 3.32,
+    "chars": 662,
+    "offer": true
+   },
+   {
+    "t": 7.2,
+    "step": "case_open",
+    "status": "qualified",
+    "scenario": "kz.labor.final_settlement",
+    "q": null,
+    "prop": "prepare_action"
+   },
+   {
+    "t": 7.4,
+    "step": "draft",
+    "st": 200,
+    "dt": 0.28,
+    "visible": 491,
+    "blanks": [
+     "applicant_name",
+     "applicant_address",
+     "applicant_phone"
+    ],
+    "keys": [
+     "title",
+     "blanks",
+     "visible",
+     "hidden",
+     "paid"
+    ]
+   },
+   {
+    "t": 7.6,
+    "step": "actions_next",
+    "st": 200,
+    "dt": 0.21,
+    "payment": true,
+    "err": null
+   },
+   {
+    "t": 7.9,
+    "step": "payment",
+    "st": 200,
+    "dt": 0.22,
+    "err": null
+   }
+  ]
+ },
+ {
+  "scenario": "Жалоба на госорган",
+  "chat_short": "Вы имеете право подать жалобу на бездействие акимата в вышестоящий орган или суд, так как стандартный срок рассмотрения заявления уже истек. **Подайте жалобу** через систему eOtinish на неправомерное бездействие должностных лиц.\n[[MORE]]\n1. Зайдите в мобильное приложение или на портал eOtinish, где ",
+  "draft_head": "",
+  "t_draft": 34.2,
+  "clicks_draft": 2,
+  "invoice": {
+   "amount": null,
+   "currency": null,
+   "status": null,
+   "code": null,
+   "method": null
+  },
+  "t_invoice": 34.6,
+  "clicks_invoice": 4,
+  "case_id": "6719768a-2d51-4fa6-8425-7e028a64e8a2",
+  "events": [
+   {
+    "t": 0.4,
+    "step": "case",
+    "st": 201,
+    "dt": 0.21
+   },
+   {
+    "t": 6.5,
+    "step": "chat",
+    "ttft": 5.03,
+    "total": 6.05,
+    "chars": 974,
+    "offer": false
+   },
+   {
+    "t": 34.0,
+    "step": "case_open",
+    "status": "intake",
+    "scenario": null,
+    "q": null,
+    "prop": null
+   },
+   {
+    "t": 34.2,
+    "step": "draft",
+    "st": 404,
+    "dt": 0.2,
+    "visible": 0,
+    "blanks": [],
+    "keys": [
+     "detail"
+    ]
+   },
+   {
+    "t": 34.4,
+    "step": "actions_next",
+    "st": 409,
+    "dt": 0.2,
+    "payment": false,
+    "err": {
+     "detail": {
+      "code": "no_document_path",
+      "message": "no_document_path"
+     }
+    }
+   },
+   {
+    "t": 34.6,
+    "step": "payment",
+    "st": 409,
+    "dt": 0.2,
+    "err": {
+     "detail": {
+      "code": "free",
+      "message": "free"
+     }
+    }
+   }
+  ]
+ }
+]
