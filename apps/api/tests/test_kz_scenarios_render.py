@@ -16,7 +16,7 @@ from .test_pilot_drafts import AI_LINE_RU, DRAFT_WORDS, PACKS
 KZ = load_pack(PACKS / "kz", PACKS)
 PUBLISHED = sorted(s.id for s in KZ.scenarios.values() if s.published)
 ANSWERS = {
-    "respondent_name": "ТОО «Ромашка»", "seller_name": "ТОО «Ромашка»", "lender_name": "АО «Банк»",
+    "respondent_email": "пропустить", "respondent_name": "ТОО «Ромашка»", "seller_name": "ТОО «Ромашка»", "lender_name": "АО «Банк»",
     "seller_bin": "пропустить", "lender_bin": "пропустить", "seller_email": "пропустить", "lender_email": "пропустить",
     "contract_number": "пропустить", "police_report_number": "пропустить", "goods_description": "Товар",
     "event_date": "01.09.2026", "purchase_date": "01.09.2026", "loan_date": "01.09.2026", "amount": "100000",

@@ -3,7 +3,7 @@ each template keeps only its words. The numbers come from the pack (document_sty
 
 The rules are the lawyer's (team/legal-drafts/document-rules.md, D-23…D-31, Правила документирования, приказ МКС
 № 236): A4, margins 25/15/20/20 mm; Times New Roman 14 (attachments 12; the PDF uses the metric-equivalent Liberation
-Serif, Kazakh letters included), single spacing, first line 1.25 cm, justified; the «Кому» block on the right in bold,
+Serif, every pack's letters included), single spacing, first line 1.25 cm, justified; the «Кому» block on the right in bold,
 «От кого» plain; the document's name in bold capitals centred, the heading «о …» bold under it; «прошу:» bold with
 demands «1.»; «Приложение:» numbered; the date in words on the left, «И. Фамилия» on the right; page numbers from
 page 2 at the top centre; one small AI line at the end."""
