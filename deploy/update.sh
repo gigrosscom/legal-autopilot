@@ -164,6 +164,14 @@ except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
       log "host $HOST"
       log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
+      # KPI (owner 01.10): question → document in 3 minutes. After a deploy, at most every 3 hours, the real path is
+      # timed for three cases as a marked test user (deploy/smoke.py --path3): «path3 refund=…s taps=…» lines.
+      P3=/run/konsilier-path3.stamp
+      SMOKE=$(grep -E '^SMOKE_TOKEN=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"')
+      if [ -n "$SMOKE" ] && [ -z "$(find "$P3" -mmin -180 2>/dev/null)" ]; then
+        touch "$P3"
+        ( SMOKE_TOKEN="$SMOKE" timeout 900 python3 deploy/smoke.py --path3 2>&1 | grep -E '^path3' | while read -r l; do log "$l"; done ) &
+      fi
     else
       log "deploy of ${REMOTE:0:7} FAILED"
     fi
