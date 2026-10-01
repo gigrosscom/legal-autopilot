@@ -19,7 +19,7 @@ function PageQr() {
     <div className="flex flex-col items-center gap-3 pt-4">
       <div role="img" aria-label={t("appPage.qrAlt")} className="h-40 w-40 rounded-xl bg-white p-2 ring-1 ring-line"
         dangerouslySetInnerHTML={svg ? { __html: svg } : undefined} />
-      <p className="text-sm text-muted"><span className="font-semibold text-ink">{t("appPage.qrTitle")}.</span> {t("appPage.qrText")}</p>
+      <p className="text-sm text-muted text-balance"><span className="font-semibold text-ink">{t("appPage.qrTitle")}.</span> {t("appPage.qrText")}</p>
     </div>
   );
 }

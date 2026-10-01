@@ -301,11 +301,11 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
 }
 
 /** The install button of the header menu and the footer. */
-export function InstallApp({ className = "" }: { className?: string }) {
+export function InstallApp({ className = "", full = false }: { className?: string; full?: boolean }) {
   return (
     <div className={className} onClickCapture={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}>
       <InstallButton icon="smartphone"
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand [&>svg]:text-brand" />
+        className={`${full ? "flex w-full justify-center" : "inline-flex"} min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand [&>svg]:text-brand`} />
     </div>
   );
 }
