@@ -1,7 +1,7 @@
 {
   "id": "/ops",
-  "name": "Konsiliér Команда",
-  "short_name": "Команда",
+  "name": "Konsiliér Ops",
+  "short_name": "Ops",
   "description": "Командный центр владельца Konsiliér AI: цели и курс, команда и сессии, задачи, решения, отчёты и операции.",
   "lang": "ru",
   "dir": "ltr",
