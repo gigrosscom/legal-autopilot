@@ -283,13 +283,14 @@ def test_messenger_proofs_do_not_use_up_email_letters(case):
                                                                              "left": 3}
 
 
-def test_followup_a_day_later_once(case):
+def test_followup_two_hours_later_once(case):
     ctx, api, cid, aid = case
     ctx.client.post(url(cid, aid, "/send/proof"), headers=api.h, data={"channel": "telegram"})
     job = followups(ctx.container)
     with ctx.container.session_factory() as s:
         assert job(s, datetime.now(timezone.utc)) == 0  # not yet
-        assert job(s, datetime.now(timezone.utc) + timedelta(hours=25)) == 1
+        assert job(s, datetime.now(timezone.utc) + timedelta(hours=1)) == 0
+        assert job(s, datetime.now(timezone.utc) + timedelta(hours=2, minutes=5)) == 1
         assert job(s, datetime.now(timezone.utc) + timedelta(hours=50)) == 0
         s.commit()
         assert s.query(Notification).filter(Notification.kind == "delivery").count() == 1
@@ -341,7 +342,7 @@ def test_route_is_chosen_and_one_button_sends_the_email_by_itself(case):
     _receipt_with_contacts(ctx, cid)
     plan = api.get(url(cid, aid, "/send")).json()
     route = plan["route"]
-    assert [(s["channel"], s["auto"]) for s in route] == [("email", True), ("whatsapp", False)]
+    assert [(s["channel"], s["auto"]) for s in route] == [("whatsapp", False), ("email", True)]
     assert route[1]["href"].startswith("https://wa.me/77015554433?text=")
     r = ctx.client.post(url(cid, aid, "/send/go"), headers=api.h, json={})
     assert r.status_code == 422  # no instruction without the button
@@ -413,3 +414,15 @@ def test_reply_is_ignored_while_inbound_is_off(case):
     raw = received("abcdef1234")
     assert ctx.client.post("/v1/webhooks/resend", content=raw,
                            headers=svix_headers(raw)).json()["matched"] is False
+
+
+def test_route_plan_fastest_channels_first():
+    from types import SimpleNamespace
+
+    from konsilier.api.delivery import route_plan
+    contacts = [{"kind": "email", "value": "shop@example.kz"}, {"kind": "phone", "value": "+7 701 111 22 33"},
+                {"kind": "instagram", "value": "shop.kz"}]
+    steps = route_plan(SimpleNamespace(addressee={"kind": "company", "name": "ТОО Магазин"}), contacts,
+                       {"available": True}, "Короткий текст")
+    assert [s["channel"] for s in steps] == ["whatsapp", "instagram", "email"]
+    assert steps[-1]["auto"] is True

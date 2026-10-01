@@ -70,7 +70,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "message": "Здравствуйте!\nНаправляю вам документ «{title}» — PDF прилагаю.\n"
                    "Прошу рассмотреть его и ответить в установленный срок.{name}",
         "replied": "Пришёл ответ на «{title}» от {sender}. Он сохранён в деле — откройте дело и отметьте, что в нём.",
-        "followup": "Прошли сутки с отправки «{title}». Вам ответили? Откройте дело и отметьте ответ — или подождём "
+        "followup": "Прошло {hours} ч с отправки «{title}». Вам ответили? Откройте дело и отметьте ответ — или подождём "
                     "до срока, мы напомним.",
     },
     "kk": {
@@ -84,7 +84,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "message": "Сәлеметсіз бе!\nСізге «{title}» құжатын жіберемін — PDF қоса беріліп отыр.\n"
                    "Оны қарап, белгіленген мерзімде жауап беруіңізді сұраймын.{name}",
         "replied": "«{title}» хатына {sender} жауап берді. Жауап іске сақталды — істі ашып, онда не жазылғанын белгілеңіз.",
-        "followup": "«{title}» жіберілгеннен бері бір тәулік өтті. Сізге жауап берді ме? Істі ашып, жауапты белгілеңіз — "
+        "followup": "«{title}» жіберілгеннен бері {hours} сағат өтті. Сізге жауап берді ме? Істі ашып, жауапты белгілеңіз — "
                     "әйтпесе мерзімге дейін күтеміз, еске саламыз.",
     },
     "en": {
@@ -100,7 +100,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "message": "Hello,\nI am sending you the document “{title}” — the PDF is attached.\n"
                    "Please review it and reply within the applicable time limit.{name}",
         "replied": "A reply to “{title}” came from {sender}. It is saved in the case — open the case and record what it says.",
-        "followup": "A day has passed since you sent “{title}”. Have they replied? Open the case and record the "
+        "followup": "{hours} h have passed since you sent “{title}”. Have they replied? Open the case and record the "
                     "reply — or we wait until the deadline and remind you.",
     },
 }
@@ -419,8 +419,8 @@ def _portal(session: Session, container: Container, case: Case, action: Action) 
 def route_plan(action: Action, contacts: list[dict[str, Any]], email: dict[str, Any],
                message: str, portal: dict[str, Any] | None = None, filed: bool = False) -> list[dict[str, Any]]:
     """«Принцип 3 клика» (owner 01.10.2026): WE pick where the document goes. A state body → the state portal (a step of its
-    own, done on the portal by the client); the other side → e-mail if an address was found (sent by us at once, `auto`), and one
-    messenger (WhatsApp, else Telegram, else Instagram) as one button. Nothing found → the client adds an address.
+    own, done on the portal by the client); the other side → every messenger found (WhatsApp, Telegram, Instagram — one
+    button each, fastest first), then e-mail if an address was found (sent by us at once, `auto`). Nothing found → the client adds an address.
 
     ``portal`` — the appeal portal target of the step (core/appeal_portal.py ``portal_target``): the step is
     ``channel = "portal"`` and the wizard opens the portal bridge (what to pick, the text, the PDF, then the number
@@ -439,20 +439,21 @@ def route_plan(action: Action, contacts: list[dict[str, Any]], email: dict[str, 
     first = {k: next((c["value"] for c in contacts if c["kind"] in kinds), None)
              for k, kinds in (("email", ("email",)), ("whatsapp", ("whatsapp", "phone")),
                               ("telegram", ("telegram",)), ("instagram", ("instagram",)))}
-    if first["email"]:
-        steps.append({"channel": "email", "to": first["email"], "auto": bool(email.get("available")),
-                      "reason": email.get("reason")})
     from urllib.parse import quote
 
+    # fastest channels first (owner 01.10): WhatsApp and the social networks, then e-mail
     if first["whatsapp"]:
         steps.append({"channel": "whatsapp", "to": first["whatsapp"], "auto": False,
                       "href": f"https://wa.me/{re.sub(r'[^0-9]', '', first['whatsapp'])}?text={quote(message)}"})
-    elif first["telegram"]:
+    if first["telegram"]:
         steps.append({"channel": "telegram", "to": f"@{first['telegram']}", "auto": False,
                       "href": f"https://t.me/{first['telegram']}"})
-    elif first["instagram"]:
+    if first["instagram"]:
         steps.append({"channel": "instagram", "to": f"@{first['instagram']}", "auto": False,
                       "href": f"https://ig.me/m/{first['instagram']}"})
+    if first["email"]:
+        steps.append({"channel": "email", "to": first["email"], "auto": bool(email.get("available")),
+                      "reason": email.get("reason")})
     if not steps:
         steps.append({"channel": "manual", "to": "", "auto": False})
     return steps
@@ -624,7 +625,7 @@ def followups(container: Container) -> Any:
     def job(session: Session, now: datetime) -> int:
         due = session.scalars(select(Filing).where(Filing.followup_at.is_(None), Filing.sent_at.is_not(None),
                                                    Filing.status.notin_(FINAL),
-                                                   Filing.sent_at <= now - timedelta(hours=24))).all()
+                                                   Filing.sent_at <= now - timedelta(hours=container.settings.send_followup_hours))).all()
         sent, asked = 0, set()
         for f in due:
             already = f.action_id in asked or session.scalar(select(func.count()).select_from(Filing).where(
@@ -643,7 +644,8 @@ def followups(container: Container) -> Any:
             engine = container.engine
             title = engine.pack_of(case).localized(engine.scenario_of(case).action(action.action_id).title,
                                                    case.language)
-            engine.notifier.notify(session, case, "delivery", _texts(case.language)["followup"].format(title=title))
+            engine.notifier.notify(session, case, "delivery", _texts(case.language)["followup"].format(
+                title=title, hours=f"{container.settings.send_followup_hours:g}"))
             sent += 1
         return sent
 
