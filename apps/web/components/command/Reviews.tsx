@@ -11,7 +11,7 @@ type Review = {
 const hoursSince = (iso: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000) : 0);
 
 /** Documents that wait for the owner's check (court documents and others the engine holds). The client was told
- * «обычно в течение 24 часов»; approving releases the document to the client, returning sends the note back. */
+ * «в течение нескольких минут»; approving releases the document to the client, returning sends the note back. */
 export function ReviewsToCheck({ compact = false }: { compact?: boolean }) {
   const { token, reload } = useCentre();
   const [rows, setRows] = useState<Review[] | null>(null);
@@ -68,7 +68,7 @@ export function ReviewsToCheck({ compact = false }: { compact?: boolean }) {
       {!rows && !error && <Loading />}
       {rows?.length === 0 && <p className="text-muted">Нет документов, ждущих проверки.</p>}
       {!compact && rows && rows.length > 0 && (
-        <p className="text-[15px] text-muted">Клиенту обещано «обычно в течение 24 часов». «Одобрить» — документ сразу откроется клиенту; «Вернуть» — клиент получит ваш комментарий.</p>
+        <p className="text-[15px] text-muted">Клиенту обещано «в течение нескольких минут» — через 10 минут придёт напоминание. «Одобрить» — документ сразу откроется клиенту; «Вернуть» — клиент получит ваш комментарий.</p>
       )}
       <ul className="space-y-3">
         {rows?.map((r) => {

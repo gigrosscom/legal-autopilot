@@ -29,6 +29,8 @@ from .core.packs import PackRegistry
 log = logging.getLogger(__name__)
 
 
+REVIEW_REMIND_MINUTES = 10  # owner 01.10: a held document is checked within minutes; the desk is reminded after this
+
 @dataclass
 class Container:
     settings: Settings
@@ -238,13 +240,14 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         owner = session.get(User, case.owner_id)
         notify_team(container, f"Документ ждёт проверки: {action.action_id}",
                     f"Клиент ждёт документ по делу {case.id} (сценарий {case.scenario_id}). "
-                    f"Клиенту обещано: обычно в течение 24 часов.\n\n"
+                    f"Клиенту обещано: в течение нескольких минут — проверьте сейчас.\n\n"
                     f"Проверьте и одобрите или верните: {settings.public_site_url.rstrip('/')}/ops?tab=ops",
                     desk="clients", test=bool(owner and owner.is_test))
     engine.on_approval_needed = approval_needed
 
     def approval_reminders(session: Any, now: Any) -> int:
-        """Scheduler job: a document still unchecked 24 h after it was held — remind the desk once."""
+        """Scheduler job: a document still unchecked 10 minutes after it was held — remind the desk once (owner 01.10:
+        the review takes a few minutes at most, not 24 hours)."""
         from datetime import timedelta
 
         from sqlalchemy import select
@@ -254,7 +257,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         sent = 0
         late = session.scalars(select(Action).where(Action.approval_status == "pending",
-                                                    Action.updated_at <= now - timedelta(hours=24)))
+                                                    Action.updated_at <= now - timedelta(minutes=REVIEW_REMIND_MINUTES)))
         for action in late.all():
             done = session.scalar(select(AuditLog.id).where(AuditLog.case_id == action.case_id,
                                                             AuditLog.event == "approval_reminded").limit(1))
@@ -262,8 +265,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                 continue
             case = session.get(Case, action.case_id)
             owner = session.get(User, case.owner_id)
-            notify_team(container, f"Напоминание: документ ждёт проверки больше 24 часов ({action.action_id})",
-                        f"Клиенту обещали проверку в течение 24 часов. Дело {case.id}.\n\n"
+            notify_team(container, f"Срочно: документ ждёт проверки больше {REVIEW_REMIND_MINUTES} минут ({action.action_id})",
+                        f"Клиенту обещали проверку в течение нескольких минут. Дело {case.id}.\n\n"
                         f"Открыть очередь: {settings.public_site_url.rstrip('/')}/ops?tab=ops",
                         desk="clients", test=bool(owner and owner.is_test))
             session.add(AuditLog(case_id=case.id, actor="scheduler", event="approval_reminded",
