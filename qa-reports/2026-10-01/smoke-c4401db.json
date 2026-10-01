@@ -1,0 +1,110 @@
+{
+ "user": 200,
+ "chat": {
+  "ttft": 2.13,
+  "chars": 1089,
+  "offer": true
+ },
+ "draft": [
+  200,
+  6.8
+ ],
+ "facts": 200,
+ "payment": {
+  "st": 200,
+  "t": 7.5,
+  "amount": 1990.0,
+  "currency": "KZT",
+  "status": "pending",
+  "method": "manual_transfer",
+  "code": "KA-ZX48UN",
+  "ways": [
+   {
+    "id": "kaspi_transfer"
+   },
+   {
+    "id": "kaspi_link",
+    "url": "https://pay.kaspi.kz/pay/vip7ojwg"
+   },
+   {
+    "id": "bank_invoice",
+    "seller": "ТОО «KONSILIER AI»"
+   }
+  ],
+  "way": null,
+  "kaspi_phone": "+77027059917",
+  "recipient_name": "Салтанат Т.",
+  "available": true
+ },
+ "me_before": {
+  "display_name": null,
+  "identities": []
+ },
+ "auth_methods": {
+  "email": true,
+  "phone": false,
+  "ecp": true,
+  "egov": true,
+  "google": true,
+  "apple": false
+ },
+ "smoke_email": [
+  200,
+  "{'email': 'delivered+qa1790877841@resend.dev'}"
+ ],
+ "me_after": {
+  "id": "ebbf099f-d3e6-4d2b-bfce-3e80214497b3",
+  "display_name": null,
+  "language": "ru",
+  "notify_email": true,
+  "bonus_documents": 0,
+  "identities": [
+   {
+    "kind": "email",
+    "display": "delivered+qa1790877841@resend.dev",
+    "verified_at": "2026-10-01T18:04:01.689136+00:00"
+   }
+  ]
+ },
+ "claim": [
+  200,
+  null
+ ],
+ "confirm": [
+  200,
+  "paid"
+ ],
+ "case_after": {
+  "status": "action_ready",
+  "stage": "action_ready",
+  "needs_review": false,
+  "pay": "none",
+  "actions": [
+   {
+    "action_id": "claim_to_seller",
+    "status": "ready",
+    "approval_status": "not_required",
+    "downloadable": true
+   }
+  ]
+ },
+ "doc": {
+  "paid_to_doc": 3.8,
+  "t": 13.0,
+  "downloadable": true
+ },
+ "dl_pdf": [
+  200,
+  32623
+ ],
+ "dl_docx": [
+  200,
+  38385
+ ],
+ "page/": 200,
+ "page/start": 200,
+ "page/ops": 200,
+ "page/account": 200,
+ "page/documents": 200,
+ "case": "baae2d04-0c05-484f-a0ad-784c01a9a45a"
+}

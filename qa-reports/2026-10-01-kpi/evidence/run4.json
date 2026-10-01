@@ -1,0 +1,137 @@
+[
+ {
+  "scenario": "Возврат за товар",
+  "ttft": 2.29,
+  "offer": true,
+  "scenario_id": "kz.consumer.refund",
+  "status": "qualified",
+  "t_draft": 6.8,
+  "facts": [
+   200,
+   null
+  ],
+  "t_invoice": 7.7,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-TC2VD7",
+   "status": "pending"
+  },
+  "claim": 200,
+  "confirm": 200,
+  "t_paid": 8.2,
+  "paid_to_doc_s": 3.1,
+  "t_doc": 11.3,
+  "action": {
+   "action_id": "claim_to_seller",
+   "title": "Претензия продавцу о возврате денег",
+   "status": "ready",
+   "approval_status": "not_required",
+   "downloadable": true,
+   "has_pdf": false
+  },
+  "dl_docx": [
+   200,
+   "application/vnd.openxmlformats-officedoc",
+   38401
+  ],
+  "dl_pdf": [
+   200,
+   "application/pdf",
+   33037
+  ],
+  "taps": 6,
+  "case_id": "d61681a2-aebe-4045-b879-93e00f595fd7",
+  "t_total": 12.0
+ },
+ {
+  "scenario": "Невыплата зарплаты",
+  "ttft": 4.85,
+  "offer": true,
+  "scenario_id": "kz.labor.final_settlement",
+  "status": "qualified",
+  "t_draft": 6.6,
+  "facts": [
+   200,
+   null
+  ],
+  "t_invoice": 7.5,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-58QHTX",
+   "status": "pending"
+  },
+  "claim": 200,
+  "confirm": 200,
+  "t_paid": 8.0,
+  "paid_to_doc_s": 2.4,
+  "t_doc": 10.4,
+  "action": {
+   "action_id": "statement_to_employer",
+   "title": "Письменное требование работодателю о выплате расчёта",
+   "status": "ready",
+   "approval_status": "not_required",
+   "downloadable": true,
+   "has_pdf": false
+  },
+  "dl_docx": [
+   200,
+   "application/vnd.openxmlformats-officedoc",
+   38350
+  ],
+  "dl_pdf": [
+   200,
+   "application/pdf",
+   30459
+  ],
+  "taps": 6,
+  "case_id": "2623f294-0433-41d2-be15-beab9d0a1fe7",
+  "t_total": 12.6
+ },
+ {
+  "scenario": "Жалоба на госорган",
+  "ttft": 3.01,
+  "offer": true,
+  "scenario_id": "kz.gov.inaction_complaint",
+  "status": "qualified",
+  "t_draft": 6.8,
+  "facts": [
+   200,
+   null
+  ],
+  "t_invoice": 7.7,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-MK85HD",
+   "status": "pending"
+  },
+  "claim": 200,
+  "confirm": 200,
+  "t_paid": 8.1,
+  "paid_to_doc_s": 3.1,
+  "t_doc": 11.3,
+  "action": {
+   "action_id": "complaint_gov_inaction",
+   "title": "Жалоба на бездействие",
+   "status": "ready",
+   "approval_status": "not_required",
+   "downloadable": true,
+   "has_pdf": false
+  },
+  "dl_docx": [
+   200,
+   "application/vnd.openxmlformats-officedoc",
+   38290
+  ],
+  "dl_pdf": [
+   200,
+   "application/pdf",
+   29877
+  ],
+  "taps": 6,
+  "case_id": "0380e52f-aa1c-432c-a80a-adc9deb5922c",
+  "t_total": 11.9
+ }
+]
