@@ -98,7 +98,7 @@ def test_eotinish_steps_by_device(kz):
     addressee = {"kind": "authority", "name": "Департамент", "address": "", "email": None,
                  "submit_url": "https://eotinish.kz"}
     out = filing_view(kz, sc, spec, lang="ru", addressee=addressee, facts={})
-    assert out["response"]["days"] == 15 and out["response"]["unit"] == "business"
+    assert out["response"] is None  # no response term for the authority until a lawyer sets one (lawyer, 01.10)
     assert [w["kind"] for w in out["ways"]] == ["online"]
     online = out["online"]
     assert online["portal"] == "eotinish.kz" and online["phone_ok"] is True

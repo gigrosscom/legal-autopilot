@@ -215,8 +215,10 @@ def test_consumer_refund_full_path(ctx):
     text2 = docx_text(api.get(f"/v1/cases/{cid}/actions/{a2['id']}/document?format=docx").content)
     assert "ЖАЛОБА" in text2 and "Ранее предпринятые действия" in text2 and "Отказ" in text2
     sub2 = api.post(f"/v1/cases/{cid}/actions/{a2['id']}/submitted", json={})
-    # business-day deadline skips weekends/holidays
-    assert date.fromisoformat(sub2["case"]["actions"][1]["deadline"]["due_date"]) > submitted_day + timedelta(days=15)
+    # no response deadline for the authority: 15 working days are not in the consumer law (lawyer, 01.10) — only a
+    # lawyer adds one; the 2-month limit to complain is in the instructions (ЗПП ст. 42-5 п. 2)
+    assert sub2["case"]["actions"][1]["deadline"] is None
+    assert any("двух месяцев" in s for s in a2["instructions"])
 
     # no answer from the authority → hand-off to a lawyer
     resp2 = api.post(f"/v1/cases/{cid}/actions/{a2['id']}/response", json={"no_response": True})

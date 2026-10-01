@@ -32,7 +32,7 @@ def test_roadmap_during_intake_projects_full_path(ctx):
     assert s["claim_to_seller"]["status"] == "upcoming" and not s["claim_to_seller"]["conditional"]
     assert s["complaint_consumer_authority"]["conditional"] is True
     rm = case["roadmap"]
-    assert rm["best_case_on"] < rm["worst_case_on"]  # escalation adds time
+    assert rm["best_case_on"] <= rm["worst_case_on"]  # the authority has no fixed term (lawyer, 01.10)
     assert rm["open_ended_after_worst"] is True  # a lawyer step without a fixed deadline follows
 
 
@@ -52,8 +52,8 @@ def test_roadmap_follows_real_events(ctx):
     due = sub["case"]["actions"][0]["deadline"]["due_date"]
     assert s["claim_to_seller"]["due_on"] == due  # the real registered deadline
     assert sub["case"]["roadmap"]["best_case_on"] == due
-    later = date.fromisoformat(s["complaint_consumer_authority"]["estimated_on"])
-    assert later > date.fromisoformat(due) + timedelta(days=15)  # business days after the first deadline
+    # the authority's response term is not in the law (lawyer, 01.10): no invented date
+    assert s["complaint_consumer_authority"]["estimated_on"] in (None, due)
 
     out = api.post(f"/v1/cases/{cid}/actions/{a1['id']}/response", json={"response_class": "full"})
     s = steps(out["case"])
