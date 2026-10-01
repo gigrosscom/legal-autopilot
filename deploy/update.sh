@@ -227,6 +227,17 @@ with c.session_factory() as s:
 print(f\"enabled={c.settings.zann_corpus_enabled} acts={z['acts']} done={z['acts_done']} pending={z['acts_pending']} error={z['acts_error']} files={z['files']} mb={round(z['bytes'] / 1e6, 1)} types={z['done_by_type']} last={z['last_fetched_at']}\")
 " </dev/null 2>&1 | tail -1) || true
     log "zann ${ZANN:-unavailable}"
+    # Court practice from sud.kz (konsilier/zann/court.py): documents, files, by source and category.
+    ZCOURT=$(timeout 60 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+from konsilier.config import get_settings
+from konsilier.container import build_container
+from konsilier.zann.court import court_metrics
+c = build_container(get_settings())
+with c.session_factory() as s:
+    z = court_metrics(s)
+print(f\"enabled={c.settings.zann_court_enabled} docs={z['docs']} done={z['done']} notext={z['notext']} pending={z['pending']} error={z['error']} pages={z['pages']['done']}/{z['pages']['done'] + z['pages']['pending']} mb={round(z['bytes'] / 1e6, 1)} sources={z['by_source']} categories={z['by_category']} last={z['last_fetched_at']}\")
+" </dev/null 2>&1 | tail -1) || true
+    log "zanncourt ${ZCOURT:-unavailable}"
   fi
 }
 main "$@"
