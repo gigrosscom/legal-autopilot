@@ -53,3 +53,31 @@ def test_questions_board(ctx):
     assert ctx.client.post(f"/v1/admin/tickets/{tid}/status", headers=ADM, json={"status": "done"}).status_code == 200
     board = ctx.client.get("/v1/admin/tickets", headers=ADM).json()
     assert [x["id"] for x in next(c for c in board["columns"] if c["id"] == "done")["cards"]] == [tid]
+
+
+def test_clients_own_email_is_never_the_sellers_and_the_owner_can_fix_a_document(ctx):
+    """The first client's claim (01.10): the seller's e-mail was the client's own; the owner corrects the data and the
+    document is made again."""
+    import uuid
+
+    from konsilier.core.models import Case
+
+    manual(ctx)
+    api, cid = qualified_case(ctx)
+    with ctx.container.session_factory() as s:
+        case = s.get(Case, uuid.UUID(cid))
+        case.owner.email = "client@gmail.com"
+        eng = ctx.container.engine
+        sc, pack = eng.scenario_of(case), eng.pack_of(case)
+        case.facts = {k: v for k, v in case.facts.items() if k != "seller_email"}
+        eng._apply_values(case, sc, pack, {"seller_email": "Client@gmail.com"}, None, strict=True)
+        assert "seller_email" not in case.facts  # the person's own e-mail is not taken as the seller's
+        eng._apply_values(case, sc, pack, {"seller_email": "support@shop.kz"}, None, strict=True)
+        assert case.facts["seller_email"] == "support@shop.kz"
+        s.commit()
+
+    r = ctx.client.post(f"/v1/admin/cases/{cid}/facts", headers=ADM,
+                        json={"values": {"seller_name": "Anthropic, PBC", "seller_email": ""}})
+    assert r.status_code == 200, r.text
+    assert r.json()["facts"]["seller_name"] == "Anthropic, PBC" and "seller_email" not in r.json()["facts"]
+    assert ctx.client.post(f"/v1/admin/cases/{cid}/facts", json={"values": {}}).status_code in (401, 403)

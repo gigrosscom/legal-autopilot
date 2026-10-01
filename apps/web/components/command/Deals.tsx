@@ -97,7 +97,23 @@ function DealDetail({ deal, onClose }: { deal: Deal; onClose: () => void }) {
   const { token } = useCentre();
   const [c, setC] = useState<CaseFull | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { adminApi<CaseFull>(`/v1/admin/cases/${deal.id}`, token).then(setC).catch((e) => setError(errorText(e))); }, [deal.id, token]);
+  const [edit, setEdit] = useState<Record<string, string>>({});
+  const [saved, setSaved] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => adminApi<CaseFull>(`/v1/admin/cases/${deal.id}`, token).then(setC).catch((e) => setError(errorText(e))), [deal.id, token]);
+  useEffect(() => { load(); }, [load]);
+
+  // the owner corrects the data (a wrong name, the client's own e-mail as the seller's): the documents are made again
+  async function saveFacts() {
+    setBusy(true); setError(null); setSaved(null);
+    try {
+      const r = await adminApi<{ rebuilt: number }>(`/v1/admin/cases/${deal.id}/facts`, token,
+        { method: "POST", body: JSON.stringify({ values: edit, rebuild: true }) });
+      setEdit({});
+      setSaved(r.rebuilt ? `Сохранено, документ пересобран (${r.rebuilt})` : "Сохранено");
+      await load();
+    } catch (e) { setError(errorText(e)); } finally { setBusy(false); }
+  }
 
   async function download(d: Doc, fmt: "pdf" | "docx") {
     try {
@@ -149,8 +165,23 @@ function DealDetail({ deal, onClose }: { deal: Deal; onClose: () => void }) {
           <section className="space-y-1">
             <h3 className="font-semibold">Данные дела</h3>
             <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-x-3 gap-y-1 text-[15px]">
-              {c.facts.map((f) => [<dt key={`${f.field}-l`} className="text-muted">{f.label}</dt>, <dd key={`${f.field}-v`}>{f.value}</dd>])}
+              {c.facts.map((f) => [<dt key={`${f.field}-l`} className="text-muted">{f.label}</dt>, (
+                <dd key={`${f.field}-v`}>
+                  {f.field in edit
+                    ? <input aria-label={f.label} value={edit[f.field]} onChange={(e) => setEdit((x) => ({ ...x, [f.field]: e.target.value }))}
+                        className="w-full rounded-lg bg-sand px-2 py-1" placeholder="пусто — убрать" />
+                    : <>{f.value} <button type="button" onClick={() => setEdit((x) => ({ ...x, [f.field]: String(f.value ?? "") }))}
+                        className="ms-1 text-[13px] text-action">исправить</button></>}
+                </dd>
+              )])}
             </dl>
+            {Object.keys(edit).length > 0 && (
+              <div className="flex gap-2 pt-2">
+                <button type="button" disabled={busy} onClick={saveFacts} className="min-h-10 rounded-full bg-action px-4 text-[15px] font-semibold text-white disabled:opacity-50">Сохранить и пересобрать документ</button>
+                <button type="button" onClick={() => setEdit({})} className="min-h-10 rounded-full bg-sand px-4 text-[15px]">Отмена</button>
+              </div>
+            )}
+            {saved && <p role="status" className="text-[15px] text-success">{saved}</p>}
           </section>
         )}
         {c?.evidence && c.evidence.length > 0 && (
