@@ -699,6 +699,8 @@ const ru: Dict = {
     moreWaysTitle: "Ещё способы входа",
     otherWays: "Другие способы: ЭЦП, eGov",
     withEmail: "Продолжить с e-mail",
+    withEcp: "Войти с ЭЦП (ключ)",
+    withEgov: "Войти через eGov Mobile",
     signInLead: "Один шаг — и ваши дела и документы на любом устройстве.",
     signInOrUp: "Войти или зарегистрироваться",
     resendIn: "Отправить код ещё раз через {n} с",

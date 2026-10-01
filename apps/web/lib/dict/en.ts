@@ -699,6 +699,8 @@ const en: Dict = {
     moreWaysTitle: "More ways to sign in",
     otherWays: "Other ways: digital signature, eGov",
     withEmail: "Continue with email",
+    withEcp: "Sign in with EDS key",
+    withEgov: "Sign in with eGov Mobile",
     signInLead: "One step, and your cases and documents are on any device.",
     signInOrUp: "Sign in or sign up",
     resendIn: "Send the code again in {n} s",
