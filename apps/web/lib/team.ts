@@ -123,12 +123,13 @@ export function ruDate(s: string): Date | null {
 export const isEmpty = (s: string) => !plain(s) || /^[—–-]+$/.test(plain(s));
 
 /** Backlog status → board column. */
-export type TaskState = "waiting" | "doing" | "new" | "done" | "other";
+export type TaskState = "waiting" | "passed" | "doing" | "new" | "done" | "other";
 export function taskState(status: string): TaskState {
   const s = plain(status).toLowerCase();
   if (/ждёт владельца|ждет владельца|ждёт|ждет/.test(s) && !/^готово: в проде/.test(s)) return "waiting";
   if (s.startsWith("готово")) return "done";
   if (s.startsWith("в работе")) return "doing";
+  if (s.startsWith("передано") || s.startsWith("передана")) return "passed";
   if (s.startsWith("новая")) return "new";
   return "other";
 }
