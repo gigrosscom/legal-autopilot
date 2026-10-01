@@ -1,4 +1,4 @@
-"""Kaspi Pay pushes (konsilier/core/kaspi_push.py): every notification the payments phone forwards, as it came, with
+"""Kaspi Pay pushes (konsilier/kaspi_parse.py): every notification the payments phone forwards, as it came, with
 the amount and payer read from it and the bill it was matched to; and invoices.pay_reminded_at — the one soft
 reminder to a client whose «Оплатить» no push matched.
 

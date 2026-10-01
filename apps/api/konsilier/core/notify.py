@@ -96,7 +96,7 @@ class Notifier:
     def deferred(self) -> Iterator[list[Callable[[Session], None]]]:
         """Within the block a notification is written at once (the inbox row: the chat and the bell show it) and
         its sending — the channel, e-mail, SMS, push — is collected in the yielded list, to run after the commit
-        with a new session. For a request that must answer fast (the Kaspi Pay push: core/kaspi_push.py)."""
+        with a new session. For a request that must answer fast (the Kaspi Pay push: konsilier/kaspi_parse.py)."""
         prev = getattr(_deferred, "jobs", None)
         jobs: list[Callable[[Session], None]] = []
         _deferred.jobs = jobs

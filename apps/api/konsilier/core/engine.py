@@ -128,7 +128,7 @@ class EngineConfig:
     lawyer_pay_link: str = ""  # the ТОО's Kaspi Pay link (https://…)
     lawyer_pay_account: str = ""  # the ТОО's requisites as text (tax number, IBAN, bank)
     company_name: str = ""  # ТОО «…», shown as the recipient
-    # Kaspi Pay pushes are on (PAYMENT_KASPI_PUSH_TOKEN, core/kaspi_push.py): a Kaspi link / QR bill whose
+    # Kaspi Pay pushes are on (PAYMENT_KASPI_PUSH_TOKEN, konsilier/kaspi_parse.py): a Kaspi link / QR bill whose
     # «Оплатить» no push matched within UNPAID_AFTER stops the person's new bills until it is paid (owner 01.10)
     kaspi_push: bool = False
 
@@ -1021,8 +1021,10 @@ class CaseEngine:
         debt = self.unpaid_kaspi_bill(session, user_id)
         if debt is None or (but is not None and debt.id == but.id):
             return
+        from .bill import BillWords
+
         amount = f"{Decimal(debt.amount):,.0f}".replace(",", " ")
-        sign = "₸" if (debt.currency or "KZT") == "KZT" else debt.currency
+        sign = BillWords.of(self.billing_pack(session, debt), debt.currency).sign
         raise EngineError("unpaid_invoice", f"Сначала оплатите предыдущий счёт {debt.code} на {amount} {sign} по "
                                             f"ссылке Kaspi Pay — мы пока не видим этот платёж. Если вы уже "
                                             f"оплатили, напишите в поддержку.")

@@ -1,4 +1,4 @@
-"""Kaspi Pay pushes from the payments phone (core/kaspi_push.py): the endpoint MacroDroid posts to, matching a push to
+"""Kaspi Pay pushes from the payments phone (konsilier/kaspi_parse.py): the endpoint MacroDroid posts to, matching a push to
 a bill, the 15-minute reminder and the desk's «Kaspi: не найдено» list in /ops.
 
 POST /v1/payments/kaspi/push — 404 while PAYMENT_KASPI_PUSH_TOKEN is empty; 401 without the token in X-Konsilier-Token.
@@ -25,7 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..core import kaspi_push as kp
+from .. import kaspi_parse as kp
 from ..core.models import Case, Invoice, KaspiPush, User, utcnow
 from ..team import notify_team
 from .background import after_commit

@@ -12,7 +12,7 @@ from decimal import Decimal
 from sqlalchemy import select, update
 
 from konsilier.api.kaspi_push import read_body, reminders
-from konsilier.core import kaspi_push as kp
+from konsilier import kaspi_parse as kp
 from konsilier.core.models import Invoice, KaspiPush, Notification, User, utcnow
 
 from .test_e2e import run_intake

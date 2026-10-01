@@ -8,7 +8,7 @@ link / QR bills of that amount whose «Оплатить» (the way chosen, or «
 MATCH_WINDOW. Exactly one → paid at once, as the desk's «Оплата получена». None or several → the bill waits for the
 desk (awaiting_confirmation) and the operators get the push with the candidates.
 
-The exact wording of a Kaspi Pay push is not documented, so the parser is lenient (₸ / тг / KZT, «+1990 ₸»,
+The exact wording of a Kaspi Pay push is not documented, so the parser is lenient (₸ / тг / the ISO code, «+1990 ₸»,
 «1 990 ₸» with ordinary, no-break or thin spaces, decimals) and every push is kept (models.KaspiPush) for tuning.
 """
 
@@ -25,14 +25,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import AuditLog, Invoice, User
+from .core.models import AuditLog, Invoice, User
 
 MATCH_WINDOW = timedelta(minutes=60)  # «Оплатить» this long before the push at most
 
 _NUM = r"(?P<sign>[+\-])?\s?(?P<int>\d{1,3}(?:[ .,]\d{3})+|\d+)(?:[.,](?P<frac>\d{1,2}))?(?!\d)"
 _CUR = r"(?:₸|тг\b\.?|тенге|kzt\b)"
-_AFTER = re.compile(_NUM + r"\s*" + _CUR, re.I)  # «1 990 ₸», «+1990 тг», «1990.00 KZT»
-_BEFORE = re.compile(r"(?:₸|kzt)\s*" + _NUM, re.I)  # «KZT 1990»
+_AFTER = re.compile(_NUM + r"\s*" + _CUR, re.I)  # «1 990 ₸», «+1990 тг», «1990.00» + the ISO code
+_BEFORE = re.compile(r"(?:₸|kzt)\s*" + _NUM, re.I)  # the ISO code first
 # a sum that is not the payment: the balance after it, a fee
 _NOT_PAYMENT = re.compile(r"(баланс|остаток|доступно|комисси|қалдық)[^\d+\-]{0,20}$", re.I)
 # not money coming in
