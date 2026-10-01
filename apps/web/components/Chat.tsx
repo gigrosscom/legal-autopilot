@@ -314,8 +314,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
         <p className="px-3 text-center text-xs text-muted">{t("chat.remaining", { n: left.n, limit: left.limit })}</p>
       )}
       {!caseId && empty && showTerms && (
-        <p className="px-3 text-center text-xs text-muted">
-          {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+        <p className="mx-auto max-w-sm px-4 text-center text-xs leading-relaxed text-muted [text-wrap:balance]">
+          {t("legal.accept")}{" "}<Link href="/terms" className="link whitespace-nowrap">{t("legal.terms")}</Link>
         </p>
       )}
     </div>

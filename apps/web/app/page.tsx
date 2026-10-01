@@ -80,8 +80,8 @@ export default function Home() {
       </div>
 
       {showTerms && (  // until the terms were accepted with a first message
-        <p className="text-center text-xs leading-relaxed text-muted">
-          {t("legal.accept")} <Link href="/terms" className="link">{t("legal.terms")}</Link>
+        <p className="mx-auto max-w-sm px-4 pb-[env(safe-area-inset-bottom)] text-center text-xs leading-relaxed text-muted [text-wrap:balance]">
+          {t("legal.accept")}{" "}<Link href="/terms" className="link whitespace-nowrap">{t("legal.terms")}</Link>
         </p>
       )}
     </section>
