@@ -216,7 +216,7 @@ const tr: Dict = {
     lawyer: "Avukat",
     gov: "eGov belgeleri",
     law: "Kanun hakkında soru",
-    about: "Dosya ve hizmet hakkında",
+    about: "Hizmet hakkında",
     account: "Hesabım",
     home: "Ana sayfa",
     photo: "Fotoğraf çek",
