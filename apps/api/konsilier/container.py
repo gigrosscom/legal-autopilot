@@ -89,7 +89,8 @@ def free_chat_clients(settings: Settings) -> list[Any]:
         elif name in PROVIDERS:
             key = getattr(settings, f"{name}_api_key", "")
             if key:
-                out.append(OpenAICompatClient(name, key, getattr(settings, f"{name}_model", "")))
+                out.append(OpenAICompatClient(name, key, getattr(settings, f"{name}_model", ""),
+                                              reasoning_effort=settings.chat_reasoning_effort))
         else:
             raise ValueError(f"unknown chat provider {name!r} in CHAT_FREE_PROVIDERS")
     return out
@@ -220,7 +221,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         if settings.anthropic_for_questions:  # off by default: questions on a case go to the free chat
             container.law_agent = LawAgent(client, settings.llm_model, adilet)
         if settings.anthropic_for_chat:  # off by default: the chat never spends the paid model's budget
-            claude_chat = ChatAgent(client, settings.llm_fast_model, chat_adilet, library=library)
+            claude_chat = ChatAgent(client, settings.llm_fast_model, chat_adilet, library=library,
+                                    max_tokens=settings.chat_max_tokens)
             if settings.chat_provider == "anthropic":
                 container.chat_agent = claude_chat
             elif settings.chat_fallback_to_anthropic:
@@ -235,7 +237,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                               thinking_level=settings.gemini_chat_thinking_level,
                               hedge_after=settings.gemini_hedge_after)
         container.chat_agent = ChatAgent(gemini, settings.gemini_model, chat_adilet, web_search=False,
-                                         library=library)
+                                         library=library, max_tokens=settings.chat_max_tokens)
     if settings.chat_provider == "free":
         clients = free_chat_clients(settings)
         if clients:
@@ -243,7 +245,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
             chain = ChainClient(clients, settings.chat_first_token_timeout)
             container.chat_agent = ChatAgent(chain, settings.gemini_model, chat_adilet, web_search=False,
-                                             library=library)
+                                             library=library, max_tokens=settings.chat_max_tokens)
     def approval_needed(session: Any, case: Any, action: Any) -> None:
         from .core.models import User
         from .team import notify_team

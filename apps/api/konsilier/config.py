@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # once (minimal | low | medium | high; empty → the model's default). A model that refuses it is asked again
     # without it.
     gemini_chat_thinking_level: str = "minimal"
+    # The OpenAI-compatible free providers (Cerebras, Groq …): their models' thinking, sent as reasoning_effort.
+    # "none" (P0 01.10): qwen on Cerebras otherwise spent the whole token limit thinking — a chat answer cut mid-word.
+    chat_reasoning_effort: str = "none"
+    # Token limit of one chat model round. Large on purpose: the answer's length is set by the prompt, the limit only
+    # must never cut it (thinking tokens count against it too).
+    chat_max_tokens: int = 4096
     # Chat speed: when GEMINI_MODEL has not started answering after this many seconds, the fallback models are asked
     # in parallel and the first to answer is used (0 → only after a failure). Measured 30.09: gemini-3.1-flash-lite
     # answered after 2–8 s (median ≈5 s), gemini-3.5-flash-lite and gemini-flash-lite-latest after ≈0.5–1 s. Shorter
