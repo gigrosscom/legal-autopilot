@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Icon } from "@/components/ui";
 import { useLang, useT } from "@/lib/i18n";
-import { useVoiceInput } from "@/lib/voice";
+import { joinText, useVoiceInput } from "@/lib/voice";
 
 export type Attached = { key: string; filename: string; file?: File; id?: string };
 
 /**
  * The message box, as in ChatGPT: attach (photos, PDF, documents — several at once, the camera on phones), the text
- * grows with what is typed, the microphone and «send» side by side. While recording, the box shows a wave with
- * «cancel», «stop» (the words go into the box) and «send» (sent as soon as they are written down). `large` is the
+ * grows with what is typed, the microphone and «send» side by side. While recording, the words appear in the box as
+ * they are said (after what was already typed), with a red dot and a timer, «cancel», «stop» and «send»; after
+ * «stop» the text stays in the box to be corrected, and only «send» sends it. `large` is the
  * home page's version: more room to describe the situation.
  */
 export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, onStop, busy = false, placeholder,
@@ -23,18 +24,17 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
 }) {
   const t = useT();
   const { lang } = useLang();
-  const [interim, setInterim] = useState("");
   const [tools, setTools] = useState(false);  // «›» pressed while typing: attach and camera shown again
   const box = useRef<HTMLTextAreaElement>(null);
   const discard = useRef(false);     // «cancel»: what is still being recognised is dropped
   const sendAfter = useRef(false);   // «send» while recording: sent once the words are in the box
   const before = useRef("");         // the box as it was when recording started
-  const dictation = useVoiceInput(lang, (fin, part) => {
-    if (discard.current) return;
-    if (fin) setValue((d) => (d ? `${d.trimEnd()} ${fin.trim()}` : fin.trim()));
-    setInterim(part);
+  const typed = useRef(false);       // the person edited the box while recording: their edit wins
+  const dictation = useVoiceInput(lang, (said) => {
+    if (discard.current || typed.current) return;
+    setValue(joinText(before.current, said));  // live: interim words included, after what was typed
   });
-  const shown = interim ? `${value} ${interim}`.trim() : value;
+  const shown = value;
   const hasText = shown.trim().length > 0;
 
   useEffect(() => { if (!value) setTools(false); }, [value]);
@@ -51,15 +51,15 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   useEffect(() => {
     if (waiting || !sendAfter.current) return;
     sendAfter.current = false;
-    setInterim("");
     if (value.trim() && !busy) onSubmit();
   }, [waiting, value, busy, onSubmit]);
-  const record = () => { discard.current = false; sendAfter.current = false; before.current = value; dictation.start(); };
-  const cancel = () => { discard.current = true; sendAfter.current = false; dictation.stop(); setValue(before.current); setInterim(""); };
-  const sendNow = () => { sendAfter.current = true; if (dictation.listening) dictation.stop(); };
+  const record = () => {
+    discard.current = false; typed.current = false; sendAfter.current = false; before.current = value; dictation.start();
+  };
+  const cancel = () => { discard.current = true; sendAfter.current = false; dictation.stop(); setValue(before.current); };
+  // «send» while recording: stop, then send what is in the box once the last words are written down
   const submit = () => {
-    if (waiting) { if (dictation.listening) dictation.stop(); return; }
-    setInterim("");
+    if (waiting) { sendAfter.current = true; if (dictation.listening) dictation.stop(); return; }
     if (!busy && hasText) onSubmit();
   };
 
@@ -96,7 +96,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
           <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
         </button>
       ) : (
-      <button type="submit" disabled={busy || !hasText || dictation.transcribing} title={t("chat.send")}
+      <button type="submit" disabled={busy || (!hasText && !dictation.listening) || dictation.transcribing} title={t("chat.send")}
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white transition-colors disabled:bg-sand-deep disabled:text-muted">
         <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
       </button>
@@ -117,41 +117,36 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       ))}
     </ul>
   );
-  const recording = (
-    <div className={`flex w-full items-center gap-2 ${large ? "min-h-[7.5rem] px-1" : "py-0.5"}`}>
+  // while recording: a red dot and the time, with «cancel»; the words themselves are in the box
+  const recording = dictation.listening && (
+    <span className="flex shrink-0 items-center gap-1.5">
       <button type="button" onClick={cancel} title={t("chat.cancel")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink hover:bg-sand-deep">
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
         <Icon name="x" size={20} /><span className="sr-only">{t("chat.cancel")}</span>
       </button>
-      <span className="flex h-10 min-w-0 flex-1 items-center justify-center gap-[3px] overflow-hidden" role="status"
-        aria-label={t("chat.listening")}>
-        {Array.from({ length: 28 }, (_, i) => (
-          <span key={i} className="wave-bar h-6 w-[3px] shrink-0 rounded-full bg-ink/70"
-            style={{ animationDelay: `${(i * 97) % 900}ms` }} />
-        ))}
+      <span className="flex items-center gap-1.5 pe-1 text-sm tabular-nums text-ink">
+        <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-danger motion-safe:animate-pulse" />
+        <Elapsed since={dictation.startedAt} />
+        <span role="status" className="sr-only">{t("chat.listening")}</span>
       </span>
-      <button type="button" onClick={dictation.stop} title={t("chat.micStop")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand text-ink hover:bg-sand-deep">
-        <span className="h-3.5 w-3.5 rounded-[3px] bg-ink" /><span className="sr-only">{t("chat.micStop")}</span>
-      </button>
-      <button type="button" onClick={sendNow} title={t("chat.send")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white">
-        <Icon name="arrowUp" size={20} /><span className="sr-only">{t("chat.send")}</span>
-      </button>
-    </div>
+    </span>
   );
   const textarea = (
     <>
       <label htmlFor={large ? "home-input" : "chat-input"} className="sr-only">{placeholder}</label>
       <textarea id={large ? "home-input" : "chat-input"} ref={box} rows={large ? 3 : 1} value={shown}
-        onChange={(e) => { setValue(e.target.value); setInterim(""); }}
+        onChange={(e) => {
+          setValue(e.target.value);
+          // typing while recording: the edit is kept and the recording stops (the next words would overwrite it)
+          if (dictation.listening) { typed.current = true; dictation.stop(); }
+        }}
         onKeyDown={(e) => {
           // Enter sends on a computer; on a phone it is a new line, as in the messengers
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && matchMedia("(pointer: fine)").matches) {
             e.preventDefault(); submit();
           }
         }}
-        placeholder={dictation.transcribing ? t("chat.transcribing") : placeholder}
+        placeholder={dictation.transcribing ? t("chat.transcribing") : dictation.listening ? t("chat.listening") : placeholder}
         maxLength={4000}
         className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-[#6b6b70] ${
           large ? "min-h-24 px-3 pt-2 text-[18px] leading-relaxed text-black" : "min-h-10 px-3 py-2 text-[18px] text-black"}`}
@@ -166,12 +161,10 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     <form onSubmit={(e) => { e.preventDefault(); submit(); }}
       className="rounded-[28px] border border-line bg-surface p-3 shadow-[var(--shadow-raised)] transition-colors focus-within:border-ink/30">
       {filesList}
-      {dictation.listening ? recording : (
-        <div className="space-y-2">
-          {textarea}
-          <div className="flex items-center justify-between">{attach}{action}</div>
-        </div>
-      )}
+      <div className="space-y-2">
+        {textarea}
+        <div className="flex items-center justify-between">{recording || attach}{action}</div>
+      </div>
       {errorLine}
     </form>
   );
@@ -179,7 +172,16 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   // The chat's box, as in WhatsApp: «+» · the message · camera · one round button (microphone, or send once
   // there is text, or stop while the answer is being written).
   const round = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full";
-  const main = onStop ? (
+  const main = dictation.listening ? (
+    <span className="flex shrink-0 items-center">
+      <button type="button" onClick={dictation.stop} title={t("chat.micStop")} className={`${round} text-[var(--chat-accent)] hover:bg-sand`}>
+        <span className="h-3.5 w-3.5 rounded-[3px] bg-current" /><span className="sr-only">{t("chat.micStop")}</span>
+      </button>
+      <button type="submit" title={t("chat.send")} className={`${round} text-[var(--chat-accent)] hover:bg-sand`}>
+        <Icon name="send" size={24} /><span className="sr-only">{t("chat.send")}</span>
+      </button>
+    </span>
+  ) : onStop ? (
     <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-white`}>
       <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
     </button>
@@ -212,18 +214,29 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
       {filesList}
       <div className="flex items-end gap-1">
-        {!dictation.listening && (folded ? (
+        {dictation.listening ? recording : (folded ? (
           <button type="button" onClick={() => setTools(true)} title={t("chat.attach")}
             className="flex h-11 w-9 shrink-0 items-center justify-center text-[var(--chat-accent)]">
             <Icon name="chevronDown" size={22} className="-rotate-90 rtl:rotate-90" /><span className="sr-only">{t("chat.attach")}</span>
           </button>
         ) : <>{attach}{camera}</>)}
         <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] bg-[var(--chat-field)] shadow-[var(--chat-shadow)]">
-          {dictation.listening ? recording : textarea}
+          {textarea}
         </div>
-        {!dictation.listening && main}
+        {main}
       </div>
       {errorLine}
     </form>
   );
+}
+
+/** Time since `since` as m:ss, ticking every second (hidden from screen readers: it would be read out each second). */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const s = Math.max(0, Math.floor((now - (since || now)) / 1000));
+  return <span aria-hidden>{`${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`}</span>;
 }

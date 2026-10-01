@@ -10,6 +10,13 @@ import { ApiError, NetworkError, transcribeAudio } from "./api";
 // Speech synthesis (reading replies aloud) is the device's own.
 const LOCALES: Record<string, string> = { ru: "ru-RU", kk: "kk-KZ", en: "en-US", tr: "tr-TR", ar: "ar-SA" };
 export const MAX_RECORDING_MS = 120_000; // the server accepts about two minutes
+const MAX_SPEECH_MS = 600_000; // built-in recognition is restarted after pauses for up to ten minutes
+
+/** Two pieces of dictated text with one space between them. */
+export function joinText(a: string, b: string): string {
+  const x = a.trim(), y = b.trim();
+  return x && y ? `${x} ${y}` : x || y;
+}
 
 type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean;
@@ -64,13 +71,13 @@ function uploadErrorCode(e: unknown): string {
 }
 
 /**
- * Voice input on every device. While listening, `onText(final, interim)` receives what was said; with the
- * recording fallback the whole text arrives once, after `stop()` (or the 2-minute limit) and the upload
- * (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
+ * Voice input on every device. While listening, `onText(text)` receives everything said since `start()`, interim
+ * words included, each time it changes (so the box can show it live); with the recording fallback the whole text
+ * arrives once, after `stop()` (or the 2-minute limit) and the upload (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
  * no_speech, mic_failed, transcribe_unavailable, transcribe_busy, transcribe_failed, transcribe_network,
  * too_many_transcriptions, audio_too_large.
  */
-export function useVoiceInput(lang: string, onText: (finalText: string, interim: string) => void) {
+export function useVoiceInput(lang: string, onText: (text: string) => void) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -78,6 +85,8 @@ export function useVoiceInput(lang: string, onText: (finalText: string, interim:
   const rec = useRef<Recognition | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [startedAt, setStartedAt] = useState(0);  // Date.now() when the dictation began, for the timer
+  const stopped = useRef(true);  // the person pressed stop (or an error ended it): no automatic restart
   const speechBroken = useRef(false); // Web Speech exists but its service fails here (WebViews, Brave…)
   const alive = useRef(true);
   const cb = useRef(onText);
@@ -128,7 +137,7 @@ export function useVoiceInput(lang: string, onText: (finalText: string, interim:
       try {
         const text = (await transcribeAudio(blob, langRef.current, `voice.${extension(mime)}`)).trim();
         if (!alive.current) return;
-        if (text) cb.current(text, ""); else setError("no_speech");
+        if (text) cb.current(text); else setError("no_speech");
       } catch (e) {
         if (alive.current) setError(uploadErrorCode(e));
       } finally {
@@ -142,6 +151,7 @@ export function useVoiceInput(lang: string, onText: (finalText: string, interim:
   }, []);
 
   const stop = useCallback(() => {
+    stopped.current = true;
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     rec.current?.stop();
   }, []);
@@ -149,55 +159,73 @@ export function useVoiceInput(lang: string, onText: (finalText: string, interim:
   const start = useCallback(() => {
     if (listening || transcribing) return;
     const Ctor = speechBroken.current ? null : recognitionCtor();
+    setStartedAt(Date.now());
     if (!Ctor) { void startRecording(); return; }
-    const r = new Ctor();
-    r.lang = LOCALES[lang] ?? lang;
-    r.continuous = true;
-    r.interimResults = true;
-    let heard = false;
-    r.onresult = (e) => {
-      heard = true;
-      let fin = "", interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res.isFinal) fin += res[0].transcript; else interim += res[0].transcript;
-      }
-      cb.current(fin, interim);
-    };
-    r.onerror = (e) => {
-      // the speech service is missing or blocked here: record and transcribe on the server instead
-      if (!heard && canRecord()
-          && (e.error === "network" || e.error === "service-not-allowed" || e.error === "language-not-supported")) {
-        speechBroken.current = true;
-        r.onend = null;
+    stopped.current = false;
+    let committed = "";  // text of earlier recognisers in this dictation (the browser ends one after a pause)
+    let heardAny = false;
+    const began = Date.now();
+    const launch = (): boolean => {
+      const r = new Ctor();
+      r.lang = LOCALES[langRef.current] ?? langRef.current;
+      r.continuous = true;
+      r.interimResults = true;
+      let heard = false;
+      let current = "";
+      r.onresult = (e) => {
+        heard = true; heardAny = true;
+        // rebuilt from every result each time: Safari on iOS re-sends and revises earlier results
+        let fin = "", interim = "";
+        for (let i = 0; i < e.results.length; i++) {
+          const res = e.results[i];
+          if (res.isFinal) fin += res[0].transcript; else interim += res[0].transcript;
+        }
+        current = joinText(fin, interim);
+        cb.current(joinText(committed, current));
+      };
+      r.onerror = (e) => {
+        // the speech service is missing or blocked here: record and transcribe on the server instead
+        if (!heardAny && canRecord()
+            && (e.error === "network" || e.error === "service-not-allowed" || e.error === "language-not-supported")) {
+          speechBroken.current = true;
+          r.onend = null;
+          rec.current = null;
+          setListening(false);
+          void startRecording();
+          return;
+        }
+        if (e.error === "no-speech" && heardAny) return;  // a pause after some words: not an error
+        if (e.error !== "no-speech" && e.error !== "aborted") stopped.current = true;
+        setError(speechErrorCode(e.error));
+      };
+      r.onend = () => {
+        if (rec.current !== r) return;
+        committed = joinText(committed, current);
+        // the browser ended after a pause while the person had not pressed stop: keep listening
+        if (!stopped.current && heard && Date.now() - began < MAX_SPEECH_MS && launch()) return;
         rec.current = null;
         setListening(false);
-        void startRecording();
-        return;
-      }
-      setError(speechErrorCode(e.error));
+      };
+      rec.current = r;
+      try { r.start(); return true; } catch { rec.current = null; return false; }
     };
-    r.onend = () => { if (rec.current === r) rec.current = null; setListening(false); };
-    rec.current = r;
     setError(null);
     setListening(true);
-    try {
-      r.start();
-    } catch {
-      rec.current = null;
+    if (!launch()) {
       setListening(false);
       speechBroken.current = true;
       void startRecording();
     }
-  }, [lang, listening, transcribing, startRecording]);
+  }, [listening, transcribing, startRecording]);
 
   useEffect(() => () => {
+    stopped.current = true;
     rec.current?.stop();
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  return { supported, listening, transcribing, error, start, stop };
+  return { supported, listening, transcribing, error, startedAt, start, stop };
 }
 
 /** Former name, kept for existing callers: the same hook (now with the recording fallback). */
