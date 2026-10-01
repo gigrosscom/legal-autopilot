@@ -813,6 +813,11 @@ const en: Dict = {
     },
   },
   invite: {
+    story: "Story card",
+    storyTitle: "I know my rights",
+    storyLine: "Konsiliér AI is a free AI assistant for legal questions. It helped me understand my situation and prepare a document.",
+    storyOffer: "Through my link — a free document for us both after your first payment",
+    storyScan: "Point your camera to open the site",
     bigTitle: "Send it to a friend — a free document for you both",
     bigLead: "When your friend pays for their first document through your link, you both get one more document free. Send the ready message in one tap.",
     other: "Another app",

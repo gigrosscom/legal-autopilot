@@ -813,6 +813,11 @@ const tr: Dict = {
     },
   },
   invite: {
+    story: "Hikâye kartı",
+    storyTitle: "Haklarımı biliyorum",
+    storyLine: "Konsiliér AI, hukuki sorular için ücretsiz bir yapay zekâ asistanı. Durumumu anlamama ve belge hazırlamama yardım etti.",
+    storyOffer: "Bağlantım üzerinden — ilk ödemenden sonra ikimize de ücretsiz belge",
+    storyScan: "Kamerayı tut, site açılsın",
     bigTitle: "Bir arkadaşınıza gönderin — ikinize de ücretsiz belge",
     bigLead: "Arkadaşınız bağlantınız üzerinden ilk belgesinin ödemesini yaptığında, ikiniz de bir belgeyi daha ücretsiz alırsınız. Hazır mesajı tek dokunuşla gönderin.",
     other: "Başka uygulama",
