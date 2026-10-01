@@ -216,7 +216,7 @@ function Hint({ platform, text, onClose }: { platform: Platform; text?: string; 
         className={`absolute inset-x-3 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-surface py-4 ps-5 pe-2 shadow-[0_12px_40px_rgb(0_0_0/0.2)] ${
           pointer === "top" ? "top-[calc(3.5rem+env(safe-area-inset-top))]" : "bottom-[calc(3.5rem+env(safe-area-inset-bottom))]"}`}>
         <div className="flex-1 space-y-3">
-          <p className="text-[17px] leading-snug font-medium">{line}</p>
+          <p className="text-[17px] leading-snug font-medium whitespace-pre-line">{line}</p>
           {inApp && !text && (
             // one tap: the page opens in Safari / Chrome, where «Установить» works
             <a href={realBrowserLink(platform)} className="btn-primary min-h-11 w-full justify-center">
