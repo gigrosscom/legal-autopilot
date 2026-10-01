@@ -137,6 +137,8 @@ except urllib.error.HTTPError as e:
     print(e.code)
 except Exception as e:
     print(e.__class__.__name__)" </dev/null 2>/dev/null | tail -1 | cut -c1-40) || true
+      # WhatsApp webhook through Caddy without a verify token: 404 = off (variables not set), 403 = on, 502 = down.
+      WA=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$API_DOMAIN/whatsapp/webhook") || true
       # «Написать нам»: the API route answers 401 without sign-in (route alive), the page on the site answers 200.
       SUP_API=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$API_DOMAIN/v1/support") || true
       SUP_WEB=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE_DOMAIN/support") || true
@@ -162,7 +164,7 @@ except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
       # how busy the VM is: load average, memory in use, and free disk — slow checks above often mean a busy VM
       HOST="load=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' '/' || true) mem=$(free -m 2>/dev/null | awk '/Mem:/{print $3"/"$2"MB"}' || true) disk=$(df -h / 2>/dev/null | awk 'NR==2{print $4}' || true)"
       log "host $HOST"
-      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
+      log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} wa=${WA:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
       # KPI (owner 01.10): question → document in 3 minutes. After a deploy, at most every 3 hours, the real path is
       # timed for three cases as a marked test user (deploy/smoke.py --path3): «path3 refund=…s taps=…» lines.

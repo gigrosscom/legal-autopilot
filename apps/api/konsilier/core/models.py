@@ -52,8 +52,8 @@ class User(TimestampMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
     api_token: Mapped[str] = mapped_column(String(64), unique=True, index=True,
                                            default=lambda: secrets.token_urlsafe(32))
-    channel: Mapped[str] = mapped_column(String(16), default="web")  # web | telegram
-    external_id: Mapped[str | None] = mapped_column(String(64), index=True)  # telegram chat id
+    channel: Mapped[str] = mapped_column(String(16), default="web")  # web | telegram | whatsapp
+    external_id: Mapped[str | None] = mapped_column(String(64), index=True)  # telegram chat id, whatsapp number
     language: Mapped[str] = mapped_column(String(8), default="ru")
     country: Mapped[str | None] = mapped_column(String(2))
     display_name: Mapped[str | None] = mapped_column(String(200))

@@ -59,6 +59,19 @@ services:
       API_URL: http://api:8000
     depends_on: [api]
 
+  # WhatsApp bot (team/integrations/whatsapp.md): the bot image, its webhook server on :8080. Caddy passes only
+  # https://API_DOMAIN/whatsapp/webhook to it; /whatsapp/notify is for the API inside this network. Off (404) until
+  # WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_APP_SECRET and WHATSAPP_VERIFY_TOKEN are all set in .env.
+  whatsapp:
+    build: {context: .., dockerfile: apps/bot/Dockerfile}
+    restart: unless-stopped
+    env_file: ../.env
+    command: ["python", "-m", "konsilier_bot.whatsapp"]
+    environment:
+      API_URL: http://api:8000
+      PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+    depends_on: [api]
+
   # Only when there is no managed PostgreSQL: COMPOSE_PROFILES=localdb and
   # DATABASE_URL=postgresql+psycopg://konsilier:<password>@postgres:5432/konsilier
   postgres:

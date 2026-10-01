@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from ..container import Container
 from ..team import notify_team
 from .referral import attribute
+from ..core.adapters.channels import MESSENGERS
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, Invoice, LawyerApplication, Notification, User, WaitlistEntry,
                            utcnow)
@@ -72,6 +73,25 @@ def upsert_telegram_user(body: TelegramUser, session: Session = Depends(get_sess
     if user is None:
         user = User(channel="telegram", external_id=body.telegram_id, language=body.language,
                     country=(body.country or "").upper() or None, display_name=body.display_name)
+        session.add(user)
+        session.flush()
+    return {"id": str(user.id), "token": user.api_token}
+
+
+class WhatsAppUser(BaseModel):
+    wa_id: str = Field(min_length=5, max_length=20, pattern=r"^\d+$")  # the sender's number, digits only
+    language: str = "ru"
+    country: str | None = None
+    display_name: str | None = Field(default=None, max_length=200)
+
+
+@router.post("/users/whatsapp", dependencies=[Depends(require_bot)])
+def upsert_whatsapp_user(body: WhatsAppUser, session: Session = Depends(get_session)) -> dict[str, Any]:
+    """The WhatsApp bot's person (apps/bot/konsilier_bot/whatsapp): one account per WhatsApp number."""
+    user = session.scalar(select(User).where(User.channel == "whatsapp", User.external_id == body.wa_id))
+    if user is None:
+        user = User(channel="whatsapp", external_id=body.wa_id, language=body.language,
+                    country=(body.country or "").upper() or None, display_name=body.display_name, source="whatsapp")
         session.add(user)
         session.flush()
     return {"id": str(user.id), "token": user.api_token}
@@ -668,9 +688,9 @@ CHANNEL_DOWN = timedelta(minutes=30)
 def contact_to_confirm(container: Container, owner: User) -> list[str]:
     """How the case owner is to confirm a contact before paying: ["phone"] (SMS code), or ["email"] where SMS sign-in
     is not configured; [] when any confirmed contact is there (phone, e-mail, ЭЦП / eGov Mobile, Google, Apple), the
-    person is in Telegram, it is a test account (smoke checks), or nothing can be sent. A channel whose code failed to
+    person is in a messenger (Telegram, WhatsApp), it is a test account (smoke checks), or nothing can be sent. A channel whose code failed to
     go out in the last 30 minutes is not asked for: payment never waits on a channel that is down (QA BUG-01)."""
-    if not container.settings.payment_requires_contact or owner.channel == "telegram" or owner.is_test:
+    if not container.settings.payment_requires_contact or owner.channel in MESSENGERS or owner.is_test:
         return []
     if {i.kind for i in owner.identities} & CONFIRMED_CONTACTS:
         return []

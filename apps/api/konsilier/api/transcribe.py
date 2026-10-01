@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from ..container import Container
 from ..core.models import User
 from ..transcribe import MAX_AUDIO_BYTES, TranscribeFailed, TranscribeUnavailable, audio_type
-from .deps import current_user, get_container
+from .deps import current_user, from_bot, get_container
 
 router = APIRouter(prefix="/v1")
 
@@ -41,9 +41,10 @@ def transcribe(request: Request, file: UploadFile = File(...), lang: str = Form(
         raise _err(413, "audio_too_large")
     if not audio:
         raise _err(422, "empty_audio")
-    # anonymous visitors can mint new tokens, so the IP address bounds them too
+    # anonymous visitors can mint new tokens, so the IP address bounds them too — except for the messenger bot,
+    # whose many people all come from its one address (its accounts are one per phone number, not mintable)
     per_user, per_ip = container.transcribe_limits
-    ip = _client_ip(request)
+    ip = None if from_bot(request, container) else _client_ip(request)
     if not per_user.hit(f"u:{user.id}") or (ip and not per_ip.hit(f"ip:{container.identities.h('ip', ip)}")):
         raise _err(429, "too_many_transcriptions")
     try:

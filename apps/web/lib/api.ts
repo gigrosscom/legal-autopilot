@@ -358,7 +358,31 @@ async function request(url: string, init: RequestInit = {}): Promise<Response> {
 // must wait for the same account — otherwise a case opened with one token is asked for with another (404).
 let creating: Promise<string> | null = null;
 
+// A one-time sign-in link from the WhatsApp bot (…/case/<id>?login=<code>): the page opens the person's own account
+// (their case from the chat). Redeemed before any other request, then dropped from the address bar; a used or expired
+// link just leaves the browser's own account.
+let linking: Promise<void> | null = null;
+
+function loginFromLink(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  linking ??= (async () => {
+    const q = new URLSearchParams(window.location.search);
+    const code = q.get("login");
+    if (!code) return;
+    q.delete("login");
+    const rest = q.toString();
+    window.history.replaceState(window.history.state, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+    try {
+      const r = await request(`${API_URL}/v1/auth/link/redeem`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+      if (r.ok) localStorage.setItem("konsilier.token", (await r.json()).token);
+    } catch {}
+  })();
+  return linking;
+}
+
 export async function ensureToken(): Promise<string> {
+  await loginFromLink();
   const saved = typeof window !== "undefined" ? localStorage.getItem("konsilier.token") : null;
   if (saved) return saved;
   creating ??= (async () => {

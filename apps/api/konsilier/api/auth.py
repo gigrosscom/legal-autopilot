@@ -8,12 +8,14 @@ which returns the (possibly different) account token the client must switch to.
 from __future__ import annotations
 
 import base64
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..container import Container
@@ -23,7 +25,7 @@ from ..identity.ncanode import SignatureError
 from ..identity.service import AuthError, EGOV_TTL, me_view
 from ..identity.senders import SendError
 from ..core.models import LoginChallenge, User
-from .deps import current_user, get_container, get_session
+from .deps import current_user, get_container, get_session, require_bot
 
 router = APIRouter(prefix="/v1")
 
@@ -395,3 +397,39 @@ class AppleVerify(BaseModel):
 def apple_verify(body: AppleVerify, user: User = Depends(current_user), session: Session = Depends(get_session),
                  container: Container = Depends(get_container)) -> dict:
     return _oidc_signed_in("apple", body.id_token, body.nonce, body.name, user, session, container)
+
+
+# ------------------------------------------------------------------ sign-in link from a messenger bot
+LINK_TTL = timedelta(hours=1)
+
+
+@router.post("/auth/link", dependencies=[Depends(require_bot)])
+def link_start(user: User = Depends(current_user), session: Session = Depends(get_session),
+               container: Container = Depends(get_container)) -> dict[str, Any]:
+    """A one-time link that opens the messenger person's own account on the site (their case, the draft, payment):
+    the bot sends it in the chat only to that person. Valid for an hour, works once; only the code's hash is kept."""
+    code = secrets.token_urlsafe(24)
+    digest = container.identities.h("link", code)
+    session.add(LoginChallenge(kind="link", user_id=user.id, target_hash=digest, secret_hash=digest,
+                               expires_at=datetime.now(timezone.utc) + LINK_TTL))
+    session.flush()
+    return {"code": code, "expires_in": int(LINK_TTL.total_seconds())}
+
+
+class LinkRedeem(BaseModel):
+    code: str = Field(min_length=16, max_length=100)
+
+
+@router.post("/auth/link/redeem")
+def link_redeem(body: LinkRedeem, session: Session = Depends(get_session),
+                container: Container = Depends(get_container)) -> dict[str, Any]:
+    digest = container.identities.h("link", body.code)
+    ch = session.scalar(select(LoginChallenge).where(LoginChallenge.kind == "link",
+                                                     LoginChallenge.target_hash == digest))
+    now = datetime.now(timezone.utc)
+    expires = None if ch is None else (ch.expires_at if ch.expires_at.tzinfo else
+                                       ch.expires_at.replace(tzinfo=timezone.utc))
+    if ch is None or ch.consumed_at is not None or ch.user_id is None or expires < now:
+        raise HTTPException(410, {"code": "link_expired", "message": "link_expired"})
+    ch.consumed_at = now
+    return _signed_in(session.get(User, ch.user_id))

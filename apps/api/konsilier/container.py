@@ -10,7 +10,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import Settings
-from .core.adapters.channels import ChannelAdapter, TelegramChannel, WebChannel
+from .core.adapters.channels import ChannelAdapter, TelegramChannel, WebChannel, WhatsAppChannel
 from .core.adapters.payment import build_payments
 from .core.adapters.storage import Storage, build_storage
 from .core.adapters.submission import EmailSubmission, UserSubmits
@@ -122,7 +122,9 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         packs.experimental = True
     packs.beta_off = frozenset(x.strip() for x in settings.beta_scenarios_off.split(",") if x.strip())
     storage = storage or build_storage(settings)
-    channels = channels or {"web": WebChannel(), "telegram": TelegramChannel(settings.telegram_bot_token)}
+    channels = channels or {"web": WebChannel(), "telegram": TelegramChannel(settings.telegram_bot_token),
+                            "whatsapp": WhatsAppChannel(settings.whatsapp_relay_url if settings.whatsapp_token else None,
+                                                        settings.bot_api_secret)}
     notifier = Notifier(channels, packs)
     scheduler = DbDeadlineScheduler(factory, packs, notifier)
     engine = CaseEngine(

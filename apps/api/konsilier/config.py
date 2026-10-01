@@ -236,6 +236,11 @@ class Settings(BaseSettings):
     apple_redirect_uri: str | None = None
 
     telegram_bot_token: str | None = None
+    # WhatsApp bot (apps/bot, konsilier_bot.whatsapp; team/integrations/whatsapp.md). The API only needs to know it is
+    # on: notifications to WhatsApp accounts go through the bot's relay (it holds the Cloud API token and the
+    # 24-hour window). Empty WHATSAPP_TOKEN → no WhatsApp channel, notifications stay in the site inbox.
+    whatsapp_token: str | None = None
+    whatsapp_relay_url: str = "http://whatsapp:8080/whatsapp/notify"
     # Web push (notifications on the phone / computer, the installed app included): a VAPID key pair printed by
     # deploy/vapid_keys.py. Empty → push is off (GET /v1/push/key answers 404 and nothing is sent).
     vapid_public_key: str = ""

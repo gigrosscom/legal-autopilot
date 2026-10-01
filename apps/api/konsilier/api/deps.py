@@ -53,6 +53,12 @@ def require_admin(x_admin_token: str | None = Header(default=None),
     return "admin"
 
 
+def from_bot(request: Request, container: Container) -> bool:
+    """The request comes from our own messenger bot (it sends the bot secret along with the person's token)."""
+    secret = request.headers.get("x-bot-secret")
+    return bool(secret) and hmac.compare_digest(secret, container.settings.bot_api_secret)
+
+
 def require_bot(x_bot_secret: str | None = Header(default=None),
                 container: Container = Depends(get_container)) -> None:
     if not x_bot_secret or not hmac.compare_digest(x_bot_secret, container.settings.bot_api_secret):

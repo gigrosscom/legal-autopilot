@@ -33,5 +33,11 @@
 {$API_DOMAIN} {
 	import security
 	encode zstd gzip
-	reverse_proxy api:8000
+	# WhatsApp Cloud API webhook (Meta → the whatsapp service); its other routes stay inside the network
+	handle /whatsapp/webhook {
+		reverse_proxy whatsapp:8080
+	}
+	handle {
+		reverse_proxy api:8000
+	}
 }

@@ -6,13 +6,13 @@ import asyncio
 import logging
 import os
 
-import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (BotCommand, BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup,
                            Message, User)
 
 from .api import ApiError, KonsilierApi
+from .errors import ERROR_CODES, error_text  # noqa: F401 — ERROR_CODES: kept importable from here
 from .i18n import t
 from .ui import Screen, case_screen, last_action
 
@@ -38,27 +38,6 @@ def lang_of_user(user: User | None) -> str:
 
 def lang_of(message: Message) -> str:
     return lang_of_user(message.from_user)
-
-
-# API error codes the client may meet; each has a short text in locales/*.yaml → errors.<code>
-ERROR_CODES = ("too_many_messages", "too_many_questions", "too_many", "busy", "agent_failed", "agent_unavailable",
-               "payment_required", "payment_unavailable", "awaiting_approval", "invalid_transition", "contact_required",
-               "submission_failed")
-
-
-def error_text(exc: BaseException, lang: str) -> str:
-    """A short human message for the user; the code itself goes only to the log."""
-    if isinstance(exc, ApiError):
-        code = exc.detail.get("code") if isinstance(exc.detail, dict) else None
-        if code in ERROR_CODES:
-            return t(f"errors.{code}", lang)
-        if exc.status == 429:
-            return t("errors.too_many", lang)
-        if exc.status >= 500:
-            return t("errors.unavailable", lang)
-    elif isinstance(exc, httpx.HTTPError):  # API unreachable or timed out
-        return t("errors.unavailable", lang)
-    return t("error", lang)
 
 
 async def show(bot: Bot, api: KonsilierApi, chat_id: int, case: dict, message: str | None = None) -> None:

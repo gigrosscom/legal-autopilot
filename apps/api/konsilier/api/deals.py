@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..core.models import Action, Case, Deadline, Invoice, SupportTicket, User
+from ..core.models import Case, Deadline, Invoice, SupportTicket, User
 from .deps import get_container, get_session, require_admin
 from .support import messages_of, ticket_view
 

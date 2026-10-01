@@ -21,6 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import ai, package, qualifier, safety
+from .adapters.channels import MESSENGERS
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -116,7 +117,7 @@ class EngineConfig:
     extract_images_with_llm: bool = False
     # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap;
     # -1 = no questions on the site: the draft at once, filled from the story, the chat and the files (owner 01.10,
-    # «3 клика»); the Telegram bot keeps the questions (it has no draft screen)
+    # «3 клика»); the messenger bots (Telegram, WhatsApp) keep the questions (they have no draft screen)
     intake_max_questions: int = -1
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # subscriptions: plan → (price, documents per period)
@@ -568,7 +569,7 @@ class CaseEngine:
                              error="facts_not_labels")
         missing = self.missing_fields(case, sc)
         cap = self.config.intake_max_questions
-        in_bot = getattr(case.owner, "channel", None) == "telegram"
+        in_bot = getattr(case.owner, "channel", None) in MESSENGERS
         if cap < 0 and in_bot:
             cap = 4
         if missing and (cap < 0 or (cap and int((case.taxonomy or {}).get("asked", 0)) >= cap)):
