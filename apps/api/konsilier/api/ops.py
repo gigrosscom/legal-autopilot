@@ -269,7 +269,8 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
         title = f"Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}»"
     from .pilot import lawyer_invoice_line
 
-    return {"kaspi_opened_at": _kaspi_opened_at(session, inv), "id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
+    return {"kaspi_opened_at": _kaspi_opened_at(session, inv),
+            "trusted_at": inv.trusted_at.isoformat() if inv.trusted_at else None, "id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
             "status": inv.status, "method": inv.method, "purpose": inv.purpose, "plan": inv.plan,
             "case_id": str(inv.case_id) if inv.case_id else None, "case_title": title,
             "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,

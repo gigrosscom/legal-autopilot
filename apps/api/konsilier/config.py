@@ -151,6 +151,9 @@ class Settings(BaseSettings):
     # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
     # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
     plan_case_price: int = 9990
+    # owner 01.10: with the Kaspi Pay link «Оплатить» gives the document at once; the desk matches the payment in /ops
+    # («Не найдена» → the person owes it and gets no new document until paid). false → only after the desk confirms
+    payment_trust_kaspi_link: bool = True
     plan_biz_price: int = 29990
     plan_biz_documents: int = 20
     plan_bizpro_price: int = 59990

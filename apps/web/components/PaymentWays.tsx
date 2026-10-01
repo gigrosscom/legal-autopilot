@@ -22,13 +22,7 @@ export function PaymentWays({ pay, busy, amount, copy, transfer, onWay }: {
 }) {
   const t = useT();
   const ways = pay.ways ?? [];
-  // owner 01.10 «увидел — нажал — оплатил»: PAYMENT_METHODS is the Kaspi Pay link (and a company bill) → Kaspi at once,
-  // no choice; the plain transfer the server always lists stays out of sight
-  const oneTap = ways.some((w) => w.id === "kaspi_link")
-    && ways.every((w) => w.id === "kaspi_link" || w.id === "bank_invoice" || w.id === "kaspi_transfer");
-  const [sel, setSel] = useState<PayWayId>(
-    (oneTap && (!pay.way || pay.way === "kaspi_transfer") ? "kaspi_link" : pay.way) ?? ways[0]?.id ?? "kaspi_transfer");
-  const [opened, setOpened] = useState(pay.way === "kaspi_link");  // back from Kaspi: «Я оплатил(а)»
+  const [sel, setSel] = useState<PayWayId>(pay.way ?? ways[0]?.id ?? "kaspi_transfer");
   const [phone, setPhone] = useState(pay.payer_phone ?? "");
   const [buyer, setBuyer] = useState(pay.buyer?.name ?? "");
   const [bin, setBin] = useState(pay.buyer?.bin ?? "");
@@ -43,47 +37,9 @@ export function PaymentWays({ pay, busy, amount, copy, transfer, onWay }: {
     </Button>
   );
 
-  const link = ways.find((w) => w.id === "kaspi_link");
-  if (oneTap && sel === "kaspi_link" && link?.url) {
-    // Kaspi Pay cannot take the amount in the link: the tap copies it (digits only) and opens Kaspi; the desk matches
-    // the payment by the amount and the time of this tap (shown in /ops) — no payment code to type
-    const digits = String(Math.round(Number(amount)));
-    const openKaspi = () => {
-      navigator.clipboard?.writeText(digits).catch(() => {});
-      setOpened(true);
-      if (!waiting) onWay({ way: "kaspi_link" });  // recorded with its time for the desk (not once the desk is on it)
-    };
-    return (
-      <div className="space-y-3">
-        {!waiting && (<>
-          <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={openKaspi}
-            className="btn-primary btn-lg min-h-14 w-full text-[18px] font-semibold">
-            <Icon name="external" size={20} />{t("payment.ways.payKaspi")}
-          </a>
-          <p className="text-center text-sm text-muted">{t(opened ? "payment.ways.amountCopied" : "payment.ways.amountWillCopy")}</p>
-        </>)}
-        {opened && !waiting && (
-          <Button className="min-h-12 w-full" variant="secondary" disabled={busy} icon="check" onClick={() => onWay({ way: "kaspi_link" }, "claim")}>
-            {t("payment.ways.paidDone")}
-          </Button>
-        )}
-        {ways.some((w) => w.id === "bank_invoice") && !locked && (
-          <button type="button" onClick={() => setSel("bank_invoice")} className="block w-full text-center text-sm text-muted underline">
-            {t("payment.ways.companyBill")}
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
-      {oneTap ? (
-        <button type="button" onClick={() => setSel("kaspi_link")} disabled={locked}
-          className="flex items-center gap-1 text-sm text-brand disabled:hidden">
-          <Icon name="arrowRight" size={16} className="rotate-180 rtl:rotate-0" />{t("payment.ways.backToKaspi")}
-        </button>
-      ) : <div role="radiogroup" aria-label={t("payment.ways.title")} className="grid grid-cols-2 gap-2">
+      <div role="radiogroup" aria-label={t("payment.ways.title")} className="grid grid-cols-2 gap-2">
         {ways.map((w) => (
           <button key={w.id} type="button" role="radio" aria-checked={sel === w.id} disabled={locked && w.id !== pay.way}
             onClick={() => setSel(w.id)}
@@ -92,7 +48,7 @@ export function PaymentWays({ pay, busy, amount, copy, transfer, onWay }: {
             <Icon name={ICON[w.id]} size={18} className="shrink-0" />{t(`payment.ways.${w.id}`)}
           </button>
         ))}
-      </div>}
+      </div>
 
       {sel === "kaspi_transfer" && (<>{transfer}{paidButton}</>)}
 
@@ -151,6 +107,47 @@ export function PaymentWays({ pay, busy, amount, copy, transfer, onWay }: {
           <p className="text-sm">{t("payment.ways.bankSteps")}</p>
           {pay.way === "bank_invoice" && paidButton}
         </form>
+      )}
+    </div>
+  );
+}
+
+/** True when the server offers the Kaspi Pay link (and at most the plain transfer and a company bill): then the
+ *  window is the owner's three lines (01.10) — Услуга, Стоимость, «Оплатить». */
+export function kaspiOneTap(pay: Payment): boolean {
+  const ways = pay.ways ?? [];
+  return ways.some((w) => w.id === "kaspi_link" && w.url)
+    && ways.every((w) => w.id === "kaspi_link" || w.id === "bank_invoice" || w.id === "kaspi_transfer");
+}
+
+/** «Оплатить»: silently copies the amount (digits) for pasting in Kaspi Pay, sends the bill to the clients desk (as
+ *  «Я оплатил(а)» did) and opens the Kaspi Pay link — one link for every product; the document is given on return,
+ *  the desk matches the payment by amount and time (no payment code for the client). */
+export function KaspiOneTap({ pay, busy, price, onWay }: {
+  pay: Payment; busy: boolean; price: string; onWay: (body: WayBody, then?: "claim" | "bill") => void;
+}) {
+  const t = useT();
+  const url = pay.ways?.find((w) => w.id === "kaspi_link")?.url ?? "";
+  const waiting = pay.status === "awaiting_confirmation";
+  const pressed = () => {
+    navigator.clipboard?.writeText(String(Math.round(Number(pay.amount)))).catch(() => {});
+    if (!waiting) onWay({ way: "kaspi_link" }, "claim");
+  };
+  return (
+    <div className="space-y-4">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[17px]">
+        <dt className="text-muted">{t("payment.service")}</dt>
+        <dd className="font-semibold">{t(pay.purpose === "case" ? "payment.serviceCase" : "payment.serviceDocument")}</dd>
+        <dt className="text-muted">{t("payment.cost")}</dt>
+        <dd className="text-xl font-semibold tabular-nums">{price}</dd>
+      </dl>
+      {waiting ? (
+        <p className="text-sm text-muted">{t("payment.afterPay")}</p>
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer" onClick={pressed} aria-disabled={busy}
+          className={`btn-primary btn-lg min-h-14 w-full text-[18px] font-semibold ${busy ? "pointer-events-none opacity-60" : ""}`}>
+          {t("payment.paid")}
+        </a>
       )}
     </div>
   );
