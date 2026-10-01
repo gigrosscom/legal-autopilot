@@ -25,7 +25,7 @@ export function LawyerSteps({ s }: { s: LawyerStatus }) {
         return (
           <li key={x.key} className="flex gap-3">
             <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-              x.failed ? "bg-danger text-white" : state === "done" ? "bg-brand text-white" : state === "current" ? "border-2 border-brand text-brand" : "bg-sand text-muted"}`}>
+              x.failed ? "bg-danger-strong text-white" : state === "done" ? "bg-brand-solid text-white" : state === "current" ? "border-2 border-brand text-brand" : "bg-sand text-muted"}`}>
               {state === "done" ? <Icon name="check" size={16} /> : i + 1}
             </span>
             <div className="min-w-0 flex-1 space-y-1 pt-1">

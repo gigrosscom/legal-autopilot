@@ -141,12 +141,12 @@ export function Sidebar() {
 export function AppTopBar() {
   const signed = useSignedIn();
   return (
-    <header className="sticky top-0 z-20 border-b border-black/[0.08] bg-[rgb(250_250_252/0.92)] pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-[rgb(250_250_252/0.8)] supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8] lg:hidden">
+    <header className="sticky top-0 z-20 border-b border-ink/[0.08] bg-bar/92 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-bar/80 supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8] lg:hidden">
       <div className="flex h-14 items-center justify-between px-5">
         <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
         <div className="flex items-center gap-1">
           {signed === false && (
-            <SignInLink className="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-brand hover:bg-black/[0.05]" />
+            <SignInLink className="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-brand hover:bg-ink/[0.05]" />
           )}
           <NotificationBell />
           <LangSelect />

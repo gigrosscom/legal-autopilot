@@ -82,7 +82,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     <button type="button" onClick={dictation.listening ? dictation.stop : record} disabled={busy}
       aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening
-        ? "bg-danger text-white motion-safe:animate-pulse" : "text-ink hover:bg-sand"}`}>
+        ? "bg-danger-strong text-white motion-safe:animate-pulse" : "text-ink hover:bg-sand"}`}>
       <Icon name={dictation.listening ? "stop" : "mic"} size={21} />
       <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
     </button>
@@ -92,7 +92,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       {micButton}
       {onStop ? (
         <button type="button" onClick={onStop} title={t("chat.stop")}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white">
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-surface">
           <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
         </button>
       ) : (
@@ -148,8 +148,8 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
         }}
         placeholder={dictation.transcribing ? t("chat.transcribing") : dictation.listening ? t("chat.listening") : placeholder}
         maxLength={4000}
-        className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-[#6b6b70] ${
-          large ? "min-h-24 px-3 pt-2 text-[18px] leading-relaxed text-black" : "min-h-10 px-3 py-2 text-[18px] text-black"}`}
+        className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-faint ${
+          large ? "min-h-24 px-3 pt-2 text-[18px] leading-relaxed text-ink" : "min-h-10 px-3 py-2 text-[18px] text-ink"}`}
         style={{ outline: "none" }} /* the whole box shows focus */ />
     </>
   );
@@ -182,7 +182,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       </button>
     </span>
   ) : onStop ? (
-    <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-white`}>
+    <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-surface`}>
       <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
     </button>
   ) : dictation.transcribing ? (
@@ -190,7 +190,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       <Icon name="spinner" size={22} /><span className="sr-only">{t("chat.transcribing")}</span>
     </span>
   ) : !hasText && dictation.supported ? (
-    <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-[var(--chat-accent)] text-white`}>
+    <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-[var(--chat-accent-solid)] text-white`}>
       <Icon name="mic" size={21} /><span className="sr-only">{t("chat.mic")}</span>
     </button>
   ) : (

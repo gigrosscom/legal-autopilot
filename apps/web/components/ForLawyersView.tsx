@@ -46,7 +46,7 @@ function DossierPreview() {
 function ShareCard({ name, demo }: { name: string; demo: boolean }) {
   const L = useText().card;
   return (
-    <div className="mx-auto w-full max-w-sm rounded-3xl bg-gradient-to-br from-brand to-ink p-5 text-white shadow-lg">
+    <div className="mx-auto w-full max-w-sm rounded-3xl bg-gradient-to-br from-brand-solid to-[#0d0d0d] p-5 text-white shadow-lg">
       <div className="text-xs uppercase tracking-widest opacity-70">
         Konsiliér AI · {demo ? L.sample : L.partner}
       </div>
@@ -252,7 +252,7 @@ function ApplyForm({ invite }: { invite?: string }) {
             key={k}
             aria-pressed={spec.includes(k)}
             onClick={() => setSpec(spec.includes(k) ? spec.filter((s) => s !== k) : [...spec, k])}
-            className={`chip min-h-10 px-3 py-2 text-sm ${spec.includes(k) ? "bg-brand text-white" : ""}`}
+            className={`chip min-h-10 px-3 py-2 text-sm ${spec.includes(k) ? "bg-brand-solid text-white" : ""}`}
           >
             {label}
           </button>
@@ -273,7 +273,7 @@ function ApplyForm({ invite }: { invite?: string }) {
         <FieldError id="lf-consent-err" field="consent" code={shown("consent")} />
       </div>
       <button className="btn-primary w-full py-3 text-base" disabled={busy}>{busy ? L.busy : L.submit}</button>
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="rounded-xl bg-danger-50 p-3 text-sm text-danger">{error}</p>}
       <p className="text-xs text-muted">{L.privacy}</p>
     </form>
   );
@@ -336,7 +336,7 @@ export function ForLawyersView({ invite }: { invite?: string }) {
           </div>
         </div>
         <p className="text-xs text-muted">{L.partner.lose}</p>
-        <div className="space-y-3 rounded-[18px] bg-ink p-6 text-white md:p-8">
+        <div className="space-y-3 rounded-[18px] bg-[#1d1d1f] p-6 text-white md:p-8">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-semibold">{L.expert.title}</h3>
             <span className="chip bg-white/15 text-white">{L.expert.chip}</span>
@@ -368,7 +368,7 @@ export function ForLawyersView({ invite }: { invite?: string }) {
           <div className="card space-y-2 border-brand ring-2 ring-brand/20">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold">Pro</h3>
-              <span className="chip bg-brand text-white">{L.pricing.proChip}</span>
+              <span className="chip bg-brand-solid text-white">{L.pricing.proChip}</span>
             </div>
             <div className="text-2xl font-semibold">{L.proPrice}</div>
             <p className="text-sm text-muted">{L.pricing.proText}</p>

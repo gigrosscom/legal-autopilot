@@ -696,7 +696,11 @@ const kk: Dict = {
     reload: "Бетті жаңарту",
     retry: "Қайталап көру",
   },
+  notFoundPage: { title: "Мұндай бет жоқ", home: "Басты бетке" },
+  theme: { title: "Сыртқы көрініс", light: "Ашық", dark: "Қараңғы", system: "Жүйедегідей" },
   account: {
+    signOut: "Шығу",
+    signOutConfirm: "Осы құрылғыда аккаунттан шығасыз ба? Істеріңіз сақталады — оларды көру үшін сол тәсілмен қайта кіріңіз.",
     moreWaysTitle: "Кірудің басқа тәсілдері",
     otherWays: "Басқа тәсілдер: ЭЦҚ, eGov",
     withEmail: "E-mail арқылы жалғастыру",

@@ -25,12 +25,12 @@ function overdue(due: string, state: TaskState): boolean {
 
 function TaskCard({ t }: { t: Task }) {
   return (
-    <li className="space-y-2 rounded-2xl bg-surface p-3 shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-black/[0.05]">
+    <li className="space-y-2 rounded-2xl bg-surface p-3 shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-ink/[0.05]">
       <p className="text-[16px] leading-snug"><span className="me-1.5 text-muted tabular-nums">№{t.id}</span><MdInline text={t.text} /></p>
       <div className="flex flex-wrap gap-1.5">
         {!isEmpty(t.role) && <Chip tone="blue">{t.role}</Chip>}
         {!isEmpty(t.due) && (overdue(t.due, t.state)
-          ? <span className="inline-flex items-center rounded-full bg-danger px-2.5 py-0.5 text-[13px] font-semibold text-white">просрочено · {t.due}</span>
+          ? <span className="inline-flex items-center rounded-full bg-danger-strong px-2.5 py-0.5 text-[13px] font-semibold text-white">просрочено · {t.due}</span>
           : <Chip>срок {t.due}</Chip>)}
         {t.state === "other" || t.status.toLowerCase() !== COLUMNS.find((c) => c.key === t.state)?.label.toLowerCase()
           ? <Chip tone={t.state === "waiting" ? "warn" : t.state === "done" ? "done" : "neutral"}>{t.status}</Chip> : null}
@@ -65,7 +65,7 @@ export function Tasks() {
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {["", ...roles].map((r) => (
           <button key={r || "all"} onClick={() => setRole(r)}
-            className={`min-h-10 shrink-0 rounded-full px-4 text-[15px] font-semibold ${role === r ? "bg-ink text-white" : "bg-sand hover:bg-sand-deep"}`}>{r || "Все роли"}</button>
+            className={`min-h-10 shrink-0 rounded-full px-4 text-[15px] font-semibold ${role === r ? "bg-ink text-surface" : "bg-sand hover:bg-sand-deep"}`}>{r || "Все роли"}</button>
         ))}
       </div>
 

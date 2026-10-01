@@ -695,7 +695,11 @@ const tr: Dict = {
     waitlist: "Bekleme listesi",
     tick: "Hatırlatmaları çalıştır",
   },
+  notFoundPage: { title: "Böyle bir sayfa yok", home: "Ana sayfaya dön" },
+  theme: { title: "Görünüm", light: "Açık", dark: "Koyu", system: "Sistem" },
   account: {
+    signOut: "Çıkış yap",
+    signOutConfirm: "Bu cihazda oturumu kapatmak istiyor musunuz? Dosyalarınız saklanır — görmek için aynı yöntemle tekrar giriş yapın.",
     moreWaysTitle: "Diğer giriş yolları",
     otherWays: "Diğer yollar: e-imza, eGov",
     withEmail: "E-posta ile devam et",

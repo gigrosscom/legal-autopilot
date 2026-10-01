@@ -87,7 +87,7 @@ export function MetricsTab({ token }: { token: string }) {
           <div className="flex flex-wrap gap-1" role="tablist">
             {(["cases", "users", "documents", "submitted"] as Series[]).map((s) => (
               <button key={s} role="tab" aria-selected={series === s} onClick={() => setSeries(s)}
-                className={`min-h-9 rounded-lg px-2.5 text-xs font-medium ${series === s ? "bg-ink text-white" : "bg-sand"}`}>
+                className={`min-h-9 rounded-lg px-2.5 text-xs font-medium ${series === s ? "bg-ink text-surface" : "bg-sand"}`}>
                 {t(`metrics.${s}`)}
               </button>
             ))}

@@ -3,9 +3,11 @@ import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import type { ReactNode } from "react";
 import { PwaRegister } from "@/components/InstallApp";
 import { VersionWatch } from "@/components/VersionWatch";
+import { ThemeWatch } from "@/components/ThemeWatch";
 import { SiteChrome } from "@/components/SiteChrome";
 import { LangProvider } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
+import { THEME_COLOR, THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const TITLE = "Konsiliér AI — ИИ-помощник по правовым вопросам";
@@ -41,7 +43,12 @@ export const metadata: Metadata = {
 // viewportFit "cover": the installed app uses the whole screen; notches are handled with safe-area insets.
 // interactiveWidget: the on-screen keyboard shrinks the layout, so input bars stay above it (Android Chrome).
 export const viewport: Viewport = {
-  themeColor: "#ffffff", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
+  // before the theme script runs the system theme decides; components/ThemeWatch then follows the chosen theme
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
+  ],
+  width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content",
 };
 
 // Chrome / Edge / Samsung Internet fire `beforeinstallprompt` once per page load — often before React and the app's
@@ -53,8 +60,9 @@ const INSTALL_CAPTURE =
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ru" dir="ltr" translate="no" className={`notranslate ${inter.variable} ${arabic.variable}`}>
+    <html lang="ru" dir="ltr" translate="no" suppressHydrationWarning className={`notranslate ${inter.variable} ${arabic.variable}`}>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} />
       </head>
       <body className="flex min-h-screen flex-col antialiased">
@@ -62,6 +70,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SiteChrome>{children}</SiteChrome>
           <PwaRegister />
           <VersionWatch />
+          <ThemeWatch />
         </LangProvider>
       </body>
     </html>

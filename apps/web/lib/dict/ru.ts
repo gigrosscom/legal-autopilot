@@ -695,7 +695,11 @@ const ru: Dict = {
     waitlist: "Лист ожидания",
     tick: "Прогнать напоминания",
   },
+  notFoundPage: { title: "Такой страницы нет", home: "На главную" },
+  theme: { title: "Оформление", light: "Светлая", dark: "Тёмная", system: "Как в системе" },
   account: {
+    signOut: "Выйти",
+    signOutConfirm: "Выйти из аккаунта на этом устройстве? Ваши дела сохранятся — войдите снова тем же способом, чтобы их увидеть.",
     moreWaysTitle: "Ещё способы входа",
     otherWays: "Другие способы: ЭЦП, eGov",
     withEmail: "Продолжить с e-mail",
