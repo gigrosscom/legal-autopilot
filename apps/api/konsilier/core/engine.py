@@ -923,7 +923,11 @@ class CaseEngine:
         return forum is not None and forum.type == "court"
 
     def approval_required(self, session: Session, case: Case, spec: ActionSpec | None = None) -> bool:
-        if self.config.self_service and not case.needs_review and case.hold_reason is None:
+        # BUG-20 (QA run 5, 01.10): low qualification confidence (needs_review) no longer holds a pre-trial document
+        # — when the model is out of quota, the keyword fallback caps confidence at 0.55 and every paid claim went to
+        # the owner. The owner's rule (30.09): the manual check is for court documents only; needs_review still
+        # shows the case to the owner in /ops.
+        if self.config.self_service and case.hold_reason is None:
             if not is_generic(case.scenario_id):
                 # level-1 scenarios: pre-trial documents go out directly; a lawsuit to a court
                 # (e.g. kz.family.alimony) is filed only after a lawyer's check, as on the universal path
