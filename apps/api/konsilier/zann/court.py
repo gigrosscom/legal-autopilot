@@ -47,11 +47,12 @@ from .corpus import ZannCorpusJob, _aware, describe, retry_after, utcnow
 
 log = logging.getLogger(__name__)
 
-# Who we are, for the sites' logs. sud.kz (checked 01.10.2026) silently drops the connection when the User-Agent has
-# words such as «collector», «spider», «bot» or «httpx» (robots.txt included), and the file service of sud.gov.kz
-# (JBoss) answers 404 to a User-Agent without a platform token. So: a platform token, our name and version; the
-# contact goes in the standard From header. A pack may set its own («user_agent» in zann/court.yaml).
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Konsilier.AI/1.0"
+# Who we are, for the sites' logs — honestly (owner's rule: no disguise, no bypassing technical restrictions). sud.kz
+# (checked 01.10.2026) drops the connection for User-Agents with «collector», «spider», «bot» or «httpx», and the
+# sud.gov.kz file service answers 404 without a browser platform token: these are technical restrictions on robots,
+# so the collector reports state=blocked(robots_unreachable) and waits for a lawful route (permission of the Supreme
+# Court, Smart Bridge DODSVS-S-3457, or files saved by hand → zann-court-import). Not a browser string.
+USER_AGENT = "Konsilier.AI/1.0 (+https://konsilier.com; Zann legal research; honours robots.txt and Crawl-delay)"
 FROM = "info@konsilier.com"
 ROBOTS_TOKEN = "konsilier.ai"
 PREFIX = "zann/court/"

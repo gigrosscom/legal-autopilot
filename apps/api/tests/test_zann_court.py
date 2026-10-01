@@ -423,24 +423,16 @@ def picky_collector(db, tmp_path, site, user_agent: str) -> Collector:
     return Collector(db, LocalStorage(tmp_path / "files"), fetch, SITE, RULES)
 
 
-def test_our_user_agent_gets_through_where_the_old_one_was_dropped(db, tmp_path):
+def test_honest_user_agent_blocked_robot_filter_is_reported_not_bypassed(db, tmp_path):
+    """We name ourselves honestly; a site that drops robots by User-Agent stops the run as «unreachable» (shown as
+    state=blocked(robots_unreachable)) — the collector never disguises itself as a browser."""
     fetcher = CourtFetcher()
     assert fetcher.client.headers["User-Agent"] == court.USER_AGENT == SITE.user_agent
+    assert "Mozilla" not in court.USER_AGENT and "Konsilier.AI" in court.USER_AGENT
     assert fetcher.client.headers["From"] == court.FROM
-    # the old one: robots.txt never answered, nothing collected (production 01.10: «pages=0/4 docs=0»)
-    old = "Konsilier.AI Zann court-practice collector (+https://konsilier.com; research; honours Crawl-delay)"
-    site = Picky()
-    stats = picky_collector(db, tmp_path, site, old).run()
-    assert stats.stopped == "unreachable" and stats.pages == 0 and "RemoteProtocolError" in stats.error
-    assert site.requests == ["dropped sud.kz/robots.txt"] * 2  # one retry, then the run stops
-    # ours: everything collected, the resolutions' DOCX from sud.gov.kz included
     site = Picky()
     stats = picky_collector(db, tmp_path, site, court.USER_AGENT).run()
-    assert stats.stopped == "idle" and stats.errors == 0 and stats.saved == 6
-    assert not [r for r in site.requests if r.startswith("dropped")]
-    with db() as s:
-        assert s.scalar(select(ZannCourtDoc).where(ZannCourtDoc.url.endswith("/188420"))).state == "done"
-    # a pack may name its own
+    assert stats.stopped == "unreachable" and stats.pages == 0
     assert court.Site({"sources": {}, "user_agent": "X/1"}).user_agent == "X/1"
 
 
