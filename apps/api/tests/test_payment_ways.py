@@ -296,3 +296,25 @@ def test_trust_can_be_switched_off(ctx):
     api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
     claimed = api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]
     assert claimed["status"] == "awaiting_confirmation" and claimed["trusted"] is False
+
+
+def test_trust_all_gives_the_document_for_any_way(ctx):
+    """Owner 02.10: until the payment is set up, «Я оплатил(а)» gives the document on trust for every way to pay,
+    not only the Kaspi Pay link; the desk still matches the bill in /ops, and a bill it does not find is a debt."""
+    outbox = ways(ctx, methods="kaspi_link,bank_invoice")
+    ctx.container.engine.config.trust_all = True
+    try:
+        api, cid, pay = open_bill(ctx, phone="+7 701 555 00 44")  # the plain transfer, no way chosen
+        claimed = api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]
+        assert claimed["status"] == "paid" and claimed["trusted"] is True
+        assert pay["code"] in outbox.sent[-1][2]  # the desk is still told
+        document_downloadable(api, cid)
+        cl = getattr(ctx, "_desk", None) or operator(ctx, DESK)
+        ctx._desk = cl
+        row = next(r for r in cl.get("/v1/ops/clients/payments").json() if r["code"] == pay["code"])
+        assert row["trusted_at"] and row["status"] == "awaiting_confirmation"
+        assert cl.post(f"/v1/ops/clients/payments/{row['id']}", json={"decision": "not_found"})["status"] == "not_found"
+        assert api.get(f"/v1/cases/{cid}").json()["payment"]["owed"] is True
+    finally:
+        ctx.container.engine.config.trust_all = False
+

@@ -121,6 +121,8 @@ class EngineConfig:
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # owner 01.10: a Kaspi Pay link payment gives the document at «Оплатить»; the desk matches it afterwards
     trust_kaspi_link: bool = True
+    # owner 02.10: until the payment is set up, «Я оплатил(а)» gives the document on trust for every way to pay
+    trust_all: bool = False
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
     plan_days: int = 30
@@ -1209,7 +1211,8 @@ class CaseEngine:
         """Owner 01.10 «вернулся — сразу получил документ»: «Оплатить» with the Kaspi Pay link gives the document at
         once; the bill stays «ждёт сверки» in /ops and the desk matches it by amount and time. Once per bill, never
         for a person who owes a document already, never for a subscription or a lawyer bill."""
-        if (not self.config.trust_kaspi_link or inv.pay_way != "kaspi_link" or inv.trusted_at is not None
+        trusted_way = self.config.trust_all or (self.config.trust_kaspi_link and inv.pay_way == "kaspi_link")
+        if (not trusted_way or inv.trusted_at is not None
                 or inv.purpose not in ("document", "case") or inv.case_id is None
                 or self.in_debt(session, inv.user_id)):
             return
