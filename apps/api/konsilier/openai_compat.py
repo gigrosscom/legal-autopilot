@@ -52,7 +52,8 @@ def _messages(system: str, messages: list[dict[str, Any]]) -> list[dict[str, Any
             out.append({"role": m["role"], "content": c})
             continue
         if m["role"] == "assistant":
-            text = "".join(b.text for b in c if isinstance(b, Block) and b.type == "text")
+            text = "".join(b.text if isinstance(b, Block) else b.get("text", "") for b in c
+                           if (b.type if isinstance(b, Block) else b.get("type")) == "text")
             calls = [{"id": b.id, "type": "function",
                       "function": {"name": b.name, "arguments": json.dumps(b.input, ensure_ascii=False)}}
                      for b in c if isinstance(b, Block) and b.type == "tool_use"]
@@ -74,8 +75,10 @@ def _messages(system: str, messages: list[dict[str, Any]]) -> list[dict[str, Any
 
 
 class _Stream:
-    def __init__(self, http: httpx.Client, url: str, body: dict[str, Any], headers: dict[str, str], name: str):
+    def __init__(self, http: httpx.Client, url: str, body: dict[str, Any], headers: dict[str, str], name: str,
+                 plain_body: dict[str, Any] | None = None):
         self._http, self._url, self._body, self._headers, self._name = http, url, body, headers, name
+        self._plain = plain_body  # the request without the reasoning setting, for a provider that refuses it
         self._final: Message | None = None
         self._r: httpx.Response | None = None
         self._closed = False
@@ -110,6 +113,10 @@ class _Stream:
                 r.read()
                 r.close()
                 error = f"{self._name} {r.status_code}: {r.text[:300]}"
+                if r.status_code == 400 and self._plain is not None and "reasoning" in r.text.lower():
+                    self._body, self._plain = self._plain, None  # this model takes no reasoning setting: without it
+                    self.attempts[-1]["status"] = "400 reasoning"
+                    continue
                 if r.status_code not in RETRY_STATUSES:
                     raise RuntimeError(error)
             if delay is None:
@@ -122,13 +129,16 @@ class _Stream:
         text: list[str] = []
         calls: dict[int, dict[str, Any]] = {}  # index → {"id", "name", "arguments"} assembled from deltas
         usage = Usage()
-        finish = "stop"
+        finish = ""  # none sent and no [DONE] either: the stream was cut (dropped connection, proxy timeout)
+        done = False
         r = self._r = self._open()
         if self._closed:
             r.close()
             return
         try:
             for line in r.iter_lines():
+                if line[6:].strip() == "[DONE]":
+                    done = True
                 if not line.startswith("data: ") or line[6:].strip() == "[DONE]":
                     continue
                 ev = json.loads(line[6:])
@@ -162,8 +172,8 @@ class _Stream:
                 args = {}
             if c["name"]:  # a nameless fragment cannot be run
                 blocks.append(Block("tool_use", id=c["id"] or uuid.uuid4().hex[:12], name=c["name"], input=args))
-        stop = "tool_use" if any(b.type == "tool_use" for b in blocks) else ("max_tokens" if finish == "length" else "end_turn")
-        self._final = Message(blocks, stop, usage)
+        self._final = Message(blocks, compat_stop(finish, done, any(b.type == "tool_use" for b in blocks)), usage,
+                              finish or ("DONE" if done else "NONE"))
 
     def get_final_message(self) -> Message:
         if self._final is None:
@@ -173,14 +183,30 @@ class _Stream:
         return self._final
 
 
+def compat_stop(finish: str, done: bool, has_tool: bool) -> str:
+    """tool_use | end_turn | max_tokens ("length": the token limit, P0 01.10 — reasoning models spent it thinking) |
+    cut (a content filter, or a stream that ended with neither a finish reason nor [DONE])."""
+    if has_tool:
+        return "tool_use"
+    if finish == "length":
+        return "max_tokens"
+    if finish == "content_filter" or (not finish and not done):
+        return "cut"
+    return "end_turn"
+
+
 class OpenAICompatClient(Warm):
     """``OpenAICompatClient(name, api_key, model).messages.stream(...)``; ``model=`` of the call is ignored in
     favour of the provider's own model (the chat agent passes one model name for all providers)."""
 
     def __init__(self, name: str, api_key: str, model: str = "", *, base_url: str = "",
-                 http: httpx.Client | None = None, timeout: float = 60):
+                 http: httpx.Client | None = None, timeout: float = 60, reasoning_effort: str = ""):
         default_base, default_model = PROVIDERS.get(name, ("", ""))
         self.name, self.api_key = name, api_key
+        # P0 01.10: qwen on Cerebras thinks before it writes and the thinking counts against max_tokens — up to all
+        # 2000 tokens of a chat reply, leaving the answer cut mid-word or empty. "none" switches the thinking off
+        # (Cerebras and Groq take it); a provider that refuses the field is asked again without it.
+        self.reasoning_effort = reasoning_effort
         self.base_url, self.model = (base_url or default_base).rstrip("/"), model or default_model
         self.http = http or keepalive_http(timeout)
         self.messages = self
@@ -195,8 +221,12 @@ class OpenAICompatClient(Warm):
                                 "messages": _messages(system, messages)}
         if t := _tools(tools):
             body["tools"] = t
+        plain = None
+        if self.reasoning_effort:
+            plain, body = body, {**body, "reasoning_effort": self.reasoning_effort}
         return _Stream(self.http, f"{self.base_url}/chat/completions", body,
-                       {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}, self.name)
+                       {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}, self.name,
+                       plain)
 
 
 class _ChainStream:

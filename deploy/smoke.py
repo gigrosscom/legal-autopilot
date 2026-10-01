@@ -5,6 +5,7 @@ never notify the team (konsilier/api/smoke.py).
     SMOKE_TOKEN=... python deploy/smoke.py [--api https://api.konsilier.com] [--story "..."]
     SMOKE_TOKEN=... python deploy/smoke.py --chat-speed    # only the chat: first words of 10 ru/kk questions
     SMOKE_TOKEN=... python deploy/smoke.py --path3         # question → document for 3 cases: time and taps
+    SMOKE_TOKEN=... python deploy/smoke.py --chat-check 20 [--same "..."]  # whole answers: none cut, question last
 
 ``--chat-speed``: each question opens a case the way the site does (``defer``) and streams the chat reply; the time
 to the first words is measured here, and the server's own breakdown (``diagnostics`` of the ``done`` event: the
@@ -211,8 +212,87 @@ def path3(api: Api, boot: Api) -> int:
     return 1 if failed else 0
 
 
+CHECK_QUESTIONS = CHAT_QUESTIONS + [
+    ("ru", "Магазин не меняет телефон по гарантии, что делать?"),
+    ("kk", "Дүкен кепілдік бойынша телефонды ауыстырмайды, не істеймін?"),
+    ("ru", "Как подать на алименты?"),
+    ("kk", "Алимент өндіру үшін қайда жүгінемін?"),
+    ("ru", "Не вернули залог за съёмную квартиру"),
+    ("kk", "Жалдаған пәтердің кепіл ақшасын қайтармады"),
+    ("ru", "Оштрафовали за парковку незаконно, как обжаловать?"),
+    ("kk", "Жұмыстан заңсыз шығарды, не істеуге болады?"),
+    ("ru", "Застройщик задерживает сдачу квартиры уже полгода"),
+    ("ru", "Купил подписку, отменил, а деньги всё равно списывают"),
+]
+_END = (".", "!", "?", "…", ")", "»", "*", ":")
+
+
+def _ask(api: Api, lang: str, q: str) -> tuple[float | None, float, dict, str]:
+    """One chat reply the way the site asks it: (first words s, total s, the done/error event, the streamed text)."""
+    cid = api.call("POST", "/v1/cases", {"text": q, "country": "KZ", "language": lang, "accept_terms": True,
+                                         "defer": True})["case"]["id"]
+    req = urllib.request.Request(f"{api.base}/v1/cases/{cid}/chat", method="POST",
+                                 data=json.dumps({"text": q, "language": lang}).encode(),
+                                 headers={"Authorization": f"Bearer {api.token}", "Content-Type": "application/json"})
+    t0 = time.monotonic()
+    first, last, streamed = None, {}, ""
+    with urllib.request.urlopen(req, timeout=150) as r:
+        for line in r:
+            text = line.decode().strip()
+            if not text.startswith("data: "):
+                continue
+            last = json.loads(text[6:])
+            if last.get("type") == "text":
+                streamed += last.get("text", "")
+                if first is None and last.get("text", "").strip():
+                    first = time.monotonic() - t0
+    return first, time.monotonic() - t0, last, streamed
+
+
+def chat_check(api: Api, repeat: int, same: str | None) -> int:
+    """Whole answers (P0 01.10: an answer cut mid-word): ``repeat`` questions ru/kk (or ``same`` asked ``repeat``
+    times); per reply the first words, the end of the stored text, the providers, finish reasons, ``truncated`` and
+    where the clarifying question stands. Exit 1 if any reply is cut, missing or not ending as a whole sentence."""
+    qs = [("ru", same)] * repeat if same else [CHECK_QUESTIONS[i % len(CHECK_QUESTIONS)] for i in range(repeat)]
+    bad, firsts, totals, q_mid = 0, [], [], 0
+    for n, (lang, q) in enumerate(qs, 1):
+        first, total, last, streamed = _ask(api, lang, q)
+        d = last.get("diagnostics") or {}
+        timing = d.get("timing") or {}
+        text = ((last.get("message") or {}).get("text") or "").replace("[[DOCUMENT]]", "").strip()
+        short, _, details = text.partition("[[MORE]]")
+        cut = timing.get("truncated")
+        whole = text.rstrip().endswith(_END)
+        # the clarifying question: should be the last sentence of the reply, never in the middle
+        mid = "?" in short and details.strip() and not details.rstrip().endswith("?")
+        q_mid += bool(mid)
+        ok = last.get("type") == "done" and whole and not cut
+        bad += not ok
+        if first is not None:
+            firsts.append(first)
+        totals.append(total)
+        rounds = "; ".join(f"{x.get('provider')}:{x.get('stop')}" + (f"/{x.get('finish')}" if x.get('finish') else "")
+                           for x in timing.get("rounds", []))
+        print(f"{'ok ' if ok else 'BAD'} #{n:02d} [{lang}] first {'—' if first is None else f'{first:.2f}'} s · total "
+              f"{total:.1f} s · by {d.get('served_by')} · rounds [{rounds}] · truncated {cut or '-'} · chars "
+              f"{len(text)} (streamed {len(streamed)}) · question "
+              f"{'MIDDLE' if mid else 'end' if text.rstrip().endswith('?') else '-'} · "
+              f"{q[:34]}")
+        print(f"      starts «{text[:70]}» … ends «{text[-60:]}»".replace("\n", " "))
+        if last.get("type") != "done":
+            print(f"      {last}")
+    firsts.sort()
+    totals.sort()
+    if firsts:
+        print(f"first words: median {firsts[len(firsts) // 2]:.2f} s · max {firsts[-1]:.2f} s · total median "
+              f"{totals[len(totals) // 2]:.1f} s · n={len(qs)} · cut/missing {bad} · question in the middle {q_mid}")
+    return 1 if bad or not firsts else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--chat-check", type=int, metavar="N", help="N chat replies ru/kk: none may be cut")
+    ap.add_argument("--same", help="with --chat-check: ask this one question N times")
     ap.add_argument("--api", default="https://api.konsilier.com")
     ap.add_argument("--story", default=STORY)
     ap.add_argument("--chat-speed", action="store_true", help="only the chat: first words of 10 ru/kk questions")
@@ -229,6 +309,8 @@ def main() -> int:
     t = step("test user", t)
     if args.chat_speed:
         return chat_speed(api)
+    if args.chat_check:
+        return chat_check(api, args.chat_check, args.same)
     if args.path3:
         return path3(api, boot)
 

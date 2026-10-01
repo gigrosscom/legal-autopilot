@@ -272,17 +272,20 @@ def test_gemini_3_gets_the_minimal_thinking_level_and_old_models_do_not(monkeypa
 
     def handler(req):
         bodies.append((str(req.url), json.loads(req.content)))
-        if "gemini-3" in str(req.url):
+        if "gemini-3" in str(req.url) or "latest" in str(req.url):
             return httpx.Response(503, text="busy")
         return _ok()
 
+    # the "-latest" aliases point at Gemini 3 models: they get the level too (P0 01.10)
     g = GeminiClient("k", http=httpx.Client(transport=httpx.MockTransport(handler)),
-                     fallback_models=("gemini-flash-lite-latest",), thinking_level="minimal")
+                     fallback_models=("gemini-flash-lite-latest", "gemini-2.5-flash-lite"), thinking_level="minimal")
     with g.messages.stream(model="gemini-3.1-flash-lite", max_tokens=10, system="s", tools=[],
                            messages=[{"role": "user", "content": "?"}]) as s:
         assert "".join(s.text_stream) == "Да."
     first_url, first = bodies[0]
     assert first["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "minimal"}
+    assert [b["generationConfig"]["thinkingConfig"] for u, b in bodies if "latest" in u][0] == {
+        "thinkingLevel": "minimal"}
     assert "thinkingConfig" not in bodies[-1][1]["generationConfig"]
     assert [a["status"] for a in s.attempts][-1] == 200 and s.attempts[0]["model"] == "gemini-3.1-flash-lite"
 
