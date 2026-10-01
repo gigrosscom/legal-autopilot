@@ -28,9 +28,11 @@ def _err(status: int, code: str) -> HTTPException:
 
 
 @router.post("/transcribe")
-def transcribe(request: Request, file: UploadFile = File(...), lang: str = Form("ru"),
+def transcribe(request: Request, file: UploadFile = File(...), lang: str = Form("ru"), partial: bool = Form(False),
                user: User = Depends(current_user), container: Container = Depends(get_container)) -> dict[str, Any]:
-    transcriber = container.transcriber
+    """`partial`: the recording so far, while the person is still speaking — the live text in the box (owner 01.10).
+    It goes to the fast transcriber and has its own, larger limits; the final upload after «Стоп» is as before."""
+    transcriber = (container.partial_transcriber or container.transcriber) if partial else container.transcriber
     if transcriber is None:
         raise _err(503, "transcribe_unavailable")
     mime = audio_type(file.content_type, file.filename)
@@ -42,7 +44,7 @@ def transcribe(request: Request, file: UploadFile = File(...), lang: str = Form(
     if not audio:
         raise _err(422, "empty_audio")
     # anonymous visitors can mint new tokens, so the IP address bounds them too
-    per_user, per_ip = container.transcribe_limits
+    per_user, per_ip = container.partial_limits if partial and container.partial_limits else container.transcribe_limits
     ip = _client_ip(request)
     if not per_user.hit(f"u:{user.id}") or (ip and not per_ip.hit(f"ip:{container.identities.h('ip', ip)}")):
         raise _err(429, "too_many_transcriptions")

@@ -354,6 +354,10 @@ def _oidc_signed_in(kind: str, token: str, nonce: str, name: str | None, user: U
     display = norm.mask_email(email.strip().lower())[:120] if email else ("Google" if kind == "google" else "Apple ID")
     owner = container.identities.link_or_login(session, user, kind, str(claims["sub"]), display,
                                                (name or "").strip()[:100] or None)
+    if kind == "google":
+        # owner 01.10: Google vouches for the address (email_verified) — the account with that e-mail is the same
+        # person's: one account (signed into it, or the address added to this one)
+        owner = container.identities.link_or_login(session, owner, "email", norm.email(email), display)
     return _signed_in(owner)
 
 

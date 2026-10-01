@@ -99,7 +99,9 @@ def test_google_login_creates_identity_and_signs_in(oidc_ctx, keys):
     body = r.json()
     assert body["token"] == tok
     assert body["me"]["display_name"] == "Иван Петров"
-    assert [(i["kind"], i["display"]) for i in body["me"]["identities"]] == [("google", "i•••@gmail.com")]
+    # Google vouches for the address: the account also gets the e-mail identity (owner 01.10: one account per e-mail)
+    assert sorted((i["kind"], i["display"]) for i in body["me"]["identities"]) == [("email", "i•••@gmail.com"),
+                                                                                  ("google", "i•••@gmail.com")]
     # the nonce works once
     again = c.post("/v1/auth/google/verify", json={"credential": cred, "nonce": start["nonce"]}, headers=h(tok))
     assert again.status_code == 400 and again.json()["detail"]["code"] == "challenge_expired"

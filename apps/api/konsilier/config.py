@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # once (minimal | low | medium | high; empty → the model's default). A model that refuses it is asked again
     # without it.
     gemini_chat_thinking_level: str = "minimal"
+    # The OpenAI-compatible free providers (Cerebras, Groq …): their models' thinking, sent as reasoning_effort.
+    # "none" (P0 01.10): qwen on Cerebras otherwise spent the whole token limit thinking — a chat answer cut mid-word.
+    chat_reasoning_effort: str = "none"
+    # Token limit of one chat model round. Large on purpose: the answer's length is set by the prompt, the limit only
+    # must never cut it (thinking tokens count against it too).
+    chat_max_tokens: int = 4096
     # Chat speed: when GEMINI_MODEL has not started answering after this many seconds, the fallback models are asked
     # in parallel and the first to answer is used (0 → only after a failure). Measured 30.09: gemini-3.1-flash-lite
     # answered after 2–8 s (median ≈5 s), gemini-3.5-flash-lite and gemini-flash-lite-latest after ≈0.5–1 s. Shorter
@@ -70,6 +76,11 @@ class Settings(BaseSettings):
     # uploads per account and per IP address in a rolling hour.
     transcribe_per_user_hour: int = 30
     transcribe_per_ip_hour: int = 60
+    # Live text while the person speaks (iOS app, browsers without speech recognition): the recording so far is sent
+    # every ~1.5 s with partial=1 — Whisper on Groq when GROQ_API_KEY is set (its own free quota), else Gemini.
+    transcribe_partial_per_user_hour: int = 900
+    transcribe_partial_per_ip_hour: int = 1800
+    groq_whisper_model: str = "whisper-large-v3-turbo"
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
     # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
     chat_fallback_to_anthropic: bool = False
@@ -187,6 +198,11 @@ class Settings(BaseSettings):
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
     zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
+    # Nightly pass over recently changed acts (the index sorted by the date of change): once a day, the first run
+    # after ZANN_CORPUS_RECENT_HOUR local time (-1 = off) reads at most ZANN_CORPUS_RECENT_PAGES pages of 100 acts
+    # and puts new and changed acts at the head of the queue; the 30-day walk (ZANN_CORPUS_REFRESH_DAYS) stays.
+    zann_corpus_recent_hour: int = 2
+    zann_corpus_recent_pages: int = 20
     # Zann court practice (konsilier/zann/court.py, docs/zann-court.md; owner 01.10.2026): what a country's courts
     # publish openly — sources, categories and anonymisation rules are pack data (packs/<cc>/zann/court.yaml,
     # anonymize.yaml); originals and texts gzip under zann/court/ in our storage only. Off by default.

@@ -47,9 +47,10 @@ def confirm_test_email(body: SmokeEmail, user: User = Depends(current_user), ses
     email = body.email.strip().lower()
     if not user.is_test or not email.endswith("@resend.dev"):
         raise HTTPException(404, "not found")
-    container.identities.link_or_login(session, user, "email", email, email)
+    owner = container.identities.link_or_login(session, user, "email", email, email)
     session.flush()
-    return {"email": email}
+    # QA 01.10: an address already taken signs into that account — the caller switches to its token
+    return {"email": email, "token": owner.api_token, "user_id": str(owner.id)}
 
 
 @router.post("/cases/{case_id}/payment/confirm", dependencies=[Depends(smoke)])
