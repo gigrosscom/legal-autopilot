@@ -18,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -699,4 +700,53 @@ class ZannListing(Base):
     next_page: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     errors: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ZannArticle(Base):
+    """One article of a collected act (konsilier/zann/index.py): the unit the Zann search finds and the chat cites
+    («ст. N <act>» with the adilet link). An act without «Статья N» headings (resolutions, orders) is stored as
+    numbered pieces with an empty ``number``. On PostgreSQL the migration adds a generated full-text column ``tsv``
+    (the 'russian' configuration for ru, 'simple' for kk) with a GIN index; SQLite (tests) is searched in Python.
+    ``embedding``: the optional semantic vector (float16 bytes) of the model named in ``emb_model``."""
+
+    __tablename__ = "zann_articles"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(16))
+    lang: Mapped[str] = mapped_column(String(2))
+    ord: Mapped[int] = mapped_column(Integer, default=0)
+    number: Mapped[str] = mapped_column(String(16), default="", server_default="")
+    heading: Mapped[str | None] = mapped_column(String(500))
+    act_title: Mapped[str | None] = mapped_column(String(1000))
+    act_type: Mapped[str] = mapped_column(String(8), default="", server_default="")
+    status: Mapped[str] = mapped_column(String(8), default="", server_default="")
+    url: Mapped[str] = mapped_column(String(512))
+    text: Mapped[str] = mapped_column(Text)
+    emb_model: Mapped[str | None] = mapped_column(String(32))
+    embedding: Mapped[bytes | None] = mapped_column(LargeBinary)
+    __table_args__ = (Index("ix_zann_articles_code_lang", "code", "lang", "number"),
+                      Index("ix_zann_articles_number", "number"),
+                      Index("ix_zann_articles_emb_model", "emb_model"))
+
+
+class ZannIndexed(Base):
+    """Which version of each corpus file (code, lang) is in zann_articles: the indexer re-splits a file only when its
+    sha256 (or the act's status / title) changed since."""
+
+    __tablename__ = "zann_indexed"
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    lang: Mapped[str] = mapped_column(String(2), primary_key=True)
+    sha256: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(8), default="", server_default="")
+    articles: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# The same full-text column and index as migration 0028, for databases created from the models (tests on PostgreSQL).
+ZANN_TSV = ("ALTER TABLE zann_articles ADD COLUMN tsv tsvector GENERATED ALWAYS AS (to_tsvector("
+            "CASE WHEN lang = 'ru' THEN 'russian'::regconfig ELSE 'simple'::regconfig END, "
+            "coalesce(heading, '') || ' ' || text)) STORED")
+event.listen(ZannArticle.__table__, "after_create", DDL(ZANN_TSV).execute_if(dialect="postgresql"))
+event.listen(ZannArticle.__table__, "after_create",
+             DDL("CREATE INDEX ix_zann_articles_tsv ON zann_articles USING gin (tsv)").execute_if(
+                 dialect="postgresql"))
 

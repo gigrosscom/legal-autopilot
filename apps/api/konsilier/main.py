@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .api import (admin, auth, chat, command, deals, lawyers, metrics, ops, pilot, push, questions, referral, routes, signing, smoke, support,
-                  transcribe)
+                  transcribe, zann)
 from .config import Settings, get_settings
 from .container import Container, build_container
 from .core.engine import EngineError
@@ -67,6 +67,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.include_router(smoke.router)
     app.include_router(push.router)
     app.include_router(transcribe.router)
+    app.include_router(zann.router)
     return app
 
 

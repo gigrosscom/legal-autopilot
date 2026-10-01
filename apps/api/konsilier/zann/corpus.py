@@ -520,6 +520,7 @@ class ZannCorpusJob:
         self._running = False
         self._lock = threading.Lock()
         self.last: RunStats | None = None
+        self.after: Callable[[], None] | None = None  # e.g. the Zann index job's kick: index what was collected
 
     def __call__(self, session: Session, now: datetime | None) -> int:
         now = now or utcnow()
@@ -556,6 +557,8 @@ class ZannCorpusJob:
             elif stats.stopped == "errors":
                 rest(timedelta(minutes=15))
             log.info("zann corpus: run done %s", asdict(stats))
+            if self.after is not None and (stats.saved or stats.requeued):
+                self.after()
         except Exception:
             log.exception("zann corpus: run failed")
             rest(timedelta(minutes=15))

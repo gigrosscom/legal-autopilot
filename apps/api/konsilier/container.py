@@ -51,6 +51,7 @@ class Container:
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
     chat_fallback_agent: Any = None  # Claude, used when the free chat fails before the reply starts (off by default)
     transcriber: Any = None  # konsilier.transcribe.GeminiTranscriber when a Gemini key is set (voice input)
+    law_index: Any = None  # konsilier.zann.search.LawIndex: the Zann article search (GET /v1/zann/search, the chat)
     transcribe_limits: Any = None  # (per account, per IP) konsilier.transcribe.SlidingLimiter
     official_sources: dict[str, Any] = field(default_factory=dict)  # country → konsilier.official OfficialSources
     # when a sign-in code last failed to go out, per channel: payment must not wait on a channel that is down
@@ -182,10 +183,25 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         from .zann.corpus import ZannCorpusJob, build_collector
 
-        scheduler.extra_jobs.append(ZannCorpusJob(lambda: build_collector(settings, factory, storage),
-                                                  ZoneInfo(settings.zann_corpus_tz),
-                                                  hour=settings.zann_corpus_hour,
-                                                  minutes=settings.zann_corpus_minutes))
+        corpus_job = ZannCorpusJob(lambda: build_collector(settings, factory, storage),
+                                   ZoneInfo(settings.zann_corpus_tz), hour=settings.zann_corpus_hour,
+                                   minutes=settings.zann_corpus_minutes)
+        scheduler.extra_jobs.append(corpus_job)
+    else:
+        corpus_job = None
+    from .zann.embed import build_embedder
+    from .zann.search import LawIndex
+
+    embedder = build_embedder(settings.zann_embeddings)
+    container.law_index = LawIndex(factory, embedder)
+    if settings.zann_index_enabled:  # articles of the collected acts for the Zann search (incremental, cheap)
+        from .zann.index import Indexer, ZannIndexJob
+
+        index_job = ZannIndexJob(lambda: Indexer(factory, storage, embedder=embedder),
+                                 every_minutes=settings.zann_index_every_minutes, minutes=settings.zann_index_minutes)
+        scheduler.extra_jobs.append(index_job)
+        if corpus_job is not None:
+            corpus_job.after = index_job.kick  # index what a corpus run just collected
     from .transcribe import GeminiTranscriber, SlidingLimiter
 
     container.transcribe_limits = (SlidingLimiter(settings.transcribe_per_user_hour),
@@ -199,6 +215,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         local = CorpusTexts(factory, storage)
     adilet = Adilet(local=local)
+    law_index = container.law_index if settings.zann_search_chat else None
     chat_adilet = Adilet(fetch=quick_fetch, local=local)  # the chat waits at most 8 s for a portal page
     if settings.llm_provider == "anthropic":
         import anthropic
@@ -209,7 +226,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         if settings.anthropic_for_questions:  # off by default: questions on a case go to the free chat
             container.law_agent = LawAgent(client, settings.llm_model, adilet)
         if settings.anthropic_for_chat:  # off by default: the chat never spends the paid model's budget
-            claude_chat = ChatAgent(client, settings.llm_fast_model, chat_adilet, library=library)
+            claude_chat = ChatAgent(client, settings.llm_fast_model, chat_adilet, library=library,
+                                    law_index=law_index)
             if settings.chat_provider == "anthropic":
                 container.chat_agent = claude_chat
             elif settings.chat_fallback_to_anthropic:
@@ -224,7 +242,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                               thinking_level=settings.gemini_chat_thinking_level,
                               hedge_after=settings.gemini_hedge_after)
         container.chat_agent = ChatAgent(gemini, settings.gemini_model, chat_adilet, web_search=False,
-                                         library=library)
+                                         library=library, law_index=law_index)
     if settings.chat_provider == "free":
         clients = free_chat_clients(settings)
         if clients:
@@ -232,7 +250,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
             chain = ChainClient(clients, settings.chat_first_token_timeout)
             container.chat_agent = ChatAgent(chain, settings.gemini_model, chat_adilet, web_search=False,
-                                             library=library)
+                                             library=library, law_index=law_index)
     def approval_needed(session: Any, case: Any, action: Any) -> None:
         from .core.models import User
         from .team import notify_team
