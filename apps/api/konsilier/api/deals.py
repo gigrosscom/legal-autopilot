@@ -113,7 +113,8 @@ def deals(limit: int = 500, session: Session = Depends(get_session),
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     waiting = len(cards["confirm"]) + sum(1 for c in cards["paid"] if c["pending_review"])
     return {"columns": [{"id": k, "label": label, "cards": cards[k]} for k, label in DEAL_COLUMNS],
-            "paid_today": total(today), "paid_week": total(now - timedelta(days=7)), "currency": "KZT",
+            "paid_today": total(today), "paid_week": total(now - timedelta(days=7)),
+            "currency": real_paid[0].currency if real_paid else None,
             "waiting_for_owner": waiting}
 
 

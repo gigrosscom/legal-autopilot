@@ -998,6 +998,7 @@ const tr: Dict = {
     hintCta: "E-postayı doğrula",
   },
   payment: {
+    applicant: { title: "Belge için bilgileriniz", lead: "Belgede başvuru sahibinin bilgileri olarak yer alacak. Bir kez doldurun, ödemeye geçelim.", continue: "Ödemeye devam et" },
     contact: {
       phone: "Telefonunuz — belgeyi göndeririz ve süreyi hatırlatırız",
       email: "E-postanız — belgeyi göndeririz ve süreyi hatırlatırız",
