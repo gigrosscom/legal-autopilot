@@ -2,7 +2,11 @@
 the amount and payer read from it and the bill it was matched to; and invoices.pay_reminded_at — the one soft
 reminder to a client whose «Оплатить» no push matched.
 
-Revision ID: 0029
+Numbered 0030 and revising 0028 on purpose: «Kaspi one tap» (branch claude/team-kaspi-onetap) adds 0029_invoice_trusted,
+also on 0028. Either can be merged first; with both, the two heads are applied by `alembic upgrade heads` (Dockerfile).
+For a single head once both are in: set down_revision = "0030" here.
+
+Revision ID: 0030
 Revises: 0028
 Create Date: 2026-10-01
 """
@@ -11,7 +15,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0029"
+revision = "0030"
 down_revision = "0028"
 branch_labels = None
 depends_on = None

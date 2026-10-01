@@ -637,7 +637,7 @@ class Invoice(Base):
     lawyer_request_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
-    # 0029: the one soft «оплатите, пожалуйста» to the client when no Kaspi Pay push matched (konsilier/kaspi_parse.py)
+    # 0030: the one soft «оплатите, пожалуйста» to the client when no Kaspi Pay push matched (konsilier/kaspi_parse.py)
     pay_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

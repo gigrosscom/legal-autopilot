@@ -210,12 +210,18 @@ def tell_desk(container: Container, p: dict[str, Any], recent_paid: list[str]) -
     notify_team(container, subject, "\n".join(lines), desk="clients", also=container.settings.payment_notify_emails)
 
 
+def push_confirms(container: Container, inv: Invoice) -> bool:
+    """The pushes are on and this bill is paid into Kaspi Pay: its push confirms it, the desk is not mailed on
+    «Оплатить» (only when a push finds no bill or several)."""
+    return bool(container.settings.payment_kaspi_push_token and container.engine.config.kaspi_push
+                and inv.pay_way in container.engine.KASPI_WAYS)
+
+
 def match_waiting_push(session: Session, container: Container, inv: Invoice) -> bool:
     """The client pressed «Оплатить» after their payment's push came (it found no bill then): match it now, when
     this bill is its only candidate. True when the bill is paid by it."""
     eng = container.engine
-    if not (container.settings.payment_kaspi_push_token and eng.config.kaspi_push) \
-            or inv.pay_way not in eng.KASPI_WAYS or inv.status not in eng.OPEN:
+    if not push_confirms(container, inv) or inv.status not in eng.OPEN:
         return False
     now = utcnow()
     amount = Decimal(inv.amount).quantize(Decimal("0.01"))

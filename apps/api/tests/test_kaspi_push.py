@@ -98,6 +98,7 @@ def test_token(ctx):
 def test_one_bill_is_paid_at_once_and_the_document_follows(ctx):
     outbox = on(ctx)
     api, cid, pay = pressed_pay(ctx, "+7 701 555 00 41")
+    assert not any(m[0] == DESK for m in outbox.sent)  # «Оплатить» mails no one: the push will confirm it
     outbox.sent.clear()
     r = push(ctx, "Поступила оплата 1 990 ₸ от Имя Ф.")
     assert r["status"] == "matched" and r["invoice"] == pay["code"]
