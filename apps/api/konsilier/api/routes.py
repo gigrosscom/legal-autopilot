@@ -26,6 +26,7 @@ from ..core.scenario import RESPONSE_CLASSES
 from .background import after_commit
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
 from .views import case_view
+from ..identity import normalize as norm
 
 log = logging.getLogger(__name__)
 
@@ -390,13 +391,22 @@ def fill_facts(case_id: uuid.UUID, body: FactsIn, user: User = Depends(current_u
                session: Session = Depends(get_session), container: Container = Depends(get_container)):
     """Blanks filled (or facts corrected) in the draft before the document is prepared."""
     case = load_case(case_id, session, user)
+    values = dict(body.values)
+    contact = (values.pop(CONTACT_EMAIL, "") or "").strip()
+    errors: dict[str, str] = {}
+    if contact:
+        try:
+            norm.email(contact)
+        except ValueError:
+            errors[CONTACT_EMAIL] = "invalid"
     try:
-        errors = container.engine.fill_blanks(session, case, body.values)
+        errors |= container.engine.fill_blanks(session, case, values)
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
     if errors:
         raise HTTPException(422, {"code": "invalid_facts", "message": "invalid_facts", "fields": errors})
+    remember_contact(session.get(User, case.owner_id), case, contact or None)
     return {"case": case_view(container.engine, session, case)}
 
 
@@ -654,6 +664,38 @@ class PaymentIn(BaseModel):
     purpose: Literal["document", "case"]
 
 
+class ClaimIn(BaseModel):
+    email: str | None = Field(default=None, max_length=200)  # where to send the document, the receipt and the link
+
+
+CONTACT_EMAIL = "contact_email"  # the applicant form's extra field: no scenario field, it goes to the account
+
+
+def remember_contact(owner: User | None, case: Case | None = None, email: str | None = None) -> None:
+    """Owner 01.10: no separate sign-up — the account is made from the applicant's own data. The e-mail and phone
+    typed for the document go to the account unverified; the e-mail with the document or the receipt carries a link
+    that verifies it («Сохранить доступ к делам»). A verified contact is never replaced."""
+    if owner is None or owner.channel != "web":
+        return
+    kinds = {i.kind for i in owner.identities}
+    facts = (case.facts or {}) if case is not None else {}
+    mail = email or facts.get("applicant_email")
+    if mail and "email" not in kinds:
+        try:
+            owner.email = norm.email(str(mail))
+        except ValueError:
+            pass
+    phone = facts.get("applicant_phone")
+    if phone and "phone" not in kinds:
+        try:
+            owner.phone = norm.phone(str(phone))
+        except ValueError:
+            pass
+    name = facts.get("applicant_name")
+    if name and not owner.display_name:
+        owner.display_name = str(name)[:200]
+
+
 def applicant_blanks(container: Container, case: Case) -> list[dict[str, Any]]:
     """The applicant's personal data still blank in the draft (name, ID number, address, phone): asked right before
     paying. Other blanks (the other side's details) may stay and be filled in the draft."""
@@ -692,11 +734,17 @@ def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(cur
     """A bill for one document (scenario price) or «Дело под ключ» (every document of the case). The owner confirms
     a phone first: the document and deadline reminders reach them, and the case is not lost with the browser."""
     case = load_case(case_id, session, user)
+    owner = session.get(User, case.owner_id)
+    remember_contact(owner, case)
     missing = applicant_blanks(container, case)
+    if missing and owner is not None and owner.channel == "web" and not owner.email \
+            and not any(m["field"] == "applicant_email" for m in missing):
+        # the same screen asks where to send the document (optional: never blocks paying)
+        missing.append({"field": CONTACT_EMAIL, "label": "", "type": "email", "pattern": None, "optional": True})
     if missing:  # PM 01.10: the applicant's own data on one screen right before paying, never a bill with «[ФИО]»
         raise HTTPException(422, {"code": "applicant_data_required", "message": "applicant_data_required",
                                   "fields": missing})
-    methods = contact_to_confirm(container, session.get(User, case.owner_id))
+    methods = contact_to_confirm(container, owner)
     if methods:
         raise HTTPException(422, {"code": "contact_required", "message": "contact_required", "methods": methods})
     try:
@@ -734,10 +782,17 @@ def _tell_desk_claimed(container: Container, inv, where: str) -> None:
 
 
 @router.post("/cases/{case_id}/payment/claim")
-def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
-                  container: Container = Depends(get_container)):
-    """"I have paid": the invoice waits for the clients desk to find the transfer; the desk gets an e-mail."""
+def claim_payment(case_id: uuid.UUID, body: ClaimIn | None = None, user: User = Depends(current_user),
+                  session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """"I have paid": the invoice waits for the clients desk to find the transfer; the desk gets an e-mail.
+    `email` (optional, from the payment screen): where the document, the receipt and the access link go."""
     case = load_case(case_id, session, user)
+    if body and body.email:
+        try:
+            norm.email(body.email)
+        except ValueError:
+            raise HTTPException(422, {"code": "invalid_email", "message": "invalid_email"}) from None
+        remember_contact(session.get(User, case.owner_id), case, body.email)
     try:
         inv = container.engine.claim_payment(session, container.engine.invoice_of(session, case), f"user:{user.id}")
     except EngineError as e:

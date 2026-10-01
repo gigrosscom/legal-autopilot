@@ -54,6 +54,21 @@ def _signed_in(owner: User) -> dict[str, Any]:
     return {"token": owner.api_token, "me": me_view(owner)}
 
 
+class LinkIn(BaseModel):
+    token: str = Field(min_length=10, max_length=100)
+
+
+@router.post("/auth/link/verify")
+def link_verify(body: LinkIn, session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """«Сохранить доступ к делам» from the e-mail with the document or the receipt: verifies the applicant's e-mail
+    and signs this browser into the account (the existing one, if the address already has one: the cases move there)."""
+    try:
+        user, target = container.identities.take_link(session, body.token)
+    except AuthError as e:
+        raise _err(e) from e
+    return _signed_in(container.identities.link_or_login(session, user, "email", target, norm.mask_email(target)))
+
+
 @router.get("/auth/methods")
 def methods(container: Container = Depends(get_container)) -> dict[str, bool]:
     return container.identity_methods()

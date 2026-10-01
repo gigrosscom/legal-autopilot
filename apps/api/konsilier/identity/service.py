@@ -37,6 +37,9 @@ def _aware(dt: datetime) -> datetime:  # SQLite returns naive datetimes
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
+LINK_KIND = "link_email"
+LINK_TTL = timedelta(days=30)
+
 @dataclass
 class Identities:
     secret: str
@@ -102,6 +105,28 @@ class Identities:
         if ch is None or ch.consumed_at is not None or _aware(ch.expires_at) < _now():
             raise AuthError("challenge_expired")
         return ch
+
+    # ------------------------------------------------------------ «Сохранить доступ к делам» (owner 01.10)
+    def issue_link(self, session: Session, user: User, target: str) -> str:
+        """A one-time link for the e-mail the person typed as the applicant's (not verified yet): opening it verifies
+        the address and signs that browser in (`take_link` → `link_or_login`). Until then only the device that
+        started the case sees it, so a mistyped or someone else's address cannot take over an account."""
+        token = secrets.token_urlsafe(24)
+        session.add(LoginChallenge(kind=LINK_KIND, user_id=user.id, target_hash=self.h("email", target),
+                                   secret_hash=self.h("link", token), expires_at=_now() + LINK_TTL,
+                                   result={"target": target}))
+        session.flush()
+        return token
+
+    def take_link(self, session: Session, token: str) -> tuple[User, str]:
+        ch = session.scalar(select(LoginChallenge).where(
+            LoginChallenge.kind == LINK_KIND, LoginChallenge.secret_hash == self.h("link", (token or "").strip())))
+        target = (ch.result or {}).get("target") if ch else None
+        user = session.get(User, ch.user_id) if ch and ch.user_id else None
+        if ch is None or ch.consumed_at is not None or _aware(ch.expires_at) < _now() or not target or user is None:
+            raise AuthError("link_expired")
+        ch.consumed_at = _now()
+        return user, target
 
     # ------------------------------------------------------------ linking
     def link_or_login(self, session: Session, user: User, kind: str, value: str | None, display: str,
