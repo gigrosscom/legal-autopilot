@@ -7,8 +7,11 @@ import gzip
 import hashlib
 import json
 import os
+import threading
+import time
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from urllib.parse import unquote
 from zoneinfo import ZoneInfo
 
@@ -133,9 +136,9 @@ def test_listing_plan_puts_codes_first_then_laws_then_by_laws_then_the_rest():
     assert [unquote(k) for k, _, _ in plan[:5]] == ["st=new|upd&va=КОД", "st=new|upd&va=КОНС", "st=new|upd&va=КЗАК",
                                                     "st=new|upd&va=УКОН", "st=new|upd&va=ЗАК"]
     assert [p for _, _, p in plan] == sorted(p for _, _, p in plan)
-    assert plan[-1] == ("st=new%7Cupd", "", 3)
+    assert plan[-1] == ("st=new%7Cupd", "", 4)
     lost = listing_plan(["in_force", "lost"])
-    assert lost[-1] == ("st=yts%7Cstp", "", 7) and len(lost) == 2 * len(plan)
+    assert lost[-1] == ("st=yts%7Cstp", "", 9) and len(lost) == 2 * len(plan)
     with pytest.raises(ValueError):
         Collector(None, None, None, statuses=("everything",))
 
@@ -162,7 +165,7 @@ def test_collects_codes_first_stores_gzip_texts_and_a_manifest(db, tmp_path, sma
     assert len(acts) == 7  # the catch-all listing found one more act, and no duplicates
     assert acts["K1500000414"].act_type == "КОД" and acts["K1500000414"].priority == 0
     assert acts["Z1700000062"].act_type == "ЗАК" and acts["Z1700000062"].priority == 1
-    assert acts["V2400035238"].act_type == "" and acts["V2400035238"].priority == 3
+    assert acts["V2400035238"].act_type == "" and acts["V2400035238"].priority == 4
     assert acts["Z999999999_"].state == "missing" and acts["Z999999999_"].info == 'Закон "Об ином"'
     assert acts["V2400035238"].state == "error" and acts["V2400035238"].attempts == 1
     assert acts["K1500000414"].state == "done" and acts["K1500000414"].status == "upd"
@@ -344,4 +347,253 @@ def test_admin_metrics_include_the_corpus(ctx):
 
     m = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()
     assert m["zann"]["acts"] == 0 and m["zann"]["files"] == 0 and m["zann"]["bytes"] == 0
-    assert set(asdict(corpus.RunStats())) >= {"saved", "bytes", "stopped"}
+    assert "requests_last_hour" in m["zann"] and "acts_last_hour" in m["zann"]
+    assert set(asdict(corpus.RunStats())) >= {"saved", "bytes", "stopped", "requests", "requests_per_hour"}
+
+
+# ------------------------------------------------------------------ speed (owner 01.10.2026: the corpus by 04.10)
+SUPREME = [("P260000007S", "О судебной практике применения законодательства об административном надзоре", "new",
+            "Нормативное постановление Верховного Суда Республики Казахстан от 25 июня 2026 года № 7"),
+           ("P99000010S_", "О практике применения законодательства о сроках", "upd",
+            "Нормативное постановление Верховного Суда Республики Казахстан от 1 июля 1999 года № 10")]
+BYLAWS = [("P2400000123", "Об утверждении Правил", "new", "Постановление Правительства от 1 марта 2024 года № 123")]
+
+
+def test_codes_ending_in_letters_are_read_from_the_index():
+    raw = listing_page(3, [SUPREME[0], SUPREME[1], ("H19EK000237", "Решение Евразийской комиссии", "new", "")])
+    assert [i.code for i in parse_listing(raw)[1]] == ["P260000007S", "P99000010S_", "H19EK000237"]
+
+
+def test_supreme_court_resolutions_are_a_tier_of_their_own_after_laws_before_by_laws():
+    plan = listing_plan(["in_force"])
+    sc = next(p for p in plan if p[1] == "НПВС")
+    assert unquote(sc[0]) == "st=new|upd&va=НПОС&kv=1_105" and sc[2] == 2
+    assert unquote(corpus.listing_url(sc[0], 1)).endswith(
+        "/rus/index/docs/st=new|upd&va=НПОС&kv=1_105&pagesize=100&page=1")
+    assert max(p for k, va, p in plan if va in ("ЗАК", "УЗАК")) < sc[2] < min(p for k, va, p in plan if va == "ПОСТ")
+    assert corpus.desired_priority("НПВС", "new") == 2 and corpus.desired_priority("", "yts") == 9
+
+
+def sc_site() -> Site:
+    site = Site()
+    site.listings["st=new|upd&va=НПОС&kv=1_105"] = SUPREME
+    site.listings["st=new|upd&va=ПОСТ"] = BYLAWS
+    site.listings["st=new|upd"] = CODES + CONST + LAWS + OTHER + SUPREME + BYLAWS
+    for c, t, *_ in SUPREME + BYLAWS:
+        site.docs[f"rus/docs/{c}"] = page(t, BODY_RU)
+    return site
+
+
+def test_supreme_court_resolutions_are_collected_after_laws_and_before_other_by_laws(db, tmp_path, small_pages):
+    site = sc_site()
+    stats = collector(db, tmp_path, site).run()
+    assert stats.stopped == "idle"
+    req = site.requests
+    last_law = max(req.index(f"/rus/docs/{c}") for c, *_ in LAWS)
+    sc = [req.index(f"/rus/docs/{c}") for c, *_ in SUPREME]
+    assert last_law < min(sc) and max(sc) < req.index("/rus/docs/P2400000123") < req.index("/rus/docs/V2400035238")
+    with db() as s:
+        a = s.get(ZannAct, "P260000007S")
+        assert a.act_type == "НПВС" and a.priority == 2 and a.state == "done"
+        assert corpus_metrics(s)["done_by_type"]["НПВС"] == 2
+    assert stats.requests == len(req) and stats.workers == 1
+
+
+def test_an_old_database_is_walked_again_and_gets_the_new_priorities(db, tmp_path, small_pages):
+    with db() as s:  # the state left by the collector before the Supreme Court tier and the code fix
+        s.add(ZannListing(key="st=new%7Cupd&va=%D0%9F%D0%9E%D0%A1%D0%A2", act_type="ПОСТ", priority=2, next_page=1,
+                          done_at=datetime.now(timezone.utc)))
+        s.add(ZannListing(key="st=new%7Cupd", act_type="", priority=3, next_page=7))
+        s.add(ZannAct(code="P2400000123", act_type="ПОСТ", status="new", priority=2, state="pending", attempts=0))
+        s.add(ZannAct(code="V2400035238", act_type="", status="new", priority=3, state="pending", attempts=0))
+        s.add(ZannAct(code="K1500000414", act_type="КОД", status="upd", priority=0, state="done", attempts=0))
+        s.commit()
+    c = collector(db, tmp_path, sc_site())
+    c._prepare()
+    with db() as s:
+        rows = {r.key: r for r in s.scalars(select(ZannListing))}
+        acts = {a.code: a.priority for a in s.scalars(select(ZannAct))}
+    assert acts == {"P2400000123": 3, "V2400035238": 4, "K1500000414": 0}
+    assert all(r.done_at is None and r.next_page == 1 for k, r in rows.items() if k != corpus.LISTINGS_MARKER)
+    assert rows["st=new%7Cupd"].priority == 4 and corpus.LISTINGS_MARKER in rows
+    with db() as s:  # once only: a listing walked after the fix is not walked again on the next run
+        s.get(ZannListing, "st=new%7Cupd").done_at = datetime.now(timezone.utc)
+        s.commit()
+    c._prepare()
+    with db() as s:
+        assert s.get(ZannListing, "st=new%7Cupd").done_at is not None
+        assert corpus_metrics(s)["listings"]["started"] == 2  # the marker row is not a listing
+
+
+class SlowSite(Site):
+    """The fake portal answers after a short delay and counts how many requests are in flight at once."""
+
+    def __init__(self, n: int = 24) -> None:
+        super().__init__()
+        self.many = [(f"V24{i:08d}", f"Приказ {i}", "new", "") for i in range(n)]
+        self.listings["st=new|upd"] = CODES + CONST + LAWS + OTHER + self.many
+        for c, t, *_ in self.many:
+            self.docs[f"rus/docs/{c}"] = page(t, BODY_RU)
+        self.broken = set()
+        self.in_flight = self.max_in_flight = 0
+        self.lock = threading.Lock()
+
+    def __call__(self, request):
+        with self.lock:
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+        try:
+            time.sleep(0.01)
+            with self.lock:
+                return super().__call__(request)
+        finally:
+            with self.lock:
+                self.in_flight -= 1
+
+
+def test_workers_read_in_parallel_and_never_read_an_act_twice(db, tmp_path, small_pages):
+    site = SlowSite()
+    stats = collector(db, tmp_path, site, concurrency=4).run()
+    assert stats.stopped == "idle" and stats.errors == 0 and stats.workers == 4
+    docs = [r for r in site.requests if r.startswith(("/rus/docs/", "/kaz/docs/"))]
+    assert len(docs) == len(set(docs)) == 2 * (7 + len(site.many))  # every act once, in both languages
+    assert site.max_in_flight > 1 and site.requests.count("/robots.txt") == 1
+    with db() as s:
+        states = {a.state for a in s.scalars(select(ZannAct))}
+        assert s.query(ZannAct).count() == 7 + len(site.many) and "busy" not in states and "pending" not in states
+    assert stats.acts == 7 + len(site.many) and stats.requests == len(site.requests)
+
+
+def test_two_collectors_on_one_database_never_claim_the_same_act(db, tmp_path, small_pages):
+    """Two API containers (or two runs) on one database: the claim is a conditional UPDATE, one wins."""
+    site = SlowSite(n=30)
+    collector(db, tmp_path, site).run(discover_only=True)
+    site.requests.clear()
+    a = collector(db, tmp_path, site, concurrency=3)
+    b = collector(db, tmp_path, site, concurrency=3)
+    out: dict[str, Any] = {}
+    threads = [threading.Thread(target=lambda k=k, c=c: out.__setitem__(k, c.run())) for k, c in (("a", a), ("b", b))]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    docs = [r for r in site.requests if r.startswith("/rus/docs/")]
+    assert len(docs) == len(set(docs)) == 7 + 30
+    assert out["a"].acts + out["b"].acts == 7 + 30 and out["a"].acts and out["b"].acts
+
+
+def test_a_claim_is_exclusive_and_a_stale_claim_expires(db, tmp_path):
+    t = [datetime(2026, 10, 1, 12, tzinfo=timezone.utc)]
+    with db() as s:
+        for code, prio in (("K1500000414", 0), ("Z1700000062", 1)):
+            s.add(ZannAct(code=code, act_type="", status="new", priority=prio, state="pending", attempts=0))
+        s.commit()
+    one = collector(db, tmp_path, Site(), now=lambda: t[0])
+    two = collector(db, tmp_path, Site(), now=lambda: t[0])
+    assert one._claim_act() == "K1500000414" and two._claim_act() == "Z1700000062" and two._claim_act() is None
+    with db() as s:
+        assert {a.state for a in s.scalars(select(ZannAct))} == {"busy"}
+    t[0] += timedelta(minutes=30)
+    one._prepare()  # a claim younger than the lease is another collector's work in progress
+    with db() as s:
+        assert s.get(ZannAct, "K1500000414").state == "busy"
+    t[0] += corpus.LEASE
+    one._prepare()  # … an older one was left by a crashed run
+    with db() as s:
+        assert {a.state for a in s.scalars(select(ZannAct))} == {"pending"}
+
+
+def test_rate_limiter_spaces_every_workers_requests():
+    clock = [0.0]
+
+    def sleep(s):
+        clock[0] += s
+    lim = corpus.RateLimiter(2.0, clock=lambda: clock[0], sleep=sleep)
+    assert [lim.acquire() for _ in range(4)] == [0.0, 0.5, 1.0, 1.5]
+    lim.min_interval = 2.0  # the robots Crawl-delay, when longer, wins
+    assert lim.acquire() == 2.0 and lim.acquire() == 4.0
+    assert corpus.RateLimiter(50).rate == corpus.MAX_RATE == 3.0  # never above 3 a second, whatever the settings
+
+    real = corpus.RateLimiter(3.0)  # threads: the slots handed out are never closer than 1/rate
+    slots: list[float] = []
+    lock = threading.Lock()
+
+    def worker():
+        for _ in range(2):
+            got = real.acquire()
+            with lock:
+                slots.append(got)
+    threads = [threading.Thread(target=worker) for _ in range(4)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    slots.sort()
+    assert len(slots) == 8 and all(b - a >= 1 / 3 - 1e-9 for a, b in zip(slots, slots[1:]))
+
+
+def test_429_pauses_every_worker_for_retry_after():
+    clock = [0.0]
+
+    def sleep(s):
+        clock[0] += s
+    lim = corpus.RateLimiter(3.0, clock=lambda: clock[0], sleep=sleep)
+    answers = [httpx.Response(429, headers={"Retry-After": "30"}), httpx.Response(200, text="ok")]
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: answers.pop(0)))
+    fetch = PoliteFetcher(delay=0, retries=2, sleep=sleep, client=client, limiter=lim)
+    assert fetch("https://old.adilet.zan.kz/rus/docs/K1500000414") == "ok"
+    assert lim.paused == 1 and clock[0] >= 30  # this worker waited for the portal …
+    lim.pause(60)
+    assert lim.acquire() >= 90 and clock[0] >= 90  # … and every other worker sharing the limiter waits too
+    assert corpus.retry_after("120") == 120 and corpus.retry_after("") is None
+    assert corpus.retry_after("Wed, 01 Oct 2026 12:01:00 GMT",
+                              now=lambda: datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)) == 60
+    # a 500 is this worker's own back-off; a 503 holds everyone
+    answers[:] = [httpx.Response(500), httpx.Response(503, headers={"Retry-After": "5"}),
+                  httpx.Response(200, text="ok")]
+    assert fetch("https://old.adilet.zan.kz/rus/docs/K1500000414") == "ok" and lim.paused == 3
+
+
+def test_a_429_holds_the_other_workers_threads():
+    lim = corpus.RateLimiter(3.0)
+    lim.pause(0.5)  # one worker got a 429 with Retry-After: 0.5
+    t0 = time.monotonic()
+    done: list[float] = []
+    threads = [threading.Thread(target=lambda: (lim.acquire(), done.append(time.monotonic() - t0)))
+               for _ in range(3)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    assert len(done) == 3 and min(done) >= 0.45
+
+
+def test_errors_in_a_row_across_workers_stop_the_run(db, tmp_path, small_pages):
+    site = SlowSite()
+    collector(db, tmp_path, site).run(discover_only=True)
+    site.broken = {k for k in site.docs if k.startswith("rus/docs/")} | {f"kaz/docs/{c}" for c, *_ in site.many}
+    site.docs = {}
+    stats = collector(db, tmp_path, site, concurrency=4).run()
+    assert stats.stopped == "errors" and corpus.MAX_ERRORS_IN_A_ROW <= stats.errors <= corpus.MAX_ERRORS_IN_A_ROW + 4
+    with db() as s:
+        assert s.query(ZannAct).filter(ZannAct.state == "busy").count() == 0  # no claim is left behind
+
+
+def test_metrics_show_the_pace(db, tmp_path, small_pages):
+    site = Site()
+    before = corpus.requests_last_hour()
+    stats = collector(db, tmp_path, site).run()
+    with db() as s:
+        m = corpus_metrics(s)
+    assert m["requests_last_hour"] - before == len(site.requests) == stats.requests
+    assert m["acts_last_hour"] == 7 and m["files_last_hour"] == 7 and m["acts_busy"] == 0
+
+
+def test_settings_give_the_workers_and_the_rate(tmp_path, db):
+    from types import SimpleNamespace
+
+    settings = SimpleNamespace(zann_corpus_langs="ru,kk", zann_corpus_statuses="in_force", zann_corpus_pause=1.0,
+                               zann_corpus_refresh_days=30, zann_corpus_concurrency=4, zann_corpus_rate=9.0)
+    made = corpus.build_collector(settings, db, CountingStorage(tmp_path / "f"))
+    assert made.concurrency == 4 and made.fetch.delay == 2.0 and made.fetch.limiter.rate == 3.0
+    made.fetch.client.close()
