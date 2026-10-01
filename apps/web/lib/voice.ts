@@ -89,6 +89,9 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [startedAt, setStartedAt] = useState(0);  // Date.now() when the dictation began, for the timer
+  // the microphone's loudness while recording, newest last (0..1), for the wave; empty → the wave just animates
+  const [levels, setLevels] = useState<number[]>([]);
+  const meter = useRef<(() => void) | null>(null);
   const stopped = useRef(true);  // the person pressed stop (or an error ended it): no automatic restart
   const speechBroken = useRef(false); // Web Speech exists but its service fails here (WebViews, Brave…)
   const alive = useRef(true);
@@ -116,6 +119,8 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
       return;
     }
     if (!alive.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+    meter.current?.();
+    meter.current = listenLevels(stream, setLevels);
     const type = recorderType();
     let r: MediaRecorder;
     try {
@@ -153,6 +158,7 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
     r.onstop = async () => {
       finished = true;
       clearInterval(live);
+      meter.current?.(); meter.current = null;
       stream.getTracks().forEach((t) => t.stop());
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       recorder.current = null;
@@ -247,13 +253,40 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
   }, [listening, transcribing, startRecording]);
 
   useEffect(() => () => {
+    meter.current?.();
     stopped.current = true;
     rec.current?.stop();
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  return { supported, listening, transcribing, error, startedAt, start, stop };
+  return { supported, listening, transcribing, error, startedAt, levels, start, stop };
+}
+
+const WAVE_POINTS = 28;
+
+/** The loudness of the recording, ~12 times a second, as the last WAVE_POINTS values (0..1). Returns the stop. */
+function listenLevels(stream: MediaStream, set: (v: number[]) => void): () => void {
+  const Ctx = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
+    ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctx) return () => {};
+  let ctx: AudioContext;
+  try { ctx = new Ctx(); } catch { return () => {}; }
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  source.connect(analyser);
+  const data = new Uint8Array(analyser.fftSize);
+  let points: number[] = [];
+  const timer = setInterval(() => {
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+    const level = Math.min(1, Math.sqrt(sum / data.length) * 4);  // speech is quiet: scaled up to fill the bar
+    points = [...points, level].slice(-WAVE_POINTS);
+    set(points);
+  }, 80);
+  return () => { clearInterval(timer); set([]); try { source.disconnect(); void ctx.close(); } catch { /* closed */ } };
 }
 
 /** Former name, kept for existing callers: the same hook (now with the recording fallback). */
