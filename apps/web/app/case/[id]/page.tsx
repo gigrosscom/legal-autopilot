@@ -429,7 +429,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         </div>
       )}
       {/* the document is ready or the case is closed: the moment to pass the service on (both get a free document) */}
-      {(c.outcome || (c.status !== "intake" && last?.downloadable)) && <Invite compact />}
+      {(c.outcome || (c.status !== "intake" && (last?.downloadable || c.payment?.status === "paid"))) && <Invite big />}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
     </AppShell>
   );

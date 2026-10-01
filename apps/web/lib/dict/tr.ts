@@ -813,6 +813,9 @@ const tr: Dict = {
     },
   },
   invite: {
+    bigTitle: "Bir arkadaşınıza gönderin — ikinize de ücretsiz belge",
+    bigLead: "Arkadaşınız bağlantınız üzerinden ilk belgesinin ödemesini yaptığında, ikiniz de bir belgeyi daha ücretsiz alırsınız. Hazır mesajı tek dokunuşla gönderin.",
+    other: "Başka uygulama",
     offer: "Bir arkadaşınızı davet edin: o bir belgenin ücretini ödediğinde ikiniz de bir belgeyi ücretsiz alırsınız",
     title: "İhtiyacı olanları davet edin",
     lead: "Bağlantınızı benzer bir sorunu olan arkadaşlarınıza ve yakınlarınıza gönderin. Sohbet onlar için ücretsiz.",
