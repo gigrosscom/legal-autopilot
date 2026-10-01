@@ -43,12 +43,17 @@ from ..core.models import ZannCourtDoc, ZannCourtPage
 from ..lawagent.sources import ActNotFound
 from ..official.crawler import Robots
 from .anonymize import Rules, anonymize_record, load_rules
-from .corpus import ZannCorpusJob, _aware, retry_after, utcnow
+from .corpus import ZannCorpusJob, _aware, describe, retry_after, utcnow
 
 log = logging.getLogger(__name__)
 
-USER_AGENT = "Konsilier.AI Zann court-practice collector (+https://konsilier.com; research; honours Crawl-delay)"
-ROBOTS_TOKEN = "konsilier.ai zann court collector"
+# Who we are, for the sites' logs. sud.kz (checked 01.10.2026) silently drops the connection when the User-Agent has
+# words such as «collector», «spider», «bot» or «httpx» (robots.txt included), and the file service of sud.gov.kz
+# (JBoss) answers 404 to a User-Agent without a platform token. So: a platform token, our name and version; the
+# contact goes in the standard From header. A pack may set its own («user_agent» in zann/court.yaml).
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Konsilier.AI/1.0"
+FROM = "info@konsilier.com"
+ROBOTS_TOKEN = "konsilier.ai"
 PREFIX = "zann/court/"
 MANIFEST_KEY = PREFIX + "manifest.jsonl.gz"
 MIN_CHARS = 200
@@ -86,13 +91,17 @@ def countries(packs_dir: Path) -> list[str]:
     return sorted(p.parent.parent.name for p in Path(packs_dir).glob("*/zann/court.yaml"))
 
 
+class NoSources(ValueError):
+    """Nothing to collect: no pack with court sources (or several and no ZANN_COURT_COUNTRY), or unknown sources."""
+
+
 def pick_country(packs_dir: Path, wanted: str = "") -> str:
     """The configured country, else the only pack with court-practice sources."""
     if wanted:
         return wanted.lower()
     found = countries(packs_dir)
     if len(found) != 1:
-        raise ValueError(f"zann court: set ZANN_COURT_COUNTRY, packs with court sources: {found}")
+        raise NoSources(f"set ZANN_COURT_COUNTRY, packs with court sources: {found}")
     return found[0]
 
 
@@ -113,6 +122,7 @@ class Site:
     def __init__(self, data: dict[str, Any], country: str = ""):
         self.country = country
         self.court: str = data.get("court", "")
+        self.user_agent: str = data.get("user_agent") or USER_AGENT
         self.hosts = set(data.get("hosts", []))
         # hosts never fetched, whatever a page links to (a captcha-protected bank of court acts, a paused source)
         self.blocked = set(data.get("blocked_hosts", []))
@@ -237,7 +247,7 @@ class Site:
 def load_site(packs_dir: Path, country: str) -> Site:
     path = site_path(packs_dir, country)
     if not path.is_file():
-        raise FileNotFoundError(f"zann court: no court sources for {country!r} ({path})")
+        raise NoSources(f"no court sources for {country!r} ({path})")
     return Site(yaml.safe_load(path.read_text("utf-8")), country.lower())
 
 
@@ -312,10 +322,11 @@ class CourtFetcher:
     429/5xx and network resets, a size cap. Same manners as konsilier.zann.corpus.PoliteFetcher, but returns bytes."""
 
     def __init__(self, delay: float = 1.0, retries: int = 3, timeout: float = 120.0, max_bytes: int = 60_000_000,
-                 sleep: Callable[[float], None] = time.sleep, client: httpx.Client | None = None):
+                 sleep: Callable[[float], None] = time.sleep, client: httpx.Client | None = None,
+                 user_agent: str = USER_AGENT):
         self.delay, self.retries, self.sleep, self.max_bytes = delay, retries, sleep, max_bytes
         self.client = client or httpx.Client(timeout=timeout, follow_redirects=True,
-                                             headers={"User-Agent": USER_AGENT})
+                                             headers={"User-Agent": user_agent, "From": FROM})
         self._last = 0.0
 
     def __call__(self, url: str) -> Got:
@@ -369,7 +380,9 @@ class RunStats:
     errors: int = 0
     masked: int = 0         # personal data replaced by labels in the stored texts
     bytes: int = 0          # gzip bytes stored
-    stopped: str = ""       # budget | limit | idle | robots | errors
+    stopped: str = ""       # budget | limit | idle | robots (closed by robots.txt) | unreachable (robots.txt not
+    #                         read: resets, timeouts) | errors (MAX_ERRORS_IN_A_ROW failures in a row)
+    error: str = ""         # the last error of the run
 
 
 class Collector:
@@ -378,8 +391,8 @@ class Collector:
                  clock: Callable[[], float] = time.monotonic, now: Callable[[], datetime] = utcnow):
         sources = sources or tuple(site.sources)
         bad = [s for s in sources if s not in site.sources]
-        if bad:
-            raise ValueError(f"zann court: unknown sources {bad}")
+        if bad or not sources:
+            raise NoSources(f"unknown sources {bad}, the pack has {list(site.sources)}")
         self.sf, self.storage, self.fetch, self.site, self.sources = session_factory, storage, fetch, site, sources
         self.rules = rules  # the text kept for search and training is masked with these; the original stays as it is
         self.refresh = timedelta(days=refresh_days) if refresh_days > 0 else None
@@ -399,8 +412,8 @@ class Collector:
                 rules = Robots.parse(self.fetch(f"{parts.scheme}://{parts.netloc}/robots.txt").text, ROBOTS_TOKEN)
             except ActNotFound:
                 rules = Robots()
-            except Exception as e:  # the site is unreachable: no rules, no crawling; the run stops as «errors»
-                raise SiteUnreachable(f"{host}: {type(e).__name__}: {e}") from e
+            except Exception as e:  # the site is unreachable: no rules, no crawling; the run stops as «unreachable»
+                raise SiteUnreachable(f"{host}: {describe(e)}") from e
             self._robots[host] = rules
             if rules.crawl_delay and hasattr(self.fetch, "delay"):
                 self.fetch.delay = max(self.fetch.delay, rules.crawl_delay)
@@ -435,10 +448,10 @@ class Collector:
                 except SiteUnreachable as e:
                     log.warning("zann court: robots.txt unreadable, stopping: %s", e)
                     stats.errors += 1
-                    stats.stopped = "errors"
+                    stats.stopped, stats.error = "unreachable", f"robots.txt {e}"[:300]
                     break
                 if not ok:
-                    stats.stopped = "robots"
+                    stats.stopped, stats.error = "robots", f"robots.txt closes {arg}"[:300]
                     break
                 in_a_row = in_a_row + 1 if stats.errors > before else 0
         finally:
@@ -511,11 +524,12 @@ class Collector:
         except Exception as e:  # noqa: BLE001 — retried by a later step or run
             log.warning("zann court: page %s failed: %s", url, e)
             stats.errors += 1
+            stats.error = f"{url}: {describe(e)}"[:300]
             self._failed.add(url)
             with self.sf() as s:
                 row = s.get(ZannCourtPage, url)
                 row.state, row.attempts = "error", (row.attempts or 0) + 1
-                row.error = f"{type(e).__name__}: {e}"[:500]
+                row.error = f"{describe(e)}"[:500]
                 s.commit()
             return True
         stats.pages += 1
@@ -570,10 +584,11 @@ class Collector:
             return True
         except Exception as e:  # noqa: BLE001 — one bad file must not stop the run
             stats.errors += 1
+            stats.error = f"{url}: {describe(e)}"[:300]
             self._failed.add(did)
             with self.sf() as s:
                 d = s.get(ZannCourtDoc, did)
-                d.state, d.attempts, d.error = "error", (d.attempts or 0) + 1, f"{type(e).__name__}: {e}"[:500]
+                d.state, d.attempts, d.error = "error", (d.attempts or 0) + 1, f"{describe(e)}"[:500]
                 s.commit()
             return True
         stats.docs += 1
@@ -710,7 +725,8 @@ def court_metrics(session: Session) -> dict[str, Any]:
                                   .where(ZannCourtDoc.state == "done").group_by(ZannCourtDoc.category)).all())
     gz, chars = session.execute(select(func.coalesce(func.sum(ZannCourtDoc.bytes), 0),
                                        func.coalesce(func.sum(ZannCourtDoc.chars), 0))).one()
-    pages = dict(session.execute(select(ZannCourtPage.state, func.count()).group_by(ZannCourtPage.state)).all())
+    pages = dict(session.execute(select(ZannCourtPage.state, func.count()).where(ZannCourtPage.kind != STATUS_KIND)
+                                 .group_by(ZannCourtPage.state)).all())
     last = session.scalar(select(func.max(ZannCourtDoc.fetched_at)))
     return {
         "docs": sum(states.values()),
@@ -725,13 +741,83 @@ def court_metrics(session: Session) -> dict[str, Any]:
         "chars": int(chars),
         "pages": {"done": pages.get("done", 0), "pending": pages.get("pending", 0), "error": pages.get("error", 0)},
         "last_fetched_at": _aware(last).isoformat(timespec="seconds") if last else None,
+        "status": court_status(session),
     }
 
 
-def make_job(make_collector: Callable[[], Collector], tz: Any, *, hour: int = 4, minutes: int = 50) -> ZannCorpusJob:
-    """The corpus job (konsilier/zann/corpus.py) driving this collector: nightly at ``hour`` or continuous (-1)."""
+# ---- the collector's state for the serial console line and /v1/admin/metrics: one row of zann_court_pages
+STATUS_URL, STATUS_KIND = "#status", "status"
+STATES = {  # how a run ended → what the status line says
+    "idle": "waiting", "budget": "waiting", "limit": "waiting",
+    "unreachable": "blocked(robots_unreachable)", "robots": "blocked(robots_closed)",
+    "errors": "error(errors_in_a_row)",
+}
+
+
+def run_state(stopped: str, error: str = "") -> str:
+    """running | waiting | blocked(robots_unreachable) | blocked(robots_closed) | no_sources | error(<reason>)."""
+    if stopped == "running":
+        return "running"
+    if stopped == "failed":
+        if error.startswith(NoSources.__name__):
+            return "no_sources"
+        return f"error({error.split(':', 1)[0] or 'failed'})"
+    return STATES.get(stopped, f"error({stopped or 'unknown'})")
+
+
+def save_status(session_factory: sessionmaker[Session], state: str, *, error: str = "", stats: Any = None,
+                started: datetime | None = None, ended: datetime | None = None,
+                next_run: datetime | None = None) -> None:
+    """Keep the collector's state: «running» when a run starts (its last error and last run stay), the outcome when
+    it ends. The details are JSON in ``label``, the last error in ``error``, the end of the last run in ``done_at``."""
+    with session_factory() as s:
+        row = s.get(ZannCourtPage, STATUS_URL)
+        if row is None:
+            row = ZannCourtPage(url=STATUS_URL, source="#", kind=STATUS_KIND, state="-", attempts=0, found=0)
+            s.add(row)
+        try:
+            info = json.loads(row.label or "{}")
+        except ValueError:
+            info = {}
+        info["state"] = state
+        info["next"] = next_run.isoformat(timespec="seconds") if next_run else None
+        if started is not None:
+            info["started"] = started.isoformat(timespec="seconds")
+        if state != "running":
+            row.done_at = ended or utcnow()
+            row.error = error[:500] or None
+            if stats is not None:
+                info["run"] = {"pages": stats.pages, "docs": stats.docs, "saved": stats.saved, "errors": stats.errors}
+        row.label = json.dumps(info, ensure_ascii=False)[:300]
+        s.commit()
+
+
+def court_status(session: Session) -> dict[str, Any]:
+    """{state, last_error, last_run, next_run, started, run}; state «never_run» before the first run."""
+    row = session.get(ZannCourtPage, STATUS_URL)
+    if row is None:
+        return {"state": "never_run", "last_error": None, "last_run": None, "next_run": None}
+    try:
+        info = json.loads(row.label or "{}")
+    except ValueError:
+        info = {}
+    return {"state": info.get("state", "unknown"), "last_error": row.error,
+            "last_run": _aware(row.done_at).isoformat(timespec="seconds") if row.done_at else None,
+            "next_run": info.get("next"), "started": info.get("started"), "run": info.get("run")}
+
+
+def make_job(make_collector: Callable[[], Collector], tz: Any, *, hour: int = 4, minutes: int = 50,
+             session_factory: sessionmaker[Session] | None = None) -> ZannCorpusJob:
+    """The corpus job (konsilier/zann/corpus.py) driving this collector: nightly at ``hour`` or continuous (-1). With
+    a session factory, every start and outcome is kept for the status line (``court_status``)."""
+    def on_status(stopped: str, stats: Any, error: str, next_run: datetime | None) -> None:
+        now = utcnow()
+        save_status(session_factory, run_state(stopped, error), error=error, stats=stats,  # type: ignore[arg-type]
+                    started=now if stopped == "running" else None, ended=now, next_run=next_run)
+
     return ZannCorpusJob(make_collector, tz, hour=hour, minutes=minutes,  # type: ignore[arg-type]
-                         start=lambda fn: threading.Thread(target=fn, name="zann-court", daemon=True).start())
+                         start=lambda fn: threading.Thread(target=fn, name="zann-court", daemon=True).start(),
+                         name="zann court", on_status=on_status if session_factory is not None else None)
 
 
 def build_collector(settings: Any, session_factory: sessionmaker[Session], storage: Any,
@@ -741,7 +827,7 @@ def build_collector(settings: Any, session_factory: sessionmaker[Session], stora
     sources = tuple(x.strip() for x in settings.zann_court_sources.split(",") if x.strip())
     # ≤ 1–2 requests a second at most; a site's robots.txt Crawl-delay is applied on top by allowed()
     fetch = fetch or CourtFetcher(delay=max(0.5, settings.zann_court_pause),
-                                  max_bytes=int(settings.zann_court_max_mb * 1_000_000))
+                                  max_bytes=int(settings.zann_court_max_mb * 1_000_000), user_agent=site.user_agent)
     country = site.country
     return Collector(session_factory, storage, fetch, site, load_rules(settings.packs_dir, country), sources=sources,
                      refresh_days=settings.zann_court_refresh_days)

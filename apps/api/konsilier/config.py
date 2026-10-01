@@ -187,6 +187,11 @@ class Settings(BaseSettings):
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
     zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
+    # Nightly pass over recently changed acts (the index sorted by the date of change): once a day, the first run
+    # after ZANN_CORPUS_RECENT_HOUR local time (-1 = off) reads at most ZANN_CORPUS_RECENT_PAGES pages of 100 acts
+    # and puts new and changed acts at the head of the queue; the 30-day walk (ZANN_CORPUS_REFRESH_DAYS) stays.
+    zann_corpus_recent_hour: int = 2
+    zann_corpus_recent_pages: int = 20
     # Zann court practice (konsilier/zann/court.py, docs/zann-court.md; owner 01.10.2026): what a country's courts
     # publish openly — sources, categories and anonymisation rules are pack data (packs/<cc>/zann/court.yaml,
     # anonymize.yaml); originals and texts gzip under zann/court/ in our storage only. Off by default.
