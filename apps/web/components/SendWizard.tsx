@@ -14,7 +14,6 @@ import {
   errorText,
   fetchFile,
   saveBlob,
-  shareFile,
   type AuthMethods,
   type CaseAction,
   type CaseView,
@@ -62,7 +61,6 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
   const [sentNow, setSentNow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [messenger, setMessenger] = useState<Route | null>(null);
   const [portalOpen, setPortalOpen] = useState(false);
   const signed = (a.signatures ?? []).length > 0;
 
@@ -161,22 +159,9 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
       {portalOpen && canFile && <EotinishBridge caseId={caseId} a={a} onCase={onCase} startOpen />}
 
       {sentNow && messengers.map((s) => (
-        <div key={s.channel} className="space-y-2 rounded-2xl bg-brand-50 p-3">
-          {/* the chat opens with the short text; the PDF goes by the share sheet (phone) or is downloaded to attach */}
-          <a className="btn-primary min-h-12 w-full" href={s.href ?? "#"} target="_blank" rel="noreferrer"
-            onClick={() => setMessenger({ key: s.channel, channel: s.channel as Channel, to: s.to, icon: STEP_ICON[s.channel], href: s.href ?? undefined })}>
-            <Icon name={STEP_ICON[s.channel]} size={18} />
-            <span>{t("send.plan.openMessenger", { app: t(`send.channels.${s.channel}`) })}</span>
-          </a>
-          <Button className="w-full" variant="secondary" icon="paperclip"
-            onClick={() => shareFile(`${base}/document?format=${a.has_pdf ? "pdf" : "docx"}`, `${a.action_id}.${a.has_pdf ? "pdf" : "docx"}`, a.title).catch(() => {})}>
-            {t("send.sharePdf")}
-          </Button>
-          {messenger?.key === s.channel && (
-            <ProofStep base={base} route={messenger} explain={explain}
-              onDone={(out) => { addDelivery(out.filing); if (out.case) onCase?.(out.case); setMessenger(null); }} />
-          )}
-        </div>
+        <MessengerSend key={s.channel} base={base} a={a} text={plan.message} channel={s.channel as Channel} to={s.to}
+          href={s.href ?? undefined} explain={explain}
+          onDone={(out) => { addDelivery(out.filing); if (out.case) onCase?.(out.case); }} />
       ))}
       {sentNow && gov && <p className="rounded-2xl bg-brand-50 p-3 text-sm">{t("send.plan.govNext")}</p>}
       {error && <p role="alert" className="text-xs text-danger">{error}</p>}
@@ -207,8 +192,6 @@ function ManualSend({ caseId, a, onCase, onDelivery }: {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState("");
-  const pdf = `${base}/document?format=${a.has_pdf ? "pdf" : "docx"}`;
-  const fileName = `${a.action_id}.${a.has_pdf ? "pdf" : "docx"}`;
 
   const explain = (e: unknown) => {
     if (e instanceof ApiError && e.code) {
@@ -238,20 +221,6 @@ function ManualSend({ caseId, a, onCase, onDelivery }: {
   };
 
   // The PDF goes through the phone's share sheet (the client picks the chat); on a computer it is downloaded to attach.
-  async function sendFile(text: string) {
-    setError(null);
-    try {
-      const blob = await fetchFile(pdf);
-      const file = new File([blob], fileName, { type: blob.type || "application/pdf" });
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      if (nav.share && nav.canShare?.({ files: [file] })) {
-        try { await nav.share({ files: [file], text, title: a.title }); } catch { /* cancelled */ }
-        return;
-      }
-      saveBlob(blob, fileName);
-    } catch (e) { setError(explain(e)); }
-  }
-
   const routes = (contacts: FoundContact[], extra: string): Route[] => {
     const list: Route[] = [];
     const msg = plan?.message ?? "";
@@ -348,12 +317,11 @@ function ManualSend({ caseId, a, onCase, onDelivery }: {
             {route.channel === "app_dispute" && <p className="text-sm">{t("send.disputeHow")}</p>}
             <p className="text-xs text-muted">{t("send.shortText")}</p>
             <pre className="whitespace-pre-wrap rounded-xl bg-surface p-2 text-sm">{plan.message}</pre>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" icon={copied ? "check" : "copy"} onClick={() => copy(plan.message)}>{copied ? t("send.copied") : t("send.copy")}</Button>
-              {route.href && <Button variant="secondary" icon="external" href={route.href}>{t("send.openChat")}</Button>}
-              <Button variant="secondary" icon="paperclip" onClick={() => sendFile(plan.message)}>{t("send.sharePdf")}</Button>
-            </div>
-            <ProofStep base={base} route={route} onDone={done} explain={explain} />
+            <Button variant="secondary" icon={copied ? "check" : "copy"} onClick={() => copy(plan.message)}>{copied ? t("send.copied") : t("send.copy")}</Button>
+            {route.channel === "app_dispute"
+              ? <ProofStep base={base} route={route} onDone={done} explain={explain} />
+              : <MessengerSend base={base} a={a} text={plan.message} channel={route.channel} to={route.to} href={route.href}
+                  explain={explain} onDone={done} />}
           </div>
         ))}
       {error && <p role="alert" className="text-xs text-danger">{error}</p>}
@@ -438,6 +406,49 @@ function EmailStep({ base, initial, plan, onSent, explain }: {
           </div>
         </div>
       )}
+      {error && <p role="alert" className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/** One «Отправить» to a messenger: the share sheet carries the PDF and the short text into the chosen chat (phone);
+ *  elsewhere the chat opens with the text and the PDF is saved to attach. The time of the press is kept as the sending
+ *  time; a screenshot «доставлено / прочитано» can be added afterwards as proof. */
+function MessengerSend({ base, a, text, channel, to, href, explain, onDone }: {
+  base: string; a: CaseAction; text: string; channel: Channel; to: string; href?: string;
+  explain: (e: unknown) => string; onDone: (out: { filing: Delivery; case?: CaseView }) => void;
+}) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fmt = a.has_pdf ? "pdf" : "docx";
+  async function send() {
+    setBusy(true); setError(null);
+    const win = href ? window.open("about:blank", "_blank") : null;  // opened now, inside the click, so it isn't blocked
+    try {
+      const blob = await fetchFile(`${base}/document?format=${fmt}`);
+      const file = new File([blob], `${a.action_id}.${fmt}`, { type: blob.type || "application/pdf" });
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      if (nav.share && nav.canShare?.({ files: [file] })) {
+        win?.close();
+        try { await nav.share({ files: [file], text, title: a.title }); } catch { setBusy(false); return; }  // cancelled
+      } else {
+        if (win && href) win.location.href = href; else if (href) window.open(href, "_blank");
+        saveBlob(blob, file.name);
+      }
+      const form = new FormData();
+      form.append("channel", channel);
+      form.append("recipient", to);
+      onDone(await api<{ filing: Delivery; case: CaseView }>(`${base}/send/proof`, { method: "POST", body: form }));
+      setSent(true);
+    } catch (e) { win?.close(); setError(explain(e)); } finally { setBusy(false); }
+  }
+  return (
+    <div className="space-y-2 rounded-2xl bg-brand-50 p-3">
+      <Button className="min-h-12 w-full" icon={busy ? "spinner" : (STEP_ICON as Partial<Record<string, IconName>>)[channel] ?? "send"} disabled={busy || sent} onClick={send}>
+        {sent ? t("send.sentTo", { app: t(`send.channels.${channel}`) }) : t("send.sendTo", { app: t(`send.channels.${channel}`) })}
+      </Button>
       {error && <p role="alert" className="text-xs text-danger">{error}</p>}
     </div>
   );
