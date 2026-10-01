@@ -196,7 +196,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         scheduler.extra_jobs.append(court.make_job(lambda: court.build_collector(settings, factory, storage),
                                                    ZoneInfo(settings.zann_court_tz), hour=settings.zann_court_hour,
-                                                   minutes=settings.zann_court_minutes))
+                                                   minutes=settings.zann_court_minutes, session_factory=factory))
     from .transcribe import GeminiTranscriber, SlidingLimiter
 
     container.transcribe_limits = (SlidingLimiter(settings.transcribe_per_user_hour),

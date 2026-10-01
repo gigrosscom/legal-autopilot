@@ -597,3 +597,108 @@ def test_settings_give_the_workers_and_the_rate(tmp_path, db):
     made = corpus.build_collector(settings, db, CountingStorage(tmp_path / "f"))
     assert made.concurrency == 4 and made.fetch.delay == 2.0 and made.fetch.limiter.rate == 3.0
     made.fetch.client.close()
+
+
+# ------------------------------------------------------------------ the nightly pass over recently changed acts
+RECENT = "sort_field=dl&sort_desc=true"
+NEW1 = ("P2600000848", "О внесении изменений в постановление", "new",
+        "Постановление Правительства от 28 сентября 2026 года № 848")
+NEW2 = ("P2600000900", "Об утверждении Правил", "new", "Постановление Правительства от 1 октября 2026 года № 900")
+LOST = ("V1500011722", "Утративший силу приказ", "yts", "Приказ от 24 февраля 2015 года № 197")
+
+
+def test_nightly_pass_reads_recently_changed_acts_first_and_stops_where_the_last_pass_ended(db, tmp_path, small_pages):
+    site = Site()
+    storage = CountingStorage(tmp_path / "files")
+    t = [datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)]  # 17:00 in Almaty
+    collector(db, tmp_path, site, storage=storage, now=lambda: t[0]).run()  # the initial collection, pass off
+    site.broken.clear()
+
+    def nightly(**kw):
+        return collector(db, tmp_path, site, storage=storage, now=lambda: t[0], recent_hour=2, recent_pages=5,
+                         tz=TZ, **kw)
+
+    # the next night, 02:30: a new act, a lost-force one we never kept, the Labour Code changed (same listing line)
+    t[0] = datetime(2026, 10, 1, 21, 30, tzinfo=timezone.utc)
+    site.listings[RECENT] = [NEW1, LOST, CODES[0], LAWS[0], CODES[1], LAWS[1]]
+    site.docs["rus/docs/P2600000848"] = page("О внесении изменений", BODY_RU)
+    site.docs["rus/docs/K1500000414"] = page("Трудовой кодекс", BODY_RU + "<p>Статья 999. Новая статья</p>")
+    c = nightly()
+    assert c.recent_due()
+    site.requests.clear()
+    storage.puts.clear()
+    stats = c.run()
+    assert stats.recent_pages == 3 and stats.recent_queued == 5 and stats.discovered == 1  # LOST is not kept
+    req = site.requests
+    assert [r for r in req if r.startswith("/rus/index/")] == [
+        f"/rus/index/docs/{RECENT}&pagesize=2&page={n}" for n in (1, 2, 3)]  # no other listing (30 days not up)
+    assert req.index("/rus/docs/P2600000848") < req.index("/rus/docs/V2400035238")  # recent acts before the rest
+    assert "zann/corpus/K1500000414.ru.txt.gz" in storage.puts and "zann/corpus/P2600000848.ru.txt.gz" in storage.puts
+    assert "/rus/docs/V1500011722" not in req
+    with db() as s:
+        new = s.get(ZannAct, "P2600000848")
+        assert new.state == "done" and new.priority == corpus.REST_TIER  # back to its tier once read
+        assert s.get(ZannAct, "K1500000414").priority == 0
+        assert s.query(ZannAct).filter(ZannAct.priority == corpus.RECENT_PRIORITY).count() == 0
+        m = corpus_metrics(s)
+    assert m["recent_pass_at"] == "2026-10-01T21:30:00+00:00" and m["recent_pending"] == 0
+    assert m["listings"]["done"] == len(listing_plan(["in_force"]))  # the progress row is not a listing
+
+    # later the same night: no second pass
+    t[0] += timedelta(hours=1)
+    assert not nightly().recent_due()
+    site.requests.clear()
+    nightly().run()
+    assert not [r for r in site.requests if RECENT in r]
+
+    # the night after: one more new act on top; the page after it holds only acts read since the last pass
+    t[0] = datetime(2026, 10, 2, 21, 15, tzinfo=timezone.utc)
+    site.listings[RECENT] = [NEW2, CODES[0], NEW1, LAWS[0], CODES[1], LAWS[1], CONST[0], OTHER[0]]
+    site.docs["rus/docs/P2600000900"] = page("Об утверждении Правил", BODY_RU)
+    site.requests.clear()
+    stats = nightly().run()
+    assert [r for r in site.requests if RECENT in r] == [
+        f"/rus/index/docs/{RECENT}&pagesize=2&page={n}" for n in (1, 2)]
+    assert stats.recent_queued == 1 and "/rus/docs/P2600000900" in site.requests
+    assert "/rus/docs/K1500000414" not in site.requests  # read last night, after the pass started
+
+
+def test_nightly_pass_resumes_after_the_time_box_and_is_off_with_minus_one(db, tmp_path, small_pages):
+    site = Site()
+    site.listings[RECENT] = [NEW1, NEW2, LOST, OTHER[0]]
+    site.docs["rus/docs/P2600000848"] = page("О внесении изменений", BODY_RU)
+    t = [datetime(2026, 10, 1, 21, 5, tzinfo=timezone.utc)]  # 02:05 in Almaty
+    ticks = iter(range(10_000))
+    c = collector(db, tmp_path, site, now=lambda: t[0], recent_hour=2, tz=TZ, clock=lambda: float(next(ticks)))
+    first = c.run(budget_seconds=2)  # one page of the pass, then the box is over
+    assert first.stopped == "budget" and first.recent_pages == 1 and first.acts == 0
+    with db() as s:
+        row = s.get(ZannListing, corpus.RECENT_KEY)
+        assert row.next_page == 2 and row.done_at is None
+    second = collector(db, tmp_path, site, now=lambda: t[0], recent_hour=2, tz=TZ).run(limit=1)
+    assert second.recent_pages == 1 and second.acts == 1  # page 2 (then the pass is over), then the queue
+    with db() as s:
+        assert s.get(ZannListing, corpus.RECENT_KEY).done_at is not None
+    # before 02:00 the first pass of the day is not due; -1 turns it off
+    t[0] = datetime(2026, 10, 1, 20, 0, tzinfo=timezone.utc)  # 01:00 in Almaty
+    assert collector(db, tmp_path, Site(), now=lambda: t[0], recent_hour=-1, tz=TZ).recent_due() is False
+
+
+def test_jobs_say_when_they_run_next():
+    job = ZannCorpusJob(lambda: FakeCollector(), TZ, hour=2, minutes=50, start=lambda fn: None)
+    assert job.next_run(datetime(2026, 10, 1, 15, 0, tzinfo=TZ)) == datetime(2026, 10, 2, 2, 0, tzinfo=TZ)
+    assert job.next_run(datetime(2026, 10, 1, 1, 0, tzinfo=TZ)) == datetime(2026, 10, 1, 2, 0, tzinfo=TZ)
+    heard: list = []
+    job = ZannCorpusJob(lambda: FakeCollector("idle"), TZ, hour=-1, minutes=50, start=lambda fn: fn(),
+                        on_status=lambda *a: heard.append(a))
+    now = datetime(2026, 10, 1, 15, 0, tzinfo=TZ)
+    job(None, now)
+    assert [h[0] for h in heard] == ["running", "idle"]
+    assert timedelta(minutes=59) < heard[-1][3] - now <= timedelta(minutes=61)  # idle: rests for an hour
+
+
+def test_settings_turn_the_nightly_pass_on_at_two():
+    from konsilier.config import Settings
+
+    s = Settings()
+    assert s.zann_corpus_recent_hour == 2 and s.zann_corpus_recent_pages == 20
