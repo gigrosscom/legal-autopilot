@@ -279,6 +279,45 @@ class DocumentSignature(TimestampMixin, Base):
     agreement: Mapped["Agreement | None"] = relationship(back_populates="signatures")
 
 
+class Filing(TimestampMixin, Base):
+    """One sending of a prepared document to an addressee — the proof of filing (docs/integrations-plan.md, 7.3).
+
+    `channel = email`: the client's paid document goes from CLAIMS_EMAIL_FROM through Resend, Reply-To and a copy to
+    the client. `external_id` is Resend's e-mail id; Resend's webhooks move `status` (sending → sent → delivered ·
+    bounced · complained; failed when Resend refused) and add to `events`. `whatsapp` · `telegram` · `instagram` ·
+    `app_dispute`: the client sent it from their own account (we never message third parties); `sent_at` is when
+    they told us, `receipt_key` their screenshot.
+    """
+
+    __tablename__ = "filings"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    action_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("actions.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    signature_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document_signatures.id"), nullable=True)
+    channel: Mapped[str] = mapped_column(String(24), default="email")
+    recipient: Mapped[str] = mapped_column(String(254))
+    reply_to: Mapped[str | None] = mapped_column(String(254))
+    cc: Mapped[str | None] = mapped_column(String(254))
+    sender: Mapped[str | None] = mapped_column(String(200))
+    subject: Mapped[str | None] = mapped_column(String(300))
+    body: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="sending", index=True)
+    external_id: Mapped[str | None] = mapped_column(String(100), index=True)
+    doc_sha256: Mapped[str] = mapped_column(String(64))
+    attachments: Mapped[list[Any]] = mapped_column(JSON, default=list)  # [{name, size, sha256}]
+    events: Mapped[list[Any]] = mapped_column(JSON, default=list)  # [{at, type, source, ...}]
+    consent_text_version: Mapped[str | None] = mapped_column(String(32))
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(String(300))
+    # messengers and an app dispute: the client's screenshot «доставлено / прочитано» (the latest one)
+    receipt_key: Mapped[str | None] = mapped_column(String(300))
+    receipt_sha256: Mapped[str | None] = mapped_column(String(64))
+    followup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # «Ответили?» a day later
+
+
 class Agreement(TimestampMixin, Base):
     """Customer ↔ lawyer paper for a case (consent, engagement), signed by both with ЭЦП: customer first."""
 

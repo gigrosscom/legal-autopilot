@@ -1490,14 +1490,16 @@ class CaseEngine:
         self.notifier.notify(session, case, "approval", text, sms="document_ready" if approved else None)
 
     def mark_submitted(self, session: Session, case: Case, action: Action, actor: str,
-                       via: str = "user_submits") -> None:
+                       via: str = "user_submits", *, sent: bool = False) -> None:
+        """The document has reached the addressee: the response deadline and its reminders start today. `sent`:
+        the letter has already gone out (api/delivery.py, «Отправить по e-mail»), so nothing is sent here."""
         if action.kind != "document" or action.status != "ready":
             raise EngineError("document_not_ready")
         if case.status != S.ACTION_READY.value:
             raise EngineError("cannot_submit_now")
         sc, pack = self.scenario_of(case), self.pack_of(case)
         spec = sc.action(action.action_id)
-        if via == "email":
+        if via == "email" and not sent:
             if spec.channel == "user_submits":
                 raise EngineError("email_not_allowed")
             adapter = self.submissions["email"]

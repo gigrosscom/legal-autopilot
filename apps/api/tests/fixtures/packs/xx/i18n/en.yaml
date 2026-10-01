@@ -3,3 +3,5 @@ llm_hints:
     full: [paid]
     partial: [some of]
     refusal: [refuse]
+contacts:
+  id_labels: "BIN|Reg. No"

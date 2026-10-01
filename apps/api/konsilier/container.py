@@ -19,7 +19,7 @@ from .core.deadlines import DbDeadlineScheduler
 from .core.documents import PdfConverter, build_pdf_converter
 from .core.engine import CaseEngine, EngineConfig
 from .identity.ncanode import NcaNode, SignatureVerifier
-from .identity.senders import Sender, build_email, build_sms
+from .identity.senders import Sender, build_claims_mailer, build_email, build_sms
 from .identity.service import Identities
 from .core.llm import LLMProvider, build_provider
 from .core.notify import Notifier
@@ -46,6 +46,7 @@ class Container:
     sms_sender: Sender | None = None
     push_sender: PushSender | None = None  # web push, when VAPID keys are set
     signature_verifier: SignatureVerifier | None = None
+    claims_mailer: Any = None  # «Отправить по e-mail» (api/delivery.py): ResendEmail with CLAIMS_EMAIL_FROM, or None
     reporter: Any = None
     law_agent: Any = None  # konsilier.lawagent.LawAgent when a real LLM is configured
     chat_agent: Any = None  # konsilier.chat.ChatAgent (fast model) when a real LLM is configured
@@ -158,6 +159,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                      sms_sender=sms_sender or build_sms(settings),
                      push_sender=build_push(settings),
                      signature_verifier=signature_verifier or (NcaNode(settings.ncanode_url) if settings.ncanode_url else None))
+    container.claims_mailer = build_claims_mailer(settings)
     notifier.outbound = container  # e-mail, SMS and push go through the container's senders
     from .reports import CaseReporter
 
@@ -283,4 +285,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
             desk="lawyers")
     scheduler.extra_jobs.append(container.reporter.tick)
     scheduler.extra_jobs.append(container.engine.prepare_paid_documents)
+    from .api.delivery import followups
+
+    scheduler.extra_jobs.append(followups(container))  # «Ответили?» a day after a document went out
     return container

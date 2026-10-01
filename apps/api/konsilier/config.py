@@ -216,6 +216,14 @@ class Settings(BaseSettings):
     report_max_nudges: int = 5  # then stop reminding until something changes  # eGov Mobile fetches the document to sign from here
     resend_api_key: str | None = None  # e-mail codes via Resend; otherwise SMTP_HOST; otherwise disabled
     email_from: str = "Konsiliér AI <no-reply@konsilier.com>"
+    # «Отправить по e-mail» from a case (owner 01.10.2026): the client's paid document goes to the other side from
+    # this address, Reply-To and a copy to the client. Needs RESEND_API_KEY and the domain verified in Resend.
+    claims_email_from: str = "Konsiliér AI <claims@konsilier.com>"
+    # Resend delivery webhooks (/v1/webhooks/resend, Svix signature): the «whsec_…» signing secret; empty → 404
+    resend_webhook_secret: str = ""
+    email_send_per_document: int = 3  # letters per document (failed attempts do not count)
+    email_send_per_case_day: int = 5  # letters per case in 24 hours
+    email_send_per_user_hour: int = 10  # attempts per person in an hour
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)
     sms_api_key: str | None = None  # Mobizon API key
     smsc_login: str | None = None

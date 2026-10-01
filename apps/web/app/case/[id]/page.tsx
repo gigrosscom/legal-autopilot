@@ -11,6 +11,7 @@ import { Invite } from "@/components/Invite";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
+import { SendWizard } from "@/components/SendWizard";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
 import { DraftPreview } from "@/components/DraftPreview";
@@ -290,7 +291,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     ...(c.roadmap ? [{ key: "roadmap", icon: "map" as IconName, label: t("app.roadmap"), render: () => <RoadmapView roadmap={c.roadmap!} /> }] : []),
     { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
     ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
-      render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}</> }] : []),
+      render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} onCase={setCase} />)}</> }] : []),
     ...(LAWYERS_PUBLIC || (LAWYER_PILOT && pilotOpen) ? [{ key: "lawyer", icon: "lawyer" as IconName, label: t("app.lawyer"), render: () => (
       <>
         {LAWYER_PILOT && <LawyerPilot caseId={c.id} onChange={setPilotStatus} />}
@@ -402,7 +403,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         </Alert>
       )}
 
-      {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} />}
+      {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
 
       {c.status === "awaiting_response" && proposal?.message && (
         <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
@@ -481,10 +482,8 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
       <div className="space-y-2">
       <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
       <div className="flex gap-2">
+        {/* sending itself (WhatsApp, Telegram, e-mail through us…) is the «Мастер отправки» in the document card */}
         <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
-        {last.email_allowed && last.addressee?.email && (
-          <Button className={big} variant="secondary" disabled={busy} icon="mail" onClick={() => post(`/actions/${last.id}/submitted`, { via: "email" })}>{t("case.sendEmail")}</Button>
-        )}
       </div>
       </div>
     );
@@ -904,7 +903,7 @@ function LawyerBlock({ caseId }: { caseId: string }) {
   );
 }
 
-function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
+function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCase?: (c: CaseView) => void }) {
   const t = useT();
   const { lang } = useLang();
   if (a.kind === "handoff") {
@@ -920,6 +919,8 @@ function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
         ? <FilingCard id={a.id} f={a.filing} />
         : a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
       {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
+      {a.downloadable && a.email_send && a.email_send.reason !== "payment_required"
+        && ["ready", "submitted"].includes(a.status) && <SendWizard caseId={caseId} a={a} onCase={onCase} />}
       {a.downloadable && !a.submitted_at && !["submitted", "responded"].includes(a.status) && <SubmitOnline caseId={caseId} a={a} />}
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">

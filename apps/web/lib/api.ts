@@ -36,6 +36,36 @@ export type CaseAction = {
   response_summary: string | null;
   deadline: { due_date: string; status: string; norm_ref: string | null } | null;
   filing?: Filing | null;
+  /** «Отправить по e-mail» through our service: may it go now (paid document, limits), and why not */
+  email_send?: EmailSendState | null;
+  /** what has been sent: e-mail with Resend's statuses, messengers with the client's screenshot */
+  filings?: Delivery[];
+};
+
+export type EmailSendState = { available: boolean; reason: string | null; left: number };
+export type Delivery = {
+  id: string;
+  channel: "email" | "whatsapp" | "telegram" | "instagram" | "app_dispute" | "other";
+  recipient: string;
+  status: "sending" | "sent" | "delivered" | "bounced" | "complained" | "failed";
+  has_receipt: boolean;
+  sent_at: string | null;
+  delivered_at: string | null;
+  created_at: string | null;
+  doc_sha256: string;
+  events: { at: string; type: string }[];
+};
+export type FoundContact = {
+  kind: "email" | "phone" | "whatsapp" | "telegram" | "instagram" | "website" | "bin" | "address";
+  value: string;
+  sources: { type: "addressee" | "case" | "evidence" | "story"; label?: string; filename?: string }[];
+};
+export type SendPlan = {
+  contacts: FoundContact[]; message: string; email: EmailSendState; reply_to: string | null; filings: Delivery[];
+};
+export type EmailPreview = {
+  from: string; to: string; reply_to: string; cc: string; subject: string; text: string;
+  attachments: { name: string; size: number }[];
 };
 
 /** «Как подать»: everything comes from pack data; a null value is shown as «уточнит юрист». */
