@@ -25,7 +25,7 @@ declare global {
  * - "menu": a Chromium browser that has not offered its dialog (yet): its menu → Install;
  * - "other": a browser that cannot install; "installed": already done.
  */
-export type Platform = "installed" | "prompt" | "ios" | "iosBrowser" | "iosInApp" | "androidInApp" | "macSafari" | "menu" | "other";
+export type Platform = "installed" | "otherApp" | "prompt" | "ios" | "iosBrowser" | "iosInApp" | "androidInApp" | "macSafari" | "menu" | "other";
 
 const INSTALLED = "konsilier.installed"; // Chromium installed the app from this browser (it offers no dialog since)
 const CHANGED = "konsilier:install";     // the install state changed: every button and banner re-reads it
@@ -49,8 +49,23 @@ export function PwaRegister() {
   return null;
 }
 
+const WINDOW = "konsilier.window"; // "ops": this window is the installed «Konsiliér Ops», not the client app
+
+/** True in the window of the installed «Konsiliér Ops» (it starts at /ops?source=app; the flag lives per window). */
+function opsWindow(): boolean {
+  try {
+    const { pathname, search } = window.location;
+    if (pathname.startsWith("/ops") && new URLSearchParams(search).get("source") === "app") sessionStorage.setItem(WINDOW, "ops");
+    return sessionStorage.getItem(WINDOW) === "ops";
+  } catch { return false; }
+}
+
 export function detect(storeKey: string = INSTALLED): Platform {
-  if (isStandalone()) return "installed"; // running as the app
+  if (isStandalone()) {
+    // /ops opened inside the client app's window: that is another app, «Konsiliér Ops» itself is not installed here
+    if (storeKey !== INSTALLED && !opsWindow()) return "otherApp";
+    return "installed"; // running as the app
+  }
   if (window.__konsilierInstall) return "prompt";
   if (read(storeKey) === "1") return "installed";
   const ua = navigator.userAgent;
@@ -198,6 +213,8 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
   const [hint, setHint] = useState<Platform | null>(null);
   const [waiting, setWaiting] = useState(false);
   const closeHint = useCallback(() => setHint(null), []);
+  // inside another installed app's window the browser offers no install: open the page in the browser first
+  const otherAppText = "Сейчас открыто окно приложения Konsiliér AI. Нажмите ⋮ справа вверху → «Открыть в Chrome» (Open in Chrome) и там — «Установить на рабочий стол».";
   // /app?install=1 — the page was just opened in Safari / Chrome from another app's browser: continue at once
   useEffect(() => {
     if (platform !== "ios" && platform !== "iosBrowser") return;
@@ -230,7 +247,7 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
       <button type="button" onClick={go} disabled={waiting} aria-busy={waiting} className={className}>
         {icon && <Icon name={icon} size={18} />}{label ?? t("pwa.install")}
       </button>
-      {hint && <Hint platform={hint} onClose={closeHint} />}
+      {hint && <Hint platform={hint} text={hint === "otherApp" ? otherAppText : undefined} onClose={closeHint} />}
     </>
   );
 }
