@@ -13,6 +13,7 @@ import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
+import { DraftPreview } from "@/components/DraftPreview";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
@@ -245,6 +246,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     else if (purpose) await choosePayment(purpose);
   }
 
+  // The code could not be sent (the channel is down): the server stops asking for it, so go on to the bill (QA BUG-01)
+  async function contactDown() {
+    const purpose = contact?.purpose;
+    setContact(null);
+    if (purpose) await choosePayment(purpose);
+  }
+
   // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
   // confirmed, so it simply appears; if it has not after a few checks, the page asks for it itself.
   const payStatus = c?.payment?.status;
@@ -368,9 +376,14 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
+      {/* PM 01.10: the draft first (part blurred, blanks to fill), then payment */}
+      {c.status === "qualified" && (
+        <DraftPreview caseId={c.id} version={`${c.facts.length}:${c.payment?.status ?? ""}`} onCase={setCase} />
+      )}
+
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
-          onContact={contactConfirmed} onChoose={choosePayment} onClaim={() => post("/payment/claim")} onWay={chooseWay} />
+          onContact={contactConfirmed} onContactDown={contactDown} onChoose={choosePayment} onClaim={() => post("/payment/claim")} onWay={chooseWay} />
       )}
 
       {ack && (
@@ -574,8 +587,9 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
  *  «Дело под ключ», confirm a phone by SMS code if the server asks (an e-mail where SMS is not available), Kaspi
  *  details and the code, "I have paid". Once the transfer is confirmed the page prepares the
  *  document by itself (and the server does, if the page is closed). */
-function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onClaim, onWay }: {
+function PaymentDialog({ pay, busy, contact, onClose, onContact, onContactDown, onChoose, onClaim, onWay }: {
   pay: Payment; busy: boolean; contact: "phone" | "email" | null; onClose: () => void; onContact: (r: SignedIn) => void;
+  onContactDown: () => void;
   onChoose: (purpose: string) => void; onClaim: () => void; onWay: (body: WayBody, then?: "claim" | "bill") => void;
 }) {
   const t = useT();
@@ -605,7 +619,7 @@ function PaymentDialog({ pay, busy, contact, onClose, onContact, onChoose, onCla
                 <Icon name={contact === "phone" ? "phone" : "mail"} className="mt-0.5 shrink-0 text-brand" />{t(`payment.contact.${contact}`)}
               </p>
               <p className="text-sm text-muted">{t("payment.contact.lead")}</p>
-              <CodeForm key={contact} kind={contact} onDone={onContact} wide />
+              <CodeForm key={contact} kind={contact} onDone={onContact} onSendFailed={onContactDown} wide />
             </>
           ) : !pay.code ? (
             <>

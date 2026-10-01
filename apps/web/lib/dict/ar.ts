@@ -211,6 +211,10 @@ const ar: Dict = {
     file: "اختيار ملف",
     today: "اليوم",
     yesterday: "أمس",
+    weekAgo: "قبل أسبوع",
+    monthAgo: "قبل شهر",
+    dontRemember: "لا أتذكر",
+    dontRememberWord: "не помню",  // sent to the interview: a skip word of the case language
     noFacts: "لا توجد بيانات بعد — أجب عن الأسئلة في الدردشة.",
     chat: "الدردشة",
     hint: {
@@ -917,6 +921,14 @@ const ar: Dict = {
       rejected: "رُفض طلبك. راسلنا إن كان ذلك خطأ.",
       rejectedReason: "السبب: {reason}",
     },
+  },
+  draft: {
+    title: "مسودة",
+    lead: "هكذا سيبدو مستندك. يمكنك قراءة بدايته الآن، ويُفتح النص الكامل بعد الدفع.",
+    locked: "النص الكامل بعد الدفع",
+    blanks: "املأ الحقول الفارغة — ستُضاف إلى المستند",
+    save: "حفظ في المستند",
+    error: { pattern: "الصيغة غير صحيحة. يتكون BIN وIIN من 12 رقمًا.", address: "اكتب المدينة والشارع ورقم المبنى.", date: "لم يُفهم التاريخ.", date_future: "لا يمكن أن يكون التاريخ في المستقبل.", money: "اكتب المبلغ بالأرقام.", email: "يبدو أن البريد الإلكتروني غير صحيح.", phone: "تحقق من رقم الهاتف.", generic: "تحقق من القيمة." },
   },
   pilot: {
     inviteChecking: "جارٍ التحقق من الرابط…",

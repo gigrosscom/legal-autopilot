@@ -39,10 +39,15 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
   }, [value]);
 
   const out = type === "money" || type === "number" ? value.replace(/\s/g, "") : value.trim();
-  // the text stays in the box until the server has it (bad connection: nothing is lost)
+  // the box empties at once (PM 01.10); if the server does not take the answer, the text comes back
   const shown = type === "date" && out ? out.split("-").reverse().join(".")
     : type === "money" && out ? `${groupDigits(out)} ${currency === "KZT" ? "₸" : currency ?? ""}`.trim() : undefined;
-  const send = async () => { if (out && !busy && (await onSend(out, shown)) !== false) setValue(""); };
+  const send = async () => {
+    if (!out || busy) return;
+    const kept = value;
+    setValue("");
+    if ((await onSend(out, shown)) === false) setValue((v) => v || kept);
+  };
   // several documents at once; the camera takes one photo at a time
   const fileInput = (capture: boolean) => (
     <input type="file" className="sr-only" disabled={busy} accept={capture ? "image/*" : DOC_ACCEPT} multiple={!capture}
@@ -78,13 +83,18 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
   let field;
   if (type === "date") {
     const y = new Date(); y.setDate(y.getDate() - 1);
+    const week = new Date(); week.setDate(week.getDate() - 7);
+    const month = new Date(); month.setMonth(month.getMonth() - 1);
     field = (
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex gap-2">
-          {[[t("app.today"), today], [t("app.yesterday"), iso(y)]].map(([label, v]) => (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[[t("app.today"), today], [t("app.yesterday"), iso(y)], [t("app.weekAgo"), iso(week)], [t("app.monthAgo"), iso(month)]].map(([label, v]) => (
             <button key={v} type="button" disabled={busy} onClick={() => setValue(v)}
-              className={`min-h-10 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
+              className={`min-h-10 shrink-0 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
           ))}
+          {/* PM 01.10: the date is often not remembered — it stays a blank to fill in the draft */}
+          <button type="button" disabled={busy} onClick={() => onSend(t("app.dontRememberWord"), t("app.dontRemember"))}
+            className="min-h-10 shrink-0 rounded-full border border-line px-4 text-[15px] font-semibold text-ink">{t("app.dontRemember")}</button>
         </div>
         <label className="relative block">
           <span className="sr-only">{question?.text}</span>
@@ -154,7 +164,7 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
           {type === "text" && digitsOnly(question.pattern) ? t("app.hint.digits", { n: digitsOnly(question.pattern)! }) : t(`app.hint.${type}`)}
         </p>
       )}
-      {question?.optional && (
+      {question && type !== "date" && (
         <div className="flex">
           <button type="button" disabled={busy} onClick={onSkip}
             className={`${pill} border border-[var(--chat-accent)] text-[var(--chat-accent)] ${dim}`}>{t("case.skip")}</button>

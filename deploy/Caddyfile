@@ -1,4 +1,21 @@
+(security) {
+	# QA BUG-06: HTTPS only for a year, no MIME sniffing, no framing by other sites (clickjacking on the payment
+	# button), a referrer without paths, and no server banners. Scripts are not restricted here: the site relies
+	# on Next.js inline scripts and NCALayer (wss://127.0.0.1) — a script CSP would break sign-in with ЭЦП.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
+		-X-Powered-By
+		-Server
+	}
+}
+
 {$SITE_DOMAIN}, www.{$SITE_DOMAIN} {
+	import security
 	encode zstd gzip
 	# Hashed build assets never change — cache them forever.
 	@static path /_next/static/*
@@ -14,6 +31,7 @@
 }
 
 {$API_DOMAIN} {
+	import security
 	encode zstd gzip
 	reverse_proxy api:8000
 }

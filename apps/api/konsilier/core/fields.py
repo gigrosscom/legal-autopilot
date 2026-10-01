@@ -48,6 +48,13 @@ def parse_money(raw: Any) -> Decimal:
     return value.quantize(Decimal("0.01"))
 
 
+def looks_like_address(value: str) -> bool:
+    """A soft check of a postal address: some words and a house number; not an id number or a name alone."""
+    words = re.findall(r"\w+", value)
+    has_number = bool(re.search(r"(?<!\d)\d{1,5}(?!\d)", value))  # a house / flat number, not a 12-digit BIN
+    return len(words) >= 2 and has_number
+
+
 def normalize(field: IntakeField, raw: Any, today: date | None = None) -> Any:
     """Return a JSON-serializable normalized value or raise FieldError."""
     if raw is None or (isinstance(raw, str) and not raw.strip()):

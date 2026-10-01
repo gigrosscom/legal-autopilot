@@ -455,3 +455,30 @@ def test_document_is_not_offered_in_the_first_reply(ctx):
     cid2 = api.post("/v1/cases", expect=201, json={"text": "Нужна претензия", "country": "KZ", "defer": True})["case"]["id"]
     asked = _sse(ctx.client.post(f"/v1/cases/{cid2}/chat", headers=api.h, json={"text": "Составьте претензию продавцу"}))[-1]
     assert asked["message"]["offer_document"] is True
+
+
+def test_only_the_first_more_marker_is_kept():
+    # QA BUG-05: a reply written in two rounds (around a tool call) had a second [[MORE]] that the client showed
+    from konsilier.api.chat import one_more_marker
+    assert one_more_marker("Коротко.[[MORE]]Детали. Проверяю…[[MORE]]Ещё.") == "Коротко.\n[[MORE]]\nДетали. Проверяю…\n\nЕщё."
+    assert one_more_marker("A [[MORE]] B") == "A [[MORE]] B"
+    assert one_more_marker("без метки") == "без метки"
+
+
+def test_facts_told_in_the_chat_go_into_the_case(ctx):
+    """QA BUG-03: the chat moves the case — the interview does not ask again what was already told in the chat."""
+    from .test_e2e import web_user
+
+    ctx.container.settings.background_jobs = "inline"
+    client = StreamingClient([(["Понял. Сохраните чек.[[MORE]]Подробности."], "end_turn", [])])
+    ctx.container.chat_agent = ChatAgent(client, "claude-haiku-4-5", Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={
+        "text": "Купил смартфон в интернет-магазине, через неделю он сломался, продавец отказывается вернуть деньги",
+        "country": "KZ"})["case"]["id"]
+    facts = {f["field"] for f in api.get(f"/v1/cases/{cid}").json()["facts"]}
+    assert "purchase_date" not in facts and "amount" not in facts
+    _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h,
+                         json={"text": "Купил 12.08.2026 за 150 000 тенге, чек сохранился"}))
+    facts = {f["field"]: f["value"] for f in api.get(f"/v1/cases/{cid}").json()["facts"]}
+    assert facts.get("purchase_date") == "12.08.2026" and facts.get("amount", "").replace("\xa0", " ") == "150 000"

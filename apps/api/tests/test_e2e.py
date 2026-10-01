@@ -124,11 +124,10 @@ def test_consumer_refund_full_path(ctx):
     out = api.answer(cid, "готово")
     assert out["case"]["question"]["field"] == "seller_name"
 
-    # skip is refused for a required field
+    # «пропустить» on a required answer: a blank for the draft, never asked again (QA BUG-08, PM 01.10)
     out = api.answer(cid, "пропустить")
-    assert out["reply"]["error"] == "required"
+    assert "черновике" in out["reply"]["message"] and out["case"]["question"]["field"] != "seller_name"
     body = run_intake(api, cid, {
-        "seller_name": "ТОО «Техномир»",
         "seller_bin": "123456789012",
         "goods_description": "Смартфон Nova 9",
         "seller_email": "пропустить",
@@ -136,12 +135,18 @@ def test_consumer_refund_full_path(ctx):
     })
     assert body["question"]["field"] == "identity_document"
     body = run_intake(api, cid, {
-        "identity_document": "пропустить",
-        "applicant_name": "Иванов Иван Иванович",
-        "applicant_address": "г. Алматы, ул. Абая, 1",
-        "applicant_phone": "+7 701 123 45 67",
-        "applicant_iin": "900101300123",
-    })
+        "identity_document": "пропустить", "applicant_name": "Иванов Иван Иванович",
+        "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67",
+        "applicant_iin": "900101300123"})
+    # the draft shows the blank in brackets; the person fills it there
+    draft = api.get(f"/v1/cases/{cid}/draft").json()
+    assert [b["field"] for b in draft["blanks"]] == ["seller_name"] and draft["paid"] is False and draft["hidden"]
+    assert "[" in draft["visible"] + draft["hidden"]
+    r = ctx.client.post(f"/v1/cases/{cid}/facts", headers=api.h, json={"values": {"seller_bin": "12"}})
+    assert r.status_code == 422 and r.json()["detail"]["fields"] == {"seller_bin": "pattern"}
+    api.post(f"/v1/cases/{cid}/facts", json={"values": {"seller_name": "ТОО «Техномир»"}})
+    assert api.get(f"/v1/cases/{cid}/draft").json()["blanks"] == []
+    body = api.get(f"/v1/cases/{cid}").json()
     assert body["status"] == "qualified"
     assert body["proposal"]["type"] == "prepare_action"
 
@@ -408,3 +413,12 @@ def test_client_errors_are_stored_for_admin(ctx):
     rows = ctx.client.get("/v1/admin/client-errors", headers=ADMIN).json()
     assert rows[0]["message"] == "NotFoundError: removeChild" and rows[0]["url"] == "/case/1"
     assert ctx.client.get("/v1/admin/client-errors").status_code in (401, 403)
+
+
+def test_postal_address_is_checked_softly():
+    # QA BUG-10: a company name or a BIN given as a party's postal address is asked again; ordinary addresses pass
+    from konsilier.core.fields import looks_like_address
+    for ok in ("г. Алматы, пр. Достык, 10", "Астана, ул. Кенесары 40, кв. 12", "050000, Алматы, Абая 1"):
+        assert looks_like_address(ok)
+    for bad in ("ТОО «Тест-Компания», БИН 123456789012", "Алматы", "магазин Технодом"):
+        assert not looks_like_address(bad)

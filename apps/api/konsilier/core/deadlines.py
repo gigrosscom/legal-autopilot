@@ -8,7 +8,7 @@ replace it by starting a workflow in ``schedule`` and sleeping until each remind
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Protocol
 
 from sqlalchemy import select
@@ -56,6 +56,8 @@ class DbDeadlineScheduler:
     def tick(self, now: datetime | None = None) -> int:
         """Send due reminders; mark overdue deadlines expired. Returns messages sent."""
         sent = 0
+        # the periodic run passes no time: the extra jobs need one (they compare it with timestamps)
+        now = now or datetime.now(timezone.utc)
         with self.session_factory() as session:
             deadlines = session.scalars(select(Deadline).where(Deadline.status == "active")).all()
             for dl in deadlines:

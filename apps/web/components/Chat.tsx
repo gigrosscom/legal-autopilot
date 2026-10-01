@@ -27,6 +27,7 @@ const LABELS = /^\s*\**\s*(SHORT ANSWER|DETAILS|КРАТКИЙ ОТВЕТ|ПОД
 const clean = (text: string) => text.replace(OFFER, "").replace(LABELS, "").trimEnd();
 /** Between the short answer and the details (konsilier/chat.py MORE_MARKER); a half-typed one while streaming too. */
 const MORE = /\[?\[\s*MORE\s*\]?\]?/i;
+const MORE_ALL = /\[?\[\s*MORE\s*\]?\]?/gi;
 const MORE_TAIL = /\[\[?\s*M?O?R?E?\s*\]?$/i;
 /** Without the marker, a long reply still opens short: its first paragraph, the rest under «Подробнее». */
 const LONG_WORDS = 70;
@@ -35,7 +36,9 @@ const LONG_WORDS = 70;
 function splitReply(text: string): [string, string | null] {
   const m = MORE.exec(text);
   if (m) {
-    const short = text.slice(0, m.index).trim(), rest = text.slice(m.index + m[0].length).trim();
+    const short = text.slice(0, m.index).trim();
+    // QA BUG-05: only the first marker cuts; any later one (after a tool call) is dropped from the details
+    const rest = text.slice(m.index + m[0].length).replace(MORE_ALL, "\n\n").replace(/\n{3,}/g, "\n\n").trim();
     return short ? [short, rest || null] : [rest, null];
   }
   const paras = text.trim().split(/\n\s*\n/);

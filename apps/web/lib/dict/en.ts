@@ -211,6 +211,10 @@ const en: Dict = {
     file: "Choose a file",
     today: "Today",
     yesterday: "Yesterday",
+    weekAgo: "A week ago",
+    monthAgo: "A month ago",
+    dontRemember: "Don't remember",
+    dontRememberWord: "не помню",  // sent to the interview: a skip word of the case language
     noFacts: "No details yet — answer the questions in the conversation.",
     chat: "Chat",
     hint: {
@@ -917,6 +921,14 @@ const en: Dict = {
       rejected: "Your application was rejected. Write to us if this is a mistake.",
       rejectedReason: "Reason: {reason}",
     },
+  },
+  draft: {
+    title: "Draft",
+    lead: "This is how your document will look. You can read the beginning now; the full text opens after payment.",
+    locked: "Full text after payment",
+    blanks: "Fill in the empty fields — they go into the document",
+    save: "Save to the document",
+    error: { pattern: "Wrong format. A BIN or IIN has 12 digits.", address: "Enter the city, street and building number.", date: "The date was not recognised.", date_future: "The date cannot be in the future.", money: "Enter the amount as a number.", email: "The e-mail looks wrong.", phone: "Check the phone number.", generic: "Check the value." },
   },
   pilot: {
     inviteChecking: "Checking the link…",

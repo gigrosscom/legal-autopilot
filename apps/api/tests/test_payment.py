@@ -280,7 +280,7 @@ def test_document_ready_the_moment_the_desk_confirms(ctx):
 
 
 def test_contact_before_paying_falls_back_to_email_and_spares_telegram(ctx):
-    """Without SMS sign-in on the server a confirmed e-mail is enough; with it, an e-mail alone is not. Telegram
+    """Without SMS sign-in on the server the e-mail is asked; any confirmed contact is enough. Telegram
     users are reachable in the bot and pay as before; PAYMENT_REQUIRES_CONTACT=false switches the rule off."""
     from .test_e2e import telegram_user
 
@@ -293,11 +293,12 @@ def test_contact_before_paying_falls_back_to_email_and_spares_telegram(ctx):
     confirm(api, "email", "owner@mail.kz")
     assert api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]["status"] == "pending"
 
-    ctx.container.sms_sender = LogSender("sms")  # SMS on: the phone is what is asked
+    ctx.container.sms_sender = LogSender("sms")  # SMS on: the phone is what is asked of someone with no contact
     api2, cid2 = qualified_case(ctx)
-    confirm(api2, "email", "other@mail.kz")
     r = ctx.client.post(f"/v1/cases/{cid2}/payment", headers=api2.h, json={"purpose": "case"})
     assert r.status_code == 422 and r.json()["detail"]["methods"] == ["phone"]
+    confirm(api2, "email", "other@mail.kz")  # QA BUG-01: any confirmed contact counts, not only the phone
+    assert ctx.client.post(f"/v1/cases/{cid2}/payment", headers=api2.h, json={"purpose": "case"}).status_code == 200
     ctx.container.settings.payment_requires_contact = False
     assert ctx.client.post(f"/v1/cases/{cid2}/payment", headers=api2.h, json={"purpose": "case"}).status_code == 200
     ctx.container.settings.payment_requires_contact = True
@@ -306,3 +307,37 @@ def test_contact_before_paying_falls_back_to_email_and_spares_telegram(ctx):
     cid3 = tg.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})["case"]["id"]
     assert run_intake(tg, cid3, ANSWERS)["status"] == "qualified"
     assert tg.post(f"/v1/cases/{cid3}/payment", json={"purpose": "document"})["case"]["payment"]["status"] == "pending"
+
+
+def test_payment_is_not_blocked_by_a_channel_that_is_down(ctx):
+    """QA BUG-01: SMS off, the e-mail code fails to go out → the payment goes on instead of asking for e-mail forever;
+    and a person signed in with ЭЦП (or any confirmed contact) is never asked for another one."""
+    from konsilier.identity.senders import SendError
+
+    class Broken:
+        def send(self, to, subject, text):
+            raise SendError("mail provider down")
+
+    manual(ctx)
+    ctx.container.sms_sender = None
+    ctx.container.email_sender = Broken()
+    api, cid = qualified_case(ctx)
+    r = ctx.client.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    assert r.status_code == 422 and r.json()["detail"]["methods"] == ["email"]
+    r = ctx.client.post("/v1/auth/email/start", headers=api.h, json={"target": "me@mail.kz"})
+    assert r.status_code == 502 and r.json()["detail"]["code"] == "send_failed"
+    pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
+    assert pay["status"] == "pending" and pay["code"]
+
+    # a confirmed ЭЦП counts as a contact, even while every channel works
+    ctx.container.send_failed_at.clear()
+    ctx.container.email_sender = LogSender("email")
+    api2, cid2 = qualified_case(ctx)
+    r = ctx.client.post(f"/v1/cases/{cid2}/payment", headers=api2.h, json={"purpose": "document"})
+    assert r.status_code == 422
+    from konsilier.core.models import Identity, User
+    with ctx.container.session_factory() as s:
+        owner = s.get(Case, uuid.UUID(cid2)).owner
+        s.add(Identity(user_id=owner.id, kind="iin", subject_hash="h-" + cid2[:8], display="ЭЦП"))
+        s.commit()
+    assert api2.post(f"/v1/cases/{cid2}/payment", json={"purpose": "document"})["case"]["payment"]["code"]

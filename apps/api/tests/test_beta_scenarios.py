@@ -29,7 +29,8 @@ SERVICES = [sid for sid in BETA if KZ.scenarios[sid].kind == "service"]
 ANSWERS = {
     "applicant_iin": "900101300128", "applicant_bin": "900101300128", "respondent_bin": "123456789012",
     "applicant_name": "Иванов Иван Иванович", "representative": "Директор Иванов И. И.",
-    "applicant_address": "Алматы, ул. Абая 1", "applicant_phone": "+7 701 123 45 67",
+    "applicant_address": "Алматы, ул. Абая 1", "respondent_address": "Астана, ул. Кенесары 40",
+    "applicant_phone": "+7 701 123 45 67",
     "applicant_email": "test@example.com", "passport_number": "N12345678",
 }
 _UNFILLED = re.compile(r"\{[a-z_]+\}")

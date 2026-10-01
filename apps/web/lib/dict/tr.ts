@@ -211,6 +211,10 @@ const tr: Dict = {
     file: "Dosya seç",
     today: "Bugün",
     yesterday: "Dün",
+    weekAgo: "Bir hafta önce",
+    monthAgo: "Bir ay önce",
+    dontRemember: "Hatırlamıyorum",
+    dontRememberWord: "не помню",  // sent to the interview: a skip word of the case language
     noFacts: "Henüz bilgi yok — sohbetteki soruları yanıtlayın.",
     chat: "Sohbet",
     hint: {
@@ -917,6 +921,14 @@ const tr: Dict = {
       rejected: "Başvurunuz reddedildi. Hata olduğunu düşünüyorsanız bize yazın.",
       rejectedReason: "Gerekçe: {reason}",
     },
+  },
+  draft: {
+    title: "Taslak",
+    lead: "Belgeniz böyle görünecek. Başını şimdi okuyabilirsiniz; tam metin ödemeden sonra açılır.",
+    locked: "Tam metin ödemeden sonra",
+    blanks: "Boş alanları doldurun — belgeye eklenecek",
+    save: "Belgeye kaydet",
+    error: { pattern: "Biçim uygun değil. BIN ve IIN 12 hanelidir.", address: "Şehir, sokak ve bina numarasını yazın.", date: "Tarih anlaşılamadı.", date_future: "Tarih gelecekte olamaz.", money: "Tutarı rakamla yazın.", email: "E-posta hatalı görünüyor.", phone: "Telefon numarasını kontrol edin.", generic: "Değeri kontrol edin." },
   },
   pilot: {
     inviteChecking: "Bağlantı kontrol ediliyor…",

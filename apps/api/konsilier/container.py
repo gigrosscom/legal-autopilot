@@ -51,6 +51,8 @@ class Container:
     transcriber: Any = None  # konsilier.transcribe.GeminiTranscriber when a Gemini key is set (voice input)
     transcribe_limits: Any = None  # (per account, per IP) konsilier.transcribe.SlidingLimiter
     official_sources: dict[str, Any] = field(default_factory=dict)  # country → konsilier.official OfficialSources
+    # when a sign-in code last failed to go out, per channel: payment must not wait on a channel that is down
+    send_failed_at: dict[str, Any] = field(default_factory=dict)
     official_library: Any = None  # konsilier.official.search.OfficialLibrary, searched by the chat
 
     def law_agent_for(self, case: Any) -> Any:
@@ -131,6 +133,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         submissions={"user_submits": UserSubmits(),
                      "email": EmailSubmission(settings.smtp_host, settings.smtp_port, settings.smtp_from)},
         config=EngineConfig(qualify_min_confidence=settings.qualify_min_confidence,
+                            intake_max_questions=settings.intake_max_questions,
                             approval_required_first_n=settings.approval_required_first_n,
                             self_service=settings.self_service,
                             self_service_documents=tuple(d.strip() for d in settings.self_service_documents.split(",")
