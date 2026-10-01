@@ -13,7 +13,7 @@ from sqlalchemy import select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import AuditLog, Case, Deadline, Outcome
 
-from .test_pilot_drafts import NEUTRAL_NOTE_RU
+from .test_pilot_drafts import AI_LINE_RU
 
 ADMIN = {"X-Admin-Token": "adm"}
 
@@ -171,7 +171,7 @@ def test_consumer_refund_full_path(ctx):
     text = docx_text(docx)
     for expected in ("ПРЕТЕНЗИЯ", "ТОО «Техномир»", "БИН: 123456789012", "Иванов Иван Иванович",
                      "ИИН: 900101300123", "150 000", "Смартфон Nova 9", "Подготовлено с помощью ИИ",
-                     NEUTRAL_NOTE_RU, "Закон Республики Казахстан «О защите прав потребителей», статья 42-4",
+                     AI_LINE_RU, "Закон Республики Казахстан «О защите прав потребителей», статья 42-4",
                      "Адрес: г. Алматы, пр. Достык, 10", "Адрес: г. Алматы, ул. Абая, 1",
                      "1. Чек или квитанция об оплате (receipt.txt)"):
         assert expected in text.replace(" ", " "), expected

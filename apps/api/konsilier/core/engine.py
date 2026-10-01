@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, package, qualifier, safety
+from . import ai, package, polish, qualifier, safety
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -487,11 +487,13 @@ class CaseEngine:
                 continue
             lang = case.language
             self._ensure_text(case, sc, pack, pack.localized(spec.title, lang))
-            ctx = self.document_context(case, sc, pack, spec, self._addressee(case, sc, pack, spec))
+            addressee = self._addressee(case, sc, pack, spec)
+            ctx = self.document_context(case, sc, pack, spec, addressee)
             docx = render_docx(pack.packs_root / spec.template, ctx,
                                ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                                draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                               if sc.is_draft else None)
+                               if sc.is_draft else None, finish=self._finishing(case, sc, pack))
+            action.addressee = addressee  # where «Отправить» sends it: never the client's own e-mail
             base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
             action.docx_key = self.storage.put(f"{base}.docx", docx,
                                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1362,9 +1364,38 @@ class CaseEngine:
                     "email": auth.email, "submit_url": auth.submit_url, "id": None}
         party = sc.parties[spec.addressee.party]
         get = lambda attr: case.facts.get(getattr(party, attr)) if getattr(party, attr) else None  # noqa: E731
-        return {"kind": party.kind, "key": spec.addressee.party, "name": get("name_field") or "",
-                "id": get("id_field"), "email": get("email_field"), "address": get("address_field") or "",
-                "submit_url": None}
+        name, email, address = get("name_field") or "", get("email_field"), get("address_field") or ""
+        if spec.addressee.party != "applicant":
+            # owner 01.10: never the person's own contact as the other side's, never a description as an address
+            if email and str(email).strip().lower() in self._own_contacts(case, sc):
+                email = None
+            address = polish.tidy_address(address) if looks_like_address(str(address)) else ""
+            name = polish.tidy_name(str(name))
+        return {"kind": party.kind, "key": spec.addressee.party, "name": name,
+                "id": get("id_field"), "email": email, "address": address, "submit_url": None}
+
+    def applicant_gender(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
+        """From the name (patronymic, surname), else from the id number where the pack says how it tells."""
+        gender = _grammatical_gender(self._applicant_name(case, sc))
+        rule = pack.manifest.id_number_sex
+        applicant = sc.parties.get("applicant")
+        if gender == "unknown" and rule and applicant is not None and applicant.id_field:
+            gender = polish.gender_from_id(str(case.facts.get(applicant.id_field) or ""), rule.position, rule.male,
+                                           rule.female)
+        return gender
+
+    def _finishing(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> Any:
+        """The last pass over the document's text: gendered forms in brackets resolved for the applicant, amounts
+        with the currency sign and in words (owner 01.10)."""
+        lang = case.language
+        gender = self.applicant_gender(case, sc, pack)
+        code = case.currency or pack.currency
+        symbol = pack.t(lang, f"currency_symbol.{code}", default=code)
+        word = pack.t(lang, f"currency_word.{code}", default="")
+
+        def finish(text: str) -> str:
+            return polish.amounts_in_words(polish.gender_forms(text, gender), code, symbol, word, lang)
+        return finish
 
     def _render_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack,
                        spec: ActionSpec, action: Action, actor: str) -> Action:
@@ -1376,7 +1407,7 @@ class CaseEngine:
         docx = render_docx(pack.packs_root / spec.template, ctx,
                            ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                            draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                           if sc.is_draft else None)
+                           if sc.is_draft else None, finish=self._finishing(case, sc, pack))
         base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
         action.docx_key = self.storage.put(f"{base}.docx", docx,
                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1401,7 +1432,7 @@ class CaseEngine:
                 currency = pack.t(lang, f"currency_word.{case.currency or pack.currency}",
                                   default=case.currency or pack.currency)
                 case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached,
-                                                    gender=_grammatical_gender(self._applicant_name(case, sc)),
+                                                    gender=self.applicant_gender(case, sc, pack),
                                                     currency=currency)
             self._save_vault(case, llm)
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
@@ -1470,9 +1501,18 @@ class CaseEngine:
                           "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", ""),
                           "kind": p.kind}
                    for role, p in sc.parties.items()}
+        own = self._own_contacts(case, sc)
+        for role, party in parties.items():  # owner 01.10: capitals, real addresses, nobody else's contacts
+            party["name"] = polish.tidy_name(str(party["name"] or ""))
+            address = str(party["address"] or "")
+            if not address.startswith("["):  # a draft's blank («[Адрес продавца]») stays a blank
+                party["address"] = polish.tidy_address(address) if role == "applicant" or looks_like_address(address) else ""
+            if role != "applicant" and str(party["email"] or "").strip().lower() in own:
+                party["email"] = ""
         applicant = parties.get("applicant", {})
-        evidence = [pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
-                    for e in case.evidence if e.kind != "response"]
+        evidence = list(dict.fromkeys(  # the same file attached twice is listed once
+            pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
+            for e in case.evidence if e.kind != "response"))
         previous = [{"title": pack.localized(sc.action(a.action_id).title, lang),
                      "date": a.submitted_at.strftime("%d.%m.%Y") if a.submitted_at else "",
                      "response": pack.t(lang, f"responses.{a.response_class}", default=a.response_class or "")}
@@ -1494,14 +1534,18 @@ class CaseEngine:
                      "scenario_title": pack.localized(sc.title, lang),
                      "id_label": ai.field_label(sc, pack, lang, sc.parties["applicant"].id_field)
                      if "applicant" in sc.parties and sc.parties["applicant"].id_field else ""}
+        narrative = case.narrative or f.get("problem_description", "")
+        purchase = str(f.get("purchase_date") or "")
         return {**extra,
+            # the narrative already tells the purchase (date first): the template's own line is not repeated
+            "narrative_tells_purchase": bool(purchase) and purchase in narrative,
             "title": pack.localized(spec.title, lang),
             "f": f,
             "applicant": applicant,
             "respondent": parties.get("respondent", {}),
             "labels": {fl.name: ai.field_label(sc, pack, lang, fl.name) for fl in sc.intake},
             "addressee": addressee,
-            "narrative": case.narrative or f.get("problem_description", ""),
+            "narrative": narrative,
             "demands": demands,
             "norm_refs": list(spec.norm_refs),
             "evidence": evidence,
@@ -1686,15 +1730,9 @@ class _Fmt(dict):
 
 
 def _grammatical_gender(full_name: str) -> str:
-    """For the document's grammar only (verb and adjective forms): from the patronymic ending, as written in the
-    person's identity document; 'unknown' when there is none — the text is then written without gendered forms."""
-    words = [w.lower().strip(".,") for w in full_name.split()]
-    for w in words:
-        if w.endswith(("вич", "ұлы", "улы", "оглы", "uly")):
-            return "male"
-        if w.endswith(("вна", "чна", "қызы", "кызы", "кизи", "qyzy")):
-            return "female"
-    return "unknown"
+    """For the document's grammar only (verb and adjective forms): from the patronymic, else the surname ending;
+    'unknown' when neither tells — the text is then written without gendered forms."""
+    return polish.gender_from_name(full_name)
 
 
 DRAFT = "draft:"  # skipped_fields entry: a required answer left blank, filled in the draft before paying

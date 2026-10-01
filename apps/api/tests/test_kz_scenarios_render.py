@@ -11,7 +11,7 @@ from konsilier.core.models import Action
 from konsilier.core.packs import load_pack
 
 from .test_e2e import web_user
-from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU, PACKS
+from .test_pilot_drafts import AI_LINE_RU, DRAFT_WORDS, PACKS
 
 KZ = load_pack(PACKS / "kz", PACKS)
 PUBLISHED = sorted(s.id for s in KZ.scenarios.values() if s.published)
@@ -51,7 +51,7 @@ def test_first_document_renders(ctx, sid):
     assert action["instructions"] and not any("{" in s for s in action["instructions"]), action["instructions"]
     with ctx.container.session_factory() as s:
         text = docx_text(ctx.container.storage.get(s.get(Action, uuid.UUID(action["id"])).docx_key))
-    assert NEUTRAL_NOTE_RU in text and not DRAFT_WORDS.search(text)
+    assert text.count(AI_LINE_RU) == 1 and not DRAFT_WORDS.search(text)
     assert "{" not in text.replace("{{", "")
     for ref in sc.actions[0].norm_refs:
         if ref != "TODO":

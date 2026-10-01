@@ -1,9 +1,9 @@
 """Document assembly: DOCX template (docxtpl) → DOCX → PDF (LibreOffice headless).
 
 Core guarantees, independent of the template:
-  * the AI label from the pack is appended to the body and to every page footer;
-  * a neutral note (compliance.draft_disclaimer, no "draft" wording) is appended when the scenario is not
-    reviewed by a lawyer.
+  * the AI label from the pack is on every page footer — the one closing line (owner 01.10: «оставить одну:
+    Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей.»);
+  * `finish` — the last pass over every paragraph's text (gendered forms, amounts in words).
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from docx import Document
 from docx.shared import Pt
@@ -24,27 +24,29 @@ log = logging.getLogger(__name__)
 
 
 def render_docx(template_path: Path, context: dict[str, Any], ai_label: str,
-                draft_disclaimer: str | None) -> bytes:
+                draft_disclaimer: str | None, finish: Callable[[str], str] | None = None) -> bytes:
+    """`draft_disclaimer` (a scenario not reviewed by a lawyer) is no longer printed: the document carries one AI line
+    in the footer (owner 01.10); the argument stays for the callers."""
     tpl = DocxTemplate(str(template_path))
     tpl.render(context, autoescape=True)
     buf = io.BytesIO()
     tpl.save(buf)
 
     doc = Document(io.BytesIO(buf.getvalue()))
-    if draft_disclaimer:
-        p = doc.add_paragraph()
-        run = p.add_run(draft_disclaimer)
-        run.italic = True
-        run.font.size = Pt(8)
-    if not draft_disclaimer and ai_label:  # QA BUG-14: one closing note in the body; the AI label stays in the footer
-        p = doc.add_paragraph()
-        run = p.add_run(ai_label)
-        run.italic = True
-        run.font.size = Pt(8)
-    for section in doc.sections:
-        fp = section.footer.add_paragraph()
-        frun = fp.add_run(ai_label)
-        frun.font.size = Pt(7)
+    if finish is not None:
+        paragraphs = list(doc.paragraphs) + [p for t in doc.tables for row in t.rows for c in row.cells for p in c.paragraphs]
+        for p in paragraphs:
+            text = p.text
+            new = finish(text) if text else text
+            if new != text and p.runs:
+                p.runs[0].text = new
+                for r in p.runs[1:]:
+                    r.text = ""
+    if ai_label:
+        for section in doc.sections:
+            fp = section.footer.add_paragraph()
+            frun = fp.add_run(ai_label)
+            frun.font.size = Pt(7)
     out = io.BytesIO()
     doc.save(out)
     return out.getvalue()
