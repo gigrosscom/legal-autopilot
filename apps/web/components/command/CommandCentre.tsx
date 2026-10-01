@@ -5,10 +5,12 @@ import { InstallButton } from "@/components/InstallApp";
 import { Icon, type IconName } from "@/components/ui";
 import { adminApi, ApiError, errorText } from "@/lib/api";
 import type { Bundle } from "@/lib/team";
+import { Deals } from "./Deals";
 import { Decisions } from "./Decisions";
 import { Goals } from "./Goals";
 import { pendingOf, type Metrics } from "./model";
 import { Operations } from "./Operations";
+import { Questions } from "./Questions";
 import { FileView, Reports } from "./Reports";
 import { Summary } from "./Summary";
 import { Tasks } from "./Tasks";
@@ -21,6 +23,8 @@ const INSTALL_KEY = "konsilier.opsInstalled";
 
 const TABS: { key: TabKey; label: string; icon: IconName }[] = [
   { key: "home", label: "Сводка", icon: "home" },
+  { key: "deals", label: "Сделки", icon: "briefcase" },
+  { key: "questions", label: "Вопросы", icon: "chat" },
   { key: "goals", label: "Цели и курс", icon: "map" },
   { key: "team", label: "Команда", icon: "users" },
   { key: "tasks", label: "Задачи", icon: "check" },
@@ -28,7 +32,7 @@ const TABS: { key: TabKey; label: string; icon: IconName }[] = [
   { key: "reports", label: "Отчёты", icon: "document" },
   { key: "ops", label: "Операции", icon: "briefcase" },
 ];
-const PHONE_TABS: TabKey[] = ["home", "team", "tasks", "decisions"];
+const PHONE_TABS: TabKey[] = ["home", "deals", "tasks", "decisions"];
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
 
 function readToken(): string | null {
@@ -79,6 +83,8 @@ function SignIn({ onDone }: { onDone: (token: string) => void }) {
           className="min-h-12 w-full rounded-full bg-action text-[17px] font-semibold text-white hover:bg-action-hover disabled:opacity-50">
           {busy ? "Проверяем…" : "Войти"}
         </button>
+        <InstallButton storeKey={INSTALL_KEY} icon="smartphone" label="Установить на рабочий стол"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface text-[17px] font-semibold text-action hover:bg-sand" />
       </form>
     </main>
   );
@@ -145,7 +151,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
   const ctx: Centre = { token, metrics, metricsError, bundle, teamError, go, openFile, reload: load };
   const current = TABS.find((t) => t.key === tab)!;
   const body: Record<TabKey, ReactNode> = {
-    home: <Summary />, goals: <Goals />, team: <TeamTab />, tasks: <Tasks />, decisions: <Decisions />,
+    home: <Summary />, deals: <Deals />, questions: <Questions />, goals: <Goals />, team: <TeamTab />, tasks: <Tasks />, decisions: <Decisions />,
     reports: <Reports />, ops: <Operations />,
   };
   const badge = (k: TabKey) => (k === "decisions" && pending > 0 ? pending : null);

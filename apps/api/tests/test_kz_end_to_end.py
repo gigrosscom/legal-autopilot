@@ -40,6 +40,8 @@ ANSWERS = {
     "respondent_address": RESP_ADDRESS, "seller_address": RESP_ADDRESS, "lender_address": RESP_ADDRESS,
     "respondent_bin": RESP_BIN, "seller_bin": RESP_BIN, "lender_bin": RESP_BIN, "respondent_iin": "пропустить",
     "seller_email": "пропустить", "lender_email": "пропустить", "applicant_email": "ivanov@example.kz",
+    "appeal_date": "01.08.2026", "appeal_number": "пропустить", "appeal_subject": "Ремонт дороги",
+    "higher_authority": "пропустить",
     "contract_number": "ZF-2026/001", "police_report_number": "пропустить", "goods_description": "Смартфон Nova 9",
     "decision_number": "№ 123456 от 01.09.2026",
     "event_date": "01.09.2026", "purchase_date": "01.09.2026", "loan_date": "01.09.2026", "amount": "150000",
@@ -126,7 +128,8 @@ def _check_document(sid: str, spec, a: dict, text: str, previous: list[str]) -> 
             assert req in t, (where, req)
     elif spec.addressee.party and KZ.scenarios[sid].parties["respondent"].kind == "authority":
         # КоАП РК ст. 826-2 п. 5, ст. 833: which decision is appealed, the appellant's address, a clear request
-        assert "№ 123456 от 01.09.2026" in t and a["addressee"]["name"] == RESP_NAME, where
+        has_decision = any(f.name == "decision_number" for f in KZ.scenarios[sid].intake)
+        assert (not has_decision or "№ 123456 от 01.09.2026" in t) and a["addressee"]["name"] == RESP_NAME, where
     elif spec.addressee.party:  # to the other party itself
         assert a["addressee"]["name"] == RESP_NAME, where
     else:  # a complaint to a state body about the other party: who it is about, with requisites

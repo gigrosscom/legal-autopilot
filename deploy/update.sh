@@ -164,6 +164,18 @@ except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
       log "host $HOST"
       log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
+      # KPI (owner 01.10): question → document in 3 minutes. After a deploy, at most every 3 hours, the real path is
+      # timed for three cases as a marked test user (deploy/smoke.py --path3): «path3 refund=…s taps=…» lines.
+      P3=/run/konsilier-path3.stamp
+      SMOKE=$(grep -E '^SMOKE_TOKEN=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"')
+      if [ -z "$(find "$P3" -mmin -180 2>/dev/null)" ]; then
+        touch "$P3"
+        if [ -z "$SMOKE" ]; then
+          log "path3 skipped: SMOKE_TOKEN is not set in the server .env (the smoke endpoints stay closed)"
+        else
+          ( SMOKE_TOKEN="$SMOKE" timeout 900 python3 deploy/smoke.py --path3 2>&1 | grep -E '^(path3|FAIL|Traceback)' | while read -r l; do log "$l"; done ) &
+        fi
+      fi
     else
       log "deploy of ${REMOTE:0:7} FAILED"
     fi
@@ -179,7 +191,7 @@ r = urllib.request.Request('http://localhost:8000/v1/admin/metrics', headers={'X
 m = json.load(urllib.request.urlopen(r, timeout=30))
 t, f = m['totals'], m.get('referral') or {}
 src = ','.join(f'{k}:{v}' for k, v in sorted((f.get('sources') or {}).items(), key=lambda x: -x[1])[:8])
-print(f\"users={t['users']} with_case={t['users_with_case']} cases={t['cases']} documents={t['documents']} submitted={t['submitted']} lawyer_apps={t['lawyer_applications']} referred={f.get('referred_users')} inviters={f.get('inviters')} k={f.get('k_factor')} sources=[{src}]\")
+print(f\"users={t['users']} with_case={t['users_with_case']} cases={t['cases']} documents={t['documents']} submitted={t['submitted']} lawyer_apps={t['lawyer_applications']} referred={f.get('referred_users')} referred_paid={f.get('referred_paid')} inviters={f.get('inviters')} k={f.get('k_factor')} sources=[{src}]\")
 " </dev/null 2>&1 | tail -1) || true
     log "metrics ${METRICS:-unavailable}"
     # chat speed over the last 24 h: seconds until the first words of a reply (median and 90th percentile) and in all
@@ -215,6 +227,17 @@ with c.session_factory() as s:
 print(f\"enabled={c.settings.zann_corpus_enabled} acts={z['acts']} done={z['acts_done']} pending={z['acts_pending']} error={z['acts_error']} files={z['files']} mb={round(z['bytes'] / 1e6, 1)} types={z['done_by_type']} last={z['last_fetched_at']}\")
 " </dev/null 2>&1 | tail -1) || true
     log "zann ${ZANN:-unavailable}"
+    # Court practice from sud.kz (konsilier/zann/court.py): documents, files, by source and category.
+    ZCOURT=$(timeout 60 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
+from konsilier.config import get_settings
+from konsilier.container import build_container
+from konsilier.zann.court import court_metrics
+c = build_container(get_settings())
+with c.session_factory() as s:
+    z = court_metrics(s)
+print(f\"enabled={c.settings.zann_court_enabled} docs={z['docs']} done={z['done']} notext={z['notext']} pending={z['pending']} error={z['error']} pages={z['pages']['done']}/{z['pages']['done'] + z['pages']['pending']} mb={round(z['bytes'] / 1e6, 1)} sources={z['by_source']} categories={z['by_category']} last={z['last_fetched_at']}\")
+" </dev/null 2>&1 | tail -1) || true
+    log "zanncourt ${ZCOURT:-unavailable}"
   fi
 }
 main "$@"

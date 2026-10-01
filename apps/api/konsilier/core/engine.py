@@ -114,8 +114,10 @@ class EngineConfig:
     self_service: bool = True
     self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement", "motion")
     extract_images_with_llm: bool = False
-    # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap
-    intake_max_questions: int = 4
+    # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap;
+    # -1 = no questions on the site: the draft at once, filled from the story, the chat and the files (owner 01.10,
+    # «3 клика»); the Telegram bot keeps the questions (it has no draft screen)
+    intake_max_questions: int = -1
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
@@ -330,6 +332,12 @@ class CaseEngine:
         intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language),
                        first_action=pack.localized(sc.actions[0].title, case.language))
         reply = self._next_step(session, case, sc, pack)
+        if reply.intake_complete and self.config.intake_max_questions < 0:  # «3 клика»: straight to the draft
+            reply.message = pack.t(case.language, "interview.intro_draft",
+                                   scenario=pack.localized(sc.title, case.language),
+                                   first_action=pack.localized(sc.actions[0].title, case.language),
+                                   default=reply.message)
+            return reply
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply
 
@@ -445,6 +453,54 @@ class CaseEngine:
                    and DRAFT + f.name not in skipped]
         return [f.name for f in sorted(missing, key=stage)]
 
+    def _own_contacts(self, case: Case, sc: Scenario) -> set[str]:
+        """The person's own e-mail / phone / id / address, lower-cased: never the other side's."""
+        own: set[str] = set()
+        owner = getattr(case, "owner", None)
+        if owner is not None:
+            own |= {x.strip().lower() for x in (owner.email, owner.phone) if x}
+            own |= {i.display.strip().lower() for i in owner.identities if i.kind in ("email", "phone") and i.display}
+        applicant = sc.parties.get("applicant")
+        if applicant is not None:
+            for a in ("email_field", "id_field", "address_field"):
+                name = getattr(applicant, a, None)
+                if name and case.facts.get(name):
+                    own.add(str(case.facts[name]).strip().lower())
+        for name in ("applicant_email", "applicant_phone", "applicant_iin", "applicant_address"):
+            if case.facts.get(name):
+                own.add(str(case.facts[name]).strip().lower())
+        return own
+
+    def rebuild_documents(self, session: Session, case: Case, rewrite_text: bool = True) -> int:
+        """After the owner corrected the case's data: the documents not yet sent are made again from it (and the
+        statement of circumstances rewritten, as it may name the corrected party). No notification, no status
+        change. Returns how many were rebuilt."""
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        if rewrite_text:
+            case.narrative = None
+        done = 0
+        for action in case.actions:
+            if action.submitted_at or not action.docx_key:
+                continue
+            spec = sc.action(action.action_id)
+            if not spec.template:
+                continue
+            lang = case.language
+            self._ensure_text(case, sc, pack, pack.localized(spec.title, lang))
+            ctx = self.document_context(case, sc, pack, spec, self._addressee(case, sc, pack, spec))
+            docx = render_docx(pack.packs_root / spec.template, ctx,
+                               ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
+                               draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
+                               if sc.is_draft else None)
+            base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
+            action.docx_key = self.storage.put(f"{base}.docx", docx,
+                                               "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            pdf = None if self.defer_pdf else self.pdf.convert(docx)
+            action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
+            done += 1
+        self.audit(session, case, "admin", "documents_rebuilt", count=done)
+        return done
+
     def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
         """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
         skipped = set(case.skipped_fields or [])
@@ -458,6 +514,11 @@ class CaseEngine:
         today = pack.local_now().date()
         # the postal addresses of the parties to a document (not a hotel or a university abroad)
         party_addresses = {p.address_field for p in sc.parties.values() if p.address_field}
+        # the other side's contact is never the person's own (a receipt e-mailed to the client is not the seller's
+        # e-mail — the first client's claim, 01.10)
+        own = self._own_contacts(case, sc)
+        other_side = {getattr(p, a) for k, p in sc.parties.items() if k != "applicant"
+                      for a in ("email_field", "id_field", "address_field") if getattr(p, a, None)}
         for name, raw in values.items():
             try:
                 f = sc.field(name)
@@ -469,6 +530,8 @@ class CaseEngine:
                 value = normalize(f, raw, today=today)
                 if name in party_addresses and not looks_like_address(str(value)):
                     raise FieldError("address")  # QA BUG-10: a name or a BIN given instead of the postal address
+                if name in other_side and str(value).strip().lower() in own:
+                    continue  # silently dropped: the field stays empty (a blank in the draft)
                 facts[name] = value
             except FieldError as e:
                 errors[name] = e.code
@@ -505,7 +568,10 @@ class CaseEngine:
                              error="facts_not_labels")
         missing = self.missing_fields(case, sc)
         cap = self.config.intake_max_questions
-        if missing and cap and int((case.taxonomy or {}).get("asked", 0)) >= cap:
+        in_bot = getattr(case.owner, "channel", None) == "telegram"
+        if cap < 0 and in_bot:
+            cap = 4
+        if missing and (cap < 0 or (cap and int((case.taxonomy or {}).get("asked", 0)) >= cap)):
             # PM 01.10: the draft after a few questions; what is still unknown stays a blank filled in the draft
             case.skipped_fields = [*(case.skipped_fields or []),
                                    *(DRAFT + n for n in missing if not sc.field(n).optional)]

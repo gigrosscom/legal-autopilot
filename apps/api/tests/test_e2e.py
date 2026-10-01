@@ -215,8 +215,10 @@ def test_consumer_refund_full_path(ctx):
     text2 = docx_text(api.get(f"/v1/cases/{cid}/actions/{a2['id']}/document?format=docx").content)
     assert "ЖАЛОБА" in text2 and "Ранее предпринятые действия" in text2 and "Отказ" in text2
     sub2 = api.post(f"/v1/cases/{cid}/actions/{a2['id']}/submitted", json={})
-    # business-day deadline skips weekends/holidays
-    assert date.fromisoformat(sub2["case"]["actions"][1]["deadline"]["due_date"]) > submitted_day + timedelta(days=15)
+    # no response deadline for the authority: 15 working days are not in the consumer law (lawyer, 01.10) — only a
+    # lawyer adds one; the 2-month limit to complain is in the instructions (ЗПП ст. 42-5 п. 2)
+    assert sub2["case"]["actions"][1]["deadline"] is None
+    assert any("двух месяцев" in s for s in a2["instructions"])
 
     # no answer from the authority → hand-off to a lawyer
     resp2 = api.post(f"/v1/cases/{cid}/actions/{a2['id']}/response", json={"no_response": True})
@@ -373,6 +375,7 @@ def test_packs_and_waitlist(ctx):
     assert [p["country"] for p in packs] == ["KZ"]  # test packs are hidden
     assert {s["id"] for s in packs[0]["scenarios"] if not s["beta"]} == {  # beta: test_beta_scenarios.py
         "kz.consumer.refund", "kz.money.credit_fraud", "kz.labor.unpaid_wages", "kz.administrative.fine_appeal",
+        "kz.gov.inaction_complaint",
         "kz.family.alimony", "kz.consumer.non_delivery", "kz.consumer.poor_service", "kz.consumer.air_ticket",
         "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
         "kz.housing.deposit_return", "kz.housing.management_company", "kz.housing.utility_billing",

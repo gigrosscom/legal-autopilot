@@ -771,3 +771,51 @@ class ZannListing(Base):
     errors: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+
+class ZannCourtPage(Base):
+    """A page of sud.kz walked to find court-practice documents for Zann (konsilier/zann/court.py): an index (the
+    tree of normative resolutions, the bulletin years) or a leaf that lists files. state: pending | done | error."""
+
+    __tablename__ = "zann_court_pages"
+    url: Mapped[str] = mapped_column(String(500), primary_key=True)
+    source: Mapped[str] = mapped_column(String(16))  # np | review | bulletin
+    kind: Mapped[str] = mapped_column(String(8), default="leaf", server_default="leaf")  # index | leaf
+    label: Mapped[str | None] = mapped_column(String(300))  # the group and year of a resolutions leaf, …
+    state: Mapped[str] = mapped_column(String(8), default="pending", server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    found: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # documents listed on the page
+    error: Mapped[str | None] = mapped_column(String(500))
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ZannCourtDoc(Base):
+    """One court-practice document for Zann: a normative resolution or practice review of the Supreme Court, a
+    bulletin, or a court act imported from a lawful export. The original file is kept gzip in our storage
+    (zann/court/orig/…), its text next to it (zann/court/text/…); only anonymised texts ever leave the server.
+    state: pending | done | notext (stored, no text layer) | missing | error. priority: lower is collected first."""
+
+    __tablename__ = "zann_court_docs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)  # sha1 of the url
+    source: Mapped[str] = mapped_column(String(16))  # np | review | bulletin | acts
+    url: Mapped[str] = mapped_column(String(1000))
+    title: Mapped[str | None] = mapped_column(String(1000))
+    court: Mapped[str | None] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(16), default="other", server_default="other")
+    doc_date: Mapped[str | None] = mapped_column(String(32))  # «2024-11-15» or the year
+    number: Mapped[str | None] = mapped_column(String(64))
+    lang: Mapped[str | None] = mapped_column(String(8))
+    status: Mapped[str | None] = mapped_column(String(16))  # in_force | lost (resolutions)
+    priority: Mapped[int] = mapped_column(Integer, default=99, server_default="99")
+    state: Mapped[str] = mapped_column(String(8), default="pending", server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    error: Mapped[str | None] = mapped_column(String(500))
+    mime: Mapped[str | None] = mapped_column(String(100))
+    key: Mapped[str | None] = mapped_column(String(255))       # the original, gzip
+    text_key: Mapped[str | None] = mapped_column(String(255))  # its text, gzip
+    sha256: Mapped[str | None] = mapped_column(String(64))     # of the original
+    chars: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # gzip bytes stored
+    discovered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (Index("ix_zann_court_docs_queue", "state", "priority", "id"),)
+

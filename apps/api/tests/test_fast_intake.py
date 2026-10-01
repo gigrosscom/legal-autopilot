@@ -95,3 +95,50 @@ def test_scheduler_extra_jobs_get_the_time(ctx):
     ctx.container.scheduler.extra_jobs.append(lambda s, now: got.append(now) or 0)
     ctx.container.scheduler.tick()
     assert got and got[0] is not None and got[0].tzinfo is not None
+
+
+def test_site_goes_to_the_draft_at_once_the_bot_keeps_questions(ctx):
+    """Owner 01.10, «3 клика»: on the site the draft comes at once (filled from the story and files, blanks to fill);
+    the Telegram bot has no draft screen and keeps its few questions."""
+    from .test_e2e import telegram_user
+
+    ctx.container.engine.config.intake_max_questions = -1
+    api = web_user(ctx)
+    out = api.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})
+    case = out["case"]
+    assert case["status"] == "qualified" and case["question"] is None
+    assert "черновик" in out["reply"]["message"].lower()
+    draft = api.get(f"/v1/cases/{case['id']}/draft").json()
+    assert draft["blanks"] and draft["paid"] is False
+
+    tg = telegram_user(ctx)
+    case = tg.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})["case"]
+    assert case["status"] == "intake" and case["question"] is not None
+
+
+def test_gov_inaction_complaint_is_a_paid_document_and_asks_applicant_data_before_paying(ctx):
+    """QA BUG-12 (01.10): a citizen's complaint about a state body's inaction had no scenario — no draft, no bill.
+    And the applicant's own data is asked on one screen right before paying, never a bill with blanks."""
+    from .test_payment import manual
+
+    manual(ctx)
+    ctx.container.settings.payment_requires_contact = False
+    ctx.container.engine.config.intake_max_questions = -1
+    api = web_user(ctx)
+    story = ("Акимат района уже 2 месяца не отвечает на моё заявление о ремонте дороги, подал 01.08.2026 через "
+             "eOtinish. Хочу пожаловаться.")
+    case = api.post("/v1/cases", expect=201, json={"text": story, "country": "KZ"})["case"]
+    cid = case["id"]
+    assert case["scenario"]["id"] == "kz.gov.inaction_complaint" and case["status"] == "qualified"
+    draft = api.get(f"/v1/cases/{cid}/draft").json()
+    assert "[" in draft["visible"] + draft["hidden"] and draft["blanks"]
+
+    r = ctx.client.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "applicant_data_required"
+    need = {f["field"] for f in r.json()["detail"]["fields"]}
+    assert {"applicant_name", "applicant_iin", "applicant_address", "applicant_phone"} <= need
+    api.post(f"/v1/cases/{cid}/facts", json={"values": {
+        "applicant_name": "Иванов Иван Иванович", "applicant_iin": "900101300123",
+        "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67"}})
+    pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
+    assert pay["amount"] == 1990 and pay["code"]

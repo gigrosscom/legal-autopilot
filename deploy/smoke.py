@@ -4,6 +4,7 @@ never notify the team (konsilier/api/smoke.py).
 
     SMOKE_TOKEN=... python deploy/smoke.py [--api https://api.konsilier.com] [--story "..."]
     SMOKE_TOKEN=... python deploy/smoke.py --chat-speed    # only the chat: first words of 10 ru/kk questions
+    SMOKE_TOKEN=... python deploy/smoke.py --path3         # question → document for 3 cases: time and taps
 
 ``--chat-speed``: each question opens a case the way the site does (``defer``) and streams the chat reply; the time
 to the first words is measured here, and the server's own breakdown (``diagnostics`` of the ``done`` event: the
@@ -138,11 +139,84 @@ def chat_speed(api: Api) -> int:
     return 0
 
 
+PATH3 = [  # owner 01.10, KPI: from the question to the document in 3 minutes — three typical cases
+    ("refund", "Купил пылесос в интернет-магазине 12.09.2026 за 150 000 тенге, через неделю он сломался, продавец "
+               "ТОО «Тест-Магазин» отказывается вернуть деньги. Составьте претензию.", RECEIPT),
+    ("salary", "Работодатель ТОО «Тест-Работодатель» не выплатил мне зарплату за август и сентябрь 2026, всего "
+               "600 000 тенге. Хочу получить деньги. Составьте документ.", None),
+    ("gov", "Акимат района не ответил на моё обращение о ремонте дороги, поданное 01.08.2026, прошло больше двух "
+            "месяцев. Хочу пожаловаться. Составьте жалобу.", None),
+]
+
+
+APPLICANT = {"applicant_name": "Тестов Тест Тестович", "applicant_iin": "900101300123",
+             "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 700 000 00 00"}
+
+
+def path3(api: Api, boot: Api) -> int:
+    """The client's path as the site runs it after «3 клика» (PR #121), timed from the first message to the document
+    file, with the taps it takes: send (with the files) · «Составить документ» · «Подготовить документ» (the bill) ·
+    «Я оплатил(а)» · open the document. The payment is confirmed by the smoke hook (the desk / Kaspi in real life)."""
+    failed = 0
+    for name, story, receipt in PATH3:
+        t0, taps = time.monotonic(), 0
+        try:
+            case = api.call("POST", "/v1/cases", {"text": story, "country": "KZ"})["case"]
+            taps += 1  # send
+            cid = case["id"]
+            if receipt:
+                case = api.call("POST", f"/v1/cases/{cid}/evidence",
+                                form=multipart({"kind": "other"}, "receipt.txt", receipt.encode(), "text/plain"))["case"]
+            answered = 0
+            while case["status"] == "intake" and case.get("question") and answered < 10:  # questions still asked
+                q = case["question"]
+                text = "пропустить" if q["type"] == "evidence" or q.get("optional") else ANSWERS.get(q["type"], TEXT)
+                case = api.call("POST", f"/v1/cases/{cid}/messages", {"text": text})["case"]
+                answered += 1
+                taps += 1
+            taps += 1  # «Составить документ» → the draft
+            blanks, own = 0, {}
+            try:
+                fields = api.call("GET", f"/v1/cases/{cid}/draft").get("blanks", [])
+                blanks = len(fields)
+                own = {f["field"]: APPLICANT[f["field"]] for f in fields if f["field"] in APPLICANT}
+            except SystemExit:
+                pass
+            if own:  # the applicant's own data, one screen right before paying (PM 01.10)
+                api.call("POST", f"/v1/cases/{cid}/facts", {"values": own})
+                taps += 1
+            if case["status"] != "qualified":
+                raise SystemExit(f"status {case['status']}")
+            pay = api.call("POST", f"/v1/cases/{cid}/payment", {"purpose": "document"})["case"]["payment"]
+            taps += 1  # «Подготовить документ» = the bill
+            if pay.get("status") != "paid":
+                api.call("POST", f"/v1/cases/{cid}/payment/claim")
+                taps += 1  # «Я оплатил(а)»
+                boot.call("POST", f"/v1/smoke/cases/{cid}/payment/confirm")
+            for _ in range(240):
+                case = api.call("GET", f"/v1/cases/{cid}")
+                if case["actions"]:
+                    break
+                time.sleep(0.5)
+            else:
+                raise SystemExit("no document 120 s after payment")
+            a = case["actions"][0]
+            taps += 1  # open / download
+            state = "review" if a.get("approval_status") == "pending" else "ready" if a.get("downloadable") else a.get("status")
+            print(f"path3 {name}={time.monotonic() - t0:.0f}s taps={taps} questions={answered} blanks={blanks} "
+                  f"doc={state} scenario={(case.get('scenario') or {}).get('id')}")
+        except SystemExit as e:
+            failed += 1
+            print(f"path3 {name}=FAIL after {time.monotonic() - t0:.0f}s: {str(e)[:160]}")
+    return 1 if failed else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--api", default="https://api.konsilier.com")
     ap.add_argument("--story", default=STORY)
     ap.add_argument("--chat-speed", action="store_true", help="only the chat: first words of 10 ru/kk questions")
+    ap.add_argument("--path3", action="store_true", help="the 3-minute path: question → document for 3 cases")
     args = ap.parse_args()
     smoke_token = os.environ.get("SMOKE_TOKEN")
     if not smoke_token:
@@ -155,6 +229,8 @@ def main() -> int:
     t = step("test user", t)
     if args.chat_speed:
         return chat_speed(api)
+    if args.path3:
+        return path3(api, boot)
 
     created = api.call("POST", "/v1/cases", {"text": args.story, "country": "KZ"})
     case = created["case"]

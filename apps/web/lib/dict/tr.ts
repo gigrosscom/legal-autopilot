@@ -819,7 +819,7 @@ const tr: Dict = {
     share: "Bağlantıyı paylaş",
     copied: "Bağlantı kopyalandı",
     invited: "Bağlantınızla gelenler: {n}",
-    shareText: "Konsiliér AI — hukuki sorular için ücretsiz yapay zekâ asistanı. Durumunuzu anlatın, ne yapmanız gerektiğini söylesin:",
+    shareText: "Konsiliér AI — hukuki sorular için ücretsiz yapay zekâ asistanı. Durumunuzu anlatın, ne yapmanız gerektiğini söylesin. Bağlantım üzerinden bir belge için ödeme yaparsanız, ikimiz de bir belgeyi daha ücretsiz alırız:",
   },
   submit: {
     courtName: "Yargı Kabineti",
@@ -998,6 +998,7 @@ const tr: Dict = {
     hintCta: "E-postayı doğrula",
   },
   payment: {
+    applicant: { title: "Belge için bilgileriniz", lead: "Belgede başvuru sahibinin bilgileri olarak yer alacak. Bir kez doldurun, ödemeye geçelim.", continue: "Ödemeye devam et" },
     contact: {
       phone: "Telefonunuz — belgeyi göndeririz ve süreyi hatırlatırız",
       email: "E-postanız — belgeyi göndeririz ve süreyi hatırlatırız",

@@ -482,3 +482,19 @@ def test_facts_told_in_the_chat_go_into_the_case(ctx):
                          json={"text": "Купил 12.08.2026 за 150 000 тенге, чек сохранился"}))
     facts = {f["field"]: f["value"] for f in api.get(f"/v1/cases/{cid}").json()["facts"]}
     assert facts.get("purchase_date") == "12.08.2026" and facts.get("amount", "").replace("\xa0", " ") == "150 000"
+
+
+def test_document_offered_in_the_first_reply_when_files_are_attached(ctx):
+    """Owner 01.10, «3 клика»: with documents attached the first reply may offer the document."""
+    from .test_e2e import web_user
+
+    offer = "Могу подготовить претензию продавцу — показать?\n[[DOCUMENT]]"
+    ctx.container.chat_agent = ChatAgent(StreamingClient([([offer], "end_turn", [])]), "claude-haiku-4-5",
+                                         Adilet(fetch=fake_fetch))
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Сломался телефон", "country": "KZ", "defer": True})["case"]["id"]
+    ev = api.post(f"/v1/cases/{cid}/evidence", expect=201, data={"kind": "other"},
+                  files={"file": ("check.txt", "Чек 150000".encode(), "text/plain")})["evidence"]["id"]
+    first = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h,
+                                 json={"text": "Сломался телефон", "attachments": [ev]}))[-1]
+    assert first["message"]["offer_document"] is True

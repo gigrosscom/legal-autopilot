@@ -100,6 +100,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [payOpen, setPayOpen] = useState(false);
   // the server asks for a confirmed contact before the first bill: the payment window shows that step first
   const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
+  // PM 01.10: the applicant's own data (name, IIN, address, phone) on one screen right before paying
+  const [applicant, setApplicant] = useState<{ fields: ApplicantField[]; purpose: string } | null>(null);
 
   const push = (m: Msg) => setLog((l) => [...l, m]);
 
@@ -211,6 +213,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         const out = await api<{ case: CaseView }>(`/v1/cases/${id}/payment`, { method: "POST", body: JSON.stringify({ purpose }) });
         setCase(out.case);
       } catch (e) {
+        if (e instanceof ApiError && e.code === "applicant_data_required") {
+          setApplicant({ fields: (e.detail as { fields?: ApplicantField[] }).fields ?? [], purpose });
+          setPayOpen(true);
+          return;
+        }
         if (!(e instanceof ApiError && e.code === "contact_required")) throw e;
         const methods = (e.detail as { methods?: string[] }).methods ?? [];
         setContact({ kind: methods[0] === "email" ? "email" : "phone", purpose });
@@ -339,7 +346,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFiles={upload}
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
-    bar = <NextStepBar c={c} busy={busy} post={post} openPay={() => setPayOpen(true)} run={run} setCase={setCase} />;
+    // owner 01.10 («3 клика»): one document by default — the bill is made at once; «Дело под ключ» is a link
+    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
+      setPayOpen(true);
+      if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
+    }} />;
   }
 
   return (
@@ -385,6 +396,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
+          applicant={applicant?.fields ?? null} caseId={c.id}
+          onApplicant={async () => { const purpose = applicant?.purpose ?? "document"; setApplicant(null); await choosePayment(purpose); }}
           onContact={contactConfirmed} onContactDown={contactDown} onChoose={choosePayment} onClaim={() => post("/payment/claim")} onWay={chooseWay} />
       )}
 
@@ -448,7 +461,7 @@ function FactsPanel({ c }: { c: CaseView }) {
 
 /** What to do now once the document stage has started: submitted? got a reply? close the case. */
 function NextStepBar({ c, busy, post, openPay, run, setCase }: {
-  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>; openPay: () => void;
+  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>; openPay: (purpose?: string) => void;
   run: (fn: () => Promise<void>) => Promise<boolean>; setCase: (c: CaseView) => void;
 }) {
   const t = useT();
@@ -472,7 +485,18 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
   );
 
   if (c.status === "qualified") {
-    return prepareOrPay(t("case.prepare"));
+    const whole = pay?.options.find((o) => o.purpose === "case");
+    return (
+      <div className="space-y-1">
+        {prepareOrPay(t("case.prepare"))}
+        {needsPay && pay!.available && pay!.status === "none" && whole && (
+          <button type="button" disabled={busy} onClick={() => openPay("case")}
+            className="w-full py-1 text-center text-sm text-muted underline">
+            {t("payment.option.case", { price: money(whole.amount, pay!.currency) })}
+          </button>
+        )}
+      </div>
+    );
   }
   if (c.status === "action_ready" && last) {
     if (last.approval_status === "pending" || last.approval_status === "rejected") {
@@ -587,8 +611,49 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
  *  «Дело под ключ», confirm a phone by SMS code if the server asks (an e-mail where SMS is not available), Kaspi
  *  details and the code, "I have paid". Once the transfer is confirmed the page prepares the
  *  document by itself (and the server does, if the page is closed). */
-function PaymentDialog({ pay, busy, contact, onClose, onContact, onContactDown, onChoose, onClaim, onWay }: {
+type ApplicantField = { field: string; label: string; type: string; pattern: string | null };
+
+/** The applicant's own data for the document, asked on one screen right before paying (PM 01.10). */
+function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: ApplicantField[]; onDone: () => void }) {
+  const t = useT();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErrors({});
+    try {
+      await api(`/v1/cases/${caseId}/facts`, { method: "POST", body: JSON.stringify({ values }) });
+      onDone();
+    } catch (err) {
+      const f = err instanceof ApiError ? (err.detail as { fields?: Record<string, string> })?.fields : undefined;
+      setErrors(f ?? { _: "generic" });
+    } finally { setBusy(false); }
+  }
+  const known = ["pattern", "address", "date", "date_future", "money", "email", "phone"];
+  return (
+    <form onSubmit={save} className="space-y-3">
+      <p className="text-base font-semibold">{t("payment.applicant.title")}</p>
+      <p className="text-sm text-muted">{t("payment.applicant.lead")}</p>
+      {fields.map((f) => (
+        <label key={f.field} className="block text-sm">{f.label}
+          <input className={`input mt-1 ${errors[f.field] ? "border-danger" : ""}`} required value={values[f.field] ?? ""}
+            type={f.type === "phone" ? "tel" : f.type === "email" ? "email" : "text"}
+            inputMode={f.pattern || f.type === "phone" ? "numeric" : undefined}
+            autoComplete={f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
+            onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))} aria-invalid={!!errors[f.field]} />
+          {errors[f.field] && <span className="text-danger">{t(`draft.error.${known.includes(errors[f.field]) ? errors[f.field] : "generic"}`)}</span>}
+        </label>
+      ))}
+      {errors._ && <p role="alert" className="text-danger">{t("draft.error.generic")}</p>}
+      <Button type="submit" className="min-h-12 w-full" disabled={busy}>{t("payment.applicant.continue")}</Button>
+    </form>
+  );
+}
+
+function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onClose, onContact, onContactDown, onChoose, onClaim, onWay }: {
   pay: Payment; busy: boolean; contact: "phone" | "email" | null; onClose: () => void; onContact: (r: SignedIn) => void;
+  applicant: ApplicantField[] | null; caseId: string; onApplicant: () => void;
   onContactDown: () => void;
   onChoose: (purpose: string) => void; onClaim: () => void; onWay: (body: WayBody, then?: "claim" | "bill") => void;
 }) {
@@ -613,7 +678,9 @@ function PaymentDialog({ pay, busy, contact, onClose, onContact, onContactDown, 
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"><Icon name="x" size={22} /></button>
         </div>
         <div className="space-y-3 overflow-y-auto overscroll-contain p-4">
-          {!pay.code && contact ? (
+          {!pay.code && applicant && applicant.length > 0 ? (
+            <ApplicantForm caseId={caseId} fields={applicant} onDone={onApplicant} />
+          ) : !pay.code && contact ? (
             <>
               <p className="flex items-start gap-2 text-base font-semibold">
                 <Icon name={contact === "phone" ? "phone" : "mail"} className="mt-0.5 shrink-0 text-brand" />{t(`payment.contact.${contact}`)}

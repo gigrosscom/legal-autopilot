@@ -1,7 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MdInline } from "@/components/Markdown";
-import { fmt, goalsOf, latestReport, moneyText, pendingOf, secs, usd } from "./model";
+import { adminApi } from "@/lib/api";
+import type { DealsBoard } from "./Deals";
+import { backlog, fmt, goalsOf, latestReport, moneyText, pendingOf, secs, usd } from "./model";
+import type { TicketsBoard } from "./Questions";
 import { PaymentsToConfirm } from "./Payments";
 import { ReviewsToCheck } from "./Reviews";
 import { Card, H2, Loading, NoData, PageTitle, Progress, RowLink, Stat, TeamUnavailable, useCentre } from "./ui";
@@ -21,6 +25,8 @@ export function Summary() {
       <PageTitle sub={<span className="first-letter:uppercase">{today}{m ? ` · данные на ${new Date(m.generated_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>}>
         Сводка
       </PageTitle>
+
+      <BoardTiles />
 
       {/* where we are heading: the month's KPI with live progress */}
       {goals.kpis.length > 0 && (
@@ -108,3 +114,45 @@ export function Summary() {
   );
 }
 
+
+/** Owner 01.10: the three boards at a glance, and what waits for the owner (payments to confirm, documents to check). */
+function BoardTiles() {
+  const c = useCentre();
+  const [deals, setDeals] = useState<DealsBoard | null>(null);
+  const [tickets, setTickets] = useState<TicketsBoard | null>(null);
+  useEffect(() => {
+    adminApi<DealsBoard>("/v1/admin/deals", c.token).then(setDeals).catch(() => setDeals(null));
+    adminApi<TicketsBoard>("/v1/admin/tickets", c.token).then(setTickets).catch(() => setTickets(null));
+  }, [c.token]);
+  const tasks = backlog(c.bundle);
+  const count = (b: { columns: { id: string; cards: unknown[] }[] } | null, ids: string[]) =>
+    b ? b.columns.filter((x) => ids.includes(x.id)).reduce((n, x) => n + x.cards.length, 0) : null;
+  const tile = "block w-full rounded-2xl bg-sand p-4 text-start hover:bg-sand-deep";
+  const waiting = deals?.waiting_for_owner ?? 0;
+  return (
+    <section className="space-y-3">
+      {waiting > 0 && (
+        <button type="button" onClick={() => c.go("deals")} className="block w-full rounded-2xl bg-warning-50 p-4 text-start text-[17px] font-semibold">
+          Ждёт вашего действия: {waiting} — оплаты к подтверждению и документы на проверку
+        </button>
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <button type="button" onClick={() => c.go("deals")} className={tile}>
+          <p className="text-[15px] text-muted">Сделки в работе</p>
+          <p className="text-[28px] font-semibold tabular-nums">{count(deals, ["new", "intake", "to_pay", "confirm", "paid", "ready", "sent"]) ?? "—"}</p>
+          <p className="text-[14px] text-muted">{deals ? `оплачено за 7 дней: ${Math.round(deals.paid_week).toLocaleString("ru-RU")} ₸` : ""}</p>
+        </button>
+        <button type="button" onClick={() => c.go("questions")} className={tile}>
+          <p className="text-[15px] text-muted">Вопросы клиентов</p>
+          <p className="text-[28px] font-semibold tabular-nums">{count(tickets, ["new", "in_progress"]) ?? "—"}</p>
+          <p className="text-[14px] text-muted">новые и в работе</p>
+        </button>
+        <button type="button" onClick={() => c.go("tasks")} className={tile}>
+          <p className="text-[15px] text-muted">Задачи команды</p>
+          <p className="text-[28px] font-semibold tabular-nums">{c.bundle ? tasks.filter((t) => t.state !== "done").length : "—"}</p>
+          <p className="text-[14px] text-muted">{c.bundle ? `ждут вас: ${tasks.filter((t) => t.state === "waiting").length}` : ""}</p>
+        </button>
+      </div>
+    </section>
+  );
+}

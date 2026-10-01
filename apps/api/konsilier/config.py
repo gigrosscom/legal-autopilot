@@ -145,7 +145,9 @@ class Settings(BaseSettings):
     # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
     # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
     # them. Telegram users are reachable in the bot and are not asked.
-    payment_requires_contact: bool = True
+    # owner 01.10 («3 клика»): no separate contact code before paying — the person is identified by the ЭЦП /
+    # eGov Mobile signature of the document; true brings the code back
+    payment_requires_contact: bool = False
     # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
     # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
     plan_case_price: int = 9990
@@ -167,15 +169,35 @@ class Settings(BaseSettings):
     # Zann law corpus (konsilier/zann/corpus.py, docs/zann-llm-plan.md «Сбор корпуса»): every act of old.adilet.zan.kz,
     # ru + kk, gzip texts in the storage under zann/corpus/. Off by default. ZANN_CORPUS_HOUR: local hour
     # (ZANN_CORPUS_TZ) of the nightly run, which lasts at most ZANN_CORPUS_MINUTES (2:00–2:50, before the 03:00 official crawl);
-    # -1 = continuous: time-boxed runs back to back around the clock. Pause between requests ≥ 2 s.
+    # -1 = continuous: time-boxed runs back to back around the clock. Pause between one worker's requests ≥ 2 s.
+    # ZANN_CORPUS_CONCURRENCY workers (1 = one request at a time, as before) share one limit of ZANN_CORPUS_RATE
+    # requests a second in all (capped at 3; the robots Crawl-delay if longer); a 429/503 pauses every worker.
     zann_corpus_enabled: bool = False
     zann_corpus_hour: int = 2
     zann_corpus_minutes: int = 50
     zann_corpus_pause: float = 3.0
+    zann_corpus_concurrency: int = 1
+    zann_corpus_rate: float = 0.5
     zann_corpus_langs: str = "ru,kk"
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
     zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
+    # Zann court practice (konsilier/zann/court.py, docs/zann-court.md; owner 01.10.2026): what a country's courts
+    # publish openly — sources, categories and anonymisation rules are pack data (packs/<cc>/zann/court.yaml,
+    # anonymize.yaml); originals and texts gzip under zann/court/ in our storage only. Off by default.
+    # ZANN_COURT_COUNTRY: the pack (empty: the only pack with zann/court.yaml). ZANN_COURT_SOURCES: empty = all the
+    # pack's sources. ZANN_COURT_HOUR: local hour of the nightly run (4:00–4:50, after the corpus and the official
+    # crawl), -1 = continuous. ZANN_COURT_PAUSE: seconds between requests (≥ 0.5); a site's robots.txt Crawl-delay
+    # is applied on top. ZANN_COURT_MAX_MB: larger files are skipped.
+    zann_court_enabled: bool = False
+    zann_court_country: str = ""
+    zann_court_hour: int = 4
+    zann_court_minutes: int = 50
+    zann_court_pause: float = 1.0
+    zann_court_sources: str = ""
+    zann_court_refresh_days: int = 30  # walk the pages again for new documents (0 = never)
+    zann_court_max_mb: float = 60.0
+    zann_court_tz: str = "Asia/Almaty"
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
@@ -185,7 +207,7 @@ class Settings(BaseSettings):
 
     qualify_min_confidence: float = 0.6
     # PM 01.10: the draft after at most this many interview questions (the rest are blanks); 0 = no cap
-    intake_max_questions: int = 4
+    intake_max_questions: int = -1  # -1: the draft at once on the site (owner 01.10, «3 клика»)
     approval_required_first_n: int = 50
     # Self-service: documents a person can file without a lawyer (pre-trial claim, complaint, statement, motion outside court) are
     # released at once; court documents and flagged cases still wait for a lawyer. False → the old rule

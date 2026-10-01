@@ -819,7 +819,7 @@ const en: Dict = {
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    shareText: "Konsiliér AI is a free AI assistant for legal questions. Describe your situation and it will tell you what to do:",
+    shareText: "Konsiliér AI is a free AI assistant for legal questions. Describe your situation and it will tell you what to do. If you pay for a document through my link, we both get one more document free:",
   },
   send: {
     open: "Show the contacts found and all ways",
@@ -1126,6 +1126,7 @@ const en: Dict = {
     hintCta: "Confirm email",
   },
   payment: {
+    applicant: { title: "Your details for the document", lead: "They appear in the document as the applicant's details. Fill them in once and we go on to payment.", continue: "Continue to payment" },
     contact: {
       phone: "Your phone — we will send the document and remind you of the deadline",
       email: "Your email — we will send the document and remind you of the deadline",
