@@ -180,7 +180,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"
     # Images cannot be PII-redacted; send them to the LLM only if explicitly enabled.
-    extract_images_with_llm: bool = False
+    # owner 01.10: photos and scans of documents are read by the model (they cannot be anonymised; the owner agreed)
+    extract_images_with_llm: bool = True
 
     qualify_min_confidence: float = 0.6
     # PM 01.10: the draft after at most this many interview questions (the rest are blanks); 0 = no cap
