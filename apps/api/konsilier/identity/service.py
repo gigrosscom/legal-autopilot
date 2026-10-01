@@ -141,8 +141,8 @@ def merge_users(session: Session, src: User, dst: User) -> None:
         return
     session.flush()
     for table in Base.metadata.sorted_tables:
-        if table.name == User.__tablename__:
-            continue  # who invited whom stays as it was
+        if table.name in (User.__tablename__, LoginChallenge.__tablename__):
+            continue  # who invited whom stays as it was; a sign-in in progress stays with its device
         for col in table.columns:
             if any(fk.column.table.name == User.__tablename__ for fk in col.foreign_keys):
                 session.execute(table.update().where(col == src.id).values({col.name: dst.id}))
