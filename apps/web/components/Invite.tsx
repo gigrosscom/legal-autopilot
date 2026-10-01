@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui";
 import { api } from "@/lib/api";
+import { storyCard } from "@/lib/storyCard";
 import { useT } from "@/lib/i18n";
 
 type Ref = { code: string; link: string; invited: number; active: number };
@@ -13,6 +14,7 @@ export function Invite({ compact = false, big = false }: { compact?: boolean; bi
   const t = useT();
   const [ref, setRef] = useState<Ref | null>(null);
   const [copied, setCopied] = useState(false);
+  const [story, setStory] = useState(false);
   useEffect(() => { api<Ref>("/v1/referral").then(setRef).catch(() => {}); }, []);
   if (!ref) return null;
 
@@ -22,6 +24,22 @@ export function Invite({ compact = false, big = false }: { compact?: boolean; bi
       try { await navigator.share({ title: "Konsiliér AI", text, url: ref!.link }); return; } catch { /* closed: fall back to copy */ }
     }
     try { await navigator.clipboard.writeText(`${text} ${ref!.link}`); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
+  }
+
+  // referral П2: the story card with the person's link and QR — shared as an image, or saved
+  async function shareStory() {
+    setStory(true);
+    try {
+      const blob = await storyCard(`${ref!.link}${ref!.link.includes("?") ? "&" : "?"}src=story`, {
+        title: t("invite.storyTitle"), line: t("invite.storyLine"), offer: t("invite.storyOffer"), scan: t("invite.storyScan") });
+      const file = new File([blob], "konsilier-story.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); return; } catch { /* closed: save instead */ }
+      }
+      const url = URL.createObjectURL(blob);
+      Object.assign(document.createElement("a"), { href: url, download: "konsilier-story.png" }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } finally { setStory(false); }
   }
 
   const button = (
@@ -45,6 +63,9 @@ export function Invite({ compact = false, big = false }: { compact?: boolean; bi
             <Icon name={copied ? "check" : "share"} size={18} />{copied ? t("invite.copied") : t("invite.other")}
           </button>
         </div>
+        <button type="button" onClick={shareStory} disabled={story} className="btn-ghost min-h-12 w-full justify-center">
+          <Icon name={story ? "spinner" : "camera"} size={18} />{t("invite.story")}
+        </button>
         <p className="text-sm text-muted">{t("invite.invited", { n: ref.invited })}</p>
       </section>
     );
