@@ -6,10 +6,22 @@ import { isEmpty, plain, type TaskState } from "@/lib/team";
 import { backlog, F, type Task } from "./model";
 import { Chip, Loading, PageTitle, TeamUnavailable, useCentre } from "./ui";
 
+// owner 01.10: новое → передано → в работе → ждёт владельца → готово
 const COLUMNS: { key: TaskState; label: string }[] = [
-  { key: "waiting", label: "Ждёт владельца" }, { key: "doing", label: "В работе" }, { key: "new", label: "Новые" },
-  { key: "done", label: "Готово" },
+  { key: "new", label: "Новые" }, { key: "passed", label: "Передано" }, { key: "doing", label: "В работе" },
+  { key: "waiting", label: "Ждёт владельца" }, { key: "done", label: "Готово" },
 ];
+
+/** «01.10», «01.10.2026», «2026-10-01» → is it past? (a task still open after its date is shown in red) */
+function overdue(due: string, state: TaskState): boolean {
+  if (state === "done") return false;
+  const m = due.match(/(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?/) ?? null;
+  const iso = due.match(/(\d{4})-(\d{2})-(\d{2})/);
+  const d = iso ? new Date(+iso[1], +iso[2] - 1, +iso[3]) : m ? new Date(m[3] ? +m[3] : new Date().getFullYear(), +m[2] - 1, +m[1]) : null;
+  if (!d) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return d < today;
+}
 
 function TaskCard({ t }: { t: Task }) {
   return (
@@ -17,7 +29,9 @@ function TaskCard({ t }: { t: Task }) {
       <p className="text-[16px] leading-snug"><span className="me-1.5 text-muted tabular-nums">№{t.id}</span><MdInline text={t.text} /></p>
       <div className="flex flex-wrap gap-1.5">
         {!isEmpty(t.role) && <Chip tone="blue">{t.role}</Chip>}
-        {!isEmpty(t.due) && <Chip>срок {t.due}</Chip>}
+        {!isEmpty(t.due) && (overdue(t.due, t.state)
+          ? <span className="inline-flex items-center rounded-full bg-danger px-2.5 py-0.5 text-[13px] font-semibold text-white">просрочено · {t.due}</span>
+          : <Chip>срок {t.due}</Chip>)}
         {t.state === "other" || t.status.toLowerCase() !== COLUMNS.find((c) => c.key === t.state)?.label.toLowerCase()
           ? <Chip tone={t.state === "waiting" ? "warn" : t.state === "done" ? "done" : "neutral"}>{t.status}</Chip> : null}
       </div>
@@ -31,7 +45,7 @@ export function Tasks() {
   const all = useMemo(() => backlog(c.bundle), [c.bundle]);
   const [role, setRole] = useState("");
   const [q, setQ] = useState("");
-  const [col, setCol] = useState<TaskState>("waiting");
+  const [col, setCol] = useState<TaskState>("waiting");  // the phone opens on what waits for the owner
   const roles = useMemo(() => [...new Set(all.flatMap((t) => t.role.split(/,\s*/)).map((r) => r.trim()).filter((r) => r && r !== "—"))].sort(), [all]);
   if (c.teamError) return <div className="space-y-6"><PageTitle>Задачи</PageTitle><TeamUnavailable /></div>;
   if (!c.bundle) return <div className="space-y-6"><PageTitle>Задачи</PageTitle><Loading /></div>;
@@ -57,7 +71,7 @@ export function Tasks() {
 
       {/* phone: one status at a time */}
       <div className="lg:hidden">
-        <div className="grid grid-cols-4 gap-1 rounded-full bg-sand p-1">
+        <div className="grid grid-cols-5 gap-1 rounded-full bg-sand p-1">
           {COLUMNS.map((k) => (
             <button key={k.key} onClick={() => setCol(k.key)} aria-pressed={col === k.key}
               className={`min-h-10 rounded-full px-1 text-[13px] font-semibold leading-tight ${col === k.key ? "bg-surface shadow-sm" : "text-muted"}`}>
@@ -72,7 +86,7 @@ export function Tasks() {
       </div>
 
       {/* computer: the board */}
-      <div className="hidden gap-3 lg:grid lg:grid-cols-4">
+      <div className="hidden gap-3 lg:grid lg:grid-cols-5">
         {COLUMNS.map((k) => (
           <section key={k.key} className="rounded-2xl bg-sand p-3">
             <h2 className="flex items-center justify-between px-1 pb-2 text-[16px] font-semibold">{k.label}<span className="text-muted tabular-nums">{by(k.key).length}</span></h2>
