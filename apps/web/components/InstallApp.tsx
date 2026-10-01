@@ -49,21 +49,25 @@ export function PwaRegister() {
   return null;
 }
 
-const WINDOW = "konsilier.window"; // "ops": this window is the installed «Konsiliér Ops», not the client app
+const WINDOW = "konsilier.window"; // which installed app this window is: "ops" or "client" (set at its start URL)
 
-/** True in the window of the installed «Konsiliér Ops» (it starts at /ops?source=app; the flag lives per window). */
-function opsWindow(): boolean {
+/** The installed app this window was started as, from its start URL (/ops?source=app or /?source=app); kept per window. */
+function appWindow(): string | null {
   try {
     const { pathname, search } = window.location;
-    if (pathname.startsWith("/ops") && new URLSearchParams(search).get("source") === "app") sessionStorage.setItem(WINDOW, "ops");
-    return sessionStorage.getItem(WINDOW) === "ops";
-  } catch { return false; }
+    if (new URLSearchParams(search).get("source") === "app") sessionStorage.setItem(WINDOW, pathname.startsWith("/ops") ? "ops" : "client");
+    return sessionStorage.getItem(WINDOW);
+  } catch { return null; }
 }
 
 export function detect(storeKey: string = INSTALLED): Platform {
-  if (isStandalone()) {
-    // /ops opened inside the client app's window: that is another app, «Konsiliér Ops» itself is not installed here
-    if (storeKey !== INSTALLED && !opsWindow()) return "otherApp";
+  const app = appWindow();
+  if (storeKey !== INSTALLED) {
+    // «Konsiliér Ops» (/ops, its own manifest): trust only a positive signal of which window this is — a browser tab
+    // must never hide the button (owner 01.10: the hint showed in an ordinary Chrome tab)
+    if (app === "ops") return "installed";
+    if (app === "client" && isStandalone()) return "otherApp";
+  } else if (isStandalone() && !matchMedia("(display-mode: browser)").matches) {
     return "installed"; // running as the app
   }
   if (window.__konsilierInstall) return "prompt";
@@ -247,7 +251,11 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
       <button type="button" onClick={go} disabled={waiting} aria-busy={waiting} className={className}>
         {icon && <Icon name={icon} size={18} />}{label ?? t("pwa.install")}
       </button>
-      {hint && <Hint platform={hint} text={hint === "otherApp" ? otherAppText : undefined} onClose={closeHint} />}
+      {hint && <Hint platform={hint} onClose={closeHint}
+        text={hint === "otherApp" ? otherAppText
+          : hint === "menu" && storeKey && storeKey !== INSTALLED
+            ? "Chrome не показал своё окно установки. Откройте меню ⋮ справа вверху → «Трансляция, сохранение и отправка» (Cast, save and share) → «Установить страницу как приложение…» и нажмите «Установить» — появится «Konsiliér Ops»."
+            : undefined} />}
     </>
   );
 }
