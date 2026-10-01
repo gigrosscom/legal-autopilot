@@ -700,6 +700,8 @@ const kk: Dict = {
     moreWaysTitle: "Кірудің басқа тәсілдері",
     otherWays: "Басқа тәсілдер: ЭЦҚ, eGov",
     withEmail: "E-mail арқылы жалғастыру",
+    withEcp: "ЭЦҚ (кілт) арқылы кіру",
+    withEgov: "eGov Mobile арқылы кіру",
     signInLead: "Бір қадам — істеріңіз бен құжаттарыңыз кез келген құрылғыда.",
     signInOrUp: "Кіру немесе тіркелу",
     resendIn: "Кодты {n} с кейін қайта жіберу",

@@ -699,6 +699,8 @@ const tr: Dict = {
     moreWaysTitle: "Diğer giriş yolları",
     otherWays: "Diğer yollar: e-imza, eGov",
     withEmail: "E-posta ile devam et",
+    withEcp: "EİS anahtarı ile giriş",
+    withEgov: "eGov Mobile ile giriş",
     signInLead: "Tek adım: dosyalarınız ve belgeleriniz her cihazda.",
     signInOrUp: "Giriş yap veya kaydol",
     resendIn: "{n} sn sonra kodu tekrar gönder",
