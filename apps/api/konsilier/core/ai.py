@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from . import triage
 from .llm import Attachment, LLMError, RedactingLLM
 from .packs import JurisdictionPack
 from .scenario import RESPONSE_CLASSES, Scenario
@@ -65,9 +66,13 @@ def _nullable_values_schema(names: list[str]) -> dict[str, Any]:
 
 
 def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, JurisdictionPack],
-            text: str, lang: str, details: dict[str, Any] | None = None) -> tuple[str | None, float, str]:
+            text: str, lang: str, details: dict[str, Any] | None = None,
+            rules: dict[str, Any] | None = None) -> tuple[str | None, float, str]:
     """`details` (when given) gets what the model decided before the scenario: subject (goods / service / work /
-    other), channel (online / offline), counterparty (person / business / state) — owner 01.10, lawyer D-19."""
+    other), channel (online / offline), counterparty (person / business / state) — owner 01.10, lawyer D-19.
+    With the pack's triage `rules` (core/triage.py) the same call is the «юридический разбор»: category and
+    subcategory, the parties, what is missing and one clarifying question; a scenario the lawyer's words rule out
+    for this text is never confident."""
     if not scenarios:
         return None, 0.0, "no published scenarios"
     options = []
@@ -83,6 +88,7 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
             "keywords": keywords,
             "examples": examples,
             "subject": list(sc.classification.subject),
+            **(triage.scenario_words(rules, sc.id) if rules else {}),
         })
     ids = [o["id"] for o in options]
     schema = {
@@ -98,6 +104,22 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
         "required": ["subject", "channel", "counterparty", "scenario_id", "confidence", "reason"],
         "additionalProperties": False,
     }
+    payload: dict[str, Any] = {"text": text, "language": lang, "scenarios": options}
+    if rules:
+        lists = triage.prompt_rules(rules)
+        payload["triage"] = lists
+        enum = lambda xs: {"anyOf": [{"type": "string", "enum": list(xs)}, {"type": "null"}]}  # noqa: E731
+        schema["properties"].update({
+            "category": enum(lists["categories"]),
+            "subcategory": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "subject": {"type": "string", "enum": list(dict.fromkeys([*lists["subjects"], "goods", "service", "work", "other"]))},
+            "client_kind": enum(lists["client_kinds"]),
+            "respondent_kind": enum(lists["respondent_kinds"]),
+            "missing": {"type": "array", "items": {"type": "string"}},
+            "question": {"type": "string"},
+        })
+        schema["required"] = [*schema["required"], "category", "subcategory", "client_kind", "respondent_kind",
+                              "missing", "question"]
     system = (
         f"{_COMMON_RULES}\nTask: read the user's description of their problem and choose the single "
         "scenario that fits it from the provided list, or null if none fits.\n"
@@ -118,19 +140,41 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
         "missing details are asked later. Confidence 0..1: >= 0.8 when the situation clearly matches "
         "the scenario's summary, 0.5-0.8 when it probably does."
     )
+    if rules:
+        system += (
+            "\nThis is the legal triage of the first message, as a lawyer would read it. Use only the lists in "
+            "'triage': 'category' and 'subcategory' (a key of that category's subcategories, or null), 'subject' "
+            "(digital_content for tokens, subscriptions, access, apps, games; state_service for a fine or a state "
+            "body; money for wages, debts, deposits, bank operations), 'client_kind' (the person writing), "
+            "'respondent_kind' (the other side). A scenario's 'never_when' words rule it out; its 'choose_when' "
+            "words point to it. 'missing': up to 5 short facts the lawyer still needs (in the user's language). "
+            "'question': when confidence is below 0.7, ONE short clarifying question in the user's language that "
+            "would decide the scenario (e.g. «Это была вещь или подписка?»); otherwise an empty string. Never "
+            "decide where to file or which law applies — that comes from the rules, not from you."
+        )
     try:
-        out = llm.complete_json(task="qualify", system=system,
-                                payload={"text": text, "language": lang, "scenarios": options}, schema=schema)
+        out = llm.complete_json(task="qualify", system=system, payload=payload, schema=schema)
     except LLMError as e:
         log.warning("qualify failed, falling back to scenario keywords: %s", e)
         return _keyword_qualify(options, text, f"llm_error: {str(e)[:300]}")
     sid = out.get("scenario_id")
-    subject = out.get("subject")
+    # digital content is a service by law (lawyer D-19); money and a state body are not goods-or-service questions
+    subject = {"digital_content": "service"}.get(out.get("subject"), out.get("subject"))
+    if subject not in ("goods", "service", "work"):
+        subject = None
     if details is not None:
-        details.update({k: out.get(k) for k in ("subject", "channel", "counterparty") if out.get(k)})
+        details.update({k: out.get(k) for k in ("channel", "counterparty") if out.get(k)})
+        if subject:
+            details["subject"] = subject
+        if rules:
+            details["_triage"] = {k: out.get(k) for k in ("category", "subcategory", "subject", "client_kind",
+                                                          "respondent_kind", "channel", "missing", "question")}
     if sid not in ids:
         return None, 0.0, out.get("reason", "")
     confidence = max(0.0, min(1.0, float(out.get("confidence", 0))))
+    ruled_out = triage.blocked_by(rules, sid, text) if rules else []
+    if ruled_out:  # the lawyer's «не выбирать» for this scenario is in the text
+        return sid, min(confidence, 0.3), f"never_when {ruled_out}; {out.get('reason', '')}"
     allowed = next(o["subject"] for o in options if o["id"] == sid)
     if subject and allowed and subject not in allowed:
         # the model's own subject does not fit the scenario it chose: never a confident document from it

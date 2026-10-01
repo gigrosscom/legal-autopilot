@@ -348,7 +348,7 @@ def test_approval_not_required_after_first_n(ctx):
     ctx.container.engine.config.approval_required_first_n = 0
     api = web_user(ctx)
     cid = api.post("/v1/cases", expect=201, json={
-        "text": "Заказал шкаф на маркетплейсе 01.09.2026 за 90000, не доставили, хочу вернуть деньги",
+        "text": "Купил шкаф в магазине 01.09.2026 за 90000, сломалась дверца, хочу вернуть деньги",
         "country": "KZ"})["case"]["id"]
     run_intake(api, cid, {"seller_name": "ИП Мебель", "seller_bin": "пропустить", "goods_description": "Шкаф",
                           "applicant_name": "Петров Пётр", "applicant_phone": "+7 700 000 00 00",

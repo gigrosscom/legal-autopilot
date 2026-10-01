@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -181,6 +182,25 @@ def _action(action_id: uuid.UUID, session: Session) -> Action:
 def get_case(case_id: uuid.UUID, session: Session = Depends(get_session),
              container: Container = Depends(get_container)) -> dict[str, Any]:
     return case_view(container.engine, session, _case(case_id, session), admin=True)
+
+
+@router.get("/triage")
+def triage_log(since: datetime | None = None, limit: int = 200, session: Session = Depends(get_session)) -> dict[str, Any]:
+    """The «юридический разбор» of first messages since a time (default: the last 24 hours), newest first — for the
+    lawyer's daily check: the message, what was decided, how sure, where it is filed, and whether the pack's own
+    words agree with the model."""
+    since = since or datetime.now(timezone.utc) - timedelta(days=1)
+    rows = session.scalars(select(AuditLog).where(AuditLog.event == "triage", AuditLog.created_at >= since)
+                           .order_by(AuditLog.id.desc()).limit(max(1, min(limit, 1000)))).all()
+    items = []
+    for log in rows:
+        case = session.get(Case, log.case_id)
+        items.append({"at": log.created_at.isoformat(), "case_id": str(log.case_id),
+                      "text": ((case.initial_text if case else "") or "")[:800], "triage": log.data,
+                      "scenario_now": case.scenario_id if case else None})
+    unsure = sum(1 for i in items if (i["triage"] or {}).get("confidence", 0) < 0.7)
+    disagree = sum(1 for i in items if not (i["triage"] or {}).get("agrees", True))
+    return {"since": since.isoformat(), "count": len(items), "unsure": unsure, "disagree": disagree, "items": items}
 
 
 @router.get("/reviews")

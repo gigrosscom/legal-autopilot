@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, legal_check, package, polish, qualifier, safety
+from . import ai, legal_check, package, polish, qualifier, safety, triage
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -221,7 +221,7 @@ class CaseEngine:
         case = session.get(Case, case_id)
         if case is None or case.scenario_id or case.taxonomy:
             return
-        self._qualify_and_continue(session, case, case.initial_text or "")
+        self._qualify_and_continue(session, case, case.initial_text or "", ask=False)
         if "emergency" in ((case.taxonomy or {}).get("flags") or []):
             self.audit(session, case, "system", "emergency_detected", by="llm")
         # what was told in the chat while the scenario was being worked out goes into the case too (PM 01.10)
@@ -295,7 +295,9 @@ class CaseEngine:
             return self._next_step(session, case, self.scenario_of(case), pack)
         return Reply(message="")
 
-    def _qualify_and_continue(self, session: Session, case: Case, text: str) -> Reply:
+    def _qualify_and_continue(self, session: Session, case: Case, text: str, ask: bool = True) -> Reply:
+        """`ask`: the reply reaches the person (not the chat's background run), so an unsure triage may ask its one
+        clarifying question first."""
         llm = self.llm_for(case)
         candidates = self.packs.published(case.jurisdiction)
         # a sole trader or a company in a dispute with a business: never a consumer scenario (consumer law does
@@ -306,11 +308,25 @@ class CaseEngine:
             candidates = [s for s in candidates if "applicant" in s.parties and s.parties["applicant"].kind == "business"]
             self.audit(session, case, "system", "business_applicant")
         details: dict[str, Any] = {}
-        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language, details)
+        rules = next((p.triage for p in self.packs.packs.values() if p.triage
+                      and (not case.jurisdiction or p.country == case.jurisdiction.upper())), {})
+        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language, details, rules)
                                    if candidates else (None, 0.0, "no business scenario"))
+        model_triage = details.pop("_triage", None) or {}
         if details:  # subject / channel / counterparty: kept for the legal self-check before a document
             case.taxonomy = {**(case.taxonomy or {}), **details}
         case.qualification_confidence = confidence
+        if rules:  # «юридический разбор» (owner 01.10): kept in the case, in the log and shown in /ops
+            found = triage.result(rules, model_triage, text, sid, confidence, reason)
+            asked = bool((case.taxonomy or {}).get("triage_asked"))
+            case.taxonomy = {**(case.taxonomy or {}), "triage": found}
+            self.audit(session, case, "system", "triage", **found)
+            if ask and sid and confidence < float(rules.get("min_confidence", 0.7)) and found["question"] and not asked:
+                # unsure: one clarifying question before the draft; the answer is added to the story and the
+                # scenario is chosen again (handle_message), never asked twice
+                case.taxonomy = {**case.taxonomy, "triage_asked": True}
+                self._save_vault(case, llm)
+                return Reply(message=found["question"])
         if sid is None:
             case.needs_review = True
             self.audit(session, case, "system", "qualification_failed", reason=reason)

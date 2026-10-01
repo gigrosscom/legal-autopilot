@@ -28,7 +28,7 @@ def test_test_user_path_stays_invisible_to_the_team(ctx):
     token = ctx.client.post("/v1/smoke/user", headers=HDR).json()["token"]
     api = Api(ctx, token)
     cid = api.post("/v1/cases", expect=201, json={
-        "text": "Заказал шкаф на маркетплейсе 01.09.2026 за 90000, не доставили, хочу вернуть деньги",
+        "text": "Купил шкаф в магазине 01.09.2026 за 90000, сломалась дверца, хочу вернуть деньги",
         "country": "KZ"})["case"]["id"]
     from .test_e2e import run_intake
     from .test_payment import ANSWERS

@@ -182,6 +182,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
     if admin:
         view["raw_facts"] = case.facts
         view["qualification_confidence"] = case.qualification_confidence
+        view["triage"] = (case.taxonomy or {}).get("triage")  # «юридический разбор» of the first message
         view["initial_text"] = case.initial_text
         view["narrative"] = case.narrative
         view["audit"] = [

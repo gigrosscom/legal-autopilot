@@ -17,7 +17,7 @@ from .test_e2e import run_intake, web_user
 from .test_lawyer_onboarding import Outbox
 from .test_ops_centre import operator
 
-STORY = "Заказал шкаф на маркетплейсе 01.09.2026 за 90000, не доставили, хочу вернуть деньги"
+STORY = "Купил шкаф в магазине 01.09.2026 за 90000, сломалась дверца, хочу вернуть деньги"
 ANSWERS = {"seller_name": "ИП Мебель", "seller_bin": "пропустить", "goods_description": "Шкаф",
            "applicant_name": "Петров Пётр", "applicant_phone": "+7 700 000 00 00", "applicant_iin": "пропустить",
            "seller_email": "пропустить", "seller_address": "Алматы, ул. Мебельная 1",

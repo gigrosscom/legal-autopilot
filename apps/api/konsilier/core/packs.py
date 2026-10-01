@@ -233,6 +233,7 @@ class JurisdictionPack:
         self.manifest = manifest
         self.i18n = i18n
         self.scenarios = scenarios
+        self.triage: dict[str, Any] = {}  # the «юридический разбор» rules (triage.yaml), set by load_pack
 
     # ---- identity ------------------------------------------------------
     @property
@@ -364,7 +365,27 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
                 (ref in manifest.authorities if kind == "authority" else False)
             if not known:
                 raise PackValidationError(f"{eot_path}: unknown addressee {key}")
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements, gov, portal)
+    pack = JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements, gov, portal)
+    pack.triage = load_triage(root / "triage.yaml", scenarios)
+    return pack
+
+
+def load_triage(path: Path, scenarios: dict[str, Scenario]) -> dict[str, Any]:
+    """The rules of the «юридический разбор» (core/triage.py): every scenario named is the pack's, every category
+    a scenario points to is listed — a typo by the lawyer fails the start, not a client's case."""
+    if not path.is_file():
+        return {}
+    try:
+        rules = yaml.safe_load(path.read_text("utf-8")) or {}
+    except yaml.YAMLError as e:
+        raise PackValidationError(f"{path}: {e}") from e
+    cats = rules.get("categories") or {}
+    errors = [f"{path}: unknown scenario {sid}" for sid in rules.get("scenarios") or {} if sid not in scenarios]
+    errors += [f"{path}: scenario {sid}: unknown category {sc.get('category')!r}"
+               for sid, sc in (rules.get("scenarios") or {}).items() if sc.get("category") not in cats]
+    if errors:
+        raise PackValidationError("\n".join(errors))
+    return rules
 
 
 class PackRegistry:

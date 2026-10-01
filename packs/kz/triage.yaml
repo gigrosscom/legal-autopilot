@@ -1,0 +1,315 @@
+# «Юридический разбор» первого сообщения клиента — до выбора сценария (решение владельца 01.10).
+# Источники: team/zann/lawyer/scenario-audit.md (§ 1 «Классификатор», § 3 consumer_digital) и
+# team/legal-drafts/document-rules.md (D-06, D-17, D-19, D-21, D-35). Юрист правит этот файл без кода.
+# Слова — основы (без окончаний), строчными: «токен» находит «токены», «токенов».
+# null в маршруте — «не подтверждено, уточнит юрист»: модель это не додумывает, в /ops видно «—».
+version: 1
+verified_by: null          # юрист пилота — после проверки
+min_confidence: 0.7        # ниже — один уточняющий вопрос клиенту до черновика
+
+subjects:                  # предмет спора (D-19)
+  goods: Товар (вещь)
+  service: Услуга
+  digital_content: Цифровой контент (подписка, токены, доступ, приложение) — по праву РК это услуга
+  work: Работа с результатом (ремонт, пошив, строительство)
+  state_service: Госуслуга или действие госоргана
+  money: Деньги (зарплата, долг, депозит, операция по счёту)
+  other: Другое
+
+client_kinds: {person: Физлицо, sole_trader: ИП, company: ТОО или другое юрлицо}
+respondent_kinds:
+  seller: Продавец
+  provider: Исполнитель услуги или работы
+  employer: Работодатель
+  bank: Банк
+  mfo: МФО
+  collector: Коллектор
+  insurer: Страховая
+  landlord: Наймодатель
+  management_company: Управляющая компания, ОСИ, КСК
+  utility: Поставщик коммунальных услуг
+  state_body: Госорган или должностное лицо
+  court: Суд
+  person: Частное лицо
+  business: Компания или ИП (не продавец потребителю)
+  other: Другое
+
+# Категории → подкатегории; маршрут (куда подаётся) — по подкатегории, иначе по категории.
+# files_to: respondent — сам ответчик; authority — уполномоченный орган; court — суд; police — полиция (клиент сам, D-17)
+categories:
+  consumer:
+    title: Потребитель
+    route:
+      files_to: respondent
+      first: Продавцу или исполнителю — лично под подпись, заказным с уведомлением или на e-mail, который он указал сам (ЗПП ст. 42-4 п. 1)
+      authority: Орган по защите прав потребителей — не позднее 2 месяцев с претензии (ЗПП ст. 42-5)
+      court: Суд по месту жительства истца или по месту заключения или исполнения договора (ГПК ст. 30 ч. 9)
+      court_level: null
+      pretrial: null
+      answer_days: 10 календарных дней со дня получения (ЗПП ст. 42-4 п. 2)
+    subcategories:
+      goods_refund: Возврат или обмен товара
+      digital: Цифровой контент, подписка, токены
+      service: Услуга не оказана или оказана плохо
+      work: Работа с недостатками
+      non_delivery: Оплаченный товар не передан
+      air_ticket: Авиабилет
+      education: Обучение, курсы
+      medical: Платная медицина
+  labor:
+    title: Труд
+    route:
+      files_to: respondent
+      first: Работодателю — требование; инспекция труда — электронное обращение с ЭЦП (ТК ст. 191)
+      authority: Инспекция труда (территориальное подразделение органа по труду)
+      court: Суд — только после согласительной комиссии, кроме исключений (ТК ст. 159; ГПК ст. 152 ч. 1 пп. 1)
+      court_level: null
+      pretrial: required
+      pretrial_note: Согласительная комиссия обязательна перед судом (ТК ст. 159 п. 1)
+      answer_days: Инспекция — 15 рабочих дней (АППК ст. 76)
+    subcategories:
+      unpaid_wages: Не платят зарплату
+      final_settlement: Не рассчитались при увольнении
+      dismissal: Незаконное увольнение
+  housing:
+    title: Жильё
+    subcategories:
+      deposit: Депозит (залог) за съёмную квартиру
+      management: Управляющая компания, ОСИ, КСК
+      utilities: Коммунальные услуги, перерасчёт
+    route:
+      files_to: respondent
+      first: Наймодателю — лично под подпись или заказным с уведомлением; мессенджер — только копия (D-07)
+      authority: null
+      court: null
+      court_level: null
+      pretrial: null
+      answer_days: null
+  family:
+    title: Семья
+    subcategories: {alimony: Алименты}
+    route:
+      files_to: court
+      first: null
+      authority: null
+      court: Суд; иск об алиментах освобождён от госпошлины (НК 2025 ст. 668 пп. 4); судебный приказ или иск — решает юрист
+      court_level: null
+      pretrial: none
+      answer_days: null
+  finance:
+    title: Банк, МФО, страховка
+    subcategories:
+      unauthorized_debit: Списание без согласия
+      credit_fraud: Кредит оформили мошенники
+      restructuring: Реструктуризация кредита
+      collectors: Коллекторы
+      imposed_insurance: Навязанная страховка
+    route:
+      files_to: respondent
+      first: Банку или МФО — e-mail, сайт или приложение, заявление по форме банка; чат — не обращение (D-06; Закон о платежах ст. 40 п. 6)
+      authority: АРРФР — электронное обращение с ЭЦП или через eGov Mobile
+      court: null
+      court_level: null
+      pretrial: null
+      answer_days: Банк — 15 рабочих дней со дня поступления (Закон о банках 2026 ст. 64 п. 2); возмещение по карте — 15 календарных дней (Закон о платежах ст. 40 п. 8)
+  fine:
+    title: Штраф (КоАП)
+    subcategories: {fine_appeal: Обжалование штрафа}
+    route:
+      files_to: authority
+      first: Вышестоящий орган или должностное лицо; если штраф вынес суд — вышестоящий суд (КоАП ст. 826-1)
+      authority: Вышестоящий орган
+      court: Суд — обжалование решения вышестоящего органа в течение 10 суток
+      court_level: null
+      pretrial: none
+      answer_days: Жалоба — 10 суток со дня вручения постановления (КоАП ст. 826-2)
+  gov:
+    title: Госорган
+    subcategories: {inaction: Бездействие, нет ответа на обращение}
+    route:
+      files_to: authority
+      first: Жалоба в вышестоящий орган (АППК ст. 91–93); электронное обращение на eOtinish, подписанное ЭЦП или через eGov Mobile (D-34)
+      authority: Вышестоящий административный орган
+      court: Административный суд — после жалобы
+      court_level: null
+      pretrial: required
+      pretrial_note: Досудебное обжалование в вышестоящий орган (АППК ст. 91)
+      answer_days: 15 рабочих дней со следующего дня после регистрации (АППК ст. 76)
+  civil:
+    title: Гражданские споры
+    subcategories: {road_accident: ДТП, страховая выплата}
+    route:
+      files_to: respondent
+      first: Страховщику виновника; размер вреда определяет страховщик
+      authority: null
+      court: null
+      court_level: null
+      pretrial: null
+      answer_days: null
+  business:
+    title: Бизнес (ИП, ТОО)
+    subcategories: {debt: Долг контрагента, supply: Поставка, lease: Аренда, procurement: Госзакупки, tax: Налоговая проверка}
+    route:
+      files_to: respondent
+      first: Контрагенту — претензия; срок оплаты 7 дней со дня требования, если в договоре срока нет (ГК ОЧ ст. 277 п. 2)
+      authority: null
+      court: null
+      court_level: null
+      pretrial: null
+      answer_days: null
+  criminal:
+    title: Уголовное (мошенничество, кража, угрозы)
+    subcategories: {fraud: Мошенничество, theft: Кража, threat: Угрозы или насилие}
+    route:
+      files_to: police
+      first: Заявление в полицию — подаёт сам клиент; мы не подаём за клиента (D-17; УПК ст. 181)
+      authority: Полиция
+      court: null
+      court_level: null
+      pretrial: none
+      answer_days: null
+  other:
+    title: Другое
+    subcategories: {}
+    route: {files_to: null, first: null, authority: null, court: null, court_level: null, pretrial: null, answer_days: null}
+
+# Признаки сценариев: choose — слова «за», not — стоп-слова (сценарий не подходит, если они есть).
+# Порядок важен при равенстве: выше — точнее. launch: true — сценарии запуска (проверены юристом в первую очередь).
+scenarios:
+  kz.consumer.service_refund:
+    launch: true
+    category: consumer
+    subcategory: digital
+    subject: [service, digital_content]
+    choose: [токен, кредит в сервис, подписк, автосписан, автопродлен, тариф, премиум, доступ к, аккаунт, нейросет, chatgpt, claude, ии-сервис, сервис ии, искусственн, приложени, игр, донат, ключ активац, vpn, облак, стриминг, онлайн-сервис, онлайн сервис, курс]
+    not: [списали без моего, без моего ведома, неизвестн операц, преподавател, телевизор, телефон сломал]
+  kz.consumer.refund:
+    launch: true
+    category: consumer
+    subcategory: goods_refund
+    subject: [goods]
+    choose: [сломал, брак, не подош, обменять, обмен, вернуть товар, вернуть деньги за, не включа, перестал работ, холодильник, телевизор, смартфон, телефон, ноутбук, стиральн, обув, одежд, куртк, диван, мебел, купил в магазин, технодом, mechta, sulpak, белый ветер]
+    not: [токен, подписк, доступ, тариф, курс, приложени, нейросет, ремонт, не привезли, не доставили, не пришл]
+  kz.consumer.poor_service:
+    launch: true
+    category: consumer
+    subcategory: work
+    subject: [service, work]
+    choose: [мастер, автосервис, ателье, химчистк, плохо сделал, плохо отремонт, испортил, ремонт квартир, сшил]
+    not: [гаранти, онлайн, подписк, курс, клиник]
+  kz.consumer.non_delivery:
+    launch: true
+    category: consumer
+    subcategory: non_delivery
+    subject: [goods]
+    choose: [не доставил, не привезл, не привез, не пришл посылк, заказ не пришел, заказ не пришёл, не отправил товар, kaspi магазин не, wildberries, ozon]
+    not: [токен, занятия, ключ, не начислил]
+  kz.consumer.education_refund:
+    launch: false
+    category: consumer
+    subcategory: education
+    subject: [service]
+    choose: [преподавател, онлайн-школ, онлайн школ, курсы английск, обучени, репетитор, учебн центр]
+    not: []
+  kz.labor.unpaid_wages:
+    launch: true
+    category: labor
+    subcategory: unpaid_wages
+    subject: [money]
+    choose: [зарплат, не платит зарплат, не платят зарплат, задерживают зарплат, долг по зарплат, не выплачива, не получаю зарплат]
+    not: [уволил, уволен, при увольнении, расчёт, расчет, гпх, самозанят]
+  kz.labor.final_settlement:
+    launch: true
+    category: labor
+    subcategory: final_settlement
+    subject: [money]
+    choose: [не рассчитал, расчёт при увольнении, расчет при увольнении, отпускные при увольнении, уволился, окончательный расчёт, окончательный расчет]
+    not: [восстановить на работе, незаконно уволил]
+  kz.labor.dismissal:
+    launch: false
+    category: labor
+    subcategory: dismissal
+    subject: [other]
+    choose: [незаконно уволил, восстановить на работе, уволили без, сократили]
+    not: []
+  kz.housing.deposit_return:
+    launch: true
+    category: housing
+    subcategory: deposit
+    subject: [money]
+    choose: [депозит, залог за квартир, залог за жиль, съехал, хозяин квартиры не отдает, хозяйка квартиры, арендодатель не вернул, не отдают залог]
+    not: [ипотек, задаток при покупке, аренда офис, посуточн, выселен]
+  kz.administrative.fine_appeal:
+    launch: true
+    category: fine
+    subcategory: fine_appeal
+    subject: [state_service]
+    choose: [штраф, постановлени, камер, пдд, эвакуац, превышени скорост, сергек]
+    not: [налогов уведомлен, пеня по кредит]
+  kz.finance.unauthorized_debit:
+    launch: true
+    category: finance
+    subcategory: unauthorized_debit
+    subject: [money]
+    choose: [списали без моего, без моего ведома, неизвестн операц, не совершал, не делал этот платеж, украли с карт, списание с карт]
+    not: [сам перевел, сам перевёл, взяли кредит на меня, оформили кредит на меня]
+  kz.money.credit_fraud:
+    launch: false
+    category: finance
+    subcategory: credit_fraud
+    subject: [money]
+    choose: [взяли кредит на меня, оформили кредит на меня, кредит на мое имя, кредит на моё имя, мошенники оформили, сам перевел мошенник, сам перевёл мошенник]
+    not: []
+  kz.finance.debt_collectors:
+    launch: false
+    category: finance
+    subcategory: collectors
+    subject: [money]
+    choose: [коллектор]
+    not: []
+  kz.finance.loan_restructuring:
+    launch: false
+    category: finance
+    subcategory: restructuring
+    subject: [money]
+    choose: [реструктуризац, отсрочк по кредит, нечем платить кредит, просрочк по кредит, мфо]
+    not: [коллектор]
+  kz.finance.imposed_insurance:
+    launch: false
+    category: finance
+    subcategory: imposed_insurance
+    subject: [service]
+    choose: [навязал страхов, страховку при кредит, вернуть страховк]
+    not: []
+  kz.gov.inaction_complaint:
+    launch: true
+    category: gov
+    subcategory: inaction
+    subject: [state_service]
+    choose: [акимат, госорган, не отвечают на обращени, нет ответа на обращени, бездейств, еотиниш, eotinish, не рассмотрел заявлени, цон]
+    not: [штраф]
+  kz.family.alimony:
+    launch: false
+    category: family
+    subcategory: alimony
+    subject: [money]
+    choose: [алимент, не платит на ребенка, не платит на ребёнка, содержание ребенка, содержание ребёнка]
+    not: []
+  kz.civil.road_accident:
+    launch: false
+    category: civil
+    subcategory: road_accident
+    subject: [money]
+    choose: [дтп, авари, страховая не платит, виновник, разбили машин]
+    not: []
+  kz.business.debt_claim:
+    launch: false
+    category: business
+    subcategory: debt
+    subject: [money]
+    choose: [контрагент, не оплатил счет, не оплатил счёт, не оплатили поставк, дебитор, долг по договор, тоо не платит, клиент не оплатил]
+    not: []
+
+# Подкатегории без сценария (нужен честный ответ и вопрос): слова → категория
+no_scenario:
+  criminal: [украли, кража, угрожа, избил, мошенник позвонил, взломали, мошенничеств]
