@@ -8,6 +8,7 @@ language tasks through ``core.ai``.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import re
@@ -195,10 +196,12 @@ class CaseEngine:
         missing (and the case can reach «Подготовить документ» without the same questions again). Runs after the
         chat reply, in the background; only while the case is being filled in. Returns the fields filled."""
         case = session.get(Case, case_id)
-        if case is None or case.status != S.INTAKE.value or not case.scenario_id or len((text or "").strip()) < 15:
+        if case is None or case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.scenario_id \
+                or len((text or "").strip()) < 15:
             return []
         sc, pack = self.scenario_of(case), self.pack_of(case)
-        missing = [n for n in self.missing_fields(case, sc) if sc.field(n).type != "evidence"
+        # the draft's blanks too: told in the chat after «Данные собраны», they go into the document (owner 01.10)
+        missing = [n for n in [*self.missing_fields(case, sc), *self.draft_blanks(case, sc)] if sc.field(n).type != "evidence"
                    and not (keep_question and n == case.pending_field)]  # the question on screen stays as asked
         if not missing:
             return []
@@ -211,7 +214,8 @@ class CaseEngine:
         if not filled:
             return []
         self.audit(session, case, "system", "facts_from_chat", fields=filled)
-        if not keep_question and (case.pending_field is None or case.pending_field in case.facts):
+        if case.status == S.INTAKE.value and not keep_question \
+                and (case.pending_field is None or case.pending_field in case.facts):
             self._next_step(session, case, sc, pack)  # the next question — or «Проверьте данные» when all is known
         return filled
 
@@ -508,6 +512,36 @@ class CaseEngine:
         applicant = sc.parties.get("applicant")
         name = applicant.name_field if applicant is not None else None
         return str(case.facts.get(name) or "") if name else ""
+
+    def prefill_blanks(self, session: Session, case: Case) -> list[str]:
+        """Owner 01.10: «Данные собраны», yet the draft's fields were empty though the person had named the goods, the
+        date and the sum. Before the draft is shown, its blanks are looked for once in everything the person told
+        (the first message and the chat); only what is really not there stays blank. Once per story: the same text
+        is never sent to the model twice."""
+        if case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.scenario_id:
+            return []
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        blanks = self.draft_blanks(case, sc)
+        if not blanks:
+            return []
+        said = [m.text for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+            if m.text and m.text.strip() and m.text.strip() not in (case.initial_text or "")]
+        story = "\n".join([case.initial_text or "", *said]).strip()
+        mark = hashlib.sha256(story.encode()).hexdigest()[:16]  # the story read, not the blanks: they shrink
+        taxonomy = dict(case.taxonomy or {})
+        if len(story) < 15 or taxonomy.get("draft_prefill") == mark:
+            return []
+        llm = self.llm_for(case)
+        before = set(case.facts)
+        values = ai.extract_fields(llm, sc, pack, case.language, story, None, blanks)
+        self._apply_values(case, sc, pack, values, llm, strict=False)
+        self._save_vault(case, llm)
+        case.taxonomy = {**taxonomy, "draft_prefill": mark}
+        filled = sorted(set(case.facts) - before)
+        if filled:
+            self.audit(session, case, "system", "draft_prefilled", fields=filled)
+        return filled
 
     def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
         """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
