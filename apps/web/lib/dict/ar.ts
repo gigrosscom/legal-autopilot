@@ -541,6 +541,7 @@ const ar: Dict = {
     submit: "متابعة",
   },
   case: {
+    paid: "مدفوع",
     back: "كل القضايا",
     untitled: "قضية جديدة",
     holdTitle: "القضية قيد المراجعة اليدوية",
