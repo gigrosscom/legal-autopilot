@@ -93,7 +93,7 @@ export function OpsDesk() {
         <div role="tablist" className="flex gap-2">
           {me.desks.map((d) => (
             <button key={d} role="tab" aria-selected={desk === d} onClick={() => setDesk(d)}
-              className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${desk === d ? "border-brand bg-brand text-white" : "border-line bg-surface"}`}>
+              className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${desk === d ? "border-brand bg-brand-solid text-white" : "border-line bg-surface"}`}>
               {d === "lawyers" ? "Юристы и адвокаты" : "Клиенты"}
               {(me.new[d] ?? 0) > 0 && <span className="ms-2 rounded-full bg-white/25 px-2">{me.new[d]}</span>}
             </button>

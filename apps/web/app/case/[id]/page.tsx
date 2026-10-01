@@ -1149,7 +1149,7 @@ function SubmitOnline({ caseId, a }: { caseId: string; a: CaseAction }) {
   const cover = t("submit.cover", { title: a.title, to: a.addressee?.name ?? "" });
   const step = (i: number, title: string, body: React.ReactNode) => (
     <li className="flex gap-3">
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${done.has(i) ? "bg-ink text-white" : "border border-line bg-surface text-ink"}`}>
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${done.has(i) ? "bg-ink text-surface" : "border border-line bg-surface text-ink"}`}>
         {done.has(i) ? <Icon name="check" size={14} /> : i}
       </span>
       <div className="min-w-0 flex-1 space-y-2">

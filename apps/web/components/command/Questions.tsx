@@ -44,7 +44,7 @@ export function Questions() {
                   {c.cards.map((t) => {
                     const last = t.messages.at(-1);
                     return (
-                      <li key={t.id} className="space-y-2 rounded-xl bg-surface p-3 shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-black/[0.05]">
+                      <li key={t.id} className="space-y-2 rounded-xl bg-surface p-3 shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-ink/[0.05]">
                         <div className="flex flex-wrap gap-1.5"><Chip tone="blue">№{t.id} · {KIND[t.kind] ?? t.kind}</Chip>
                           <Chip>{new Date(t.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</Chip></div>
                         <p className="text-[14px] text-muted">{[t.name, t.email, t.phone].filter(Boolean).join(" · ") || "контакт не указан"}</p>

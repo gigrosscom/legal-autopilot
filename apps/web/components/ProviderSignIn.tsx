@@ -202,7 +202,7 @@ function AppleButton({ onDone, onError }: Props) {
 
   return (
     <button type="button" onClick={signIn} disabled={busy} aria-busy={busy}
-      className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-black px-4 text-[17px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
+      className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-ink px-4 text-[17px] font-semibold text-surface transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
       <AppleLogo /> {t("account.apple.button")}
     </button>
   );

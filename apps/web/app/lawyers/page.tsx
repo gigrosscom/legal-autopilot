@@ -72,7 +72,7 @@ export default function LawyersPage() {
         <div role="group" aria-label={t("lawyers.filter")} className="flex flex-wrap gap-2">
           {([false, true] as const).map((v) => (
             <button key={String(v)} type="button" aria-pressed={freeOnly === v} onClick={() => setFreeOnly(v)}
-              className={`min-h-10 rounded-full border px-4 text-sm ${freeOnly === v ? "border-brand bg-brand text-white" : "border-line bg-surface hover:border-brand"}`}>
+              className={`min-h-10 rounded-full border px-4 text-sm ${freeOnly === v ? "border-brand bg-brand-solid text-white" : "border-line bg-surface hover:border-brand"}`}>
               {v ? t("lawyers.freeOnly") : t("lawyers.all")}
             </button>
           ))}

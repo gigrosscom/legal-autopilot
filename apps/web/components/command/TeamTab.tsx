@@ -132,7 +132,7 @@ export function TeamTab() {
       <div role="tablist" className="flex gap-2">
         {([["all", "Все"], ["roles", `ИИ-роли · ${roles.length}`], ["sessions", `Сессии Claude · ${sessions.length}`]] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={filter === k} onClick={() => setFilter(k)}
-            className={`min-h-10 rounded-full px-4 text-[15px] font-semibold ${filter === k ? "bg-ink text-white" : "bg-sand text-ink hover:bg-sand-deep"}`}>{label}</button>
+            className={`min-h-10 rounded-full px-4 text-[15px] font-semibold ${filter === k ? "bg-ink text-surface" : "bg-sand text-ink hover:bg-sand-deep"}`}>{label}</button>
         ))}
       </div>
 

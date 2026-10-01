@@ -5,11 +5,13 @@ import { createPortal } from "react-dom";
 import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { PushToggle } from "@/components/PushToggle";
+import { ThemePicker } from "@/components/ThemePicker";
 import { ProviderSignIn } from "@/components/ProviderSignIn";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import { signForAuth } from "@/lib/ncalayer";
+import { disablePush } from "@/lib/push";
 
 type Method = "email" | "phone" | "ecp" | "egov";
 const METHODS: { id: Method; icon: IconName }[] = [
@@ -47,6 +49,14 @@ export default function AccountPage() {
     if (new URLSearchParams(window.location.search).get("signin") === "1") setSheet(true);
   }, []);
   const signedInAlready = !!me && me.identities.length > 0;
+  // «Выйти» only for an account that can sign in again (a verified phone, e-mail or ЭЦП): an anonymous device would lose its cases.
+  // This device stops getting the account's notifications; the next visit starts as a new visitor.
+  const signOut = async () => {
+    if (!window.confirm(t("account.signOutConfirm"))) return;
+    await disablePush().catch(() => null);
+    try { localStorage.removeItem("konsilier.token"); } catch {}
+    window.location.href = "/";
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -84,7 +94,7 @@ export default function AccountPage() {
       )}
       {sheet && methods && me && !signedInAlready && (
         <SignInSheet methods={methods} onClose={() => setSheet(false)} onDone={signedIn}
-          onOther={() => { setSheet(false); setOpen("ecp"); document.getElementById("ways")?.scrollIntoView({ behavior: "smooth" }); }} />
+          onOther={(m) => { setSheet(false); setOpen(m); document.getElementById("ways")?.scrollIntoView({ behavior: "smooth" }); }} />
       )}
 
       {(signedInAlready || open) && (
@@ -123,9 +133,23 @@ export default function AccountPage() {
 
       {signedInAlready && <ReportsToggle me={me} onChange={setMe} />}
 
-      {signedInAlready && <p className="text-xs text-muted">{t("account.privacy")}</p>}
-
       <Invite />
+
+      <section aria-labelledby="theme" className="card space-y-4">
+        <h2 id="theme" className="font-semibold">{t("theme.title")}</h2>
+        <ThemePicker />
+      </section>
+
+      {signedInAlready && (
+        <div className="card p-0 md:p-0">
+          <button type="button" onClick={signOut}
+            className="flex min-h-14 w-full items-center gap-3 rounded-[18px] px-6 text-start text-[17px] font-medium text-danger hover:bg-sand-deep md:px-7">
+            <Icon name="login" size={20} className="rotate-180" />{t("account.signOut")}
+          </button>
+        </div>
+      )}
+
+      {signedInAlready && <p className="text-xs text-muted">{t("account.privacy")}</p>}
     </div>
   );
 }
@@ -250,7 +274,7 @@ function EgovForm({ onDone }: { onDone: (r: SignedIn) => void }) {
 /** «Войти или зарегистрироваться»: one sheet with the three ways — Google, Apple (when set up) and e-mail with a code.
  *  Signing in and signing up are the same step: a new person gets an account, a known one gets theirs back. */
 function SignInSheet({ methods, onClose, onDone, onOther }: {
-  methods: AuthMethods; onClose: () => void; onDone: (r: SignedIn) => void; onOther: () => void;
+  methods: AuthMethods; onClose: () => void; onDone: (r: SignedIn) => void; onOther: (m: Method) => void;
 }) {
   const t = useT();
   const [email, setEmail] = useState(false);
@@ -261,7 +285,6 @@ function SignInSheet({ methods, onClose, onDone, onOther }: {
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
-  const other = methods.ecp || methods.egov || methods.phone;
   // drawn over the whole app (tab bar included), not inside the page
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-labelledby="signin-title">
@@ -283,9 +306,15 @@ function SignInSheet({ methods, onClose, onDone, onOther }: {
             <Icon name="mail" size={20} />{t("account.withEmail")}
           </button>
         ))}
-        {other && (
-          <button type="button" onClick={onOther} className="mx-auto block min-h-10 text-[15px] text-muted underline-offset-4 hover:text-ink hover:underline">
-            {t("account.otherWays")}
+        {/* owner 01.10: Google, Apple, e-mail, ЭЦП, eGov Mobile — in this order, each its own button */}
+        {methods.ecp && (
+          <button type="button" onClick={() => onOther("ecp")} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
+            <Icon name="key" size={20} />{t("account.withEcp")}
+          </button>
+        )}
+        {methods.egov && (
+          <button type="button" onClick={() => onOther("egov")} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
+            <Icon name="smartphone" size={20} />{t("account.withEgov")}
           </button>
         )}
       </div>

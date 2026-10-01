@@ -63,7 +63,7 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
     const uploaded = (question?.uploaded ?? 0) > 0;
     return (
       <div className="flex flex-wrap gap-2 pb-1">
-        <label className={`${pill} bg-[var(--chat-accent)] text-white ${dim}`}>
+        <label className={`${pill} bg-[var(--chat-accent-solid)] text-white ${dim}`}>
           <Icon name="camera" size={19} />{t("app.photo")}{fileInput(true)}
         </label>
         <label className={`${pill} border border-[var(--chat-accent)] text-[var(--chat-accent)] ${dim}`}>
@@ -79,7 +79,7 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
     );
   }
 
-  const common = "min-h-11 w-full min-w-0 rounded-[22px] border-0 bg-[var(--chat-field)] px-4 text-[18px] text-black outline-none placeholder:text-[#6b6b70]";
+  const common = "min-h-11 w-full min-w-0 rounded-[22px] border-0 bg-[var(--chat-field)] px-4 text-[18px] text-ink outline-none placeholder:text-faint";
   let field;
   if (type === "date") {
     const y = new Date(); y.setDate(y.getDate() - 1);
@@ -90,7 +90,7 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
         <div className="flex gap-2 overflow-x-auto pb-1">
           {[[t("app.today"), today], [t("app.yesterday"), iso(y)], [t("app.weekAgo"), iso(week)], [t("app.monthAgo"), iso(month)]].map(([label, v]) => (
             <button key={v} type="button" disabled={busy} onClick={() => setValue(v)}
-              className={`min-h-10 shrink-0 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
+              className={`min-h-10 shrink-0 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent-solid)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
           ))}
           {/* PM 01.10: the date is often not remembered — it stays a blank to fill in the draft */}
           <button type="button" disabled={busy} onClick={() => onSend(t("app.dontRememberWord"), t("app.dontRemember"))}
