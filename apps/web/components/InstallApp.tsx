@@ -44,7 +44,11 @@ function write(key: string, value: string | null) {
 export function PwaRegister() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
+    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then((reg) => {
+      // a tab or an installed app left open for days: check for a new service worker when it comes back
+      const again = () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); };
+      document.addEventListener("visibilitychange", again);
+    }).catch(() => {});
   }, []);
   return null;
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import type { ReactNode } from "react";
 import { PwaRegister } from "@/components/InstallApp";
+import { VersionWatch } from "@/components/VersionWatch";
 import { SiteChrome } from "@/components/SiteChrome";
 import { LangProvider } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <LangProvider>
           <SiteChrome>{children}</SiteChrome>
           <PwaRegister />
+          <VersionWatch />
         </LangProvider>
       </body>
     </html>
