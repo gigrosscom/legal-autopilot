@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Iterator
 
-from .gemini import EmptyReply
+from .gemini import EmptyReply, has_words
 from .lawagent.agent import LawAgent
 from .lawagent.sources import Adilet
 from .official.search import Hit
@@ -438,7 +438,7 @@ class ChatAgent:
                 continue
             break
         text = reply.strip()
-        if not take_offer(text)[0]:
+        if not has_words(take_offer(text)[0]):  # blank or only a marker is no answer either
             # nothing to show (the model only called tools, or wrote nothing): a failure, never an empty reply —
             # the caller tries the fallback or tells the person to try again in a minute
             timing["total_ms"] = _ms(t0)

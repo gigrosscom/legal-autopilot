@@ -3,6 +3,12 @@ payment confirmed → the document — with timings. Test users stay out of the 
 never notify the team (konsilier/api/smoke.py).
 
     SMOKE_TOKEN=... python deploy/smoke.py [--api https://api.konsilier.com] [--story "..."]
+    SMOKE_TOKEN=... python deploy/smoke.py --chat-speed    # only the chat: first words of 10 ru/kk questions
+
+``--chat-speed``: each question opens a case the way the site does (``defer``) and streams the chat reply; the time
+to the first words is measured here, and the server's own breakdown (``diagnostics`` of the ``done`` event: the
+provider that answered, library search, each model round with the models tried, each tool) is printed with it. The
+breakdown is sent to test accounts only.
 
 Needs SMOKE_TOKEN (the same value as on the server). Exit code 0 = the path works end to end.
 """
@@ -64,10 +70,79 @@ def step(name: str, t0: float) -> float:
     return now
 
 
+CHAT_QUESTIONS = [
+    ("ru", "Вернуть деньги за бракованный товар"),
+    ("ru", "Работодатель не выплатил зарплату за два месяца, что делать?"),
+    ("kk", "Жұмыс беруші екі ай жалақы төлемеді, не істеймін?"),
+    ("ru", "Как получить пособие при рождении ребёнка?"),
+    ("kk", "Ақаулы тауар үшін ақшаны қалай қайтарамын?"),
+    ("ru", "Сосед затопил квартиру, как взыскать ущерб?"),
+    ("kk", "Бала туғанда қандай жәрдемақы беріледі?"),
+    ("ru", "Меня уволили без предупреждения, законно ли это?"),
+    ("kk", "Көршім пәтерімді су басты, шығынды қалай өндіремін?"),
+    ("ru", "Банк списал деньги без моего согласия, что делать?"),
+]
+
+
+def _round(x: dict) -> str:
+    """One model round: the provider that answered, and each provider (and model) asked with its result."""
+    out = f"{x.get('provider')}: first {x.get('first_ms')} ms, round {x.get('ms')} ms, {x.get('stop')}"
+    for a in x.get("attempts") or []:
+        tries = ", ".join(f"{t.get('model', '')} {t.get('status')} {t.get('ms')}ms" for t in a.get("tries") or [])
+        out += (f" [{a.get('provider') or a.get('model')} {a.get('result') or a.get('status')} {a.get('ms')}ms"
+                + (f": {tries}" if tries else "") + "]")
+    return out
+
+
+def chat_speed(api: Api) -> int:
+    """First words of the chat for each question, measured here, with the server's breakdown (test accounts)."""
+    firsts: list[float] = []
+    for lang, q in CHAT_QUESTIONS:
+        cid = api.call("POST", "/v1/cases", {"text": q, "country": "KZ", "language": lang, "accept_terms": True,
+                                             "defer": True})["case"]["id"]
+        req = urllib.request.Request(f"{api.base}/v1/cases/{cid}/chat", method="POST",
+                                     data=json.dumps({"text": q, "language": lang}).encode(),
+                                     headers={"Authorization": f"Bearer {api.token}",
+                                              "Content-Type": "application/json"})
+        t0 = time.monotonic()
+        first, last = None, {}
+        with urllib.request.urlopen(req, timeout=150) as r:
+            for line in r:
+                text = line.decode().strip()
+                if not text.startswith("data: "):
+                    continue
+                last = json.loads(text[6:])
+                if last.get("type") == "text" and first is None and last.get("text", "").strip():
+                    first = time.monotonic() - t0
+        d = last.get("diagnostics") or {}
+        timing = d.get("timing") or {}
+        if first is not None:
+            firsts.append(first)
+        print(f"{'ok ' if last.get('type') == 'done' else 'ERR'} [{lang}] first words "
+              f"{'—' if first is None else f'{first:.2f}'} s · total {time.monotonic() - t0:.1f} s · server first "
+              f"{d.get('first_ms')} ms · by {d.get('served_by')} · library {timing.get('library_ms')} ms · setup "
+              f"{timing.get('setup_ms')} ms · queue {timing.get('queue_ms')} ms · prompt {timing.get('prompt_chars')} "
+              f"chars · {q[:40]}")
+        for x in timing.get("rounds", []):
+            print(f"      round {_round(x)}")
+        for tool in timing.get("tools", []):
+            print(f"      tool {tool}")
+        if last.get("type") != "done":
+            print(f"      {last}")
+    if not firsts:
+        raise SystemExit("FAIL no chat reply started")
+    firsts.sort()
+    p90 = firsts[min(len(firsts) - 1, round(0.9 * (len(firsts) - 1)))]
+    print(f"first words: median {firsts[len(firsts) // 2]:.2f} s · p90 {p90:.2f} s · max {firsts[-1]:.2f} s · "
+          f"n={len(firsts)} of {len(CHAT_QUESTIONS)}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--api", default="https://api.konsilier.com")
     ap.add_argument("--story", default=STORY)
+    ap.add_argument("--chat-speed", action="store_true", help="only the chat: first words of 10 ru/kk questions")
     args = ap.parse_args()
     smoke_token = os.environ.get("SMOKE_TOKEN")
     if not smoke_token:
@@ -78,6 +153,8 @@ def main() -> int:
     token = boot.call("POST", "/v1/smoke/user")["token"]
     api = Api(args.api, token=token)
     t = step("test user", t)
+    if args.chat_speed:
+        return chat_speed(api)
 
     created = api.call("POST", "/v1/cases", {"text": args.story, "country": "KZ"})
     case = created["case"]

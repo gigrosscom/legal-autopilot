@@ -20,7 +20,7 @@ from typing import Any, Iterator
 
 import httpx
 
-from .gemini import RETRY_STATUSES, Block, EmptyReply, Message, Usage, Warm, has_content, keepalive_http
+from .gemini import RETRY_STATUSES, Block, EmptyReply, Message, Usage, Warm, has_content, has_words, keepalive_http
 
 log = logging.getLogger(__name__)
 RETRY_DELAYS = (0.5, 1.5)  # seconds before the 2nd and 3rd attempt at a provider
@@ -202,10 +202,10 @@ class OpenAICompatClient(Warm):
 class _ChainStream:
     """The first provider of the chain that starts answering. With ``first_token_timeout`` the next provider is
     asked in parallel once the current one has been silent that long (and at once after a failure); the first to
-    start (a non-blank word, or a finished tool call) answers and the others are cancelled (their connections
-    closed). Without it, one after another, only after a failure. Nothing is shown twice: only the answering
-    provider's words reach the reader. A reply with neither text nor a tool call counts as a failure, never as the
-    answer."""
+    start (a word — not blanks or a lone [[MORE]] — or a finished tool call) answers and the others are cancelled
+    (their connections closed). Without it, one after another, only after a failure. Nothing is shown twice: only the
+    answering provider's words reach the reader. A reply with neither words nor a tool call counts as a failure,
+    never as the answer."""
 
     def __init__(self, clients: list[Any], kwargs: dict[str, Any], first_token_timeout: float = 0):
         self._clients, self._kwargs, self._timeout = clients, kwargs, first_token_timeout
@@ -230,10 +230,13 @@ class _ChainStream:
             t0 = time.perf_counter()
             try:
                 with c.messages.stream(**self._kwargs) as s:
+                    held = ""
                     for chunk in s.text_stream:
-                        if not started and not chunk.strip():
-                            continue  # blank first pieces are no answer yet (the reply is trimmed anyway)
                         if not started:
+                            held += chunk
+                            if not has_words(held):
+                                continue  # blank pieces or a lone marker are no answer yet
+                            chunk, held = held.lstrip(), ""
                             self._attempt(name, t0, "answered", s)
                         started = True
                         yield chunk
@@ -268,6 +271,7 @@ class _ChainStream:
 
         def run(i: int) -> None:
             begun = False
+            held = ""
             try:
                 with self._clients[i].messages.stream(**self._kwargs) as s:
                     streams[i] = s
@@ -276,8 +280,11 @@ class _ChainStream:
                     for chunk in s.text_stream:
                         if stop[i].is_set():
                             return
-                        if not begun and not chunk.strip():
-                            continue  # a blank first piece must not win the race and then leave the reply empty
+                        if not begun:
+                            held += chunk
+                            if not has_words(held):
+                                continue  # blank pieces or a lone marker must not win the race (an empty reply)
+                            chunk, held = held.lstrip(), ""
                         begun = True
                         events.put((i, "text", chunk))
                     if stop[i].is_set():
@@ -333,7 +340,7 @@ class _ChainStream:
                         continue
                     winner = i
                     self._attempt(names[i], started_at[i], "answered",
-                                  NS(attempts=payload[1]) if kind == "final" else None)
+                                  NS(attempts=payload[1]) if kind == "final" else streams.get(i))
                     for j in list(started_at):
                         if j != i:
                             cancel(j)

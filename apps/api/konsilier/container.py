@@ -81,7 +81,8 @@ def free_chat_clients(settings: Settings) -> list[Any]:
             if settings.gemini_api_key:
                 fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
                 out.append(GeminiClient(settings.gemini_api_key, fallback_models=fallback,
-                                        thinking_level=settings.gemini_chat_thinking_level))
+                                        thinking_level=settings.gemini_chat_thinking_level,
+                                        hedge_after=settings.gemini_hedge_after))
         elif name in PROVIDERS:
             key = getattr(settings, f"{name}_api_key", "")
             if key:
@@ -218,7 +219,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
 
         fallback = tuple(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip())
         gemini = GeminiClient(settings.gemini_api_key, fallback_models=fallback,
-                              thinking_level=settings.gemini_chat_thinking_level)
+                              thinking_level=settings.gemini_chat_thinking_level,
+                              hedge_after=settings.gemini_hedge_after)
         container.chat_agent = ChatAgent(gemini, settings.gemini_model, chat_adilet, web_search=False,
                                          library=library)
     if settings.chat_provider == "free":

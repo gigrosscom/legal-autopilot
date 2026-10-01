@@ -13,6 +13,13 @@ system prompt tells it to write the short answer before any tool call — then i
 
     cd apps/api && python3 scripts/chat_timing.py            # every scenario, a table of timings
     SIM_RUNS=3 python3 scripts/chat_timing.py
+    CHAT_LIVE=1 SIM_RUNS=1 python3 scripts/chat_timing.py   # the REAL free providers (keys from the environment)
+
+``CHAT_LIVE=1`` asks six ru/kk questions of the real Gemini / Cerebras / Groq in the production order and prints the
+first words and each round with the models that answered. 30.09.2026 from a cloud container: before the Gemini hedge
+median 3.82 s (gemini-3.1-flash-lite 2–8 s, the race then fell to Cerebras, often empty, or Groq); with
+GEMINI_HEDGE_AFTER=0.8 median 1.47 s, with 0.5 (the default) 1.51 s over 10 questions via deploy/smoke.py --chat-speed
+(gemini-3.5-flash-lite answered, itself 0.5–1.1 s that evening).
 
 Timings: ``create`` = POST /v1/cases; ``first words`` = from the moment the person pressed «Send» on /start (triage
 + case + chat request) to the first text event; ``chat ttft`` = from the chat request to the first text event.
@@ -152,7 +159,7 @@ def live_fetch(url: str) -> str:
     return page(url.rsplit("/", 1)[-1])
 
 
-def build(tmp: Path, chain: list[SimClient], local_corpus: bool) -> NS:
+def build(tmp: Path, chain: list[Any], local_corpus: bool, timeout: float = 1.5) -> NS:
     settings = Settings(database_url=f"sqlite:///{tmp}/t.db", packs_dir=REPO / "packs", storage_backend="local",
                         storage_local_dir=tmp / "files", llm_provider="mock", soffice_bin="", admin_token="adm",
                         bot_api_secret="bot", scheduler_interval_seconds=0, smtp_host=None, payment_mode="stub",
@@ -187,7 +194,7 @@ def build(tmp: Path, chain: list[SimClient], local_corpus: bool) -> NS:
             local = CorpusTexts(container.session_factory, container.storage)
     adilet = Adilet(fetch=live_fetch, local=local) if local is not None else Adilet(fetch=live_fetch)
     kw = {"web_search": False}
-    container.chat_agent = ChatAgent(ChainClient(chain, **({"first_token_timeout": 1.5}
+    container.chat_agent = ChatAgent(ChainClient(chain, **({"first_token_timeout": timeout}
                                                            if "first_token_timeout" in ChainClient.__init__.__code__.co_varnames
                                                            else {})),
                                      "gemini-3.1-flash-lite", adilet, **kw)
@@ -248,8 +255,68 @@ SCENARIOS = {
 }
 
 
+LIVE_QUESTIONS = [
+    ("ru", "Вернуть деньги за бракованный товар"),
+    ("ru", "Работодатель не выплатил зарплату за два месяца, что делать?"),
+    ("kk", "Жұмыс беруші екі ай жалақы төлемеді, не істеймін?"),
+    ("ru", "Как получить пособие при рождении ребёнка?"),
+    ("kk", "Сатылған ақаулы тауар үшін ақшаны қалай қайтарамын?"),
+    ("ru", "Сосед затопил квартиру, как взыскать ущерб?"),
+]
+
+
+def live() -> None:
+    """CHAT_LIVE=1: the real free providers (keys from the environment: GEMINI_API_KEY, CEREBRAS_API_KEY,
+    GROQ_API_KEY), in the production order and race timeout, on a real case each; prints the first words and the
+    phases the agent recorded (rounds with the provider that answered, tools)."""
+    from konsilier.container import free_chat_clients
+
+    providers = os.environ.get("CHAT_FREE_PROVIDERS", "gemini,cerebras,groq")
+    timeout = float(os.environ.get("CHAT_FIRST_TOKEN_TIMEOUT", "1.5"))
+    print(f"live: providers={providers} race after {timeout} s, runs={RUNS}")
+    firsts: list[float] = []
+    for n in range(RUNS):
+        for lang, q in LIVE_QUESTIONS:
+            with tempfile.TemporaryDirectory() as d:
+                env = build(Path(d), free_chat_clients(Settings(chat_free_providers=providers)),
+                            local_corpus=True, timeout=timeout)
+                with TestClient(env.app) as client:
+                    token = client.post("/v1/users", json={"language": lang}).json()["token"]
+                    h = {"Authorization": f"Bearer {token}"}
+                    probe = Probe(env.container.chat_agent)
+                    env.container.chat_agent = probe
+                    r = client.post("/v1/cases", headers=h, json={"text": q, "language": lang, "country": "KZ",
+                                                                  "accept_terms": True, "defer": True})
+                    cid = r.json()["case"]["id"]
+                    t0 = time.perf_counter()
+                    r = client.post(f"/v1/cases/{cid}/chat", headers=h, json={"text": q, "language": lang})
+                    t_end = time.perf_counter()
+                    events = [json.loads(x[6:]) for x in r.text.splitlines() if x.startswith("data: ")]
+                    done = events[-1]
+                    first = (probe.first or t_end) - t0
+                    with env.container.session_factory() as s:
+                        from konsilier.core.models import ChatMessage
+
+                        meta = s.query(ChatMessage).filter_by(role="assistant").one_or_none()
+                        timing = (meta.meta or {}).get("timing", {}) if meta else {}
+                    # provider:first/round ms:stop, and the models that answered (status 200) inside it
+                    rounds = [f"{x.get('provider')}:{x.get('first_ms')}/{x.get('ms')}:{x.get('stop')}:" + ",".join(
+                        f"{t.get('model')}@{t.get('ms')}" for a in x.get("attempts") or [] for t in a.get("tries") or []
+                        if t.get("status") == 200) for x in timing.get("rounds", [])]
+                    firsts.append(first)
+                    text = (done.get("message") or {}).get("text", "") if done["type"] == "done" else done
+                    print(f"{first:5.2f}s total {t_end - t0:5.2f}s [{lang}] {q[:40]:40} rounds={rounds} "
+                          f"tools={[t.get('name') for t in timing.get('tools', [])]} "
+                          f"short={str(text).split('[[MORE]]')[0][:60]!r}")
+                time.sleep(QUALIFY_S * 2 + 0.5)
+    print(f"first words: median {statistics.median(firsts):.2f} s, max {max(firsts):.2f} s, n={len(firsts)}")
+
+
 def main() -> None:
     logging.basicConfig(level=os.environ.get("LOG", "WARNING"))
+    if os.environ.get("CHAT_LIVE") == "1":
+        live()
+        return
     print(f"QUALIFY_S={QUALIFY_S} LIVE_S={LIVE_S} gemini ttft={GEMINI_TTFT} (+{GEMINI_BUSY_S} busy) "
           f"cerebras ttft={CEREBRAS_TTFT} runs={RUNS} tool_first={TOOL_FIRST}")
     print(f"{'scenario':46} {'create':>7} {'first words':>12} {'chat ttft':>10} {'total':>7} {'offer':>6}")

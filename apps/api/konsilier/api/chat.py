@@ -218,6 +218,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     ctx["case_id"] = str(case.id)
     ctx["key_acts"] = [{"code": a.code, "title": pack.localized(a.title, lang)} for s in portal for a in s.key_acts]
     case_pk, user_pk = case.id, user.id
+    # a test account (production smoke checks, deploy/smoke.py): its replies carry where the time went, so the speed
+    # can be measured from outside without the server logs; never for a real person
+    diagnostics = bool(user.is_test)
     first_reply = not any(m.role == "assistant" for m in rows)
     session.commit()  # the user's message is saved even if the reply fails
 
@@ -236,8 +239,10 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             if m is not None:
                 m.meta = {**(m.meta or {}), "failed": reason}
                 s.commit()
-        yield _sse({"type": "error", "code": "agent_failed" if started else "busy",
-                    "message": BUSY.get(lang, BUSY["ru"])})
+        ev = {"type": "error", "code": "agent_failed" if started else "busy", "message": BUSY.get(lang, BUSY["ru"])}
+        if diagnostics:
+            ev["reason"] = reason
+        yield _sse(ev)
 
     t_request = time.perf_counter()
 
@@ -307,8 +312,12 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             if result.unchecked:  # not shown to the person; the team watches how often it happens
                 log.warning("chat=unchecked_norms case=%s", case_pk)
             # what is left of the daily limit (a rolling 24-hour window) after this answered message
-            yield _sse({"type": "done", "message": _view(m), "limit": daily_limit,
-                        "remaining": max(daily_limit - sent - 1, 0), "window_hours": 24})
+            done = {"type": "done", "message": _view(m), "limit": daily_limit,
+                    "remaining": max(daily_limit - sent - 1, 0), "window_hours": 24}
+            if diagnostics:
+                done["diagnostics"] = {"served_by": served_by, "first_ms": first_ms,
+                                       "total_ms": m.meta.get("total_ms"), "timing": timing}
+            yield _sse(done)
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

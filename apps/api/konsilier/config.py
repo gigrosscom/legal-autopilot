@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # once (minimal | low | medium | high; empty → the model's default). A model that refuses it is asked again
     # without it.
     gemini_chat_thinking_level: str = "minimal"
+    # Chat speed: when GEMINI_MODEL has not started answering after this many seconds, the fallback models are asked
+    # in parallel and the first to answer is used (0 → only after a failure). Measured 30.09: gemini-3.1-flash-lite
+    # answered after 2–8 s (median ≈5 s), gemini-3.5-flash-lite and gemini-flash-lite-latest after ≈0.5–1 s. Shorter
+    # than CHAT_FIRST_TOKEN_TIMEOUT, so a slow Gemini model is replaced by another Gemini model (the same answer
+    # quality) before the next provider of the chain is asked. With a fast GEMINI_MODEL raise it to ≈1.
+    gemini_hedge_after: float = 0.5
     # CHAT_PROVIDER=free: when the provider asked first has not started answering after this many seconds, the next
     # one is asked in parallel and the first to answer is used (0 → one after another, only after a failure).
     chat_first_token_timeout: float = 1.5
