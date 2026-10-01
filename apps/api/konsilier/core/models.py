@@ -629,7 +629,7 @@ class Invoice(Base):
     desk_note: Mapped[str | None] = mapped_column(Text)
     # the way the person chose (adapters/payment.py WAYS); None — the transfer, as before
     pay_way: Mapped[str | None] = mapped_column(String(24))
-    # Kaspi Pay link paid «on trust» (0029): the document was given at «Оплатить», the desk still matches the payment
+    # Kaspi Pay link paid «on trust» (0031): the document was given at «Оплатить», the desk still matches the payment
     trusted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     payer_phone: Mapped[str | None] = mapped_column(String(20))  # kaspi_invoice: the Kaspi number to bill
     buyer_name: Mapped[str | None] = mapped_column(String(300))  # bank_invoice: the paying company / ИП
