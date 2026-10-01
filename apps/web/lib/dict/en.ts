@@ -136,7 +136,7 @@ const en: Dict = {
   },
   appPage: {
     title: "Konsiliér AI on your phone",
-    lead: "Your own home-screen icon and deadline alerts, one tap away.",
+    lead: "Install Konsiliér on your phone or computer: your cases are always at hand, and you get reminders about deadlines.",
     installed: "The app is already installed on this device. Open it from the desktop, the Dock or “Open in app” in the address bar.",
     qrAlt: "QR code of the app page",
     qrTitle: "Open on your phone",

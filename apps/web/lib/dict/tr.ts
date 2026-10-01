@@ -136,7 +136,7 @@ const tr: Dict = {
   },
   appPage: {
     title: "Konsiliér AI telefonunuzda",
-    lead: "Tek dokunuşla ekranınızda kendi simgesi ve süre bildirimleri.",
+    lead: "Konsiliér'i telefonunuza veya bilgisayarınıza yükleyin: dosyalarınız her zaman elinizin altında, süreler için hatırlatma alırsınız.",
     installed: "Uygulama bu cihazda zaten yüklü. Masaüstünden, Dock'tan veya adres çubuğundaki “Uygulamada aç” düğmesiyle açın.",
     qrAlt: "Uygulama sayfasının QR kodu",
     qrTitle: "Telefonunuzda açın",
