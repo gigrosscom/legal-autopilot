@@ -61,6 +61,12 @@ class PiiVault:
         # known values first, longest first so "Иванов Иван" wins over "Иванов"
         for label, value in sorted(self.mapping.items(), key=lambda kv: -len(kv[1])):
             text = re.sub(re.escape(value), label, text, flags=re.IGNORECASE)
+        # a person's name also appears in parts — «И. Петров» under the signature, «Петрову» in the text: every part of
+        # three letters or more goes too (with its endings)
+        for label, value in self.mapping.items():
+            if label.startswith("[PERSON_"):
+                for part in re.findall(r"\w{3,}", value):
+                    text = re.sub(rf"\b{re.escape(part)}\w{{0,3}}\b", label, text, flags=re.IGNORECASE)
         for kind, pattern in _PATTERNS:
             text = pattern.sub(lambda m, k=kind: self._label_for(k, m.group(0)), text)
         return text
