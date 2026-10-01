@@ -24,6 +24,7 @@ from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, 
 from ..core import ai, suggestions
 from ..core.scenario import RESPONSE_CLASSES
 from .background import after_commit
+from .kaspi_push import match_waiting_push
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
 from .views import case_view
 
@@ -743,7 +744,9 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if not user.is_test and match_waiting_push(session, container, inv):
+        pass  # its Kaspi Pay push came first: paid now, nothing for the desk
+    elif inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"дело {case.id}")
     if not case.narrative:
         prewrite_later(session, container, case.id)
@@ -791,7 +794,9 @@ def plan_claim(user: User = Depends(current_user), session: Session = Depends(ge
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if not user.is_test and match_waiting_push(session, container, inv):
+        pass
+    elif inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     return plans_view(container, session, user)
 
@@ -826,7 +831,9 @@ def choose_way(invoice_id: int, body: WayIn, user: User = Depends(current_user),
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if before != inv.status == "awaiting_confirmation" and not user.is_test:
+    if not user.is_test and match_waiting_push(session, container, inv):
+        pass
+    elif before != inv.status == "awaiting_confirmation" and not user.is_test:
         _tell_desk_claimed(container, inv, f"дело {inv.case_id}" if inv.case_id else
                            f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     if inv.case_id is not None:

@@ -136,6 +136,11 @@ class Settings(BaseSettings):
     # answers 404 until this is on and the secret is set (HMAC-SHA256 of the body in X-Konsilier-Signature).
     payment_kaspi_webhook: bool = False
     payment_kaspi_webhook_secret: str = ""
+    # Kaspi Pay pushes (konsilier/core/kaspi_push.py): a separate Android phone with the company's Kaspi Pay app and
+    # MacroDroid posts every Kaspi Pay notification to /v1/payments/kaspi/push with this token in X-Konsilier-Token;
+    # one push of the bill's amount within 60 min of «Оплатить» marks it paid at once. Empty → the endpoint is 404,
+    # no 15-minute reminder and no stop on new bills (the desk confirms by hand, as before).
+    payment_kaspi_push_token: str = ""
     # «Юрист по кнопке» (closed pilot): the client pays the lawyer's price to the COMPANY's account only — the Kaspi
     # Pay link of the ТОО (PAYMENT_KASPI_PAY_LINK, https://…) or the company's requisites below (name, tax number, IBAN,
     # bank as plain text). Never the Kaspi Gold of PAYMENT_KASPI_PHONE: with neither set, lawyer payment is off.

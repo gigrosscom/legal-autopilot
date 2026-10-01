@@ -637,8 +637,37 @@ class Invoice(Base):
     lawyer_request_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    # 0029: the one soft «оплатите, пожалуйста» to the client when no Kaspi Pay push matched (core/kaspi_push.py)
+    pay_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class KaspiPush(Base):
+    """One notification of the company's Kaspi Pay app, forwarded by the payments phone (MacroDroid →
+    /v1/payments/kaspi/push). Every push is kept as it came — the real Kaspi wording is not documented — with what
+    was read from it and what it was matched to. status: matched (the bill is paid) | ambiguous (several bills of
+    that amount — the desk decides) | unmatched (no bill) | ignored (no incoming amount: a refund, an ad…) |
+    duplicate (the same push again, ``duplicate_of``)."""
+
+    __tablename__ = "kaspi_pushes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    title: Mapped[str | None] = mapped_column(String(500))
+    text: Mapped[str] = mapped_column(Text, default="")
+    posted_at: Mapped[str | None] = mapped_column(String(64))  # as the phone sent it, if it did
+    raw: Mapped[str] = mapped_column(Text, default="")  # the request body as received (capped)
+    content_type: Mapped[str | None] = mapped_column(String(100))
+    digest: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)  # sha256(text + posted_at or minute)
+    duplicate_of: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    payer: Mapped[str | None] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16), default="unmatched", index=True)
+    candidates: Mapped[list[Any]] = mapped_column(JSON, default=list)  # [{"id", "code", "user"}…] when not matched
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), index=True)
+    decided_by: Mapped[str | None] = mapped_column(String(200))  # kaspi:push, or the operator who matched it
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str | None] = mapped_column(Text)
 
 
 class Subscription(Base):
