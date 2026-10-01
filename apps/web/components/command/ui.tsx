@@ -79,7 +79,7 @@ export function NoData({ children = "нет данных" }: { children?: ReactN
 
 export function Chip({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "blue" | "warn" | "done" }) {
   const cls = tone === "blue" ? "bg-brand-50 text-brand-dark" : tone === "warn" ? "bg-warning-50 text-warning"
-    : tone === "done" ? "bg-[#e8f5ee] text-success" : "bg-surface text-muted ring-1 ring-line";
+    : tone === "done" ? "bg-success-50 text-success" : "bg-surface text-muted ring-1 ring-line";
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium ${cls}`}>{children}</span>;
 }
 

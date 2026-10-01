@@ -22,7 +22,7 @@ export function Operations() {
         <div role="tablist" className="flex gap-2">
           {([["desk", "Клиенты и юристы"], ["metrics", "Метрики"]] as const).map(([k, label]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}
-              className={`min-h-10 rounded-full px-4 text-[15px] font-semibold ${view === k ? "bg-ink text-white" : "bg-sand hover:bg-sand-deep"}`}>{label}</button>
+              className={`min-h-10 rounded-full px-4 text-[15px] font-semibold ${view === k ? "bg-ink text-surface" : "bg-sand hover:bg-sand-deep"}`}>{label}</button>
           ))}
         </div>
         {view === "desk" ? <OpsDesk /> : <MetricsTab token={token} />}

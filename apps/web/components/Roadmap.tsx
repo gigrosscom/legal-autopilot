@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 const fmt = (iso: string | null) => (iso ? new Date(iso + "T00:00:00").toLocaleDateString("ru-RU") : "");
 
 const DOT: Record<RoadmapStep["status"], string> = {
-  done: "bg-brand text-white border-brand",
+  done: "bg-brand-solid text-white border-brand",
   current: "bg-surface text-brand border-brand ring-4 ring-brand/15",
   upcoming: "bg-surface text-muted border-line",
   skipped: "bg-sand text-muted border-line",
@@ -45,7 +45,7 @@ export default function RoadmapView({ roadmap }: { roadmap: Roadmap }) {
             <div className="min-w-0 flex-1 pb-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`font-medium ${s.status === "skipped" ? "line-through" : ""}`}>{s.title}</span>
-                <span className={`chip ${s.status === "current" ? "bg-brand text-white" : ""}`}>{t(`roadmap.${s.status}`)}</span>
+                <span className={`chip ${s.status === "current" ? "bg-brand-solid text-white" : ""}`}>{t(`roadmap.${s.status}`)}</span>
                 {s.conditional && s.status === "upcoming" && <span className="text-xs text-muted">{t("roadmap.ifNeeded")}</span>}
               </div>
               <div className="mt-0.5 text-xs text-muted">

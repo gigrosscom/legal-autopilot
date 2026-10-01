@@ -5,11 +5,13 @@ import { createPortal } from "react-dom";
 import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { PushToggle } from "@/components/PushToggle";
+import { ThemePicker } from "@/components/ThemePicker";
 import { ProviderSignIn } from "@/components/ProviderSignIn";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import { signForAuth } from "@/lib/ncalayer";
+import { disablePush } from "@/lib/push";
 
 type Method = "email" | "phone" | "ecp" | "egov";
 const METHODS: { id: Method; icon: IconName }[] = [
@@ -47,6 +49,14 @@ export default function AccountPage() {
     if (new URLSearchParams(window.location.search).get("signin") === "1") setSheet(true);
   }, []);
   const signedInAlready = !!me && me.identities.length > 0;
+  // «Выйти» only for an account that can sign in again (a verified phone, e-mail or ЭЦП): an anonymous device would lose its cases.
+  // This device stops getting the account's notifications; the next visit starts as a new visitor.
+  const signOut = async () => {
+    if (!window.confirm(t("account.signOutConfirm"))) return;
+    await disablePush().catch(() => null);
+    try { localStorage.removeItem("konsilier.token"); } catch {}
+    window.location.href = "/";
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -123,9 +133,23 @@ export default function AccountPage() {
 
       {signedInAlready && <ReportsToggle me={me} onChange={setMe} />}
 
-      {signedInAlready && <p className="text-xs text-muted">{t("account.privacy")}</p>}
-
       <Invite />
+
+      <section aria-labelledby="theme" className="card space-y-4">
+        <h2 id="theme" className="font-semibold">{t("theme.title")}</h2>
+        <ThemePicker />
+      </section>
+
+      {signedInAlready && (
+        <div className="card p-0 md:p-0">
+          <button type="button" onClick={signOut}
+            className="flex min-h-14 w-full items-center gap-3 rounded-[18px] px-6 text-start text-[17px] font-medium text-danger hover:bg-sand-deep md:px-7">
+            <Icon name="login" size={20} className="rotate-180" />{t("account.signOut")}
+          </button>
+        </div>
+      )}
+
+      {signedInAlready && <p className="text-xs text-muted">{t("account.privacy")}</p>}
     </div>
   );
 }

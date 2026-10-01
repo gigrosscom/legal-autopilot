@@ -72,7 +72,7 @@ export default function SupportPage() {
         ) : <div role="radiogroup" aria-label={t("support.kind")} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {KINDS.map((k) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
-              className={`min-h-12 rounded-2xl border px-1 text-[13px] font-semibold sm:text-sm ${kind === k ? "border-brand bg-brand text-white" : "border-line bg-surface hover:border-brand"}`}>
+              className={`min-h-12 rounded-2xl border px-1 text-[13px] font-semibold sm:text-sm ${kind === k ? "border-brand bg-brand-solid text-white" : "border-line bg-surface hover:border-brand"}`}>
               {t(`support.kinds.${k}`)}
             </button>
           ))}
@@ -147,7 +147,7 @@ function TicketThread({ tk, onReply }: { tk: Ticket; onReply: () => void }) {
           <textarea className="input min-h-12 flex-1" rows={1} value={text} onChange={(e) => setText(e.target.value)}
             placeholder={t("support.replyPlaceholder")} aria-label={t("support.replyPlaceholder")} />
           <button type="button" disabled={busy || !text.trim()} onClick={send} aria-label={t("case.send")}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40">
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-solid text-white disabled:opacity-40">
             <Icon name={busy ? "spinner" : "send"} size={18} />
           </button>
         </div>

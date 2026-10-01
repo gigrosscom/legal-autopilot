@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { InstallButton } from "@/components/InstallApp";
+import { ThemePicker } from "@/components/ThemePicker";
 import { Icon, type IconName } from "@/components/ui";
 import { adminApi, ApiError, errorText } from "@/lib/api";
 import type { Bundle } from "@/lib/team";
@@ -192,14 +193,18 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
           <a href="/" className="flex min-h-10 items-center gap-3 rounded-xl px-3 text-[15px] text-ink-soft hover:bg-sand-deep">
             <Icon name="external" size={18} className="text-muted" />Сайт konsilier.com
           </a>
-          <button type="button" onClick={onSignOut} className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-[15px] text-ink-soft hover:bg-sand-deep">
-            <Icon name="login" size={18} className="rotate-180 text-muted" />Выйти
+          <div className="space-y-2 px-1 pt-2">
+            <p className="text-[13px] font-semibold text-muted">Оформление</p>
+            <ThemePicker compact />
+          </div>
+          <button type="button" onClick={onSignOut} className="mt-2 flex min-h-10 w-full items-center gap-3 rounded-xl border-t border-line px-3 pt-1 text-[15px] font-medium text-danger hover:bg-sand-deep">
+            <Icon name="login" size={18} className="rotate-180" />Выйти
           </button>
         </div>
       </aside>
 
       {/* phone: top bar */}
-      <header className="sticky top-0 z-20 border-b border-black/[0.08] bg-[rgb(255_255_255/0.92)] pt-[env(safe-area-inset-top)] backdrop-blur-[20px] lg:hidden">
+      <header className="sticky top-0 z-20 border-b border-ink/[0.08] bg-bar/92 pt-[env(safe-area-inset-top)] backdrop-blur-[20px] lg:hidden">
         <div className="flex h-14 items-center justify-between gap-2 px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -277,8 +282,12 @@ function MoreSheet({ tab, go, onClose, onSignOut }: { tab: TabKey; go: (t: TabKe
           <a href="/" className="flex min-h-12 items-center gap-4 rounded-2xl px-3 text-[16px] text-ink-soft hover:bg-sand">
             <Icon name="external" size={20} className="text-muted" />Сайт konsilier.com
           </a>
-          <button type="button" onClick={onSignOut} className="flex min-h-12 w-full items-center gap-4 rounded-2xl px-3 text-[16px] text-ink-soft hover:bg-sand">
-            <Icon name="login" size={20} className="rotate-180 text-muted" />Выйти
+          <div className="space-y-2 px-1 py-2">
+            <p className="text-[14px] font-semibold text-muted">Оформление</p>
+            <ThemePicker compact />
+          </div>
+          <button type="button" onClick={onSignOut} className="flex min-h-12 w-full items-center gap-4 rounded-2xl border-t border-line px-3 text-[16px] font-medium text-danger hover:bg-sand">
+            <Icon name="login" size={20} className="rotate-180" />Выйти
           </button>
         </div>
       </div>

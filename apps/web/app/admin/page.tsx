@@ -139,7 +139,7 @@ export default function AdminPage() {
       <div role="tablist" className="flex flex-wrap gap-1">
         {(["queue", "board", "holds", "lawyers", "metrics", "forums", "demand", "errors"] as Tab[]).map((x) => (
           <button key={x} role="tab" aria-selected={tab === x} onClick={() => setTab(x)}
-            className={`min-h-10 rounded-xl px-3 text-sm font-medium ${tab === x ? "bg-ink text-white" : "bg-surface"}`}>
+            className={`min-h-10 rounded-xl px-3 text-sm font-medium ${tab === x ? "bg-ink text-surface" : "bg-surface"}`}>
             {t(`admin.tabs.${x}`)}{x === "queue" && queue.length ? ` · ${queue.length}` : ""}{x === "holds" && holds.length ? ` · ${holds.length}` : ""}
           </button>
         ))}

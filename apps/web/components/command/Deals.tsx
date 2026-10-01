@@ -65,7 +65,7 @@ export function Deals() {
                   {c.cards.map((d) => (
                     <li key={d.id}>
                       <button type="button" onClick={() => setOpen(d)}
-                        className="w-full space-y-1.5 rounded-xl bg-surface p-3 text-start shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-black/[0.05] hover:ring-action">
+                        className="w-full space-y-1.5 rounded-xl bg-surface p-3 text-start shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-ink/[0.05] hover:ring-action">
                         <p className="text-[15px] font-semibold leading-snug">{d.title || "Без сценария"}</p>
                         <p className="text-[14px] text-muted">{d.client.name || d.client.contacts[0] || "контакт не указан"} · {day(d.created_at)}</p>
                         <div className="flex flex-wrap gap-1.5">

@@ -695,7 +695,11 @@ const en: Dict = {
     waitlist: "Waitlist",
     tick: "Run reminders",
   },
+  notFoundPage: { title: "This page doesn't exist", home: "Go to the home page" },
+  theme: { title: "Appearance", light: "Light", dark: "Dark", system: "System" },
   account: {
+    signOut: "Sign out",
+    signOutConfirm: "Sign out on this device? Your cases are kept — sign in again the same way to see them.",
     moreWaysTitle: "More ways to sign in",
     otherWays: "Other ways: digital signature, eGov",
     withEmail: "Continue with email",
