@@ -349,11 +349,11 @@ def test_owner_review_queue_lists_pending_documents_and_reminds_once(ctx):
 
     job = next(j for j in ctx.container.scheduler.extra_jobs if getattr(j, "__name__", "") == "approval_reminders")
     with ctx.container.session_factory() as s:
-        assert job(s, utcnow()) == 0  # not 24 h yet
-        assert job(s, utcnow() + timedelta(hours=25)) == 1
+        assert job(s, utcnow()) == 0  # not 10 minutes yet (owner 01.10: a review takes minutes)
+        assert job(s, utcnow() + timedelta(minutes=11)) == 1
         s.commit()
     with ctx.container.session_factory() as s:
-        assert job(s, utcnow() + timedelta(hours=26)) == 0  # once per document
+        assert job(s, utcnow() + timedelta(minutes=30)) == 0  # once per document
 
     admin_approve(ctx, action["id"])
     assert ctx.client.get("/v1/admin/reviews", headers=ADMIN).json() == []

@@ -553,7 +553,7 @@ const en: Dict = {
     facts: "Case details",
     prepare: "Prepare document",
     handoff: "Pass to a lawyer",
-    awaitingApproval: "The document is being checked, usually within 24 hours. We will notify you as soon as it is ready.",
+    awaitingApproval: "The document is being checked; this usually takes a few minutes. We will notify you as soon as it is ready.",
     rejected: "The lawyer sent the document back for changes.",
     download: "Download",
     instructions: "How to file",

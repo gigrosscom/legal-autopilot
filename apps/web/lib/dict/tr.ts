@@ -553,7 +553,7 @@ const tr: Dict = {
     facts: "Dosya bilgileri",
     prepare: "Belgeyi hazırla",
     handoff: "Avukata ilet",
-    awaitingApproval: "Belge kontrol ediliyor, genellikle 24 saat içinde. Hazır olur olmaz size bildirim göndereceğiz.",
+    awaitingApproval: "Belge kontrol ediliyor; bu genellikle birkaç dakika sürer. Hazır olur olmaz size bildirim göndereceğiz.",
     rejected: "Avukat belgeyi düzeltme için geri gönderdi.",
     download: "İndir",
     instructions: "Nasıl başvurulur",
