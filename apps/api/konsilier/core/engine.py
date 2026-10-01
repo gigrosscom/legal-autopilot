@@ -1607,7 +1607,7 @@ def _reads_as_is(f: Any, text: str, pack: JurisdictionPack) -> bool:
         normalize(f, text, today=pack.local_now().date())
     except FieldError:
         return False
-    # a text answer with a long number in it («ТОО …, БИН …») goes to the model: it holds more than one field
+    # a text answer with a long number in it (a name and a registration number) goes to the model: two fields
     return f.type != "text" or bool(f.pattern) or (len(text.split()) <= 12 and not re.search(r"\d{9,}", text))
 
 
