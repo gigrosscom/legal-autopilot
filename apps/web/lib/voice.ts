@@ -10,6 +10,8 @@ import { ApiError, NetworkError, transcribeAudio } from "./api";
 // Speech synthesis (reading replies aloud) is the device's own.
 const LOCALES: Record<string, string> = { ru: "ru-RU", kk: "kk-KZ", en: "en-US", tr: "tr-TR", ar: "ar-SA" };
 export const MAX_RECORDING_MS = 120_000; // the server accepts about two minutes
+const LIVE_EVERY_MS = 1500; // the recording fallback: live text this often while speaking
+const LIVE_FIRST_MS = 600; // …and the first time this soon after the recording starts
 const MAX_SPEECH_MS = 600_000; // built-in recognition is restarted after pauses for up to ten minutes
 
 /** Two pieces of dictated text with one space between them. */
@@ -72,8 +74,9 @@ function uploadErrorCode(e: unknown): string {
 
 /**
  * Voice input on every device. While listening, `onText(text)` receives everything said since `start()`, interim
- * words included, each time it changes (so the box can show it live); with the recording fallback the whole text
- * arrives once, after `stop()` (or the 2-minute limit) and the upload (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
+ * words included, each time it changes (so the box can show it live); with the recording fallback the text so far
+ * arrives every ~1.5 s while speaking and the final text after `stop()` (or the 2-minute limit) and the upload
+ * (`transcribing` is true meanwhile). `error` is a code for t(`chat.errors.${error}`): mic_denied, no_mic,
  * no_speech, mic_failed, transcribe_unavailable, transcribe_busy, transcribe_failed, transcribe_network,
  * too_many_transcriptions, audio_too_large.
  */
@@ -124,7 +127,32 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
     }
     const chunks: Blob[] = [];
     r.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    // Live text (owner 01.10, iPhone app): while recording, the audio so far is sent every ~1.5 s and what the server
+    // hears so far is shown in the box; one request at a time, the final text after «Стоп» replaces it. A busy or
+    // limited server just pauses the live text — the final transcription is unaffected.
+    const mimeOf = () => r.mimeType || type || "audio/webm";
+    let inFlight = false, sentChunks = 0, pauseUntil = 0, finished = false, lastSent = 0;
+    const began = Date.now();
+    const live = setInterval(async () => {
+      const now = Date.now();
+      // the first words as soon as there is a little audio (the person sees it work), then every LIVE_EVERY_MS
+      const due = sentChunks === 0 ? now - began >= LIVE_FIRST_MS : now - lastSent >= LIVE_EVERY_MS;
+      if (finished || inFlight || !due || chunks.length === sentChunks || now < pauseUntil) return;
+      inFlight = true;
+      sentChunks = chunks.length;
+      lastSent = now;
+      const mime = mimeOf();
+      try {
+        const text = (await transcribeAudio(new Blob(chunks, { type: mime.split(";")[0] }), langRef.current,
+          `voice.${extension(mime)}`, true)).trim();
+        if (!finished && alive.current && text) cb.current(text);
+      } catch {
+        pauseUntil = Date.now() + 10_000;  // busy or over the limit: try again a little later
+      } finally { inFlight = false; }
+    }, 200);
     r.onstop = async () => {
+      finished = true;
+      clearInterval(live);
       stream.getTracks().forEach((t) => t.stop());
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       recorder.current = null;
@@ -145,7 +173,7 @@ export function useVoiceInput(lang: string, onText: (text: string) => void) {
       }
     };
     recorder.current = r;
-    r.start(1000); // a chunk every second: nothing is lost if the recorder is stopped abruptly
+    r.start(500); // a chunk every half second: the live text has audio early, nothing is lost on an abrupt stop
     setListening(true);
     timer.current = setTimeout(() => { if (r.state !== "inactive") r.stop(); }, MAX_RECORDING_MS);
   }, []);

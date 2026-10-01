@@ -312,3 +312,10 @@ footer {
   --chat-field: #2c2c30;
   --chat-action-bg: #232326;
 }
+
+/* recording: a small sound wave beside the red dot (owner 01.10: the wave and the words at the same time) */
+.voice-bar { height: 40%; }
+@media (prefers-reduced-motion: no-preference) {
+  .voice-bar { animation: voice-bar 0.9s ease-in-out infinite; }
+}
+@keyframes voice-bar { 0%, 100% { height: 30%; } 50% { height: 100%; } }

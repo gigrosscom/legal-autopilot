@@ -126,6 +126,11 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       </button>
       <span className="flex items-center gap-1.5 pe-1 text-sm tabular-nums text-ink">
         <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-danger motion-safe:animate-pulse" />
+        <span aria-hidden className="flex h-4 items-center gap-0.5">
+          {[0, 1, 2, 3].map((k) => (
+            <span key={k} className="voice-bar w-0.5 rounded-full bg-danger" style={{ animationDelay: `${k * 120}ms` }} />
+          ))}
+        </span>
         <Elapsed since={dictation.startedAt} />
         <span role="status" className="sr-only">{t("chat.listening")}</span>
       </span>
