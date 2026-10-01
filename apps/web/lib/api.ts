@@ -36,6 +36,29 @@ export type CaseAction = {
   response_summary: string | null;
   deadline: { due_date: string; status: string; norm_ref: string | null } | null;
   filing?: Filing | null;
+  submitted_via?: string | null;
+  /** Manual eOtinish bridge: what to pick on eotinish.kz (null → the step is not filed through eOtinish). */
+  appeal_portal?: EotinishTarget | null;
+  /** The filing record once the person entered the appeal number and date. */
+  filed?: FilingRecord | null;
+};
+
+export type EotinishTarget = {
+  channel: string;
+  name: string;
+  portal: string;
+  body: string;
+  body_key: string | null;
+  recipient: string | null;
+  appeal_type: "statement" | "complaint" | "proposal" | "request" | null;
+  category: string | null;
+  verified: boolean;
+};
+export type EotinishGuide = EotinishTarget & { text: string; has_pdf: boolean; filing: FilingRecord | null };
+export type FilingRecord = {
+  id: string; channel: string; body: string; appeal_type: string | null; category: string | null;
+  number: string; filed_at: string; receipt_evidence_id: string | null; doc_sha256: string | null;
+  doc_format: string | null; source: string; created_at: string | null;
 };
 
 /** «Как подать»: everything comes from pack data; a null value is shown as «уточнит юрист». */

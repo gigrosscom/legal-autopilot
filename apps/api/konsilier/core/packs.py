@@ -153,13 +153,48 @@ class GovServices(BaseModel):
     services: tuple[GovService, ...]
 
 
+class PortalRecipient(BaseModel):
+    """What to pick in the appeal portal's form for one addressee: the kind of appeal, the recipient and the topic."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    appeal_type: Literal["statement", "complaint", "proposal", "request"]  # АППК РК, ст. 4
+    recipient: dict[str, str]
+    category: dict[str, str]
+    verified_on: date | None = None  # when it was checked against the form on the portal
+
+
+class AppealPortalGuide(BaseModel):
+    """Manual filing on the official appeal portal (packs/<cc>/appeal_portal.yaml): the person files there
+    themselves; we show what to choose and track the deadline from the date they enter."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    name: str  # the portal as people know it
+    channel: str = Field(pattern=r"^[a-z_]{2,32}$")  # Action.submitted_via / Filing.channel
+    portal: str
+    recipients: dict[str, PortalRecipient]  # "forum:<id>" | "authority:<key>"
+
+    @field_validator("portal")
+    @classmethod
+    def _https(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            raise ValueError("appeal portal must be https")
+        return v
+
+    def for_addressee(self, addressee: dict[str, Any] | None) -> PortalRecipient | None:
+        a = addressee or {}
+        if a.get("kind") not in ("forum", "authority") or not a.get("key"):
+            return None
+        return self.recipients.get(f"{a['kind']}:{a['key']}")
+
+
 class JurisdictionPack:
     def __init__(self, root: Path, packs_root: Path, manifest: PackManifest,
                  i18n: dict[str, dict], scenarios: dict[str, Scenario], demo_lawyers: dict | None = None,
                  coverage: Coverage | None = None, agreements: AgreementSet | None = None,
-                 gov_services: GovServices | None = None):
+                 gov_services: GovServices | None = None, appeal_portal: AppealPortalGuide | None = None):
         self.agreements = agreements
         self.gov_services = gov_services
+        self.appeal_portal = appeal_portal
         self.demo_lawyers = demo_lawyers or {}
         self.coverage = coverage
         self.root = root
@@ -285,7 +320,20 @@ def load_pack(root: Path, packs_root: Path) -> JurisdictionPack:
             gov = GovServices.model_validate(yaml.safe_load(gov_path.read_text("utf-8")))
         except (ValidationError, yaml.YAMLError) as e:
             raise PackValidationError(f"{gov_path}: {e}") from e
-    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements, gov)
+    portal = None
+    eot_path = root / "appeal_portal.yaml"
+    if eot_path.is_file():
+        try:
+            portal = AppealPortalGuide.model_validate(yaml.safe_load(eot_path.read_text("utf-8")))
+        except (ValidationError, yaml.YAMLError) as e:
+            raise PackValidationError(f"{eot_path}: {e}") from e
+        for key in portal.recipients:  # every key names a real forum or authority of this pack
+            kind, _, ref = key.partition(":")
+            known = (coverage is not None and ref in coverage.forums) if kind == "forum" else \
+                (ref in manifest.authorities if kind == "authority" else False)
+            if not known:
+                raise PackValidationError(f"{eot_path}: unknown addressee {key}")
+    return JurisdictionPack(root, packs_root, manifest, i18n, scenarios, demo, coverage, agreements, gov, portal)
 
 
 class PackRegistry:

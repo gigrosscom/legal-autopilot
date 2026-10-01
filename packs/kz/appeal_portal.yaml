@@ -1,0 +1,89 @@
+# Ручной мост eOtinish (решение владельца 01.10.2026; docs/integrations-plan.md, 7.1, этап 1).
+#
+# Человек подаёт обращение на eotinish.kz сам, от своего имени и своей ЭЦП / eGov Mobile. Мы только подсказываем,
+# что выбрать в форме портала, даём готовый текст и PDF, а после подачи ведём срок ответа по номеру и дате, которые
+# человек ввёл. Открытого API подачи у eOtinish нет (integrations-plan.md, 3.2).
+#
+# Ключ записи — получатель шага дела: «forum:<id из forums/registry.yaml>» или «authority:<ключ из pack.yaml>».
+#
+# Поля:
+#   appeal_type — вид обращения по АППК РК, ст. 4 (https://adilet.zan.kz/rus/docs/K2000000350):
+#                 statement (заявление) · complaint (жалоба) · proposal (предложение) · request (запрос);
+#   recipient   — что искать в поле «Получатель» на портале (название органа; регион человек выбирает сам);
+#   category    — тема / категория вопроса, ближайшая к сути обращения;
+#   verified_on — дата, когда пункт сверен с формой на eotinish.kz. Пусто → в интерфейсе пометка «названия в списке
+#                 портала могут отличаться — выберите ближайшее». TODO(lawyer/ops): сверить с формой портала под ЭЦП.
+name: eOtinish
+channel: eotinish
+portal: https://eotinish.kz
+recipients:
+  authority:consumer_protection:
+    appeal_type: complaint
+    recipient:
+      ru: "Департамент торговли и защиты прав потребителей по вашей области (городу)"
+      kk: "Облысыңыз (қалаңыз) бойынша сауда және тұтынушылардың құқықтарын қорғау департаменті"
+      en: "Department of Trade and Consumer Protection for your region (city)"
+    category:
+      ru: "Защита прав потребителей"
+      kk: "Тұтынушылардың құқықтарын қорғау"
+      en: "Consumer protection"
+  forum:kz.regulator.consumer:
+    appeal_type: complaint
+    recipient:
+      ru: "Департамент торговли и защиты прав потребителей по вашей области (городу)"
+      kk: "Облысыңыз (қалаңыз) бойынша сауда және тұтынушылардың құқықтарын қорғау департаменті"
+      en: "Department of Trade and Consumer Protection for your region (city)"
+    category:
+      ru: "Защита прав потребителей"
+      kk: "Тұтынушылардың құқықтарын қорғау"
+      en: "Consumer protection"
+  authority:arrf:
+    appeal_type: complaint
+    recipient:
+      ru: "Агентство по регулированию и развитию финансового рынка (АРРФР)"
+      kk: "Қаржы нарығын реттеу және дамыту агенттігі (ҚНРДА)"
+      en: "Agency for Regulation and Development of the Financial Market (ARDFM)"
+    category:
+      ru: "Финансовые услуги (банки, страхование, МФО)"
+      kk: "Қаржылық қызметтер (банктер, сақтандыру, МҚҰ)"
+      en: "Financial services (banks, insurance, microcredit)"
+  forum:kz.regulator.financial:
+    appeal_type: complaint
+    recipient:
+      ru: "Агентство по регулированию и развитию финансового рынка (АРРФР)"
+      kk: "Қаржы нарығын реттеу және дамыту агенттігі (ҚНРДА)"
+      en: "Agency for Regulation and Development of the Financial Market (ARDFM)"
+    category:
+      ru: "Финансовые услуги (банки, МФО, коллекторы)"
+      kk: "Қаржылық қызметтер (банктер, МҚҰ, коллекторлар)"
+      en: "Financial services (banks, microcredit, collectors)"
+  forum:kz.labor_inspection:
+    appeal_type: complaint
+    recipient:
+      ru: "Государственная инспекция труда (управление по труду) по месту работы"
+      kk: "Жұмыс орны бойынша мемлекеттік еңбек инспекциясы (еңбек басқармасы)"
+      en: "State labour inspectorate (labour department) where you work"
+    category:
+      ru: "Трудовые отношения"
+      kk: "Еңбек қатынастары"
+      en: "Labour relations"
+  forum:kz.prosecutor:
+    appeal_type: complaint
+    recipient:
+      ru: "Прокуратура вашего района (города)"
+      kk: "Ауданыңыздың (қалаңыздың) прокуратурасы"
+      en: "Prosecutor's office of your district (city)"
+    category:
+      ru: "Обжалование действий (бездействия) государственных органов и должностных лиц"
+      kk: "Мемлекеттік органдар мен лауазымды тұлғалардың әрекетіне (әрекетсіздігіне) шағымдану"
+      en: "Appeal against actions (inaction) of state bodies and officials"
+  forum:kz.police.case:
+    appeal_type: statement
+    recipient:
+      ru: "Орган полиции, который проверяет ваше заявление"
+      kk: "Арызыңызды тексеріп жатқан полиция органы"
+      en: "The police unit that is checking your report"
+    category:
+      ru: "Уголовное преследование / ход проверки по заявлению"
+      kk: "Қылмыстық қудалау / арыз бойынша тексеру барысы"
+      en: "Criminal prosecution / progress of the check on your report"

@@ -310,6 +310,34 @@ class Deadline(TimestampMixin, Base):
     case: Mapped[Case] = relationship(back_populates="deadlines")
 
 
+class Filing(TimestampMixin, Base):
+    """Proof that a document was filed with its addressee (docs/integrations-plan.md, 7.3) — one per filed step.
+
+    Stage 1 (owner's decision 01.10.2026) is manual filing on the official appeal portal: the person files there
+    themselves, then enters the appeal number and the date here and may attach the portal's receipt or a
+    screenshot (an ``Evidence`` row). The response deadline runs from that date. Other channels (e-mail delivery,
+    later the portal's own service) keep their own records.
+    """
+
+    __tablename__ = "filings"
+    __table_args__ = (UniqueConstraint("action_id", name="uq_filings_action"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    action_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("actions.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))  # who entered it
+    channel: Mapped[str] = mapped_column(String(32))  # the portal channel from pack data (filed by the person)
+    body: Mapped[str] = mapped_column(String(500))  # the state body the appeal went to (as shown to the person)
+    body_key: Mapped[str | None] = mapped_column(String(100))  # forum:<id> | authority:<key>
+    appeal_type: Mapped[str | None] = mapped_column(String(16))  # statement | complaint | proposal | request
+    category: Mapped[str | None] = mapped_column(String(300))
+    external_id: Mapped[str] = mapped_column(String(64))  # the appeal number given by the portal
+    filed_at: Mapped[date] = mapped_column(Date)  # the filing date the person entered (local date)
+    receipt_evidence_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("evidence.id"), nullable=True)
+    doc_format: Mapped[str | None] = mapped_column(String(8))  # pdf | docx — the file the hash is of
+    doc_sha256: Mapped[str | None] = mapped_column(String(64))  # the document we gave for filing
+    source: Mapped[str] = mapped_column(String(16), default="client_entered")  # client_entered | api
+
+
 class Outcome(TimestampMixin, Base):
     """How the case ended — the main data asset. Always filled on close."""
 

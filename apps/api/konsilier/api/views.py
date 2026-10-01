@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from ..core import ai, qualifier
 from ..core.engine import CaseEngine, EngineError
 from ..core.fields import display
+from ..core.appeal_portal import filing_record, portal_target
 from ..core.filing import filing_view
-from ..core.models import AuditLog, Case, Consent, Deadline
+from ..core.models import AuditLog, Case, Consent, Deadline, Filing
 from ..core.roadmap import build_roadmap
 from ..core.state_machine import CaseStatus, board_column
 
@@ -118,6 +119,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
             view["question"] = q
         view["payment"] = engine.payment_view(session, case)
         deadlines = {d.action_id: d for d in session.scalars(select(Deadline).where(Deadline.case_id == case.id))}
+        filings = {f.action_id: f for f in session.scalars(select(Filing).where(Filing.case_id == case.id))}
         today = pack.local_now().date()
         for a in case.actions:
             spec = sc.action(a.action_id)
@@ -147,6 +149,9 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                              "norm_ref": dl.norm_ref} if dl else None,
                 "norm_refs": list(spec.norm_refs),
                 "filing": filing,
+                # manual filing on the appeal portal: what to pick there (None → not filed there) and the record
+                "appeal_portal": portal_target(pack, lang, a),
+                "filed": filing_record(filings[a.id]) if a.id in filings else None,
             })
         view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
         view["deadline"] = response_deadline(case, deadlines, pack)
