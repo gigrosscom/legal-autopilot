@@ -1410,6 +1410,13 @@ class CaseEngine:
             "subscription": self.subscription_view(session, case.owner_id)}
         if inv is not None and status != "paid":
             view.update(self.payments.details())
+        # «status» is about the NEXT document; the last paid bill is shown apart (QA 01.10: «Оплачено» after the
+        # document was given, not «none»)
+        last = session.scalar(select(Invoice).where(Invoice.case_id == case.id, Invoice.status == "paid",
+                                                    Invoice.purpose.in_(("document", "case")))
+                              .order_by(Invoice.id.desc()).limit(1))
+        view["last_paid"] = {"code": last.code, "amount": float(last.amount), "purpose": last.purpose,
+                             "paid_at": last.decided_at.isoformat() if last.decided_at else None} if last else None
         return view
 
     def _addressee(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec) -> dict[str, Any]:

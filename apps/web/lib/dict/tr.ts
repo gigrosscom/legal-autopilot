@@ -541,6 +541,7 @@ const tr: Dict = {
     submit: "Devam et",
   },
   case: {
+    paid: "Ödendi",
     back: "Tüm dosyalar",
     untitled: "Yeni dosya",
     holdTitle: "Dosya elle incelemede",

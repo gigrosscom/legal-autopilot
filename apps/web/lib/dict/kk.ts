@@ -542,6 +542,7 @@ const kk: Dict = {
     submit: "Жалғастыру",
   },
   case: {
+    paid: "Төленді",
     back: "Барлық істер",
     untitled: "Жаңа іс",
     holdTitle: "Іс қолмен тексеруде",

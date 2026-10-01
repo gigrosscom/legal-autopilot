@@ -29,6 +29,7 @@ export type CaseAction = {
   has_docx: boolean;
   has_pdf: boolean;
   signatures?: DocSignature[];
+  paid?: boolean;
   downloadable: boolean;
   submitted_at: string | null;
   response_class: string | null;
@@ -202,6 +203,8 @@ export type Payment = {
   buyer?: { name: string; bin: string | null; address: string | null } | null;
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
+  /** The last paid bill of the case (status is about the next document). */
+  last_paid?: { code: string; amount: number; purpose: string; paid_at: string | null } | null;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
   subscription: Subscription | null;

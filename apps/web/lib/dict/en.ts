@@ -541,6 +541,7 @@ const en: Dict = {
     submit: "Continue",
   },
   case: {
+    paid: "Paid",
     back: "All cases",
     untitled: "New case",
     holdTitle: "Case under manual review",

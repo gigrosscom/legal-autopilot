@@ -541,6 +541,7 @@ const ru: Dict = {
     submit: "Продолжить",
   },
   case: {
+    paid: "Оплачено",
     back: "Все дела",
     untitled: "Новое дело",
     holdTitle: "Дело на ручной проверке",
