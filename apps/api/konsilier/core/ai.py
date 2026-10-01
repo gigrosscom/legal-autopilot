@@ -27,7 +27,10 @@ _COMMON_RULES = (
     "for everyday legal problems. You never give legal conclusions, never invent laws, "
     "article numbers, deadlines, amounts, names or addresses. Tokens like [PERSON_1], "
     "[ID_NUMBER_1], [ACCOUNT_1] are placeholders for personal data: keep them exactly "
-    "as they are and never try to guess the real values."
+    "as they are and never try to guess the real values. Company names: the official name and legal form as the "
+    "document shows it; a widely known company by its registered name in Latin (e.g. 'Anthropic, PBC'), never a "
+    "phonetic spelling in another script. The person's own e-mail, phone, ID number and address are never the "
+    "other side's: leave the other side's contact empty rather than repeat the person's."
 )
 
 

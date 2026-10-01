@@ -453,6 +453,54 @@ class CaseEngine:
                    and DRAFT + f.name not in skipped]
         return [f.name for f in sorted(missing, key=stage)]
 
+    def _own_contacts(self, case: Case, sc: Scenario) -> set[str]:
+        """The person's own e-mail / phone / id / address, lower-cased: never the other side's."""
+        own: set[str] = set()
+        owner = getattr(case, "owner", None)
+        if owner is not None:
+            own |= {x.strip().lower() for x in (owner.email, owner.phone) if x}
+            own |= {i.display.strip().lower() for i in owner.identities if i.kind in ("email", "phone") and i.display}
+        applicant = sc.parties.get("applicant")
+        if applicant is not None:
+            for a in ("email_field", "id_field", "address_field"):
+                name = getattr(applicant, a, None)
+                if name and case.facts.get(name):
+                    own.add(str(case.facts[name]).strip().lower())
+        for name in ("applicant_email", "applicant_phone", "applicant_iin", "applicant_address"):
+            if case.facts.get(name):
+                own.add(str(case.facts[name]).strip().lower())
+        return own
+
+    def rebuild_documents(self, session: Session, case: Case, rewrite_text: bool = True) -> int:
+        """After the owner corrected the case's data: the documents not yet sent are made again from it (and the
+        statement of circumstances rewritten, as it may name the corrected party). No notification, no status
+        change. Returns how many were rebuilt."""
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        if rewrite_text:
+            case.narrative = None
+        done = 0
+        for action in case.actions:
+            if action.submitted_at or not action.docx_key:
+                continue
+            spec = sc.action(action.action_id)
+            if not spec.template:
+                continue
+            lang = case.language
+            self._ensure_text(case, sc, pack, pack.localized(spec.title, lang))
+            ctx = self.document_context(case, sc, pack, spec, self._addressee(case, sc, pack, spec))
+            docx = render_docx(pack.packs_root / spec.template, ctx,
+                               ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
+                               draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
+                               if sc.is_draft else None)
+            base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
+            action.docx_key = self.storage.put(f"{base}.docx", docx,
+                                               "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            pdf = None if self.defer_pdf else self.pdf.convert(docx)
+            action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
+            done += 1
+        self.audit(session, case, "admin", "documents_rebuilt", count=done)
+        return done
+
     def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
         """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
         skipped = set(case.skipped_fields or [])
@@ -466,6 +514,11 @@ class CaseEngine:
         today = pack.local_now().date()
         # the postal addresses of the parties to a document (not a hotel or a university abroad)
         party_addresses = {p.address_field for p in sc.parties.values() if p.address_field}
+        # the other side's contact is never the person's own (a receipt e-mailed to the client is not the seller's
+        # e-mail — the first client's claim, 01.10)
+        own = self._own_contacts(case, sc)
+        other_side = {getattr(p, a) for k, p in sc.parties.items() if k != "applicant"
+                      for a in ("email_field", "id_field", "address_field") if getattr(p, a, None)}
         for name, raw in values.items():
             try:
                 f = sc.field(name)
@@ -477,6 +530,8 @@ class CaseEngine:
                 value = normalize(f, raw, today=today)
                 if name in party_addresses and not looks_like_address(str(value)):
                     raise FieldError("address")  # QA BUG-10: a name or a BIN given instead of the postal address
+                if name in other_side and str(value).strip().lower() in own:
+                    continue  # silently dropped: the field stays empty (a blank in the draft)
                 facts[name] = value
             except FieldError as e:
                 errors[name] = e.code

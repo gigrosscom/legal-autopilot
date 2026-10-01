@@ -150,3 +150,34 @@ def move_ticket(ticket_id: int, body: TicketMove, session: Session = Depends(get
         raise HTTPException(404, "ticket not found")
     t.status, t.updated_at = body.status, datetime.now(timezone.utc)
     return {"id": t.id, "status": t.status}
+
+
+class FactsFix(BaseModel):
+    values: dict[str, str]
+    rebuild: bool = True
+
+
+@router.post("/cases/{case_id}/facts")
+def fix_facts(case_id: str, body: FactsFix, session: Session = Depends(get_session),
+              container: Container = Depends(get_container)) -> dict[str, Any]:
+    """The owner corrects a case's data (a wrong name, the client's own e-mail put as the seller's) and the documents
+    not yet sent are made again. An empty value clears the field."""
+    import uuid
+
+    case = session.get(Case, uuid.UUID(case_id))
+    if case is None or not case.scenario_id:
+        raise HTTPException(404, "case not found")
+    engine = container.engine
+    sc, pack = engine.scenario_of(case), engine.pack_of(case)
+    clear = {k for k, v in body.values.items() if not v.strip()}
+    case.facts = {k: v for k, v in case.facts.items() if k not in clear}
+    llm = engine.llm_for(case)
+    errors = engine._apply_values(case, sc, pack, {k: v for k, v in body.values.items() if k not in clear}, llm,
+                                  strict=True, overwrite=True)
+    engine._save_vault(case, llm)
+    if errors:
+        raise HTTPException(422, {"code": "invalid_facts", "message": "invalid_facts", "fields": errors})
+    engine.audit(session, case, "admin", "facts_corrected", fields=sorted(body.values))
+    rebuilt = engine.rebuild_documents(session, case) if body.rebuild else 0
+    session.flush()
+    return {"rebuilt": rebuilt, "facts": {k: str(v) for k, v in case.facts.items()}}
