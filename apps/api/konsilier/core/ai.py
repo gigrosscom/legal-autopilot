@@ -194,7 +194,8 @@ def extract_evidence(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPa
 
 
 def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack, lang: str,
-                    facts: dict[str, Any], action_title: str, attachments: list[str] | None = None) -> str:
+                    facts: dict[str, Any], action_title: str, attachments: list[str] | None = None,
+                    gender: str | None = None, currency: str | None = None) -> str:
     specs = _field_specs(scenario, pack, lang, only=list(facts))
     schema = {
         "type": "object",
@@ -210,12 +211,17 @@ def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPac
         "precise dates and amounts from the facts, no emotions or evaluative words. Where a fact is supported "
         "by an attached document from 'attachments', say so (e.g. 'что подтверждается приложенным чеком'). "
         "Use only the provided facts. Do not cite laws, do not state demands (they are added separately), "
-        "do not add greetings or signatures."
+        "do not add greetings or signatures. Grammar (QA 01.10): the applicant's grammatical gender is "
+        "'applicant_gender' — 'male' or 'female' forms of verbs and adjectives accordingly; if it is 'unknown', "
+        "build sentences that need no gendered form (e.g. 'мною было подано обращение'). Never write alternatives "
+        "in brackets such as 'состою (состоял)' or 'обратился(ась)': choose the one form the facts support. Every "
+        "amount of money is followed by the currency word ('900 000 тенге'), the currency is 'currency'."
     )
     try:
         out = llm.complete_json(task="narrative", system=system, schema=schema,
                                 payload={"language": lang, "facts": facts, "fields": specs,
-                                         "attachments": attachments or []})
+                                         "attachments": attachments or [], "applicant_gender": gender or "unknown",
+                                         "currency": currency or ""})
         return (out.get("narrative") or "").strip()
     except Exception as e:  # any failure: the document is still made from the facts, without the narrative
         log.warning("narrative failed: %s", e)

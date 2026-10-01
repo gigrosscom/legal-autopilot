@@ -100,6 +100,16 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
         NEW_CASE.add(str(message.chat.id))
         await message.answer(t("new_case", lang_of(message)))
 
+    @dp.message(Command("invite"))
+    async def on_invite(message: Message, bot: Bot) -> None:
+        """Owner 01.10 (referral, option A): the person's invitation — a link to the site and to this bot."""
+        lang = lang_of(message)
+        ref = await api.call(str(message.chat.id), "GET", "/v1/referral", language=lang)
+        me = await bot.get_me()
+        bot_link = f"https://t.me/{me.username}?start={ref['code']}" if me.username else ""
+        await message.answer(t("invite", lang, site=ref["link"], bot=bot_link, n=ref.get("invited", 0)),
+                             disable_web_page_preview=True)
+
     @dp.message(Command("status"))
     async def on_status(message: Message, bot: Bot) -> None:
         case = await api.active_case(str(message.chat.id))
@@ -237,7 +247,7 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
     return dp
 
 
-BOT_COMMANDS = ("start", "new", "status", "help")
+BOT_COMMANDS = ("start", "new", "status", "invite", "help")
 
 
 async def setup_profile(bot: Bot) -> None:

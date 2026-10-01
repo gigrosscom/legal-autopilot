@@ -20,7 +20,7 @@ def test_render_adds_ai_label_and_draft_and_escapes():
     data = render_docx(TEMPLATE, CTX, ai_label="AI-LABEL", draft_disclaimer="DRAFT-NOTE")
     text = docx_text(data)
     assert "Чайник <A&B>" in text  # autoescaped in XML, intact in text
-    assert text.count("AI-LABEL") == 2  # body + footer
+    assert text.count("AI-LABEL") == 1  # footer only: with the draft note the body has one closing line (QA BUG-14)
     assert "DRAFT-NOTE" in text
     assert "БИН" not in text  # optional line suppressed
     assert "Приложения" not in text  # empty list → section suppressed

@@ -3,16 +3,18 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui";
 import { api } from "@/lib/api";
+import { storyCard } from "@/lib/storyCard";
 import { useT } from "@/lib/i18n";
 
 type Ref = { code: string; link: string; invited: number; active: number };
 
 /** The person's invite link: share (phone share sheet) or copy, and how many people came by it. The offer: when the
  *  invited friend pays for a document, both get one document free. */
-export function Invite({ compact = false }: { compact?: boolean }) {
+export function Invite({ compact = false, big = false }: { compact?: boolean; big?: boolean }) {
   const t = useT();
   const [ref, setRef] = useState<Ref | null>(null);
   const [copied, setCopied] = useState(false);
+  const [story, setStory] = useState(false);
   useEffect(() => { api<Ref>("/v1/referral").then(setRef).catch(() => {}); }, []);
   if (!ref) return null;
 
@@ -24,11 +26,50 @@ export function Invite({ compact = false }: { compact?: boolean }) {
     try { await navigator.clipboard.writeText(`${text} ${ref!.link}`); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
   }
 
+  // referral П2: the story card with the person's link and QR — shared as an image, or saved
+  async function shareStory() {
+    setStory(true);
+    try {
+      const blob = await storyCard(`${ref!.link}${ref!.link.includes("?") ? "&" : "?"}src=story`, {
+        title: t("invite.storyTitle"), line: t("invite.storyLine"), offer: t("invite.storyOffer"), scan: t("invite.storyScan") });
+      const file = new File([blob], "konsilier-story.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); return; } catch { /* closed: save instead */ }
+      }
+      const url = URL.createObjectURL(blob);
+      Object.assign(document.createElement("a"), { href: url, download: "konsilier-story.png" }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } finally { setStory(false); }
+  }
+
   const button = (
     <button type="button" onClick={share} className={compact ? "btn-ghost min-h-10" : "btn-primary min-h-12"}>
       <Icon name={copied ? "check" : "share"} size={18} />{copied ? t("invite.copied") : t("invite.share")}
     </button>
   );
+  // owner 01.10 (referral, option A): after payment and on the ready document — a large block with ready messages
+  if (big) {
+    const via = (src: string) => `${ref.link}${ref.link.includes("?") ? "&" : "?"}src=${src}`;
+    return (
+      <section className="space-y-3 rounded-2xl bg-brand-50 p-5" aria-labelledby="invite-big-title">
+        <h2 id="invite-big-title" className="text-xl font-semibold leading-snug">{t("invite.bigTitle")}</h2>
+        <p className="text-[15px] text-ink-soft">{t("invite.bigLead")}</p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <a className="btn-primary min-h-12 justify-center" target="_blank" rel="noreferrer"
+            href={`https://wa.me/?text=${encodeURIComponent(`${t("invite.shareText")} ${via("whatsapp")}`)}`}>WhatsApp</a>
+          <a className="btn-primary min-h-12 justify-center" target="_blank" rel="noreferrer"
+            href={`https://t.me/share/url?url=${encodeURIComponent(via("telegram"))}&text=${encodeURIComponent(t("invite.shareText"))}`}>Telegram</a>
+          <button type="button" onClick={share} className="btn-ghost min-h-12 justify-center">
+            <Icon name={copied ? "check" : "share"} size={18} />{copied ? t("invite.copied") : t("invite.other")}
+          </button>
+        </div>
+        <button type="button" onClick={shareStory} disabled={story} className="btn-ghost min-h-12 w-full justify-center">
+          <Icon name={story ? "spinner" : "camera"} size={18} />{t("invite.story")}
+        </button>
+        <p className="text-sm text-muted">{t("invite.invited", { n: ref.invited })}</p>
+      </section>
+    );
+  }
   if (compact) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-sand px-4 py-3">
