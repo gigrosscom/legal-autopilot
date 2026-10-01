@@ -1,0 +1,83 @@
+# «Доставить курьером» — пилот «Курьер» (решение владельца 01.10.2026, team/strategy/courier-delivery.md):
+# после оплаты документа клиент заказывает доставку: курьер забирает у клиента 2 экземпляра, подписанных клиентом,
+# вручает ответчику под подпись на втором экземпляре и возвращает второй экземпляр клиенту.
+# Читает konsilier/courier (ядро о стране не знает). Ключи служб — только в настройках сервера.
+enabled: true
+price: 3990            # ₸, туда и обратно (решение 01.10)
+currency: KZT
+# Пилот: только Алматы (20 доставок), затем Астана и Шымкент — новой строкой здесь.
+cities:
+  - id: almaty
+    name: {ru: Алматы, kk: Алматы, en: Almaty}
+    cdek_city_code: 4756      # код города в справочнике СДЭК (/v2/location/cities) — проверить на тестовом аккаунте
+    alemtat_locality: ""      # TODO(договор Алем ТАТ): LocalityCode Алматы из Catalog/getCitiesByCountry
+    alemtat_station: ""       # TODO(договор Алем ТАТ): код принимающей станции (ReceivingStation)
+# Окна забора (местное время). Забор не раньше чем через lead_hours от заказа, не дальше max_days дней.
+windows: ["10:00-14:00", "14:00-18:00"]
+lead_hours: 2
+max_days: 14
+# Настройки служб (не секреты). Коды тарифов и услуг — уточнить у менеджера службы при договоре.
+cdek:
+  currency: 2                 # валюта расчёта СДЭК: 2 — тенге
+  tariff_code: 480            # «Экспресс дверь-дверь» — уточнить для КЗ (или выбрать по /v2/calculator/tarifflist)
+  services: [REVERSE]         # «Реверс»: подписанный экземпляр возвращается отправителю
+  package: {weight: 300, length: 32, width: 23, height: 2}   # граммы и сантиметры: конверт А4
+alemtat:
+  service: "E"                # экспресс по РК (Calc/getAmountV2: E — экспресс, T — не срочные)
+  country: "KZ"               # TODO(договор): локальный код страны из справочника Алем ТАТ
+  weight: 0.3
+texts:
+  ru:
+    price_note: "Курьер заберёт у вас 2 экземпляра, подписанных вами, вручит их ответчику под подпись на втором экземпляре и вернёт второй экземпляр вам."
+    print_hint: "Распечатайте документ в 2 экземплярах и подпишите оба ручкой до приезда курьера."
+    paid: "Оплата доставки получена. Заказываем курьера: забор {date}, {window}, {address}."
+    ordered: "Курьер заказан ({provider}): заберёт документы {date}, {window}, {address}.{tracking}"
+    picked_up: "Курьер забрал документы и везёт их: {recipient}."
+    in_transit: "Документы в пути к получателю: {recipient}."
+    delivered: "Документ вручён под подпись: {recipient}{signer}, {date}. Срок ответа считаем с этого дня{due}."
+    refused: "Получатель отказался принять документ: {recipient}{reason}. Курьер зафиксировал отказ. Откройте дело — подскажем следующий шаг (копия по e-mail, повторное вручение)."
+    returned: "Второй экземпляр с отметкой о вручении возвращён вам. Сохраните его — это доказательство вручения."
+    cancelled: "Доставка курьером отменена."
+    problem: "С заказом курьера заминка — оператор уже занимается, мы напишем, как только курьер будет назначен."
+    tracking: " Номер для отслеживания: {tracking}."
+    due: " (ответ — до {due})"
+    signer: " (расписался: {name})"
+    provider_cdek: "СДЭК"
+    provider_alemtat: "Алем ТАТ"
+    provider_manual: "курьерская служба"
+  kk:
+    price_note: "Курьер сізден өзіңіз қол қойған 2 данасын алып, жауапкерге екінші данасына қол қойғызып тапсырады және екінші дананы сізге қайтарады."
+    print_hint: "Құжатты 2 дана етіп басып шығарып, курьер келгенге дейін екеуіне де қолмен қол қойыңыз."
+    paid: "Жеткізу төлемі алынды. Курьерге тапсырыс береміз: алу {date}, {window}, {address}."
+    ordered: "Курьерге тапсырыс берілді ({provider}): құжаттарды {date}, {window}, {address} мекенжайынан алады.{tracking}"
+    picked_up: "Курьер құжаттарды алып, алушыға апара жатыр: {recipient}."
+    in_transit: "Құжаттар алушыға жолда: {recipient}."
+    delivered: "Құжат қолхатпен тапсырылды: {recipient}{signer}, {date}. Жауап мерзімін осы күннен бастап санаймыз{due}."
+    refused: "Алушы құжатты қабылдаудан бас тартты: {recipient}{reason}. Курьер бас тартуды тіркеді. Істі ашыңыз — келесі қадамды ұсынамыз (e-mail арқылы көшірме, қайта тапсыру)."
+    returned: "Тапсыру туралы белгісі бар екінші дана сізге қайтарылды. Оны сақтаңыз — бұл тапсырудың дәлелі."
+    cancelled: "Курьермен жеткізу тоқтатылды."
+    problem: "Курьерге тапсырыс беруде кідіріс бар — оператор айналысып жатыр, курьер тағайындалғанда хабарлаймыз."
+    tracking: " Бақылау нөмірі: {tracking}."
+    due: " (жауап — {due} дейін)"
+    signer: " (қол қойған: {name})"
+    provider_cdek: "СДЭК"
+    provider_alemtat: "Алем ТАТ"
+    provider_manual: "курьерлік қызмет"
+  en:
+    price_note: "The courier picks up 2 copies signed by you, hands them to the other side against a signature on the second copy and brings the second copy back to you."
+    print_hint: "Print the document in 2 copies and sign both by hand before the courier arrives."
+    paid: "Delivery payment received. We are ordering the courier: pickup {date}, {window}, {address}."
+    ordered: "Courier ordered ({provider}): pickup {date}, {window}, {address}.{tracking}"
+    picked_up: "The courier has picked up the documents and is taking them to {recipient}."
+    in_transit: "The documents are on their way to {recipient}."
+    delivered: "The document was handed over against a signature: {recipient}{signer}, {date}. The response deadline counts from this day{due}."
+    refused: "The recipient refused to accept the document: {recipient}{reason}. The courier recorded the refusal. Open the case — we will suggest the next step (a copy by e-mail, a second delivery)."
+    returned: "The second copy with the delivery mark has come back to you. Keep it — it proves the delivery."
+    cancelled: "The courier delivery was cancelled."
+    problem: "There is a delay ordering the courier — an operator is on it; we will write as soon as a courier is assigned."
+    tracking: " Tracking number: {tracking}."
+    due: " (reply due by {due})"
+    signer: " (signed by {name})"
+    provider_cdek: "CDEK"
+    provider_alemtat: "Alem TAT"
+    provider_manual: "courier service"

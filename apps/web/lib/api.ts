@@ -45,6 +45,70 @@ export type CaseAction = {
   appeal_portal?: EotinishTarget | null;
   /** The filing record once the person entered the appeal number and date. */
   filed?: FilingRecord | null;
+  /** «Доставить курьером»: may a courier be ordered for this paid document, and its latest delivery (null: off). */
+  courier?: CourierState | null;
+};
+
+export type CourierStatus = "awaiting_payment" | "paid" | "ordered" | "picked_up" | "in_transit" | "delivered"
+  | "refused" | "returned" | "cancelled";
+
+/** The bill of a delivery: the same shape as the document's open bill (ways, Kaspi details). */
+export type CourierInvoice = Pick<Payment, "amount" | "currency" | "code" | "recipient_name" | "kaspi_phone" | "ways"
+  | "way" | "payer_phone" | "buyer"> & { id: number; status: Payment["status"]; purpose: string };
+
+export type CourierDelivery = {
+  id: string;
+  status: CourierStatus;
+  provider: string;
+  provider_label: string;
+  city: string;
+  pickup_address: string;
+  pickup_date: string;
+  pickup_from: string;
+  pickup_to: string;
+  contact_name: string;
+  contact_phone: string;
+  recipient_name: string;
+  recipient_address: string;
+  recipient_phone: string | null;
+  price: number;
+  currency: string | null;
+  tracking: string | null;
+  signer_name: string | null;
+  paid_at: string | null;
+  ordered_at: string | null;
+  picked_up_at: string | null;
+  delivered_at: string | null;
+  returned_at: string | null;
+  created_at: string | null;
+  events: { at: string; status: CourierStatus }[];
+  invoice: CourierInvoice | null;
+  print_hint: string | null;
+};
+
+export type CourierState = {
+  available: boolean;
+  /** why not: off | not_ready | payment_required | gov | payment_unavailable */
+  reason: string | null;
+  price: number | null;
+  currency: string | null;
+  delivery: CourierDelivery | null;
+};
+
+/** GET …/courier: the order form. */
+export type CourierForm = CourierState & {
+  cities?: { id: string; name: string }[];
+  windows?: string[];
+  min_date?: string;
+  max_date?: string;
+  provider?: string;
+  recipient_phone_required?: boolean;
+  note?: string;
+  print_hint?: string;
+  defaults?: {
+    recipient_name: string; recipient_address: string; recipient_phone: string | null;
+    contact_phone: string | null; contact_name: string;
+  };
 };
 
 export type EmailSendState = { available: boolean; reason: string | null; left: number };

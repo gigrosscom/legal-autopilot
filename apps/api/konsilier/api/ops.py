@@ -338,6 +338,7 @@ def receipt_text(session: Session, container: Container, inv: Invoice, where: st
                      + (f", {words.seller_id} {st.payment_llp_bin}" if st.payment_llp_bin else ""))
     lines += ["", (f"Тариф подключён: {where}" if inv.purpose == "plan"
                    else f"Юрист получил материалы дела: {where}" if inv.purpose == "lawyer"
+                   else f"Заказываем курьера, статусы доставки — в карточке дела: {where}" if inv.purpose == "delivery"
                    else f"Документ готовится автоматически и появится в карточке дела: {where}"), "",
               "Это письмо — подтверждение оплаты, а не фискальный чек."]
     if st.payment_kaspi_kassa and inv.pay_way in ("kaspi_link", "kaspi_qr", "kaspi_invoice"):
@@ -371,6 +372,8 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
             text = receipt_text(session, container, inv, where)
         elif paid and inv.purpose == "lawyer":
             text = f"Оплата получена. Юрист получил материалы дела, подпишите с ним соглашения ЭЦП: {where}"
+        elif paid and inv.purpose == "delivery":
+            text = f"Оплата доставки получена. Заказываем курьера, статусы доставки — в карточке дела: {where}"
         elif paid:
             text = (f"Оплата получена. Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}» подключён: {where}"
                     if inv.purpose == "plan" else f"Оплата получена. Документ готовится автоматически и появится в "

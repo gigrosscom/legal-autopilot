@@ -149,9 +149,11 @@ def filing_view(f: Filing) -> dict[str, Any]:
 
 def filings_of(session: Session, case_id: uuid.UUID) -> dict[uuid.UUID, list[dict[str, Any]]]:
     """Letters and the client's own sendings per document. The registered appeal on the appeal portal (the row with
-    an appeal number) is shown on its own (``filed`` in the case view, core/appeal_portal.py)."""
+    an appeal number) is shown on its own (``filed`` in the case view, core/appeal_portal.py), and so is a courier
+    delivery (``courier`` in the case view, konsilier/courier)."""
     out: dict[uuid.UUID, list[dict[str, Any]]] = {}
-    for f in session.scalars(select(Filing).where(Filing.case_id == case_id, Filing.appeal_number.is_(None))
+    for f in session.scalars(select(Filing).where(Filing.case_id == case_id, Filing.appeal_number.is_(None),
+                                                  Filing.channel != "courier")
                              .order_by(Filing.created_at)):
         out.setdefault(f.action_id, []).append(filing_view(f))
     return out
