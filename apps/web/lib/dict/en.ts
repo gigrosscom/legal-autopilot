@@ -216,7 +216,7 @@ const en: Dict = {
     lawyer: "Lawyer",
     gov: "eGov certificates",
     law: "Ask about the law",
-    about: "About the case and service",
+    about: "About the service",
     account: "My account",
     home: "Home",
     photo: "Take a photo",
