@@ -251,6 +251,16 @@ class RepeatGuard:
         return "".join(paras).lstrip() if dropped else buf
 
 
+# Section labels the prompt names («SHORT ANSWER», «DETAILS») that a model sometimes writes out anyway, in any language.
+_LABEL = re.compile(r"(?im)^\s*\**\s*(short answer|details|короткий ответ|краткий ответ|подробности|детали|қысқа жауап|"
+                    r"толығырақ|kısa cevap|ayrıntılar|الإجابة المختصرة|التفاصيل)\s*\**\s*[:：]\s*\**\s*")
+
+
+def strip_labels(text: str) -> str:
+    """The reply without written-out section labels («КОРОТКИЙ ОТВЕТ: …»)."""
+    return _LABEL.sub("", text)
+
+
 def take_offer(text: str) -> tuple[str, bool]:
     """The reply without the document marker, and whether it had one (models sometimes drop a bracket)."""
     cleaned = re.sub(r"\[?\[\s*DOCUMENT\s*\]\]?", "", text)
@@ -473,6 +483,6 @@ class ChatAgent:
         mentioned = mentioned_articles(text)
         norms = [{"act": r.act_title, "act_code": r.code, "article": r.number, "title": r.title, "url": r.url}
                  for num, r in read.items() if num in mentioned]
-        text, offer = take_offer(text)
+        text, offer = take_offer(strip_labels(text))
         return ChatResult(text, norms, unchecked=bool(mentioned - set(read)), tool_calls=calls, usage=usage,
                           offer_document=offer)
