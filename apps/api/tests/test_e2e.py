@@ -124,28 +124,29 @@ def test_consumer_refund_full_path(ctx):
     out = api.answer(cid, "готово")
     assert out["case"]["question"]["field"] == "seller_name"
 
-    # a required answer put off: asked at the end with the reason, not repeated on the spot (QA BUG-08)
+    # «пропустить» on a required answer: a blank for the draft, never asked again (QA BUG-08, PM 01.10)
     out = api.answer(cid, "пропустить")
-    assert "вернусь к этому в конце" in out["reply"]["message"] and out["case"]["question"]["field"] != "seller_name"
+    assert "черновике" in out["reply"]["message"] and out["case"]["question"]["field"] != "seller_name"
     body = run_intake(api, cid, {
-        "seller_name": "ТОО «Техномир»",
         "seller_bin": "123456789012",
         "goods_description": "Смартфон Nova 9",
         "seller_email": "пропустить",
         "seller_address": "г. Алматы, пр. Достык, 10",
     })
     assert body["question"]["field"] == "identity_document"
-    # personal data, then the put-off seller's name last; skipped again there → the reason, not an endless loop
-    for field, value in [("identity_document", "пропустить"), ("applicant_name", "Иванов Иван Иванович"),
-                         ("applicant_address", "г. Алматы, ул. Абая, 1"), ("applicant_phone", "+7 701 123 45 67"),
-                         ("applicant_iin", "900101300123")]:
-        q = api.get(f"/v1/cases/{cid}").json()["question"]
-        assert q["field"] == field
-        assert api.answer(cid, value)["reply"]["error"] is None
-    assert api.get(f"/v1/cases/{cid}").json()["question"]["field"] == "seller_name"
-    again = api.answer(cid, "пропустить")
-    assert again["reply"]["error"] == "required" and "никому не передаются" in again["reply"]["message"]
-    body = run_intake(api, cid, {"seller_name": "ТОО «Техномир»"})
+    body = run_intake(api, cid, {
+        "identity_document": "пропустить", "applicant_name": "Иванов Иван Иванович",
+        "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67",
+        "applicant_iin": "900101300123"})
+    # the draft shows the blank in brackets; the person fills it there
+    draft = api.get(f"/v1/cases/{cid}/draft").json()
+    assert [b["field"] for b in draft["blanks"]] == ["seller_name"] and draft["paid"] is False and draft["hidden"]
+    assert "[" in draft["visible"] + draft["hidden"]
+    r = ctx.client.post(f"/v1/cases/{cid}/facts", headers=api.h, json={"values": {"seller_bin": "12"}})
+    assert r.status_code == 422 and r.json()["detail"]["fields"] == {"seller_bin": "pattern"}
+    api.post(f"/v1/cases/{cid}/facts", json={"values": {"seller_name": "ТОО «Техномир»"}})
+    assert api.get(f"/v1/cases/{cid}/draft").json()["blanks"] == []
+    body = api.get(f"/v1/cases/{cid}").json()
     assert body["status"] == "qualified"
     assert body["proposal"]["type"] == "prepare_action"
 

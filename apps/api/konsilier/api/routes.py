@@ -300,11 +300,19 @@ class MessageIn(BaseModel):
 def post_message(case_id: uuid.UUID, body: MessageIn, user: User = Depends(current_user),
                  session: Session = Depends(get_session), container: Container = Depends(get_container)):
     case = load_case(case_id, session, user)
+    pending = case.pending_field
     try:
         reply = container.engine.handle_message(session, case, body.text)
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
+    if pending and case.status == "intake" and case.scenario_id and \
+            container.engine.scenario_of(case).field(pending).type == "longtext":
+        # the story is saved at once; the facts in it (date, sum, seller…) are taken afterwards, so the questions
+        # that follow shrink without making the person wait (PM 01.10)
+        text, case_pk = body.text, case.id
+        after_commit(session, container,
+                     lambda s: container.engine.facts_from_chat(s, case_pk, text, keep_question=True), "story_facts")
     if case.status == "qualified" and not case.narrative:  # the document's text is written while they look it over
         prewrite_later(session, container, case.id)
     return {"reply": reply.to_dict(), "case": case_view(container.engine, session, case)}
@@ -334,6 +342,57 @@ async def _read_upload(file: UploadFile) -> tuple[bytes, str]:
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "file too large")
     return data, ctype
+
+
+class FactsIn(BaseModel):
+    values: dict[str, str] = Field(default_factory=dict, max_length=40)
+
+
+DRAFT_VISIBLE = 0.45  # before payment: this share of the draft is readable, the rest is shown blurred
+
+
+def _scramble(text: str) -> str:
+    """Stand-in letters for the blurred part: the shape of the text without its content."""
+    import random
+    rnd = random.Random(len(text))
+    return "".join(rnd.choice("оаеинтсрвлкмдпу") if c.isalpha() else rnd.choice("0123456789") if c.isdigit() else c
+                   for c in text)
+
+
+@router.get("/cases/{case_id}/draft")
+def get_draft(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
+              container: Container = Depends(get_container)) -> dict[str, Any]:
+    """PM 01.10: the draft of the document before payment — part readable, part blurred, and the blanks to fill."""
+    case = load_case(case_id, session, user)
+    try:
+        d = container.engine.draft(case)
+    except Exception:  # noqa: BLE001 — a template problem must not break the case page
+        log.warning("draft failed for case %s", case_id, exc_info=True)
+        d = None
+    if d is None:
+        raise HTTPException(404, {"code": "no_draft", "message": "no_draft"})
+    paid = case.paid or container.engine.unlock_source(session, case) is not None
+    text = d.pop("text")
+    if paid:
+        return {**d, "visible": text, "hidden": "", "paid": True}
+    cut = text.find("\n", int(len(text) * DRAFT_VISIBLE))
+    cut = len(text) if cut < 0 else cut
+    return {**d, "visible": text[:cut], "hidden": _scramble(text[cut:]), "paid": False}
+
+
+@router.post("/cases/{case_id}/facts")
+def fill_facts(case_id: uuid.UUID, body: FactsIn, user: User = Depends(current_user),
+               session: Session = Depends(get_session), container: Container = Depends(get_container)):
+    """Blanks filled (or facts corrected) in the draft before the document is prepared."""
+    case = load_case(case_id, session, user)
+    try:
+        errors = container.engine.fill_blanks(session, case, body.values)
+    except EngineError as e:
+        raise engine_error(e) from e
+    session.flush()
+    if errors:
+        raise HTTPException(422, {"code": "invalid_facts", "message": "invalid_facts", "fields": errors})
+    return {"case": case_view(container.engine, session, case)}
 
 
 @router.post("/cases/{case_id}/evidence", status_code=201)

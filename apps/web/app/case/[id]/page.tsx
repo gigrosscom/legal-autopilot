@@ -13,6 +13,7 @@ import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
+import { DraftPreview } from "@/components/DraftPreview";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
@@ -374,6 +375,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
           </Bubble>
         )}
       </div>
+
+      {/* PM 01.10: the draft first (part blurred, blanks to fill), then payment */}
+      {c.status === "qualified" && (
+        <DraftPreview caseId={c.id} version={`${c.facts.length}:${c.payment?.status ?? ""}`} onCase={setCase} />
+      )}
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}

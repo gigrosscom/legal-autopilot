@@ -25,7 +25,7 @@ from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
 from .deadlines import DeadlineScheduler
-from .documents import PdfConverter, render_docx
+from .documents import PdfConverter, docx_text, render_docx
 from .fields import FieldError, display, looks_like_address, normalize
 from .llm import Attachment, LLMProvider, RedactingLLM
 from .generic import GenericRef, is_generic
@@ -33,6 +33,7 @@ from .models import (
     Action,
     AuditLog,
     Case,
+    ChatMessage,
     Claim,
     Consent,
     DemandSignal,
@@ -113,6 +114,8 @@ class EngineConfig:
     self_service: bool = True
     self_service_documents: tuple[str, ...] = ("claim_letter", "complaint", "statement", "motion")
     extract_images_with_llm: bool = False
+    # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap
+    intake_max_questions: int = 4
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
@@ -182,7 +185,7 @@ class CaseEngine:
         self.audit(session, case, actor, "status_changed", current, target.value, **data)
 
     # ================================================================ intake
-    def facts_from_chat(self, session: Session, case_id: Any, text: str) -> list[str]:
+    def facts_from_chat(self, session: Session, case_id: Any, text: str, keep_question: bool = False) -> list[str]:
         """QA BUG-03: what the person tells the chat goes into the case, so the interview asks only what is still
         missing (and the case can reach «Подготовить документ» without the same questions again). Runs after the
         chat reply, in the background; only while the case is being filled in. Returns the fields filled."""
@@ -190,7 +193,8 @@ class CaseEngine:
         if case is None or case.status != S.INTAKE.value or not case.scenario_id or len((text or "").strip()) < 15:
             return []
         sc, pack = self.scenario_of(case), self.pack_of(case)
-        missing = [n for n in self.missing_fields(case, sc) if sc.field(n).type != "evidence"]
+        missing = [n for n in self.missing_fields(case, sc) if sc.field(n).type != "evidence"
+                   and not (keep_question and n == case.pending_field)]  # the question on screen stays as asked
         if not missing:
             return []
         llm = self.llm_for(case)
@@ -202,7 +206,7 @@ class CaseEngine:
         if not filled:
             return []
         self.audit(session, case, "system", "facts_from_chat", fields=filled)
-        if case.pending_field is None or case.pending_field in case.facts:
+        if not keep_question and (case.pending_field is None or case.pending_field in case.facts):
             self._next_step(session, case, sc, pack)  # the next question — or «Проверьте данные» when all is known
         return filled
 
@@ -214,6 +218,12 @@ class CaseEngine:
         self._qualify_and_continue(session, case, case.initial_text or "")
         if "emergency" in ((case.taxonomy or {}).get("flags") or []):
             self.audit(session, case, "system", "emergency_detected", by="llm")
+        # what was told in the chat while the scenario was being worked out goes into the case too (PM 01.10)
+        said = [m.text for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+            if m.text and m.text.strip() != (case.initial_text or "").strip()]
+        if said:
+            self.facts_from_chat(session, case.id, "\n".join(said))
 
     def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
                    channel: str | None = None, country: str | None = None,
@@ -429,11 +439,17 @@ class CaseEngine:
             if f.type == "evidence":
                 return 2 if IDENTITY_KIND in f.evidence_kinds else 0
             return 3 if f.pii else 1
-        skipped = case.skipped_fields or []
-        later = {x[len(LATER):] for x in skipped if isinstance(x, str) and x.startswith(LATER)}
-        missing = [f for f in sc.intake if f.name not in case.facts and f.name not in skipped]
-        # a required answer the person put off («пропустить») comes last, after everything else (QA BUG-08)
-        return [f.name for f in sorted(missing, key=lambda f: (f.name in later, stage(f)))]
+        skipped = set(case.skipped_fields or [])
+        # blanks left for the draft (DRAFT + name) are not asked again: the person fills them in the draft
+        missing = [f for f in sc.intake if f.name not in case.facts and f.name not in skipped
+                   and DRAFT + f.name not in skipped]
+        return [f.name for f in sorted(missing, key=stage)]
+
+    def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
+        """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
+        skipped = set(case.skipped_fields or [])
+        return [f.name for f in sc.intake if f.type != "evidence" and DRAFT + f.name in skipped
+                and f.name not in case.facts]
 
     def _apply_values(self, case: Case, sc: Scenario, pack: JurisdictionPack, values: dict[str, Any],
                       llm: RedactingLLM | None, strict: bool, overwrite: bool = False) -> dict[str, str]:
@@ -459,8 +475,8 @@ class CaseEngine:
                 continue
             if f.pii and llm is not None:
                 llm.vault.register(f.pii, facts[name])
-            if name in (case.skipped_fields or []) or LATER + name in (case.skipped_fields or []):
-                case.skipped_fields = [s for s in case.skipped_fields if s not in (name, LATER + name)]
+            if name in (case.skipped_fields or []) or DRAFT + name in (case.skipped_fields or []):
+                case.skipped_fields = [s for s in case.skipped_fields if s not in (name, DRAFT + name)]
         case.facts = facts
         if sc.claim and sc.claim.amount_field and sc.claim.amount_field in facts:
             case.amount_at_stake = Decimal(str(facts[sc.claim.amount_field]))
@@ -488,6 +504,12 @@ class CaseEngine:
                 return Reply(message=f"{pack.t(lang, 'safety.facts_not_labels')}\n{q.text}", question=q,
                              error="facts_not_labels")
         missing = self.missing_fields(case, sc)
+        cap = self.config.intake_max_questions
+        if missing and cap and int((case.taxonomy or {}).get("asked", 0)) >= cap:
+            # PM 01.10: the draft after a few questions; what is still unknown stays a blank filled in the draft
+            case.skipped_fields = [*(case.skipped_fields or []),
+                                   *(DRAFT + n for n in missing if not sc.field(n).optional)]
+            missing = []
         if missing:
             case.pending_field = missing[0]
             q = self.question_for(sc, pack, lang, missing[0])
@@ -496,8 +518,16 @@ class CaseEngine:
         if case.status == S.INTAKE.value:
             self._sync_parties_and_claim(session, case, sc, pack)
             self.transition(session, case, S.QUALIFIED, "system")
-        return Reply(message=pack.t(lang, "interview.done", summary=self.facts_summary(case, sc, pack)),
-                     intake_complete=True)
+        message = pack.t(lang, "interview.done", summary=self.facts_summary(case, sc, pack))
+        blanks = self.draft_blanks(case, sc)
+        if blanks:
+            labels = ", ".join(ai.field_label(sc, pack, lang, n) for n in blanks)
+            message = pack.t(lang, "interview.done_blanks", blanks=labels, default=message)
+        return Reply(message=message, intake_complete=True)
+
+    def _count_question(self, case: Case, f: Any) -> None:
+        if f.type != "evidence":
+            case.taxonomy = {**(case.taxonomy or {}), "asked": int((case.taxonomy or {}).get("asked", 0)) + 1}
 
     def facts_summary(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
         lines = []
@@ -536,31 +566,34 @@ class CaseEngine:
                     case.facts = {**case.facts, f.name: "provided"}  # files uploaded: this question is done
                     return self._next_step(session, case, sc, pack)
             if _is_skip(text, pack, lang):
-                if not f.optional:
-                    # QA BUG-08: a required answer is not asked again and again. The first «пропустить» puts it
-                    # off to the end (why it is needed, and that it stays in the case); at the end, the reason once
-                    others = [n for n in self.missing_fields(case, sc) if n != pending]
-                    if LATER + pending not in (case.skipped_fields or []) and others:
-                        case.skipped_fields = [*(case.skipped_fields or []), LATER + pending]
-                        case.pending_field = others[0]
-                        q = self.question_for(sc, pack, lang, others[0])
-                        return Reply(message=f"{pack.t(lang, 'interview.required_later')}\n\n{q.text}", question=q)
+                self._count_question(case, f)
+                if not f.optional and f.type != "evidence":
+                    # «не помню» / «пропустить» on a required answer: never asked again and again (QA BUG-08) —
+                    # it stays a blank the person fills in the draft before paying (PM 01.10)
+                    case.skipped_fields = [*(case.skipped_fields or []), DRAFT + pending]
+                    reply = self._next_step(session, case, sc, pack)
+                    reply.message = f"{pack.t(lang, 'interview.left_blank')}\n\n{reply.message}".strip()
+                    return reply
+                if not f.optional:  # a required document: asked again with the reason
                     q = self.question_for(sc, pack, lang, pending)
-                    return Reply(message=f"{pack.t(lang, 'interview.required_why')}\n{q.text}", question=q,
+                    return Reply(message=f"{pack.t(lang, 'interview.required')}\n{q.text}", question=q,
                                  error="required")
                 case.skipped_fields = [*(case.skipped_fields or []), pending]
                 return self._next_step(session, case, sc, pack)
             if f.type == "evidence":
                 q = self.question_for(sc, pack, lang, pending)
                 return Reply(message=f"{pack.t(lang, 'interview.upload_or_skip')}\n{q.text}", question=q)
-            if f.pii:
-                # personal data is taken verbatim, it never goes to the LLM
+            if f.pii or f.type == "longtext" or _reads_as_is(f, text, pack):
+                # instant: personal data (never sent to the LLM), a story (other facts are taken from it in the
+                # background) and any answer that already reads as the field (a name, a date, a sum, a BIN)
                 values = {pending: text}
-            else:
+            else:  # «в прошлом месяце», «сто тысяч»: the model reads it
                 values = ai.extract_fields(llm, sc, pack, lang, text, pending, self.missing_fields(case, sc))
                 values.setdefault(pending, text)
             errors = self._apply_values(case, sc, pack, values, llm, strict=True)
             self._save_vault(case, llm)
+            if pending not in errors:
+                self._count_question(case, f)
             if pending in errors:
                 q = self.question_for(sc, pack, lang, pending)
                 msg = pack.t(lang, f"errors.{errors[pending]}", default=pack.t(lang, "errors.generic"))
@@ -1351,9 +1384,12 @@ class CaseEngine:
         return action
 
     def document_context(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
-                         addressee: dict[str, Any]) -> dict[str, Any]:
+                         addressee: dict[str, Any], placeholders: bool = False) -> dict[str, Any]:
         lang = case.language
         f = {fl.name: display(fl, case.facts.get(fl.name)) for fl in sc.intake if fl.type != "evidence"}
+        if placeholders:  # the draft: a blank shows what goes there («[Адрес продавца]»)
+            for name in self.draft_blanks(case, sc):
+                f[name] = f"[{ai.field_label(sc, pack, lang, name)}]"
         # requisites of every party (the header, "whose actions are complained of", the defendant of a lawsuit)
         parties = {role: {"name": f.get(p.name_field, ""), "id": f.get(p.id_field or "", ""),
                           "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", ""),
@@ -1399,6 +1435,43 @@ class CaseEngine:
             "currency": case.currency or pack.currency,
             "fmt": fmt,
         }
+
+    def draft(self, case: Case) -> dict[str, Any] | None:
+        """PM 01.10: the document's draft before payment — rendered from what is known, blanks in brackets, with no
+        model call (the story stands in for the statement of circumstances until the text is written)."""
+        if not case.scenario_id:
+            return None
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        spec = self.next_action_spec(case, sc)
+        if spec is None or not spec.template:
+            return None
+        lang = case.language
+        addressee = self._addressee(case, sc, pack, spec)
+        party = sc.parties.get(spec.addressee.party) if spec.addressee and spec.addressee.party else None
+        blank_names = set(self.draft_blanks(case, sc))
+        for attr, key in (("name_field", "name"), ("id_field", "id"), ("address_field", "address")):
+            name = getattr(party, attr, None) if party else None
+            if name in blank_names and not addressee.get(key):
+                addressee[key] = f"[{ai.field_label(sc, pack, lang, name)}]"
+        ctx = self.document_context(case, sc, pack, spec, addressee, placeholders=True)
+        data = render_docx(pack.packs_root / spec.template, ctx, ai_label="", draft_disclaimer=None)
+        blanks = [{"field": n, "label": ai.field_label(sc, pack, lang, n), "type": sc.field(n).type,
+                   "pattern": sc.field(n).pattern} for n in self.draft_blanks(case, sc)]
+        return {"title": pack.localized(spec.title, lang), "text": docx_text(data).strip(), "blanks": blanks}
+
+    def fill_blanks(self, session: Session, case: Case, values: dict[str, str]) -> dict[str, str]:
+        """The person fills blanks (or corrects facts) in the draft. Returns {field: error code}."""
+        if case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.scenario_id:
+            raise EngineError("not_editable")
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        llm = self.llm_for(case)
+        values = {k: v for k, v in values.items() if (v or "").strip()}
+        errors = self._apply_values(case, sc, pack, values, llm, strict=True, overwrite=True)
+        self._save_vault(case, llm)
+        self.audit(session, case, "user", "draft_filled", fields=sorted(set(values) - set(errors)))
+        if case.status == S.INTAKE.value and not self.missing_fields(case, sc):
+            self._next_step(session, case, sc, pack)
+        return errors
 
     def approve(self, session: Session, action: Action, reviewer: str, approved: bool, note: str | None) -> None:
         if action.approval_status != "pending":
@@ -1524,7 +1597,18 @@ class _Fmt(dict):
         return ""
 
 
-LATER = "later:"  # skipped_fields entry: a required answer put off to the end of the interview
+DRAFT = "draft:"  # skipped_fields entry: a required answer left blank, filled in the draft before paying
+
+
+def _reads_as_is(f: Any, text: str, pack: JurisdictionPack) -> bool:
+    """The answer already is the field's value (no model needed): a date, a sum, a number, an e-mail, a phone, a
+    code of the right format, or a short plain answer to a text question."""
+    try:
+        normalize(f, text, today=pack.local_now().date())
+    except FieldError:
+        return False
+    # a text answer with a long number in it («ТОО …, БИН …») goes to the model: it holds more than one field
+    return f.type != "text" or bool(f.pattern) or (len(text.split()) <= 12 and not re.search(r"\d{9,}", text))
 
 
 def _is_skip(text: str, pack: JurisdictionPack, lang: str) -> bool:

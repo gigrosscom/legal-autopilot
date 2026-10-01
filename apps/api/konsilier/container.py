@@ -133,6 +133,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         submissions={"user_submits": UserSubmits(),
                      "email": EmailSubmission(settings.smtp_host, settings.smtp_port, settings.smtp_from)},
         config=EngineConfig(qualify_min_confidence=settings.qualify_min_confidence,
+                            intake_max_questions=settings.intake_max_questions,
                             approval_required_first_n=settings.approval_required_first_n,
                             self_service=settings.self_service,
                             self_service_documents=tuple(d.strip() for d in settings.self_service_documents.split(",")

@@ -48,6 +48,7 @@ def ctx(tmp_path: Path, packs_dir: Path):
         llm_provider="mock", soffice_bin="", admin_token="adm", bot_api_secret="bot",
         approval_required_first_n=50, scheduler_interval_seconds=0, qualify_min_confidence=0.6,
         smtp_host=None, payment_mode="stub", background_jobs="off",
+        intake_max_questions=0,  # the full interview; the cap has its own tests
     )
     llm = HeuristicMockProvider()
     channels = {"web": RecordingChannel("web"), "telegram": RecordingChannel("telegram")}

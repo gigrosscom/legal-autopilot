@@ -177,6 +177,8 @@ class Settings(BaseSettings):
     extract_images_with_llm: bool = False
 
     qualify_min_confidence: float = 0.6
+    # PM 01.10: the draft after at most this many interview questions (the rest are blanks); 0 = no cap
+    intake_max_questions: int = 4
     approval_required_first_n: int = 50
     # Self-service: documents a person can file without a lawyer (pre-trial claim, complaint, statement, motion outside court) are
     # released at once; court documents and flagged cases still wait for a lawyer. False → the old rule
