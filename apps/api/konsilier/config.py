@@ -169,11 +169,15 @@ class Settings(BaseSettings):
     # Zann law corpus (konsilier/zann/corpus.py, docs/zann-llm-plan.md «Сбор корпуса»): every act of old.adilet.zan.kz,
     # ru + kk, gzip texts in the storage under zann/corpus/. Off by default. ZANN_CORPUS_HOUR: local hour
     # (ZANN_CORPUS_TZ) of the nightly run, which lasts at most ZANN_CORPUS_MINUTES (2:00–2:50, before the 03:00 official crawl);
-    # -1 = continuous: time-boxed runs back to back around the clock. Pause between requests ≥ 2 s.
+    # -1 = continuous: time-boxed runs back to back around the clock. Pause between one worker's requests ≥ 2 s.
+    # ZANN_CORPUS_CONCURRENCY workers (1 = one request at a time, as before) share one limit of ZANN_CORPUS_RATE
+    # requests a second in all (capped at 3; the robots Crawl-delay if longer); a 429/503 pauses every worker.
     zann_corpus_enabled: bool = False
     zann_corpus_hour: int = 2
     zann_corpus_minutes: int = 50
     zann_corpus_pause: float = 3.0
+    zann_corpus_concurrency: int = 1
+    zann_corpus_rate: float = 0.5
     zann_corpus_langs: str = "ru,kk"
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
