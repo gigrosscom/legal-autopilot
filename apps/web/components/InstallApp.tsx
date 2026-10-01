@@ -18,12 +18,13 @@ declare global {
  * - "prompt": the browser's own install dialog (Chrome / Edge / Samsung Internet on Android, Windows, Mac);
  * - "ios": Safari on iPhone / iPad (Apple offers no install API: Share → «На экран „Домой“»);
  * - "iosBrowser": Chrome, Edge, Firefox on iPhone / iPad — since iOS 16.4 they add to the home screen from Share too;
- * - "iosInApp": a browser inside another app (Telegram, Instagram, Facebook…): only a real browser installs, so the
- *   tap opens the page in Safari (x-safari-https:, iOS 17+);
+ * - "iosInApp": a browser inside another app (Telegram, Instagram, WhatsApp, Google app…) or a non-Safari browser before
+ *   iOS 16.4: only a real browser installs, so the tap opens the page in Safari (x-safari-https:, iOS 17+) or Chrome;
  * - "androidInApp": the same on Android: the tap opens the page in Chrome (intent: link);
  * - "macSafari": Safari 17+ on Mac (File → Add to Dock);
- * - "menu": a Chromium browser that has not offered its dialog (yet): its menu → Install;
- * - "other": a browser that cannot install; "installed": already done.
+ * - "menu": a browser that installs from its menu but has not offered a dialog (yet): any Android browser; Chrome, Edge,
+ *   Yandex, Opera, Brave on a computer — hintFor() gives the steps for that very browser;
+ * - "other": a browser that cannot install (Firefox on a computer); "installed": already done.
  */
 export type Platform = "installed" | "otherApp" | "prompt" | "ios" | "iosBrowser" | "iosInApp" | "androidInApp" | "macSafari" | "menu" | "other";
 
@@ -31,7 +32,7 @@ const INSTALLED = "konsilier.installed"; // Chromium installed the app from this
 const CHANGED = "konsilier:install";     // the install state changed: every button and banner re-reads it
 const DONE = "konsilier:installed";      // the browser's dialog installed the app just now
 // browsers inside other apps: they cannot install, a real browser can
-const IN_APP = /FBAN|FBAV|Instagram|Line\/|Telegram|TikTok|musical_ly|Snapchat|VKClient|GSA\//;
+const IN_APP = /FBAN|FBAV|Instagram|Line\/|Telegram|TikTok|musical_ly|Snapchat|VKClient|WhatsApp|GSA\//;
 
 function read(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -79,15 +80,51 @@ export function detect(storeKey: string = INSTALLED): Platform {
   const ua = navigator.userAgent;
   if (isIos()) {
     if (IN_APP.test(ua) || !/Safari\//.test(ua)) return "iosInApp"; // an app's own web view has no «Safari/» in its name
-    return /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser/.test(ua) ? "iosBrowser" : "ios";
+    if (!/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser/.test(ua)) return "ios";
+    // other browsers add to the home screen from Share since iOS 16.4; before that only Safari can
+    const [, major, minor] = /OS (\d+)_(\d+)/.exec(ua) ?? [];
+    return major && (Number(major) < 16 || (Number(major) === 16 && Number(minor) < 4)) ? "iosInApp" : "iosBrowser";
   }
   if (/Macintosh/.test(ua) && /Version\/(1[7-9]|[2-9]\d)/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua)) {
     return "macSafari";
   }
   if (/Android/.test(ua) && (IN_APP.test(ua) || /; wv\)/.test(ua))) return "androidInApp";
-  if (/Chrome|Chromium|Edg|SamsungBrowser/.test(ua) && !/Firefox|OPR|YaBrowser/.test(ua)) return "menu";
-  if (/Android/.test(ua)) return "menu"; // Firefox, Opera, Yandex on Android also install from their menu
+  if (/Android/.test(ua)) return "menu"; // Chrome, Edge, Samsung, Firefox, Opera, Yandex on Android all install from their menu
+  // Chrome, Edge, Yandex, Opera, Brave on a computer; Firefox there cannot install (Hint says so honestly)
+  if (/Chrome|Chromium|Edg|OPR|YaBrowser/.test(ua) && !/Firefox/.test(ua)) return "menu";
   return "other";
+}
+
+type Pointer = "top" | "bottom" | "bottomEnd" | null;
+
+/** The steps for this very browser — never «use another browser» where this one installs — and where its button is. */
+export function hintFor(platform: Platform, ua: string, ipad: boolean): { key: string; pointer: Pointer } {
+  const phone = !ipad;
+  if (platform === "ios") {
+    // Safari 26 on iPhone keeps Share in the «•••» menu at the bottom right; before, Share sat mid-bottom; iPad: top right
+    const safari26 = Number(/Version\/(\d+)/.exec(ua)?.[1] ?? 0) >= 26;
+    return safari26 && phone ? { key: "ios26", pointer: "bottomEnd" } : { key: "ios", pointer: ipad ? "top" : "bottom" };
+  }
+  if (platform === "iosBrowser") {
+    if (/CriOS/.test(ua)) return { key: "iosChrome", pointer: "top" };   // Share at the right of the address bar
+    if (/EdgiOS/.test(ua)) return { key: "iosEdge", pointer: ipad ? "top" : "bottom" };
+    if (/FxiOS/.test(ua)) return { key: "iosFirefox", pointer: ipad ? "top" : "bottomEnd" };
+    return { key: "iosOther", pointer: null };
+  }
+  if (platform === "menu") {
+    if (/Android/.test(ua)) {
+      if (/SamsungBrowser/.test(ua)) return { key: "androidSamsung", pointer: "bottomEnd" };
+      if (/Firefox/.test(ua)) return { key: "androidFirefox", pointer: null };
+      if (/EdgA\//.test(ua)) return { key: "androidEdge", pointer: "bottom" };
+      if (/OPR|YaBrowser/.test(ua)) return { key: "menu", pointer: null };
+      return { key: "androidChrome", pointer: "top" };
+    }
+    if (/Edg\//.test(ua)) return { key: "desktopEdge", pointer: "top" };
+    if (/OPR|YaBrowser/.test(ua)) return { key: "desktopOther", pointer: "top" };
+    return { key: "desktopChrome", pointer: "top" };
+  }
+  if (platform === "other" && /Firefox/.test(ua)) return { key: "firefox", pointer: null };
+  return { key: platform, pointer: null };
 }
 
 /** Chrome can offer its dialog a moment after the page opens: wait for it up to 3 s before giving up. */
@@ -99,14 +136,15 @@ function lateDialog(): Promise<PromptEvent | null> {
   });
 }
 
-/** Opens this site's /app in the device's real browser, from a browser inside another app. */
-function realBrowserLink(platform: Platform): string {
-  const { host } = window.location;
+/** Opens this page (/app, or /ops for Konsiliér Ops) in the device's real browser, from a browser inside another app. */
+function realBrowserLink(platform: Platform, browser: "safari" | "chrome" = "safari"): string {
+  const { host, pathname } = window.location;
+  const page = `${host}${pathname.startsWith("/ops") ? "/ops" : "/app"}?install=1`;
   if (platform === "androidInApp") {
-    const back = encodeURIComponent(`https://${host}/app?install=1`);
-    return `intent://${host}/app?install=1#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${back};end`;
+    const back = encodeURIComponent(`https://${page}`);
+    return `intent://${page}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${back};end`;
   }
-  return `x-safari-https://${host}/app?install=1`;
+  return browser === "chrome" ? `googlechromes://${page}` : `x-safari-https://${page}`;
 }
 
 /** The platform (null until known on the client) and the install action: the browser's own dialog, straight away.
@@ -163,15 +201,13 @@ function Hint({ platform, text, onClose }: { platform: Platform; text?: string; 
 
   const ua = navigator.userAgent;
   const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  // Safari 26 on iPhone keeps Share in the «•••» menu at the bottom right; before, Share sat mid-bottom; iPad: top right
-  const safari26 = Number(/Version\/(\d+)/.exec(ua)?.[1] ?? 0) >= 26;
-  const key = platform === "ios" && safari26 && !ipad ? "ios26" : platform === "iosBrowser" ? "ios" : platform;
+  const { key, pointer: browserPointer } = hintFor(platform, ua, ipad);
   const inApp = platform === "iosInApp" || platform === "androidInApp";
   const [before, after] = (text ?? t(`pwa.hint.${key}`, { site: window.location.host })).split("{share}");
   const line: ReactNode = after === undefined ? before : (
     <>{before}<Icon name="share" size={22} className="mx-1 inline-block -translate-y-0.5 text-action" />{after}</>
   );
-  const pointer = text || platform !== "ios" ? null : ipad ? "top" : safari26 ? "bottomEnd" : "bottom";
+  const pointer = text ? null : browserPointer;
 
   return createPortal(
     <div className="fixed inset-0 z-50" onClick={onClose}>
@@ -186,6 +222,10 @@ function Hint({ platform, text, onClose }: { platform: Platform; text?: string; 
             <a href={realBrowserLink(platform)} className="btn-primary min-h-11 w-full justify-center">
               {t(platform === "androidInApp" ? "pwa.openChrome" : "pwa.openSafari")}
             </a>
+          )}
+          {platform === "iosInApp" && !text && (
+            // Chrome on iPhone installs too: for those who keep it as their browser
+            <a href={realBrowserLink(platform, "chrome")} className="btn-ghost min-h-11 w-full justify-center">{t("pwa.openChrome")}</a>
           )}
           {platform === "ios" && !text && (
             // inside a Telegram / Instagram viewer iOS has no «На экран „Домой“»: open the page in Safari itself
@@ -255,11 +295,7 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
       <button type="button" onClick={go} disabled={waiting} aria-busy={waiting} className={className}>
         {icon && <Icon name={icon} size={18} />}{label ?? t("pwa.install")}
       </button>
-      {hint && <Hint platform={hint} onClose={closeHint}
-        text={hint === "otherApp" ? otherAppText
-          : hint === "menu" && storeKey && storeKey !== INSTALLED
-            ? "Chrome не показал своё окно установки. Откройте меню ⋮ справа вверху → «Трансляция, сохранение и отправка» (Cast, save and share) → «Установить страницу как приложение…» и нажмите «Установить» — появится «Konsiliér Ops»."
-            : undefined} />}
+      {hint && <Hint platform={hint} onClose={closeHint} text={hint === "otherApp" ? otherAppText : undefined} />}
     </>
   );
 }
