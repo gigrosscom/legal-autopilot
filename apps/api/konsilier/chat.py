@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterator
 
 from .gemini import EmptyReply, has_words
-from .lawagent.agent import LawAgent
+from .lawagent.agent import LawAgent, Retrieved
 from .lawagent.sources import Adilet
 from .official.search import Hit
 
@@ -40,6 +40,8 @@ log = logging.getLogger(__name__)
 HISTORY_TURNS = 20  # messages sent to the model; older ones are dropped
 PRE_HITS = 3  # library excerpts added to the context before the model is called
 TOOL_HITS = 5  # excerpts one official_sources call returns
+LAW_PRE_HITS = 3  # articles of the Zann index (konsilier/zann/search.py) added to the context before the model
+LAW_TOOL_HITS = 5  # articles one law_search call returns
 
 SYSTEM = """You are Konsiliér AI, a free assistant that helps people in {country} with legal questions.
 Talk like a patient, friendly consultant: short plain sentences, no legal jargon.
@@ -118,6 +120,10 @@ Keep the details under about 200 words unless the person asks for more."""
 PORTAL_RULE = ("State an article number only if you opened that article's text with get_article or act_contents "
                "in this reply; otherwise name the law or code by its title without any article number. "
                "Find the act among the main acts listed below{search}.")
+LAW_RULE = ("Articles of the law found in our copy of the official texts (adilet) for the last message are given "
+            "below (may be off-topic). Cite an article you rely on as «ст. N <act>» (kk: «N-бап») with its link, and "
+            "only for what its excerpt says; for other articles call law_search with a few key words, or "
+            "get_article for an article's full text.")
 NO_PORTAL_RULE = ("You have no access to the official texts here, so never state article numbers: name the law or "
                   "code by its title only.")
 OFFICIAL_RULE = ("For a question about a state service, a benefit, a grant or business support, an education grant, a "
@@ -131,7 +137,7 @@ NO_OFFICIAL_RULE = ("Say plainly that they must be checked in the official servi
 
 # "статья 113", "ст. 113-1", "113-бап", "article 113", "madde 113", "المادة 113"
 ARTICLE_MENTION = re.compile(
-    r"(?:стать\w*|ст\.|article|art\.|madde\w*|المادة)\s*(\d+(?:-\d+)?)|(\d+(?:-\d+)?)\s*-?\s*бап",
+    r"(?:стать\w*|ст\.|article|art\.|madde\w*|المادة)\s*(\d+(?:-\d+)?)|(\d+(?:-\d+)?)\s*-?\s*ба[пб]",
     re.IGNORECASE)
 
 
@@ -286,15 +292,23 @@ def mentioned_articles(text: str) -> set[str]:
 class ChatAgent:
     def __init__(self, client: Any, model: str, adilet: Adilet | None = None, *,
                  portal_domain: str = "adilet.zan.kz", max_turns: int = 6, max_tokens: int = 2000,
-                 web_search: bool = True, library: Any = None):
+                 web_search: bool = True, library: Any = None, law_index: Any = None):
         self.client, self.model, self.max_turns, self.max_tokens = client, model, max_turns, max_tokens
         self.portal_domain, self.web_search = portal_domain, web_search
         self.library = library  # konsilier.official.search.OfficialLibrary, or None
+        self.law_index = law_index  # konsilier.zann.search.LawIndex (articles of the collected acts), or None
         # the portal tools are the legal agent's; the chat reuses them rather than re-implementing
         self._law = LawAgent(client, model, adilet or Adilet(), portal_domain=portal_domain)
 
-    def tools(self, use_portal: bool, use_library: bool = False) -> list[dict[str, Any]]:
+    def tools(self, use_portal: bool, use_library: bool = False, use_index: bool = False) -> list[dict[str, Any]]:
         out = []
+        if use_index:
+            out.append({"name": "law_search",
+                        "description": "Search the articles of the laws and codes (our copy of the official texts). "
+                                       "Returns articles with the citation, the official link and an excerpt.",
+                        "input_schema": {"type": "object", "additionalProperties": False, "required": ["query"],
+                                         "properties": {"query": {"type": "string", "description":
+                                                                  "A few key words, or a reference like «ст. 113 ТК»"}}}})
         if use_library:
             out.append({"name": "official_sources",
                         "description": "Search the library of official state pages (services, benefits, grants, "
@@ -330,6 +344,7 @@ class ChatAgent:
             messages = messages[1:]
         cc, lang = getattr(context.get("pack"), "country", None), context.get("lang")
         use_library = self.library is not None and self.library.available(cc)
+        use_index = bool(use_portal and self.law_index is not None and self._index_available())
         search = " or with web_search on the official portal" if self.web_search else ""
         system = SYSTEM.format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
                                portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE,
@@ -337,6 +352,15 @@ class ChatAgent:
         if use_portal and context.get("key_acts"):
             system += "\n\nMain acts on the official portal (code — title):\n" + "\n".join(
                 f"{a['code']} — {a['title']}" for a in context["key_acts"])
+        if use_index:  # articles of the law from our own index: milliseconds, no network
+            last = next((m["text"] for m in reversed(history) if m["role"] == "user"), "")
+            t = time.perf_counter()
+            arts = self._law_search(last, lang, LAW_PRE_HITS, got)
+            timing["law_ms"] = _ms(t)
+            log.info("chat timing: case=%s phase=law_index ms=%d hits=%d", case_id, timing["law_ms"], len(arts))
+            system += "\n\n" + LAW_RULE
+            if arts:
+                system += "\nArticles for the last message:\n" + json.dumps(arts, ensure_ascii=False)
         if use_library:
             portals = self.library.portals(cc, lang or "")
             if portals:
@@ -353,7 +377,7 @@ class ChatAgent:
                        "\n\nThe official library found nothing for the last message as written; if it is about a "
                        "state service, try official_sources with other key words.")
         system += "\n\nCase context (names and numbers are replaced by placeholders):\n" + case_note
-        tools = self.tools(use_portal, use_library)
+        tools = self.tools(use_portal, use_library, use_index)
         # the prompt's size drives the model's time to the first token (about 4 characters a token)
         timing["system_chars"] = len(system)
         timing["prompt_chars"] = len(system) + len(json.dumps(tools, ensure_ascii=False)) + sum(
@@ -427,6 +451,11 @@ class ChatAgent:
                             content = (json.dumps(hits, ensure_ascii=False) if hits else
                                        "nothing found in the official library: say so and name the portal to check")
                             source = "library"
+                        elif b.name == "law_search" and use_index:
+                            arts = self._law_search(str(dict(b.input).get("query", "")), lang, LAW_TOOL_HITS, got)
+                            content = (json.dumps(arts, ensure_ascii=False) if arts else
+                                       "nothing found in the law index: try other key words or get_article")
+                            source = "index"
                         else:
                             content = self._law._run_tool(b.name, dict(b.input), context, got)
                             if b.name in ("get_article", "act_contents"):
@@ -462,6 +491,34 @@ class ChatAgent:
         timing["provider"] = served or getattr(self.client, "name", "")
         result.timing = timing
         yield {"type": "done", "result": result}
+
+    def _index_available(self) -> bool:
+        try:
+            return bool(self.law_index.available())
+        except Exception:
+            log.exception("zann index check failed")
+            return False
+
+    def _law_search(self, query: str, lang: str | None, limit: int,
+                    got: dict[tuple[str, str], Any]) -> list[dict[str, str]]:
+        """Articles of the Zann index for the model; every article given counts as read for the check of cited
+        norms. Never raises (the chat goes on without them)."""
+        if not query.strip():
+            return []
+        try:
+            # words only: the person waits, and a CPU embedding of the question costs ≈1 s (docs/zann-llm-plan.md §4б)
+            hits = self.law_index.search(query[:500], prefer_lang=lang if lang in ("ru", "kk") else None,
+                                         limit=limit, semantic=False)
+        except Exception:
+            log.exception("zann law search failed")
+            return []
+        out = []
+        for h in hits:
+            if h.number:
+                got.setdefault((h.code, h.number), Retrieved(h.code, h.number, h.heading, h.text, h.url, h.act_title))
+            out.append({"citation": h.citation, "act_code": h.code, "article": h.number, "title": h.heading,
+                        "url": h.url, "excerpt": h.snippet})
+        return out
 
     def _library_search(self, query: str, cc: str | None, lang: str | None, limit: int,
                         found: dict[str, Hit]) -> list[dict[str, str]]:

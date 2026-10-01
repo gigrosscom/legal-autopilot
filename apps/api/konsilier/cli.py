@@ -11,6 +11,8 @@
     python -m konsilier.cli official-crawl [CC] [--limit N] [--minutes M]  # refresh the library of official pages
     python -m konsilier.cli official-search "query" [CC] [--lang ru] [--limit N]
     python -m konsilier.cli zann-corpus [--limit N] [--minutes M] [--discover]  # Zann law corpus from adilet
+    python -m konsilier.cli zann-index [--limit N] [--minutes M] [--embed-only]  # split the corpus into articles
+    python -m konsilier.cli zann-search "query" [--lang ru|kk] [--limit N] [--full]  # Zann article search
 """
 
 from __future__ import annotations
@@ -31,6 +33,10 @@ def main(argv: list[str]) -> int:
         return official_search(argv[1:])
     if argv and argv[0] == "zann-corpus":
         return zann_corpus(argv[1:])
+    if argv and argv[0] == "zann-index":
+        return zann_index(argv[1:])
+    if argv and argv[0] == "zann-search" and len(argv) > 1:
+        return zann_search(argv[1:])
     if argv and argv[0] == "zann-bench":
         return zann_bench(argv[1:])
     if argv and argv[0] == "zann-export" and len(argv) > 1:
@@ -233,6 +239,47 @@ def zann_corpus(args: list[str]) -> int:
     with container.session_factory() as s:
         print("corpus:", json.dumps(corpus_metrics(s), ensure_ascii=False))
     return 1 if stats.stopped == "robots" else 0
+
+
+def zann_index(args: list[str]) -> int:
+    """Split new or changed corpus files into articles now (the job does the same, time-boxed); with
+    ZANN_EMBEDDINGS on, also fill missing vectors (--embed-only: only that)."""
+    import json
+    from dataclasses import asdict
+
+    from .container import build_container
+    from .zann.embed import build_embedder
+    from .zann.index import Indexer, index_metrics
+
+    settings = get_settings()
+    container = build_container(settings)
+    indexer = Indexer(container.session_factory, container.storage, embedder=build_embedder(settings.zann_embeddings))
+    limit, minutes = _opt(args, "--limit"), _opt(args, "--minutes")
+    stats = indexer.run(budget_seconds=float(minutes) * 60 if minutes else None, limit=int(limit) if limit else None,
+                        embed_only="--embed-only" in args)
+    print("run:", json.dumps(asdict(stats), ensure_ascii=False))
+    with container.session_factory() as s:
+        print("index:", json.dumps(index_metrics(s), ensure_ascii=False))
+    return 0
+
+
+def zann_search(args: list[str]) -> int:
+    import time
+
+    from .container import build_container
+
+    container = build_container(get_settings())
+    pos = _positional(args, ("--lang", "--limit"))
+    t0 = time.perf_counter()
+    hits = container.law_index.search(pos[0], lang=_opt(args, "--lang"), limit=int(_opt(args, "--limit") or 5),
+                                      min_score=0)
+    ms = (time.perf_counter() - t0) * 1000
+    for h in hits:
+        print(f"{h.score:7.1f} [{h.match}] {h.citation}\n        {h.url}\n        {h.snippet}\n")
+        if "--full" in args:
+            print(h.text, "\n")
+    print(f"{len(hits)} hit(s) in {ms:.0f} ms")
+    return 0
 
 
 def official_search(args: list[str]) -> int:

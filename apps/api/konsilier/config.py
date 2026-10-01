@@ -182,6 +182,17 @@ class Settings(BaseSettings):
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
     zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
+    # Zann search («ищет и цитирует», konsilier/zann/index.py, search.py): the collected acts split into articles
+    # (zann_articles), refreshed incrementally every ZANN_INDEX_EVERY_MINUTES and after each corpus run, for at most
+    # ZANN_INDEX_MINUTES. GET /v1/zann/search (admin token or bot secret); the chat gets the best articles of the
+    # local index (ZANN_SEARCH_CHAT) and a law_search tool. Words search is free (PostgreSQL full text).
+    # ZANN_EMBEDDINGS=off | e5-small: optional semantic search with intfloat/multilingual-e5-small on the CPU
+    # (needs sentence-transformers installed; off by default).
+    zann_index_enabled: bool = True
+    zann_index_every_minutes: int = 30
+    zann_index_minutes: int = 10
+    zann_search_chat: bool = True
+    zann_embeddings: str = "off"
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None
     llm_refusal_fallback: str = "default"

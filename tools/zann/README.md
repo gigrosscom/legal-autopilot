@@ -51,3 +51,52 @@ python tools/zann/collect_laws.py --codes K1500000414 Z100000274_ --langs ru
 ИИ-краулеров — см. docs/zann-llm-plan.md, раздел 4а.
 
 **Тест** (без сети): `cd apps/api && python -m pytest tests/test_zann_collect_laws.py`.
+
+## Поиск по корпусу — Zann 1 «ищет и цитирует»
+
+Собранные акты делятся на статьи (`zann_articles`) — задача на сервере, раз в 30 минут и сразу после каждого
+запуска сбора; заново режутся только новые и изменённые файлы (по sha256). Поиск — полнотекстовый PostgreSQL, без
+LLM и без платных сервисов; по желанию — семантический на CPU (`ZANN_EMBEDDINGS=e5-small`). Подробно —
+[docs/zann-llm-plan.md, раздел 4б](../../docs/zann-llm-plan.md).
+
+```
+cd apps/api
+python -m konsilier.cli zann-index --minutes 10        # разрезать новые / изменённые акты сейчас
+python -m konsilier.cli zann-search "ст. 113 ТК"       # поиск из консоли
+curl -H "X-Admin-Token: …" "https://…/v1/zann/search?q=расчёт при увольнении&lang=ru&limit=5"
+```
+
+## bench_run.py — Zann-Bench на открытых моделях NVIDIA API Catalog
+
+Открытые модели каталога (Qwen, Llama, Gemma, Nemotron; список — `--models`, что доступно — `--list-models`)
+отвечают на правовые вопросы теста дважды: **с нашим поиском** (RAG: 5 статей из индекса Zann в запросе) и **без
+него**. Ключ — только из переменной среды `NVIDIA_API_KEY` (в файлы и в командную строку не пишется). Бесплатный
+уровень — до 40 запросов в минуту: скрипт сам держит не больше `--rpm` (максимум 40).
+
+```
+export NVIDIA_API_KEY=…                                  # ключ владельца, на сервере
+python tools/zann/bench_run.py --list-models
+python tools/zann/bench_run.py --bench team/zann/bench/kz-v1.jsonl \
+    --index-db "$DATABASE_URL"                           # RAG + проверка «есть ли статья в корпусе»
+python tools/zann/bench_run.py --bench … --models meta/llama-3.3-70b-instruct --mode norag --limit 20
+python tools/zann/bench_run.py --bench … --dry-run       # без сети и ключа: фальшивая модель
+```
+
+**Формат вопроса** (`kz-v1.jsonl`, одна строка — один вопрос):
+
+```json
+{"id": "kz-qa-ru-001", "lang": "ru", "question": "…", "reference_answer": "…",
+ "act": "K1500000414", "article": "113", "act_title": "Трудовой кодекс Республики Казахстан",
+ "accept": [["K1500000414", "113-1"]], "verified_by": null, "source": "team", "note": ""}
+```
+
+Обязательные поля: `id, lang (ru|kk), question, reference_answer, act (код adilet), article`. `act_title` —
+название акта на языке вопроса: по нему узнаётся акт в ответе модели, если нет базы индекса. `accept` — другие
+верные пары (акт, статья). `verified_by` — имя юриста, проверившего эталон (пусто — не проверен).
+
+**Что считается.** Цитата верна — ответ называет ожидаемую статью ожидаемого акта (или пару из `accept`).
+Выдуманная норма — статьи нет в корпусе (с `--index-db`) или номер верный, а акт другой. Пересечение — F1 слов
+ответа и эталона. Время — секунды на ответ (p50 / p95). Для режима RAG ещё — нашёл ли поиск нужную статью.
+
+**Результат:** `docs/zann-bench-<дата>.md` (таблица модель × режим и по языкам) и сырые ответы
+`data/zann/bench-<дата>.jsonl` (не в git). Тест без сети: `cd apps/api && python -m pytest tests/test_zann_bench_run.py`.
