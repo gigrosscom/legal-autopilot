@@ -813,6 +813,9 @@ const en: Dict = {
     },
   },
   invite: {
+    bigTitle: "Send it to a friend — a free document for you both",
+    bigLead: "When your friend pays for their first document through your link, you both get one more document free. Send the ready message in one tap.",
+    other: "Another app",
     offer: "Invite a friend: when they pay for a document, you each get one document free",
     title: "Invite people who need it",
     lead: "Send your link to friends and family who have a similar problem. The chat is free for them.",
