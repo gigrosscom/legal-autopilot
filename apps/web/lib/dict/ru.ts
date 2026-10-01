@@ -1178,6 +1178,12 @@ const ru: Dict = {
     option: { document: "Один документ — {price}", case: "Дело под ключ — {price}" },
     caseHint: "«Дело под ключ» — все документы этого дела до результата: претензия, жалоба, иск.",
     ways: {
+      payKaspi: "Оплатить в Kaspi",
+      amountWillCopy: "Сумма скопируется — вставьте её в Kaspi и нажмите «Оплатить»",
+      amountCopied: "Сумма скопирована — вставьте её в Kaspi и нажмите «Оплатить»",
+      paidDone: "Я оплатил(а)",
+      companyBill: "Счёт для компании",
+      backToKaspi: "Оплатить в Kaspi",
       title: "Способ оплаты",
       kaspi_transfer: "Перевод на Kaspi",
       kaspi_link: "Kaspi — по ссылке",

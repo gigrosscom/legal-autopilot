@@ -38,7 +38,7 @@ const REQ_STATUS: Record<string, string> = { new: "Новая", passed: "Пер�
 type Pay = {
   id: number; code: string; amount: number; currency: string | null; status: string; method: string;
   purpose: string | null; plan: string | null; case_id: string | null; case_title: string | null; client_email: string | null; client_phone: string | null; created_at: string;
-  claimed_at: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
+  claimed_at: string | null; kaspi_opened_at?: string | null; decided_at: string | null; decided_by: string | null; note: string | null;
   way?: string | null; payer_phone?: string | null; buyer_name?: string | null; buyer_bin?: string | null;
   lawyer?: { name: string | null; commission_pct: number | null; commission_amount: number | null; payout: number } | null;
 };
@@ -415,7 +415,7 @@ function Payments({ onChange }: { onChange: () => void }) {
           <p className="flex flex-wrap items-center gap-2">
             <b className="text-base">Код <span dir="ltr" className="font-mono">{p.code}</span> · {money(p.amount, p.currency)}</b>
             <span className="chip">{PAY_STATUS[p.status] ?? p.status}</span>
-            <span className="text-xs text-muted">счёт №{p.id} от {when(p.created_at)}{p.claimed_at ? ` · «оплатил(а)» ${when(p.claimed_at)}` : ""}</span>
+            <span className="text-xs text-muted">счёт №{p.id} от {when(p.created_at)}{p.kaspi_opened_at ? ` · открыл(а) Kaspi ${when(p.kaspi_opened_at)}` : ""}{p.claimed_at ? ` · «оплатил(а)» ${when(p.claimed_at)}` : ""}</span>
           </p>
           <p>
             {p.case_title ?? "Дело"}{p.case_id && <span className="text-muted"> · <span dir="ltr" className="font-mono">{p.case_id.slice(0, 8)}</span></span>}
@@ -426,6 +426,7 @@ function Payments({ onChange }: { onChange: () => void }) {
           {p.way && (
             <p>
               Способ: <b>{PAY_WAY[p.way] ?? p.way}</b>
+              {p.way === "kaspi_link" && <> · сверяйте по сумме и времени нажатия «Оплатить в Kaspi»: код платежа клиент не вводит</>}
               {p.way === "kaspi_invoice" && p.payer_phone && (
                 <> · выставьте счёт в Kaspi Pay на <span dir="ltr" className="font-mono">{p.payer_phone}</span></>
               )}

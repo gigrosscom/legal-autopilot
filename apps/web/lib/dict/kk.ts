@@ -1179,6 +1179,12 @@ const kk: Dict = {
     option: { document: "Бір құжат — {price}", case: "Толық іс — {price}" },
     caseHint: "«Толық іс» — нәтижеге дейін осы істің барлық құжаттары: кінәрат‑талап, шағым, талап қою арызы.",
     ways: {
+      payKaspi: "Kaspi-де төлеу",
+      amountWillCopy: "Сома көшіріледі — оны Kaspi-ге қойып, «Төлеу» түймесін басыңыз",
+      amountCopied: "Сома көшірілді — оны Kaspi-ге қойып, «Төлеу» түймесін басыңыз",
+      paidDone: "Мен төледім",
+      companyBill: "Компанияға арналған шот",
+      backToKaspi: "Kaspi-де төлеу",
       title: "Төлем тәсілі",
       kaspi_transfer: "Kaspi-ге аударым",
       kaspi_link: "Kaspi — сілтеме арқылы",

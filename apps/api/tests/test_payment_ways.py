@@ -230,3 +230,19 @@ def test_kaspi_webhook_is_off_until_switched_on_and_checks_the_signature(ctx):
         assert client.post("/v1/payments/kaspi/webhook", content=body, headers=sign(body)).json()["status"] == "paid"
     finally:
         st.payment_kaspi_webhook, st.payment_kaspi_webhook_secret = False, ""
+
+
+def test_desk_sees_when_kaspi_was_opened(ctx):
+    """Owner 01.10 «увидел — нажал — оплатил»: no payment code to type — the desk matches a Kaspi Pay payment by the
+    amount and the time of «Оплатить в Kaspi» (the way recorded with its time), shown with the bill in /ops."""
+    ways(ctx, methods="kaspi_link,bank_invoice")
+    api, cid, pay = open_bill(ctx, phone="+7 701 555 00 31")
+    assert [w["id"] for w in pay["ways"]] == ["kaspi_transfer", "kaspi_link", "bank_invoice"]
+    cl = getattr(ctx, "_desk", None) or operator(ctx, DESK)
+    ctx._desk = cl
+    row = next(r for r in cl.get("/v1/ops/clients/payments?status=").json() if r["code"] == pay["code"])
+    assert row["kaspi_opened_at"] is None
+    api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
+    api.post(f"/v1/cases/{cid}/payment/claim")
+    row = next(r for r in cl.get("/v1/ops/clients/payments").json() if r["code"] == pay["code"])
+    assert row["kaspi_opened_at"] and row["way"] == "kaspi_link"

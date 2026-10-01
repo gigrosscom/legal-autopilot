@@ -1178,6 +1178,12 @@ const en: Dict = {
     option: { document: "One document — {price}", case: "Full case — {price}" },
     caseHint: "Full case: every document of this case until the result — claim, complaint, lawsuit.",
     ways: {
+      payKaspi: "Pay in Kaspi",
+      amountWillCopy: "The amount will be copied — paste it in Kaspi and tap “Pay”",
+      amountCopied: "Amount copied — paste it in Kaspi and tap “Pay”",
+      paidDone: "I've paid",
+      companyBill: "Invoice for a company",
+      backToKaspi: "Pay in Kaspi",
       title: "How to pay",
       kaspi_transfer: "Kaspi transfer",
       kaspi_link: "Kaspi — by link",
