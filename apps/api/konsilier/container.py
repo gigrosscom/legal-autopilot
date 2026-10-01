@@ -151,7 +151,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                             lawyer_commission_pct=settings.lawyer_commission_pct,
                             lawyer_pay_link=getattr(settings, "payment_kaspi_pay_link", "") or "",
                             lawyer_pay_account=settings.lawyer_payment_account or "",
-                            company_name=getattr(settings, "payment_llp_name", "") or ""),
+                            company_name=getattr(settings, "payment_llp_name", "") or "",
+                            kaspi_push=bool(getattr(settings, "payment_kaspi_push_token", ""))),
     )
     engine.defer_pdf = settings.background_jobs == "thread"
     container = Container(settings, db, factory, packs, storage, scheduler, notifier, engine,
@@ -294,6 +295,9 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
             desk="lawyers")
     scheduler.extra_jobs.append(container.reporter.tick)
     scheduler.extra_jobs.append(container.engine.prepare_paid_documents)
+    from .api.kaspi_push import reminders
+
+    scheduler.extra_jobs.append(reminders(container))  # Kaspi «Оплатить» with no push 15 minutes later: remind once
     from .api.delivery import followups
 
     scheduler.extra_jobs.append(followups(container))  # «Ответили?» a day after a document went out

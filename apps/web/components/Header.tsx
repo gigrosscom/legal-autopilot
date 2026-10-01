@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Brand } from "@/components/Brand";
 import { InstallApp } from "@/components/InstallApp";
 import { Icon } from "@/components/ui";
+import { api, SIGNED_IN_EVENT, type Me } from "@/lib/api";
 import { LAWYERS_PUBLIC } from "@/lib/features";
 import { LANGS, useLang, useT, type Lang } from "@/lib/i18n";
 
@@ -15,6 +17,27 @@ const NAV = [
   { href: "/cases", key: "nav.cases" },
   { href: "/app", key: "nav.app" },
 ];
+
+/** The signed-in person's first name for the header (null while not signed in or unknown). */
+function useAccountName(): string | null {
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    const load = () => {
+      let token: string | null = null;
+      try { token = localStorage.getItem("konsilier.token"); } catch {}
+      if (!token) { setName(null); return; }
+      api<Me>("/v1/me").then((m) => {
+        if (!m.identities.length) { setName(null); return; }
+        const first = (m.display_name || "").trim().split(/\s+/)[0] || "";
+        setName(first ? first[0].toLocaleUpperCase() + first.slice(1) : "");
+      }).catch(() => setName(null));
+    };
+    load();
+    window.addEventListener(SIGNED_IN_EVENT, load);
+    return () => window.removeEventListener(SIGNED_IN_EVENT, load);
+  }, []);
+  return name;
+}
 
 export function LangSelect() {
   const t = useT();
@@ -35,6 +58,7 @@ export default function Header() {
   const t = useT();
   const path = usePathname();
   // apple globalnav: 12 px links, rgba(0,0,0,.8) (here #1d1d1f at .8: 11:1 on the bar), full black when current/hover
+  const name = useAccountName();
   const active = (href: string) => (path === href || path.startsWith(href + "/") ? "text-ink" : "text-ink/80");
   return (
     <header className="sticky top-0 z-30 bg-bar/92 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-bar/80 supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8]">
@@ -53,10 +77,17 @@ export default function Header() {
         <div className="flex items-center gap-1.5 min-[360px]:gap-2">
           {/* very narrow phones (Galaxy Fold): the language moves into the menu */}
           <div className="max-[359px]:hidden"><LangSelect /></div>
+          {name !== null ? (
+            <Link href="/account" aria-label={name || t("app.tabs.profile")} title={name || t("app.tabs.profile")}
+              className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] hover:bg-ink/[0.05] hover:text-ink ${active("/account")}`}>
+              <span className="max-w-[10rem] truncate">{name || t("app.tabs.profile")}</span>
+            </Link>
+          ) : (
           <Link href="/account?signin=1" aria-label={t("nav.account")} title={t("nav.account")}
             className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] hover:bg-ink/[0.05] hover:text-ink ${active("/account")}`}>
             <Icon name="user" size={17} /><span className="hidden md:inline">{t("nav.account")}</span>
           </Link>
+          )}
           <Link href="/start" className="btn-primary hidden min-h-8 px-3.5 py-1 text-[12px] tracking-[-0.01em] sm:inline-flex">{t("nav.start")}</Link>
           <details className="relative lg:hidden">
             <summary className="flex min-h-11 min-w-11 justify-center cursor-pointer list-none items-center rounded-full px-3 text-ink/80 hover:bg-ink/[0.05] [&::-webkit-details-marker]:hidden">

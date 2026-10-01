@@ -51,6 +51,11 @@ const PAY_STATUS: Record<string, string> = {
   awaiting_confirmation: "Ждёт подтверждения", pending: "Не оплачен", not_found: "Не найдена", paid: "Оплачен",
   cancelled: "Отменён",
 };
+/** A Kaspi Pay push from the payments phone that no bill was matched to (/v1/ops/clients/payments/kaspi). */
+type KaspiPushRow = {
+  id: number; received_at: string | null; title: string | null; text: string; amount: number | null; payer: string | null;
+  status: string; candidates: { id: number; code: string; amount: number; claimed_at: string | null; client: string | null }[];
+};
 const money = (n: number, cur: string | null) => `${n.toLocaleString("ru-RU")} ${cur === "KZT" ? "₸" : cur ?? ""}`;
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -382,8 +387,19 @@ function Payments({ onChange }: { onChange: () => void }) {
   const [rows, setRows] = useState<Pay[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
-  const load = useCallback(() => api<Pay[]>(`/v1/ops/clients/payments?status=${status}`)
-    .then(setRows).catch((e) => setError(errorText(e))), [status]);
+  const [pushes, setPushes] = useState<KaspiPushRow[] | null>(null);
+  const load = useCallback(() => (status === "kaspi"
+    ? api<{ pushes: KaspiPushRow[]; invoices: Pay[] }>("/v1/ops/clients/payments/kaspi")
+      .then((d) => { setPushes(d.pushes); setRows(d.invoices); })
+    : api<Pay[]>(`/v1/ops/clients/payments?status=${status}`).then((r) => { setPushes(null); setRows(r); })
+  ).catch((e) => setError(errorText(e))), [status]);
+  async function decidePush(id: number, decision: "match" | "dismiss", invoiceId?: number) {
+    setError(null);
+    try {
+      await api(`/v1/ops/clients/payments/kaspi/${id}`, { method: "POST", body: JSON.stringify({ decision, invoice_id: invoiceId ?? null }) });
+      load(); onChange();
+    } catch (e) { setError(errorText(e)); }
+  }
   useEffect(() => { load(); }, [load]);
   async function decide(id: number, decision: "paid" | "not_found", note?: string) {
     setError(null);
@@ -407,7 +423,36 @@ function Payments({ onChange }: { onChange: () => void }) {
           <button key={k} onClick={() => setStatus(k)}
             className={`min-h-10 rounded-full border px-3 text-sm ${status === k ? "border-brand bg-brand-50 font-semibold text-brand" : "border-line bg-surface"}`}>{label}</button>
         ))}
+        <button onClick={() => setStatus("kaspi")}
+          className={`min-h-10 rounded-full border px-3 text-sm ${status === "kaspi" ? "border-brand bg-brand-50 font-semibold text-brand" : "border-line bg-surface"}`}>Kaspi: не найдено</button>
       </div>
+      {status === "kaspi" && (
+        <p className="text-sm text-muted">
+          Оплаты из Kaspi Pay, которые телефон переслал, а сервер не смог отнести к одному счёту (нет счёта на эту сумму или их
+          несколько), и счета, по которым клиент нажал «Оплатить», а оплата за 15 минут не пришла.
+        </p>
+      )}
+      {pushes?.map((k) => (
+        <article key={`push-${k.id}`} className="card space-y-2 text-sm">
+          <p className="flex flex-wrap items-center gap-2">
+            <b className="text-base">Kaspi: {k.amount != null ? money(k.amount, "KZT") : "сумма не прочитана"}</b>
+            <span className="chip">{k.status === "ambiguous" ? "Несколько счетов" : "Счёт не найден"}</span>
+            <span className="text-xs text-muted">пуш №{k.id}{k.received_at ? ` · ${when(k.received_at)}` : ""}{k.payer ? ` · от ${k.payer}` : ""}</span>
+          </p>
+          <p className="whitespace-pre-wrap break-words text-muted">{k.title ? `${k.title}: ` : ""}{k.text}</p>
+          <div className="flex flex-wrap gap-2">
+            {k.candidates.map((c) => (
+              <Button key={c.id} icon="check" onClick={() => decidePush(k.id, "match", c.id)}>
+                Это счёт {c.code}{c.client ? ` · ${c.client}` : ""}
+              </Button>
+            ))}
+            {rows?.filter((p) => k.amount != null && p.amount === k.amount && !k.candidates.some((c) => c.id === p.id)).map((p) => (
+              <Button key={p.id} variant="secondary" onClick={() => decidePush(k.id, "match", p.id)}>Это счёт {p.code}</Button>
+            ))}
+            <Button variant="secondary" onClick={() => decidePush(k.id, "dismiss")}>Не наша оплата</Button>
+          </div>
+        </article>
+      ))}
       {error && <Alert tone="danger" role="alert">{error}</Alert>}
       {rows && rows.length === 0 && <p className="text-muted">Счетов нет.</p>}
       {rows?.map((p) => (

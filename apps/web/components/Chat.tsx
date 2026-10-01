@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
@@ -114,6 +115,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<(Emergency & { text: string }) | null>(null);
   const [draft, setDraft] = useState(initialDraft);
@@ -129,8 +131,16 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
   useEffect(() => {
     if (initialCase) markTermsAccepted();  // an existing conversation: the terms were accepted with it
-    if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => setError(errorText(e)));
-  }, [initialCase]);
+    if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => {
+      // a remembered conversation of another account or session (e.g. after signing in): start a new one quietly
+      if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
+        try { if (localStorage.getItem(LAST_CASE_KEY) === initialCase) localStorage.removeItem(LAST_CASE_KEY); } catch {}
+        router.replace("/start");
+        return;
+      }
+      setError(errorText(e));
+    });
+  }, [initialCase, router]);
 
   useEffect(() => setTts(canSpeak()), []);
   useEffect(() => {

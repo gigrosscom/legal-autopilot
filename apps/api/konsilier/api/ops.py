@@ -359,9 +359,10 @@ def receipt_text(session: Session, container: Container, inv: Invoice, where: st
 
 
 def decide_invoice(session: Session, container: Container, invoice_id: int, decided_by: str, paid: bool,
-                   note: str | None) -> dict[str, Any]:
+                   note: str | None, later: list | None = None) -> dict[str, Any]:
     """Payment found (the document is made right away) or not found; the client is told by e-mail. Used by the
-    clients desk and by the owner's command centre (konsilier/api/command.py)."""
+    clients desk, by the owner's command centre (konsilier/api/command.py) and by the Kaspi Pay push
+    (konsilier/kaspi_parse.py), which passes ``later``: the client's e-mail is then sent after the commit, not now."""
     inv = session.get(Invoice, invoice_id)
     if inv is None:
         raise HTTPException(404, "invoice not found")
@@ -390,9 +391,16 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
         else:
             text = (f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
                     f"«Оплатить» ещё раз: {where}")
-        try:
-            container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}", text)
-        except Exception:  # noqa: BLE001
-            log.warning("payment e-mail to a client failed", exc_info=True)
+        to, subject, sender = owner.email, f"Konsiliér AI: оплата {inv.code}", container.email_sender
+
+        def send(_s: Session | None = None) -> None:
+            try:
+                sender.send(to, subject, text)
+            except Exception:  # noqa: BLE001
+                log.warning("payment e-mail to a client failed", exc_info=True)
+        if later is not None:
+            later.append(send)
+        else:
+            send()
     session.flush()
     return invoice_view(session, container, inv)

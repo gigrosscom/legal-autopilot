@@ -130,6 +130,9 @@ class EngineConfig:
     lawyer_pay_link: str = ""  # the ТОО's Kaspi Pay link (https://…)
     lawyer_pay_account: str = ""  # the ТОО's requisites as text (tax number, IBAN, bank)
     company_name: str = ""  # ТОО «…», shown as the recipient
+    # Kaspi Pay pushes are on (PAYMENT_KASPI_PUSH_TOKEN, konsilier/kaspi_parse.py): a Kaspi link / QR bill whose
+    # «Оплатить» no push matched within UNPAID_AFTER stops the person's new bills until it is paid (owner 01.10)
+    kaspi_push: bool = False
 
 
 class CaseEngine:
@@ -1000,6 +1003,33 @@ class CaseEngine:
 
     # ================================================================ payment
     OPEN = ("pending", "awaiting_confirmation", "not_found")
+    KASPI_WAYS = ("kaspi_link", "kaspi_qr")  # paid into the company's Kaspi Pay: its push confirms them
+    UNPAID_AFTER = timedelta(minutes=15)  # «Оплатить» pressed, no Kaspi Pay push since: remind once, stop new bills
+
+    def unpaid_kaspi_bill(self, session: Session, user_id: uuid.UUID, now: datetime | None = None) -> Invoice | None:
+        """The person's Kaspi link / QR bill they pressed «Оплатить» for at least UNPAID_AFTER ago that no Kaspi Pay
+        push (nor the desk) confirmed — while it is open the person gets no new bill (owner 01.10: «при неоплате —
+        напоминание и стоп на новые документы»). Only while the pushes are on: without them the desk confirms by
+        hand and a slow desk must not stop anyone."""
+        if not self.config.kaspi_push:
+            return None
+        now = now or utcnow()
+        return session.scalar(select(Invoice).where(
+            Invoice.user_id == user_id, Invoice.status.in_(("awaiting_confirmation", "not_found")),
+            Invoice.pay_way.in_(self.KASPI_WAYS), Invoice.claimed_at.is_not(None),
+            Invoice.claimed_at <= now - self.UNPAID_AFTER).order_by(Invoice.id).limit(1))
+
+    def _stop_if_unpaid(self, session: Session, user_id: uuid.UUID, but: Invoice | None = None) -> None:
+        debt = self.unpaid_kaspi_bill(session, user_id)
+        if debt is None or (but is not None and debt.id == but.id):
+            return
+        from .bill import BillWords
+
+        amount = f"{Decimal(debt.amount):,.0f}".replace(",", " ")
+        sign = BillWords.of(self.billing_pack(session, debt), debt.currency).sign
+        raise EngineError("unpaid_invoice", f"Сначала оплатите предыдущий счёт {debt.code} на {amount} {sign} по "
+                                            f"ссылке Kaspi Pay — мы пока не видим этот платёж. Если вы уже "
+                                            f"оплатили, напишите в поддержку.")
 
     def price(self, case: Case) -> tuple[Decimal, str | None] | None:
         """What one document of the case costs (scenario price); None when the case's documents are free."""
@@ -1090,6 +1120,8 @@ class CaseEngine:
                 return open_inv
             if open_inv.status == "awaiting_confirmation":
                 raise EngineError("invoice_awaiting_confirmation")
+        self._stop_if_unpaid(session, user_id)
+        if open_inv is not None:
             open_inv.status = "cancelled"
         if not self.payments.available():
             raise EngineError("payment_unavailable")
@@ -1161,6 +1193,7 @@ class CaseEngine:
         if inv is None or inv.status not in self.OPEN:
             raise EngineError("no_open_invoice")
         if inv.status in ("pending", "not_found"):
+            self._stop_if_unpaid(session, inv.user_id, but=inv)
             inv.status, inv.claimed_at = "awaiting_confirmation", utcnow()
             if inv.case_id is not None:
                 self.audit(session, session.get(Case, inv.case_id), actor, "payment_claimed", invoice=inv.code)
