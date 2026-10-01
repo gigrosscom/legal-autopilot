@@ -16,19 +16,19 @@ export default function Footer() {
       <div className="mx-auto grid max-w-[1208px] gap-6 px-5 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Brand size={26} />
-          <p className="text-muted">{t("footer.said")}</p>
+          <p className="text-muted text-balance">{t("footer.said")}</p>
           <InstallApp className="pt-2" />
         </div>
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
-          <Link href="/how-it-works" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.howItWorks")}</Link>
-          <Link href="/coverage" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.coverage")}</Link>
-          <Link href="/app" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.app")}</Link>
-          <Link href="/support" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.support")}</Link>
+          <Link href="/how-it-works" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("nav.howItWorks")}</Link>
+          <Link href="/coverage" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("nav.coverage")}</Link>
+          <Link href="/app" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("nav.app")}</Link>
+          <Link href="/support" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("footer.support")}</Link>
         </nav>
         {LAWYERS_PUBLIC && <nav aria-label={t("footer.lawyers")} className="flex flex-col gap-2">
-          <Link href="/lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.lawyers")}</Link>
-          <Link href="/for-lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("nav.forLawyers")}</Link>
-          <Link href="/lawyer" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-10">{t("footer.lawyerCabinet")}</Link>
+          <Link href="/lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("nav.lawyers")}</Link>
+          <Link href="/for-lawyers" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("nav.forLawyers")}</Link>
+          <Link href="/lawyer" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("footer.lawyerCabinet")}</Link>
         </nav>}
         <div className="space-y-3">
           <p className="font-semibold">{t("footer.contacts")}</p>
@@ -36,7 +36,7 @@ export default function Footer() {
             <p className="flex items-start gap-2 text-muted"><Icon name="building" size={18} className="mt-0.5" />{CONTACTS.address}</p>
           )}
           {CONTACTS.email && (
-            <a href={`mailto:${CONTACTS.email}`} className="flex items-center gap-2 text-muted hover:text-ink pointer-coarse:min-h-10">
+            <a href={`mailto:${CONTACTS.email}`} className="flex items-center gap-2 text-muted hover:text-ink pointer-coarse:min-h-11">
               <Icon name="mail" size={18} />{CONTACTS.email}
             </a>
           )}

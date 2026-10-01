@@ -71,7 +71,7 @@ export default function Home() {
               <li key={e}>
                 <button type="button" onClick={() => { setText(e); document.getElementById("home-input")?.focus(); }}
                   className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-sand px-4 py-2.5 text-start text-[16px] font-medium leading-snug text-ink hover:bg-sand-deep">
-                  <Icon name="chat" size={20} className="shrink-0 text-muted" /><span>{e}</span>
+                  <Icon name="chat" size={20} className="shrink-0 text-muted" /><span className="text-balance">{e}</span>
                 </button>
               </li>
             ))}

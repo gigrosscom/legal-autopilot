@@ -63,7 +63,7 @@ function Reply({ text, streaming = false }: { text: string; streaming?: boolean 
       <Markdown text={short} />
       {rest && (open ? <Markdown text={rest} /> : (
         <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
-          className="inline-flex items-center gap-1 text-[15px] font-semibold text-[var(--chat-accent)] hover:underline">
+          className="-my-[11px] inline-flex min-h-11 items-center gap-1 text-[15px] font-semibold text-[var(--chat-accent)] hover:underline">
           {t("chat.more")}<Icon name="chevronDown" size={16} />
         </button>
       ))}

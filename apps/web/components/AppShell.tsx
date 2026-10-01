@@ -54,7 +54,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   return (
     <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-dvh flex-col bg-surface lg:start-64">
       <header className="border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex h-14 max-w-3xl items-center gap-1 px-2 lg:h-16 lg:px-6">
+        <div className="mx-auto flex min-h-14 max-w-3xl items-center gap-1 px-2 py-1 lg:h-16 lg:px-6">
           <Link href={back} aria-label={t("app.back")}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
             <Icon name="arrowRight" size={22} className="rotate-180 rtl:rotate-0" />
@@ -62,7 +62,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
           {avatar && <img src="/icons/icon-192.png" alt="" width={36} height={36} className="me-2 h-9 w-9 shrink-0 rounded-full ring-1 ring-line" />}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[17px] font-bold leading-tight text-ink">{title}</h1>
-            {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
+            {subtitle && <p className="line-clamp-2 text-xs leading-tight text-muted text-balance">{subtitle}</p>}
           </div>
           <NotificationBell className="lg:hidden" />
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" title={t("app.more")}
@@ -91,7 +91,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
       </main>
 
       {bar && (
-        <div className={`${wallpaper ? "bg-[var(--chat-bg)]" : "bg-surface"} ${keyboard ? "pb-2" : "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
+        <div className={`${wallpaper ? "bg-[var(--chat-bg)]" : "bg-surface"} ${keyboard ? "pb-2" : tabs ? "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]" : "pb-[max(env(safe-area-inset-bottom),0.5rem)] lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
           <div className="mx-auto max-w-3xl px-3 pt-2 lg:px-8">{bar}</div>
         </div>
       )}

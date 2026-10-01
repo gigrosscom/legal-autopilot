@@ -24,7 +24,7 @@ export function LangSelect() {
       <span className="sr-only">{t("nav.language")}</span>
       <Icon name="globe" size={16} className="pointer-events-none absolute start-2.5 text-ink/80" />
       <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}
-        className="min-h-10 appearance-none rounded-full border-0 bg-transparent ps-8 pe-3 text-[12px] font-normal text-ink/80 hover:bg-ink/[0.05] hover:text-ink">
+        className="min-h-11 appearance-none rounded-full border-0 bg-transparent ps-8 pe-3 text-[12px] font-normal text-ink/80 hover:bg-ink/[0.05] hover:text-ink">
         {LANGS.map((l) => <option key={l.code} value={l.code} lang={l.code}>{l.short}</option>)}
       </select>
     </label>
@@ -54,12 +54,12 @@ export default function Header() {
           {/* very narrow phones (Galaxy Fold): the language moves into the menu */}
           <div className="max-[359px]:hidden"><LangSelect /></div>
           <Link href="/account?signin=1" aria-label={t("nav.account")} title={t("nav.account")}
-            className={`flex min-h-10 items-center gap-1.5 rounded-full px-2.5 text-[12px] hover:bg-ink/[0.05] hover:text-ink ${active("/account")}`}>
+            className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] hover:bg-ink/[0.05] hover:text-ink ${active("/account")}`}>
             <Icon name="user" size={17} /><span className="hidden md:inline">{t("nav.account")}</span>
           </Link>
           <Link href="/start" className="btn-primary hidden min-h-8 px-3.5 py-1 text-[12px] tracking-[-0.01em] sm:inline-flex">{t("nav.start")}</Link>
           <details className="relative lg:hidden">
-            <summary className="flex min-h-10 cursor-pointer list-none items-center rounded-full px-3 text-ink/80 hover:bg-ink/[0.05] [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-11 min-w-11 justify-center cursor-pointer list-none items-center rounded-full px-3 text-ink/80 hover:bg-ink/[0.05] [&::-webkit-details-marker]:hidden">
               <span className="sr-only">{t("nav.menu")}</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden><path d="M4 7h16M4 12h16M4 17h16" /></svg>
             </summary>
