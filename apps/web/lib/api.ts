@@ -202,6 +202,10 @@ export type Payment = {
   buyer?: { name: string; bin: string | null; address: string | null } | null;
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
+  /** The Kaspi Pay link bill was paid on trust: the document is given, the desk still matches the payment. */
+  trusted?: boolean;
+  /** A payment given on trust was not found: no new document until it is paid. */
+  owed?: boolean;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
   subscription: Subscription | null;

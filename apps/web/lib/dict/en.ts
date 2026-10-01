@@ -1180,6 +1180,12 @@ const en: Dict = {
     choose: "How would you like to pay for the documents in this case?",
     option: { document: "One document — {price}", case: "Full case — {price}" },
     caseHint: "Full case: every document of this case until the result — claim, complaint, lawsuit.",
+    service: "Service",
+    serviceDocument: "Document",
+    serviceCase: "Full case",
+    cost: "Price",
+    afterPay: "Your document will appear here right after payment",
+    owed: "We couldn't find your previous Kaspi payment. Please pay — documents will be available again after that.",
     ways: {
       title: "How to pay",
       kaspi_transfer: "Kaspi transfer",

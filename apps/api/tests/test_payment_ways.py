@@ -106,9 +106,11 @@ def test_kaspi_link_and_qr_paid_then_document(ctx):
         chosen = api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": way})["case"]["payment"]
         assert chosen["way"] == way and chosen["status"] == "pending"
         claimed = api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]
-        assert claimed["status"] == "awaiting_confirmation"
+        # the Kaspi Pay link is given on trust (owner 01.10, see below); the QR waits for the desk
+        assert claimed["status"] == ("paid" if way == "kaspi_link" else "awaiting_confirmation")
         assert pay["code"] in outbox.sent[-1][2] and "Kaspi" in outbox.sent[-1][2]
-        assert api.post(f"/v1/cases/{cid}/actions/next")["action_id"] is None  # not before the desk
+        if way == "kaspi_qr":
+            assert api.post(f"/v1/cases/{cid}/actions/next")["action_id"] is None  # not before the desk
         assert desk_confirms(ctx, pay["code"])["way"] == way
         document_downloadable(api, cid)
 
@@ -230,3 +232,67 @@ def test_kaspi_webhook_is_off_until_switched_on_and_checks_the_signature(ctx):
         assert client.post("/v1/payments/kaspi/webhook", content=body, headers=sign(body)).json()["status"] == "paid"
     finally:
         st.payment_kaspi_webhook, st.payment_kaspi_webhook_secret = False, ""
+
+
+def test_desk_sees_when_kaspi_was_opened(ctx):
+    """Owner 01.10 «увидел — нажал — оплатил»: no payment code to type — the desk matches a Kaspi Pay payment by the
+    amount and the time of «Оплатить в Kaspi» (the way recorded with its time), shown with the bill in /ops."""
+    ways(ctx, methods="kaspi_link,bank_invoice")
+    api, cid, pay = open_bill(ctx, phone="+7 701 555 00 31")
+    assert [w["id"] for w in pay["ways"]] == ["kaspi_transfer", "kaspi_link", "bank_invoice"]
+    cl = getattr(ctx, "_desk", None) or operator(ctx, DESK)
+    ctx._desk = cl
+    row = next(r for r in cl.get("/v1/ops/clients/payments?status=").json() if r["code"] == pay["code"])
+    assert row["kaspi_opened_at"] is None
+    api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
+    api.post(f"/v1/cases/{cid}/payment/claim")
+    row = next(r for r in cl.get("/v1/ops/clients/payments").json() if r["code"] == pay["code"])
+    assert row["kaspi_opened_at"] and row["way"] == "kaspi_link"
+
+
+def test_kaspi_link_gives_the_document_at_once_and_the_desk_matches_after(ctx):
+    """Owner 01.10: «Оплатить» with the Kaspi Pay link = the bill goes to the desk and the document is given at once;
+    the desk confirms (nothing given twice) — or does not find it: the person owes it, no new document until paid."""
+    outbox = ways(ctx, methods="kaspi_link,bank_invoice")
+    api, cid, pay = open_bill(ctx, phone="+7 701 555 00 41")
+    api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
+    claimed = api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]
+    assert claimed["status"] == "paid" and claimed["trusted"] is True  # the next document can be made now
+    assert pay["code"] in outbox.sent[-1][2]  # the desk is told, as before
+    document_downloadable(api, cid)
+    cl = getattr(ctx, "_desk", None) or operator(ctx, DESK)
+    ctx._desk = cl
+    row = next(r for r in cl.get("/v1/ops/clients/payments").json() if r["code"] == pay["code"])
+    assert row["trusted_at"] and row["status"] == "awaiting_confirmation"
+    assert desk_confirms(ctx, pay["code"])["status"] == "paid"
+    case = api.get(f"/v1/cases/{cid}").json()
+    assert case["payment"]["credits"] == 0 and case["payment"]["owed"] is False  # no second credit
+
+
+def test_kaspi_link_not_found_means_a_debt(ctx):
+    ways(ctx, methods="kaspi_link,bank_invoice")
+    api, cid, pay = open_bill(ctx, phone="+7 701 555 00 42")
+    api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
+    api.post(f"/v1/cases/{cid}/payment/claim")
+    document_downloadable(api, cid)
+    cl = getattr(ctx, "_desk", None) or operator(ctx, DESK)
+    ctx._desk = cl
+    row = next(r for r in cl.get("/v1/ops/clients/payments").json() if r["code"] == pay["code"])
+    assert cl.post(f"/v1/ops/clients/payments/{row['id']}", json={"decision": "not_found"})["status"] == "not_found"
+    case = api.get(f"/v1/cases/{cid}").json()
+    assert case["payment"]["owed"] is True and case["payment"]["status"] == "not_found"
+    assert "не нашли вашу оплату" in str(api.get("/v1/notifications").json())  # the reminder, no payment code
+    # paying again is a plain claim now: nothing on trust while the person owes
+    again = api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]
+    assert again["status"] == "awaiting_confirmation"
+    assert desk_confirms(ctx, pay["code"])["status"] == "paid"
+    assert api.get(f"/v1/cases/{cid}").json()["payment"]["owed"] is False
+
+
+def test_trust_can_be_switched_off(ctx):
+    ways(ctx, methods="kaspi_link")
+    ctx.container.engine.config.trust_kaspi_link = False
+    api, cid, pay = open_bill(ctx, phone="+7 701 555 00 43")
+    api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
+    claimed = api.post(f"/v1/cases/{cid}/payment/claim")["case"]["payment"]
+    assert claimed["status"] == "awaiting_confirmation" and claimed["trusted"] is False
