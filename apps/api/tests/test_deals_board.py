@@ -81,3 +81,20 @@ def test_clients_own_email_is_never_the_sellers_and_the_owner_can_fix_a_document
     assert r.status_code == 200, r.text
     assert r.json()["facts"]["seller_name"] == "Anthropic, PBC" and "seller_email" not in r.json()["facts"]
     assert ctx.client.post(f"/v1/admin/cases/{cid}/facts", json={"values": {}}).status_code in (401, 403)
+
+
+def test_telegram_invitation_counts_and_paid_by_invitation_metric(ctx):
+    """Marketing 01.10: /start <code> in the bot records the invitation; metrics count invited people who paid."""
+    from konsilier.core.models import User
+
+    inviter = web_user(ctx)
+    code = inviter.get("/v1/referral").json()["code"]
+    r = ctx.client.post("/v1/users/telegram", headers={"X-Bot-Secret": "bot"},
+                        json={"telegram_id": "777001", "language": "ru", "ref": code, "src": "telegram"})
+    assert r.status_code == 200, r.text
+    with ctx.container.session_factory() as s:
+        from sqlalchemy import select
+        u = s.scalar(select(User).where(User.external_id == "777001"))
+        assert u.referred_by is not None and u.source == "telegram"
+    m = ctx.client.get("/v1/admin/metrics", headers=ADM).json()
+    assert m["referral"]["referred_users"] >= 1 and m["referral"]["referred_paid"] == 0

@@ -81,6 +81,14 @@ def build_dispatcher(api: KonsilierApi) -> Dispatcher:
 
     @dp.message(CommandStart())
     async def on_start(message: Message) -> None:
+        # t.me/<bot>?start=<code> arrives as «/start <code>»: the invitation counts as on the site (marketing 01.10)
+        parts = (message.text or "").split(maxsplit=1)
+        code = parts[1].strip().removeprefix("ref_").removeprefix("ref-") if len(parts) > 1 else ""
+        if code:
+            try:
+                await api.start(str(message.chat.id), lang_of(message), code[:12])
+            except Exception:  # noqa: BLE001 — an invitation that cannot be recorded must not stop the greeting
+                log.warning("invitation code not recorded", exc_info=True)
         await message.answer(t("start", lang_of(message)))
 
     @dp.message(Command("help"))

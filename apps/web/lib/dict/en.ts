@@ -819,7 +819,7 @@ const en: Dict = {
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    shareText: "Konsiliér AI is a free AI assistant for legal questions. Describe your situation and it will tell you what to do:",
+    shareText: "Konsiliér AI is a free AI assistant for legal questions. Describe your situation and it will tell you what to do. If you pay for a document through my link, we both get one more document free:",
   },
   submit: {
     courtName: "Judicial Cabinet",

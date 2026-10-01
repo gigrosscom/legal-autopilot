@@ -24,13 +24,18 @@ class KonsilierApi:
     async def close(self) -> None:
         await self.http.aclose()
 
-    async def _token(self, tg_id: str, language: str) -> str:
-        if tg_id not in self._tokens:
+    async def _token(self, tg_id: str, language: str, ref: str | None = None) -> str:
+        if tg_id not in self._tokens or ref:
             r = await self.http.post("/v1/users/telegram", headers={"X-Bot-Secret": self.bot_secret},
-                                     json={"telegram_id": tg_id, "language": language})
+                                     json={"telegram_id": tg_id, "language": language, "ref": ref,
+                                           "src": "telegram" if ref else None})
             self._check(r)
             self._tokens[tg_id] = r.json()["token"]
         return self._tokens[tg_id]
+
+    async def start(self, tg_id: str, language: str, ref: str | None) -> None:
+        """/start with an invitation code (t.me/<bot>?start=<code>): the person is counted as invited."""
+        await self._token(tg_id, language, ref)
 
     @staticmethod
     def _check(r: httpx.Response) -> None:

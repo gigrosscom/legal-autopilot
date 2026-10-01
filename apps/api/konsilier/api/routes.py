@@ -64,6 +64,8 @@ class TelegramUser(BaseModel):
     language: str = "ru"
     country: str | None = None
     display_name: str | None = None
+    ref: str | None = Field(default=None, max_length=40)  # invitation code from /start <code>
+    src: str | None = Field(default=None, max_length=40)
 
 
 @router.post("/users/telegram", dependencies=[Depends(require_bot)])
@@ -72,8 +74,11 @@ def upsert_telegram_user(body: TelegramUser, session: Session = Depends(get_sess
     if user is None:
         user = User(channel="telegram", external_id=body.telegram_id, language=body.language,
                     country=(body.country or "").upper() or None, display_name=body.display_name)
+        attribute(session, user, body.ref, body.src)
         session.add(user)
         session.flush()
+    elif body.ref and user.referred_by is None and not user.cases:
+        attribute(session, user, body.ref, body.src)  # opened the bot before, came back by an invitation
     return {"id": str(user.id), "token": user.api_token}
 
 

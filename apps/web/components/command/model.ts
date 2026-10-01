@@ -12,7 +12,7 @@ export type Metrics = {
   today?: { users: number; cases: number; documents: number };
   payments?: { paid: number; paid_clients: number; paid_plans: number; paid_today: number;
     revenue: Record<string, string>; revenue_today: Record<string, string>; awaiting_confirmation: number };
-  referral?: { users: number; referred_users: number; inviters: number; users_with_link: number;
+  referral?: { users: number; referred_users: number; inviters: number; users_with_link: number; referred_paid?: number;
     k_factor: number | null; sources: Record<string, number> };
   chat?: { day: string; gemini: number; free: number; anthropic: number; unavailable: number; anthropic_cost_usd: number };
   // time to the chat's first words over the last 24 h, ms (konsilier/api/chat.py chat_latency)
