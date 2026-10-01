@@ -69,8 +69,12 @@ def referral_metrics(session: Session) -> dict[str, Any]:
     # group by the plain column (PostgreSQL rejects a GROUP BY on a separately bound coalesce expression)
     sources = {src or "direct": n for src, n in session.execute(
         select(User.source, func.count()).group_by(User.source)).all()}
+    from ..core.models import Invoice
+    referred_paid = session.scalar(select(func.count(func.distinct(Invoice.user_id))).where(
+        Invoice.status == "paid", Invoice.user_id.in_(select(User.id).where(User.referred_by.is_not(None))))) or 0
     return {
         "users": users, "referred_users": referred, "inviters": inviters, "users_with_link": sharing,
+        "referred_paid": referred_paid,  # invited people who paid (the reward to both comes with it)
         # invited people per existing user: the viral coefficient the team tracks
         "k_factor": round(referred / (users - referred), 3) if users > referred else None,
         "sources": sources,

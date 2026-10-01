@@ -168,9 +168,13 @@ except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
       # timed for three cases as a marked test user (deploy/smoke.py --path3): «path3 refund=…s taps=…» lines.
       P3=/run/konsilier-path3.stamp
       SMOKE=$(grep -E '^SMOKE_TOKEN=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"')
-      if [ -n "$SMOKE" ] && [ -z "$(find "$P3" -mmin -180 2>/dev/null)" ]; then
+      if [ -z "$(find "$P3" -mmin -180 2>/dev/null)" ]; then
         touch "$P3"
-        ( SMOKE_TOKEN="$SMOKE" timeout 900 python3 deploy/smoke.py --path3 2>&1 | grep -E '^path3' | while read -r l; do log "$l"; done ) &
+        if [ -z "$SMOKE" ]; then
+          log "path3 skipped: SMOKE_TOKEN is not set in the server .env (the smoke endpoints stay closed)"
+        else
+          ( SMOKE_TOKEN="$SMOKE" timeout 900 python3 deploy/smoke.py --path3 2>&1 | grep -E '^(path3|FAIL|Traceback)' | while read -r l; do log "$l"; done ) &
+        fi
       fi
     else
       log "deploy of ${REMOTE:0:7} FAILED"
@@ -187,7 +191,7 @@ r = urllib.request.Request('http://localhost:8000/v1/admin/metrics', headers={'X
 m = json.load(urllib.request.urlopen(r, timeout=30))
 t, f = m['totals'], m.get('referral') or {}
 src = ','.join(f'{k}:{v}' for k, v in sorted((f.get('sources') or {}).items(), key=lambda x: -x[1])[:8])
-print(f\"users={t['users']} with_case={t['users_with_case']} cases={t['cases']} documents={t['documents']} submitted={t['submitted']} lawyer_apps={t['lawyer_applications']} referred={f.get('referred_users')} inviters={f.get('inviters')} k={f.get('k_factor')} sources=[{src}]\")
+print(f\"users={t['users']} with_case={t['users_with_case']} cases={t['cases']} documents={t['documents']} submitted={t['submitted']} lawyer_apps={t['lawyer_applications']} referred={f.get('referred_users')} referred_paid={f.get('referred_paid')} inviters={f.get('inviters')} k={f.get('k_factor')} sources=[{src}]\")
 " </dev/null 2>&1 | tail -1) || true
     log "metrics ${METRICS:-unavailable}"
     # chat speed over the last 24 h: seconds until the first words of a reply (median and 90th percentile) and in all

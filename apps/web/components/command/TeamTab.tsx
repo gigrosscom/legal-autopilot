@@ -41,6 +41,7 @@ function figures(role: Role, m: Metrics | null, files: { path: string }[] | unde
   }
   if (n.includes("маркетолог")) {
     return [["Пришли по приглашению", val(m?.referral?.referred_users)],
+      ["Оплатили по приглашению", val(m?.referral?.referred_paid)],
       ["K-фактор", m?.referral?.k_factor == null ? nd : m.referral.k_factor.toLocaleString("ru-RU")]];
   }
   if (n.includes("smm")) {

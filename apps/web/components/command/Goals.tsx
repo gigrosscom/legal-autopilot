@@ -95,7 +95,7 @@ export function Goals() {
           <p className="font-semibold">Рефералы сейчас</p>
           {referral ? (
             <>
-              <p>Пришли по приглашению: <b>{fmt(referral.referred_users)}</b> · пригласивших: <b>{fmt(referral.inviters)}</b></p>
+              <p>Пришли по приглашению: <b>{fmt(referral.referred_users)}</b> · оплатили: <b>{fmt(referral.referred_paid ?? 0)}</b> · пригласивших: <b>{fmt(referral.inviters)}</b></p>
               <p>K-фактор: <b>{referral.k_factor == null ? "нет данных" : referral.k_factor.toLocaleString("ru-RU")}</b></p>
               {Object.keys(referral.sources).length > 0 && (
                 <p className="text-muted">Каналы: {Object.entries(referral.sources).map(([k, v]) => `${k} — ${fmt(v)}`).join(", ")}</p>
