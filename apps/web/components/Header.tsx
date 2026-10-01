@@ -28,7 +28,8 @@ function useAccountName(): string | null {
       if (!token) { setName(null); return; }
       api<Me>("/v1/me").then((m) => {
         if (!m.identities.length) { setName(null); return; }
-        setName((m.display_name || "").trim().split(/\s+/)[0] || "");
+        const first = (m.display_name || "").trim().split(/\s+/)[0] || "";
+        setName(first ? first[0].toLocaleUpperCase() + first.slice(1) : "");
       }).catch(() => setName(null));
     };
     load();
@@ -79,9 +80,7 @@ export default function Header() {
           {name !== null ? (
             <Link href="/account" aria-label={name || t("app.tabs.profile")} title={name || t("app.tabs.profile")}
               className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] hover:bg-ink/[0.05] hover:text-ink ${active("/account")}`}>
-              <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-action text-[11px] font-semibold uppercase text-white">
-                {name ? name[0] : <Icon name="user" size={14} />}</span>
-              <span className="hidden max-w-[10rem] truncate md:inline">{name || t("app.tabs.profile")}</span>
+              <span className="max-w-[10rem] truncate">{name || t("app.tabs.profile")}</span>
             </Link>
           ) : (
           <Link href="/account?signin=1" aria-label={t("nav.account")} title={t("nav.account")}
