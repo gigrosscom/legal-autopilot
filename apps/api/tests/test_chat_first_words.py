@@ -221,3 +221,10 @@ def test_has_words(text, words):
     from konsilier.gemini import has_words
 
     assert has_words(text) is words
+
+
+def test_written_out_labels_are_removed():
+    from konsilier.chat import strip_labels
+    assert strip_labels("КОРОТКИЙ ОТВЕТ: Вы имеете право.") == "Вы имеете право."
+    assert strip_labels("**Қысқа жауап:** Құқығыңыз бар.") == "Құқығыңыз бар."
+    assert strip_labels("Ответ без метки: важно.") == "Ответ без метки: важно."
