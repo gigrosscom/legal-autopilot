@@ -1,0 +1,338 @@
+[
+ {
+  "area": "Страницы",
+  "case": "/ → 200",
+  "ok": true,
+  "detail": "200 28407B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/start → 200",
+  "ok": true,
+  "detail": "200 24853B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/app → 200",
+  "ok": true,
+  "detail": "200 24790B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/account → 200",
+  "ok": true,
+  "detail": "200 27722B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/documents → 200",
+  "ok": true,
+  "detail": "200 25035B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/cases → 200",
+  "ok": true,
+  "detail": "200 24679B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/support → 200",
+  "ok": true,
+  "detail": "200 26612B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/terms → 200",
+  "ok": true,
+  "detail": "200 35432B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/ops → 200",
+  "ok": true,
+  "detail": "200 15052B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/how-it-works → 200",
+  "ok": true,
+  "detail": "200 46262B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/nonexistent-qa → 404",
+  "ok": true,
+  "detail": "404 23614B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/robots.txt → 200",
+  "ok": true,
+  "detail": "200 339B "
+ },
+ {
+  "area": "Страницы",
+  "case": "/sitemap.xml → 200",
+  "ok": true,
+  "detail": "200 768B "
+ },
+ {
+  "area": "SEO/SMM",
+  "case": "OG-теги на главной",
+  "ok": true,
+  "detail": "og:image есть"
+ },
+ {
+  "area": "SEO/SMM",
+  "case": "description без «юриста»",
+  "ok": true,
+  "detail": "['Опишите проблему — Konsiliér AI объяснит ваши права по закону, подготовит претензию, жалобу или иск, подскажет, куда подать, и проследит за сроками.']"
+ },
+ {
+  "area": "Ссылки",
+  "case": "LinkedIn /company/konsilier/",
+  "ok": false,
+  "detail": "['linkedin.com/company/konsilier.ai']"
+ },
+ {
+  "area": "Безопасность",
+  "case": "HSTS/nosniff/XFO на сайте",
+  "ok": true,
+  "detail": "{'Content-Security-Policy': \"frame-ancestors 'none'; base-uri 'self'; object-src 'none'\", 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY'}"
+ },
+ {
+  "area": "Вход",
+  "case": "/auth/methods",
+  "ok": true,
+  "detail": "{'email': True, 'phone': False, 'ecp': True, 'egov': True, 'google': True, 'apple': False}"
+ },
+ {
+  "area": "Вход",
+  "case": "Google start (client_id)",
+  "ok": true,
+  "detail": "{'st': 200, 'client_id': True}"
+ },
+ {
+  "area": "Вход",
+  "case": "eGov Mobile start (QR)",
+  "ok": true,
+  "detail": "{'st': 200, 'qr': 'mobileSign:https://api.konsilier.com/v1/'}"
+ },
+ {
+  "area": "Вход",
+  "case": "ЭЦП challenge",
+  "ok": true,
+  "detail": "{'st': 200}"
+ },
+ {
+  "area": "Вход",
+  "case": "e-mail вход (смоук) → /me identities",
+  "ok": true,
+  "detail": "{'st': 200, 'ids': 1}"
+ },
+ {
+  "area": "Профиль",
+  "case": "display_name для шапки",
+  "ok": true,
+  "detail": "display_name=None → шапка «Профиль» (визуально ⚪)"
+ },
+ {
+  "area": "Профиль",
+  "case": "PATCH /me notify_email",
+  "ok": true,
+  "detail": "{'st': 200}"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "ответ чата",
+  "ok": true,
+  "detail": "ttft 1.21 с, 970 симв"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "сценарий/черновик",
+  "ok": true,
+  "detail": "kz.consumer.refund"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "счёт 1990 ₸",
+  "ok": true,
+  "detail": "{'st': 200, 'amount': 1990.0, 'purpose': 'document', 'err': None}"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "способы оплаты: Kaspi-ссылка + счёт для компании",
+  "ok": true,
+  "detail": "{'ways': ['kaspi_transfer', 'kaspi_link', 'bank_invoice'], 'link': ['https://pay.kaspi.kz/pay/vip7ojwg']}"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "ссылка Kaspi Pay отвечает",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "«Счёт для компании» PDF",
+  "ok": false,
+  "detail": "way 409 · bill 409 application/json 93B"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "оплачено → документ",
+  "ok": true,
+  "detail": "claim 200 confirm 200 · 3.1 с · документов 1 · pay.status=none case_paid=False"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "скачать PDF",
+  "ok": true,
+  "detail": "200 33132B"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "скачать DOCX",
+  "ok": true,
+  "detail": "200 38303B"
+ },
+ {
+  "area": "Документ 1 990 (ru)",
+  "case": "всего до документа",
+  "ok": true,
+  "detail": "15.0 с"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "ответ чата",
+  "ok": true,
+  "detail": "ttft 3.42 с, 1023 симв"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "сценарий/черновик",
+  "ok": true,
+  "detail": "kz.labor.final_settlement"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "счёт 9990 ₸",
+  "ok": true,
+  "detail": "{'st': 200, 'amount': 9990.0, 'purpose': 'case', 'err': None}"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "способы оплаты: Kaspi-ссылка + счёт для компании",
+  "ok": true,
+  "detail": "{'ways': ['kaspi_transfer', 'kaspi_link', 'bank_invoice'], 'link': ['https://pay.kaspi.kz/pay/vip7ojwg']}"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "ссылка Kaspi Pay отвечает",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "«Счёт для компании» PDF",
+  "ok": false,
+  "detail": "way 409 · bill 409 application/json 93B"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "оплачено → документ",
+  "ok": true,
+  "detail": "claim 200 confirm 200 · 2.4 с · документов 1 · pay.status=paid case_paid=True"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "скачать PDF",
+  "ok": true,
+  "detail": "200 29929B"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "скачать DOCX",
+  "ok": true,
+  "detail": "200 38157B"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "«Дело под ключ»: следующий документ без новой оплаты",
+  "ok": true,
+  "detail": "case_paid=True"
+ },
+ {
+  "area": "Дело под ключ 9 990 (ru)",
+  "case": "всего до документа",
+  "ok": true,
+  "detail": "11.6 с"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "ответ чата",
+  "ok": true,
+  "detail": "ttft 1.21 с, 565 симв, каз.букв 70"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "ответ на казахском",
+  "ok": true,
+  "detail": "каз.букв 70"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "сценарий/черновик",
+  "ok": true,
+  "detail": "kz.consumer.refund"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "счёт 1990 ₸",
+  "ok": true,
+  "detail": "{'st': 200, 'amount': 1990.0, 'purpose': 'document', 'err': None}"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "способы оплаты: Kaspi-ссылка + счёт для компании",
+  "ok": true,
+  "detail": "{'ways': ['kaspi_transfer', 'kaspi_link', 'bank_invoice'], 'link': ['https://pay.kaspi.kz/pay/vip7ojwg']}"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "ссылка Kaspi Pay отвечает",
+  "ok": true,
+  "detail": "200"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "«Счёт для компании» PDF",
+  "ok": false,
+  "detail": "way 409 · bill 409 application/json 93B"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "оплачено → документ",
+  "ok": true,
+  "detail": "claim 200 confirm 200 · 4.5 с · документов 1 · pay.status=none case_paid=False"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "скачать PDF",
+  "ok": true,
+  "detail": "200 32919B"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "скачать DOCX",
+  "ok": true,
+  "detail": "200 38427B"
+ },
+ {
+  "area": "Документ 1 990 (kk)",
+  "case": "всего до документа",
+  "ok": true,
+  "detail": "13.3 с"
+ }
+]
