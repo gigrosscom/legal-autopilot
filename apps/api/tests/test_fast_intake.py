@@ -142,3 +142,11 @@ def test_gov_inaction_complaint_is_a_paid_document_and_asks_applicant_data_befor
         "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67"}})
     pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
     assert pay["amount"] == 1990 and pay["code"]
+
+
+def test_grammatical_gender_from_the_patronymic():
+    # QA BUG-13 (01.10): the complaint was written «я обратилась» for «Тестов Тест Тестович»
+    from konsilier.core.engine import _grammatical_gender as g
+    assert g("Тестов Тест Тестович") == "male" and g("Иванова Алия Сериковна") == "female"
+    assert g("Нұрланов Асқар Серікұлы") == "male" and g("Айгерім Серікқызы") == "female"
+    assert g("John Smith") == "unknown" and g("") == "unknown"

@@ -501,6 +501,11 @@ class CaseEngine:
         self.audit(session, case, "admin", "documents_rebuilt", count=done)
         return done
 
+    def _applicant_name(self, case: Case, sc: Scenario) -> str:
+        applicant = sc.parties.get("applicant")
+        name = applicant.name_field if applicant is not None else None
+        return str(case.facts.get(name) or "") if name else ""
+
     def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
         """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
         skipped = set(case.skipped_fields or [])
@@ -1393,7 +1398,11 @@ class CaseEngine:
             if sc.kind == "service":  # the person's own story for a cover / motivation letter
                 case.narrative = ai.write_letter(llm, sc, pack, lang, facts, title)
             else:
-                case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached)
+                currency = pack.t(lang, f"currency_word.{case.currency or pack.currency}",
+                                  default=case.currency or pack.currency)
+                case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached,
+                                                    gender=_grammatical_gender(self._applicant_name(case, sc)),
+                                                    currency=currency)
             self._save_vault(case, llm)
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
             claim = case.facts.get("claim_amount") or case.facts.get("amount")
@@ -1661,6 +1670,18 @@ class CaseEngine:
 class _Fmt(dict):
     def __missing__(self, key: str) -> str:
         return ""
+
+
+def _grammatical_gender(full_name: str) -> str:
+    """For the document's grammar only (verb and adjective forms): from the patronymic ending, as written in the
+    person's identity document; 'unknown' when there is none — the text is then written without gendered forms."""
+    words = [w.lower().strip(".,") for w in full_name.split()]
+    for w in words:
+        if w.endswith(("вич", "ұлы", "улы", "оглы", "uly")):
+            return "male"
+        if w.endswith(("вна", "чна", "қызы", "кызы", "кизи", "qyzy")):
+            return "female"
+    return "unknown"
 
 
 DRAFT = "draft:"  # skipped_fields entry: a required answer left blank, filled in the draft before paying
