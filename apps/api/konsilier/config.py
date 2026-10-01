@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     # uploads per account and per IP address in a rolling hour.
     transcribe_per_user_hour: int = 30
     transcribe_per_ip_hour: int = 60
+    # Live text while the person speaks (iOS app, browsers without speech recognition): the recording so far is sent
+    # every ~1.5 s with partial=1 — Whisper on Groq when GROQ_API_KEY is set (its own free quota), else Gemini.
+    transcribe_partial_per_user_hour: int = 900
+    transcribe_partial_per_ip_hour: int = 1800
+    groq_whisper_model: str = "whisper-large-v3-turbo"
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
     # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
     chat_fallback_to_anthropic: bool = False

@@ -469,10 +469,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /** Dictated audio → text (POST /v1/transcribe, free Gemini on the server; the audio is not stored). */
-export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm"): Promise<string> {
+/** `partial`: the recording so far while the person is still speaking — the live text in the box. */
+export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm", partial = false): Promise<string> {
   const form = new FormData();
   form.append("file", audio, filename);
   form.append("lang", lang);
+  if (partial) form.append("partial", "true");
   const r = await api<{ text: string }>("/v1/transcribe", { method: "POST", body: form });
   return r.text ?? "";
 }

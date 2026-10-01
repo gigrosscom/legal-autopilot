@@ -53,6 +53,8 @@ class Container:
     chat_fallback_agent: Any = None  # Claude, used when the free chat fails before the reply starts (off by default)
     transcriber: Any = None  # konsilier.transcribe.GeminiTranscriber when a Gemini key is set (voice input)
     transcribe_limits: Any = None  # (per account, per IP) konsilier.transcribe.SlidingLimiter
+    partial_limits: Any = None  # the same for the live text while speaking (partial=1)
+    partial_transcriber: Any = None  # fast speech to text for the live text (Groq Whisper), else the transcriber
     official_sources: dict[str, Any] = field(default_factory=dict)  # country → konsilier.official OfficialSources
     # when a sign-in code last failed to go out, per channel: payment must not wait on a channel that is down
     send_failed_at: dict[str, Any] = field(default_factory=dict)
@@ -198,10 +200,14 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         scheduler.extra_jobs.append(court.make_job(lambda: court.build_collector(settings, factory, storage),
                                                    ZoneInfo(settings.zann_court_tz), hour=settings.zann_court_hour,
                                                    minutes=settings.zann_court_minutes, session_factory=factory))
-    from .transcribe import GeminiTranscriber, SlidingLimiter
+    from .transcribe import GeminiTranscriber, GroqWhisperTranscriber, SlidingLimiter
 
     container.transcribe_limits = (SlidingLimiter(settings.transcribe_per_user_hour),
                                    SlidingLimiter(settings.transcribe_per_ip_hour))
+    container.partial_limits = (SlidingLimiter(settings.transcribe_partial_per_user_hour),
+                                SlidingLimiter(settings.transcribe_partial_per_ip_hour))
+    if settings.groq_api_key:  # the live text: fast Whisper on its own free quota
+        container.partial_transcriber = GroqWhisperTranscriber(settings.groq_api_key, settings.groq_whisper_model)
     if settings.gemini_api_key:  # speech to text only ever uses the free Gemini models
         container.transcriber = GeminiTranscriber(settings.gemini_api_key, (
             settings.gemini_model, *(m.strip() for m in settings.gemini_fallback_models.split(","))))
