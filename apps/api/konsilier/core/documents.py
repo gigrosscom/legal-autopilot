@@ -36,10 +36,11 @@ def render_docx(template_path: Path, context: dict[str, Any], ai_label: str,
         run = p.add_run(draft_disclaimer)
         run.italic = True
         run.font.size = Pt(8)
-    p = doc.add_paragraph()
-    run = p.add_run(ai_label)
-    run.italic = True
-    run.font.size = Pt(8)
+    if not draft_disclaimer and ai_label:  # QA BUG-14: one closing note in the body; the AI label stays in the footer
+        p = doc.add_paragraph()
+        run = p.add_run(ai_label)
+        run.italic = True
+        run.font.size = Pt(8)
     for section in doc.sections:
         fp = section.footer.add_paragraph()
         frun = fp.add_run(ai_label)
