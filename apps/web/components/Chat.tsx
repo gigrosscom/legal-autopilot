@@ -12,7 +12,7 @@ import { Markdown } from "@/components/Markdown";
 import { Invite } from "@/components/Invite";
 import { Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
-import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
+import { chatHistory, messageKey, sendChat, type ChatMessage } from "@/lib/chat";
 import { LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
 import { TERMS_VERSION, markTermsAccepted, termsAccepted } from "@/lib/legal/terms";
@@ -21,6 +21,8 @@ import { canSpeak, speak, stopSpeaking } from "@/lib/voice";
 
 /** The count of free messages left shows once this many or fewer remain (e.g. after the 30th of 40). */
 const REMAINING_FROM = 10;
+/** An answer that broke off is asked for again by itself once, after this pause (a restarting server is back). */
+const RETRY_AFTER_MS = 1500;
 /** The marker a reply ends with when it offers a document; hidden while the reply streams in. */
 const OFFER = /\[?\[\s*DOC[A-Z]*\s*\]?\]?\s*$|\[\[?\s*$/;
 // labels a model may copy from its instructions («SHORT ANSWER:», «DETAILS:») never reach the screen
@@ -110,7 +112,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
   // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
-  const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[] } | null>(null);
+  const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[]; key: string } | null>(null);
   const [left, setLeft] = useState<{ n: number; limit: number } | null>(null);  // free messages left in 24 hours
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
@@ -188,11 +190,13 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     return done;
   }
 
-  async function send(textIn?: string, skipTriage = false, again?: Attached[]) {
+  async function send(textIn?: string, skipTriage = false, again?: Attached[], againKey?: string) {
     const text = (textIn ?? draft).trim();
     if (!text || busy) return;
     stopSpeaking();
     const list = again ?? files;
+    // the message's idempotency key: kept by every retry of it, so the server never stores or counts it twice
+    const key = againKey ?? messageKey();
     // the message shows at once and the box empties, as in any messenger; the answer's dots follow right away
     const localId = `local-${Date.now()}`;
     setMessages((m) => [...m, { id: localId, role: "user", text, created_at: new Date().toISOString(),
@@ -214,17 +218,33 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       const uploaded = await upload(id, list);
       const attachments = uploaded.filter((f) => f.id).map((f) => ({ id: f.id!, filename: f.filename }));
       sent = uploaded;
-      await sendChat(id, text, attachments.map((a) => a.id), (ev) => {
-        if (ev.type === "text") { partial += ev.text; setLookingUp(false); setStreaming((s) => (s ?? "") + ev.text); }
-        else if (ev.type === "tool") setLookingUp(true);
-        else if (ev.type === "error") setError(t(`chat.errors.${ev.code}`));
-        else if (ev.type === "done") {
-          answered = true;
-          setMessages((m) => [...m, ev.message]);
-          if (voiceMode) speak(ev.message.text, lang);
-          if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
+      // The answer can break off before its end (the connection dropped, the server restarted mid-answer): it is
+      // asked for once more by itself, with the same key — the server then gives the saved answer or writes it
+      // again, never a second copy of the message. If that breaks off too, «Повторить» shows.
+      for (let attempt = 0; ; attempt++) {
+        let ended = false;  // «done» or «error» arrived: the server finished this answer
+        try {
+          await sendChat(id, text, attachments.map((a) => a.id), (ev) => {
+            if (ev.type === "text") { partial += ev.text; setLookingUp(false); setStreaming((s) => (s ?? "") + ev.text); }
+            else if (ev.type === "tool") setLookingUp(true);
+            else if (ev.type === "error") { ended = true; setError(t(`chat.errors.${ev.code}`)); }
+            else if (ev.type === "done") {
+              ended = answered = true;
+              setMessages((m) => [...m, ev.message]);
+              if (voiceMode) speak(ev.message.text, lang);
+              if (typeof ev.remaining === "number" && ev.limit) setLeft({ n: ev.remaining, limit: ev.limit });
+            }
+          }, ctl.signal, lang, key);
+          if (ended || attempt > 0) break;  // cut twice: what was shown stays, with «Повторить»
+        } catch (err) {
+          // only a cut connection or a proxy without a server behind it is retried; refusals (limit, …) are not
+          const transient = !(err instanceof ApiError) || err.status === 502 || err.status === 504;
+          if (ctl.signal.aborted || attempt > 0 || !transient) throw err;
         }
-      }, ctl.signal, lang);
+        partial = ""; setStreaming(""); setLookingUp(false);
+        await new Promise((r) => setTimeout(r, RETRY_AFTER_MS));
+        if (ctl.signal.aborted) throw new DOMException("aborted", "AbortError");
+      }
     } catch (err) {
       if (ctl.signal.aborted) {  // stopped by the person: what was written stays, nothing to retry
         answered = true;
@@ -239,7 +259,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
       }
       if (!sent) unsend();
     } finally {
-      if (sent && !answered && retry) setFailed({ partial, text, files: sent });
+      if (sent && !answered && retry) setFailed({ partial, text, files: sent, key });
       setStreaming(null); setLookingUp(false); setBusy(false); abort.current = null;
     }
   }
@@ -247,12 +267,12 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   /** Send the message whose answer failed once more; its bubble is replaced, its files are not uploaded again. */
   function retryFailed() {
     if (!failed || busy) return;
-    const { text, files: again } = failed;
+    const { text, files: again, key } = failed;
     setMessages((m) => {
       const last = m[m.length - 1];
       return last && last.role === "user" && last.text === text ? m.slice(0, -1) : m;
     });
-    send(text, true, again);
+    send(text, true, again, key);  // the same key: the server keeps one copy of the message
   }
 
   useEffect(() => {  // text typed on the home page arrives here and is sent once

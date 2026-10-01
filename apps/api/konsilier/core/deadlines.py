@@ -11,7 +11,7 @@ import logging
 from datetime import date, datetime, timezone
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .models import Action, Case, Deadline
@@ -19,6 +19,22 @@ from .notify import Notifier
 from .packs import PackRegistry
 
 log = logging.getLogger(__name__)
+
+# PostgreSQL advisory lock key of the scheduler tick ("konsilie" in ASCII). Only the `api` container runs the
+# periodic tick (deploy/docker-compose.prod.yml: `api2` has SCHEDULER_INTERVAL_SECONDS=0), and this lock is the second
+# guard: two processes (a manual POST /v1/admin/scheduler/tick landing on api2, `konsilier tick`, a future replica)
+# never run a tick at the same time, so a reminder is never sent twice. Transaction-level (pg_try_advisory_xact_lock):
+# released at the tick's commit or rollback, and it works behind a transaction-pooling Odyssey/PgBouncer (port 6432),
+# where a session-level lock would not.
+TICK_LOCK_KEY = 0x6B6F6E73696C6965
+
+
+def tick_lock(session: Session) -> bool:
+    """Take the tick lock for this transaction; False when another process is ticking right now (SQLite: always True,
+    a single process)."""
+    if session.get_bind().dialect.name != "postgresql":
+        return True
+    return bool(session.scalar(text("SELECT pg_try_advisory_xact_lock(:k)"), {"k": TICK_LOCK_KEY}))
 
 
 class DeadlineScheduler(Protocol):
@@ -59,6 +75,9 @@ class DbDeadlineScheduler:
         # the periodic run passes no time: the extra jobs need one (they compare it with timestamps)
         now = now or datetime.now(timezone.utc)
         with self.session_factory() as session:
+            if not tick_lock(session):
+                log.info("scheduler tick skipped: another process is running one")
+                return 0
             deadlines = session.scalars(select(Deadline).where(Deadline.status == "active")).all()
             for dl in deadlines:
                 case = session.get(Case, dl.case_id)

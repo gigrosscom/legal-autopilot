@@ -167,6 +167,26 @@ class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
     attachments: list[str] = Field(default_factory=list, max_length=10)  # evidence ids uploaded with this message
     language: str | None = Field(default=None, max_length=5)  # the interface language: the reply is written in it
+    # Idempotency key of this message, made by the page once per message and sent again with every retry of it (the
+    # answer broke off: a lost connection, the server restarting; or «Повторить»). A retry never stores the message
+    # twice nor counts it twice against the daily limit; when its answer was already saved, that answer comes back.
+    client_id: str | None = Field(default=None, min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+def _by_client_id(session: Session, case_id: uuid.UUID, client_id: str, since: datetime) -> ChatMessage | None:
+    """The person's message with this idempotency key (sent within the last day), if it reached the server before."""
+    rows = session.scalars(select(ChatMessage).where(ChatMessage.case_id == case_id, ChatMessage.role == "user",
+                                                     ChatMessage.created_at > since)
+                           .order_by(ChatMessage.created_at.desc())).all()
+    return next((m for m in rows if (m.meta or {}).get("client_id") == client_id), None)
+
+
+def _answer_to(session: Session, asked: ChatMessage) -> ChatMessage | None:
+    """The saved answer to this message of the person, if any (``meta.reply_to``)."""
+    rows = session.scalars(select(ChatMessage).where(ChatMessage.case_id == asked.case_id,
+                                                     ChatMessage.role == "assistant",
+                                                     ChatMessage.created_at >= asked.created_at)).all()
+    return next((m for m in rows if (m.meta or {}).get("reply_to") == str(asked.id)), None)
 
 
 def _sse(event: dict[str, Any]) -> str:
@@ -181,23 +201,41 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     if agent is None:
         raise HTTPException(503, {"code": "agent_unavailable", "message": "agent_unavailable"})
     since = datetime.now(timezone.utc) - timedelta(days=1)
-    # messages nobody could answer (overload) do not use up the daily limit
-    metas = session.scalars(select(ChatMessage.meta).where(
+    # a retry of a message that already reached the server (same idempotency key): reused, never stored again
+    again = _by_client_id(session, case.id, body.client_id, since) if body.client_id else None
+    # messages nobody could answer (overload) do not use up the daily limit; a retried message is counted once
+    rows_today = session.execute(select(ChatMessage.id, ChatMessage.meta).where(
         ChatMessage.user_id == user.id, ChatMessage.role == "user", ChatMessage.created_at > since)).all()
-    sent = sum(1 for m in metas if not (m or {}).get("failed"))
+    sent = sum(1 for pk, m in rows_today if not (m or {}).get("failed") and (again is None or pk != again.id))
     daily_limit = container.settings.chat_daily_limit
     if sent >= daily_limit:
         raise HTTPException(429, {"code": "too_many_messages", "message": "too_many_messages",
                                   "limit": daily_limit, "remaining": 0, "window_hours": 24})
 
-    names = {str(e.id): e.filename for e in case.evidence}
-    attachments = [{"id": a, "filename": names[a]} for a in body.attachments if a in names]
-    asked = ChatMessage(case_id=case.id, user_id=user.id, role="user", text=body.text,
-                        meta={"attachments": attachments})
-    session.add(asked)
-    session.flush()
+    if again is not None and (answer := _answer_to(session, again)) is not None:
+        # the answer was saved but never reached the page (the connection broke at the end): give it back as it is
+        log.info("chat=retry_answered case=%s", case.id)
+        done_again = {"type": "done", "message": _view(answer), "limit": daily_limit,
+                      "remaining": max(daily_limit - sent - 1, 0), "window_hours": 24}
+        return StreamingResponse(iter([_sse(done_again)]), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    if again is not None:  # it reached the server but has no answer yet: answered now, as the same message
+        log.info("chat=retry case=%s", case.id)
+        asked = again
+        if (asked.meta or {}).get("failed"):  # answered this time: counts against the limit again
+            asked.meta = {k: v for k, v in asked.meta.items() if k != "failed"}
+    else:
+        names = {str(e.id): e.filename for e in case.evidence}
+        attachments = [{"id": a, "filename": names[a]} for a in body.attachments if a in names]
+        meta: dict[str, Any] = {"attachments": attachments}
+        if body.client_id:
+            meta["client_id"] = body.client_id
+        asked = ChatMessage(case_id=case.id, user_id=user.id, role="user", text=body.text, meta=meta)
+        session.add(asked)
+        session.flush()
     asked_pk = asked.id
-    asked_text = body.text
+    asked_text = asked.text
     rows = session.scalars(select(ChatMessage).where(ChatMessage.case_id == case.id)
                            .order_by(ChatMessage.created_at, ChatMessage.id)).all()
     ctx = _context(container, case)
@@ -294,9 +332,17 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 "first_ms": first_ms, "served_by": served_by, "rounds": len(timing.get("rounds", [])),
                 "tools": [t.get("source") for t in timing.get("tools", [])]}))
         with container.session_factory() as s:
+            # a retry and the first attempt may both be answering (the first one's connection broke but it ran on):
+            # the person's message row is locked (PostgreSQL) and only the first finished answer is kept
+            mine = s.get(ChatMessage, asked_pk, with_for_update=True)
+            if mine is not None and (earlier := _answer_to(s, mine)) is not None:
+                log.info("chat=reply_exists case=%s", case_pk)
+                yield _sse({"type": "done", "message": _view(earlier), "limit": daily_limit,
+                            "remaining": max(daily_limit - sent - 1, 0), "window_hours": 24})
+                return
             m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=text,
-                            meta={"provider": used, "served_by": served_by, "norms": result.norms,
-                                  "sources": result.sources, "unchecked": result.unchecked,
+                            meta={"reply_to": str(asked_pk), "provider": used, "served_by": served_by,
+                                  "norms": result.norms, "sources": result.sources, "unchecked": result.unchecked,
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
                                   "usage": result.usage, "first_ms": first_ms,
                                   "total_ms": int((time.perf_counter() - t_request) * 1000), "timing": timing})

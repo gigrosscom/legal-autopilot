@@ -21,14 +21,22 @@ export type ChatEvent =
 
 export const chatHistory = (caseId: string) => api<ChatMessage[]>(`/v1/cases/${caseId}/chat`);
 
-/** Send a message and read the streamed reply (server-sent events) chunk by chunk. */
+/** A new idempotency key for one message: every retry of that message sends the same key (konsilier/api/chat.py). */
+export function messageKey(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+/** Send a message and read the streamed reply (server-sent events) chunk by chunk. ``clientId``: the message's
+ * idempotency key — a retry with the same key is not stored or counted twice, and gets the saved answer if any. */
 export async function sendChat(caseId: string, text: string, attachments: string[], onEvent: (e: ChatEvent) => void,
-  signal?: AbortSignal, language?: string) {
+  signal?: AbortSignal, language?: string, clientId?: string) {
   const token = await ensureToken();
   const r = await fetch(`${API_URL}/v1/cases/${caseId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ text, attachments, language }),
+    body: JSON.stringify({ text, attachments, language, client_id: clientId }),
     signal,
   });
   if (!r.ok || !r.body) {

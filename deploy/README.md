@@ -18,6 +18,15 @@ Target: Yandex Cloud region `kz1` (or any Ubuntu 24.04 server in Kazakhstan).
 
 Restore: download a dump from the bucket, `gunzip -c dump.sql.gz | psql "$DATABASE_URL"`.
 
+Deploys without cutting answers: the API runs as two copies, `api` and `api2` (`docker-compose.prod.yml`); Caddy
+sends everything to `api` and switches to `api2` while `api` restarts. `update.sh` builds the images first, then
+replaces `api2`, waits until it is healthy, then `api`. A copy being stopped refuses new connections and finishes the
+chat answers it is streaming (uvicorn `--timeout-graceful-shutdown`, `UVICORN_GRACE`=50 s; Docker waits 60 s). Only
+`api` runs the scheduler; the tick also takes a PostgreSQL advisory lock, so it never runs twice at once. Migrations
+run in the copy that starts first while the other still runs the previous code: keep them backward compatible
+(add columns/tables; drop or rename only in a later release). The page retries an answer that broke off once
+by itself, with the message's idempotency key (`client_id`): the server neither stores nor counts it twice.
+
 Push notifications (the site and the installed app): run `python deploy/vapid_keys.py` once, put the three printed
 `VAPID_*` lines into the env (e.g. `python deploy/yc_set_env.py VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=@VAR`). Keep the
 pair: a new one drops every subscription. Store apps (Google Play assetlinks: `ANDROID_CERT_SHA256`): `docs/app-stores.md`.
