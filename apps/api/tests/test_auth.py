@@ -163,14 +163,30 @@ def test_egov_mobile_qr_flow_and_same_person_as_ecp(auth):
     assert c.get(f"/v1/auth/egov/status/{start['id']}", headers=h(phone)).json() == {"status": "pending"}
     api1 = c.get(f"/v1/auth/egov/mgov/{start['id']}").json()
     assert api1["organisation"]["bin"] == "123456789012"
+    # eGov Mobile API №1: auth_type None needs an empty auth_token; expiry with milliseconds and an offset
+    assert api1["document"]["auth_type"] == "None" and api1["document"]["auth_token"] == ""
+    assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}\+00:00", api1["expiry_date"])
     doc_path = api1["document"]["uri"].replace("https://api.example.kz", "")
     api2 = c.get(doc_path).json()
+    assert api2["signMethod"] == "CMS_WITH_DATA"
     doc = api2["documentsToSign"][0]
-    doc["documentCms"] = fake_cms(doc["documentCms"])
+    # API №2: the data to sign is document.file.data (base64), not a ready CMS in documentCms
+    assert "documentCms" not in doc and doc["document"]["file"]["mime"] == "text/plain"
+    doc["document"]["file"]["data"] = fake_cms(doc["document"]["file"]["data"])
     assert c.put(doc_path, json=api2).json() == []
     done = c.get(f"/v1/auth/egov/status/{start['id']}", headers=h(phone)).json()
     assert done["status"] == "done" and done["token"] == laptop  # same IIN → same account
     assert c.get(f"/v1/auth/egov/status/{start['id']}", headers=h(phone)).json() == {"status": "used"}
+
+
+def test_egov_mobile_cancel_is_not_a_sign_in(auth):
+    c, phone = auth.client, new_token(auth.client)
+    start = c.post("/v1/auth/egov/start", headers=h(phone)).json()
+    doc_path = f"/v1/auth/egov/mgov/{start['id']}/document"
+    api2 = c.get(doc_path).json()
+    r = c.put(doc_path, json={**api2, "status": "CANCELED", "version": 1})
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "canceled"
+    assert c.get(f"/v1/auth/egov/status/{start['id']}", headers=h(phone)).json() == {"status": "pending"}
 
 
 def test_me_requires_token(auth):
