@@ -384,8 +384,10 @@ def test_reply_comes_into_the_case_when_inbound_is_on(case):
     ctx, api, cid, aid = case
     ctx.settings.resend_webhook_secret = SECRET
     ctx.settings.claims_inbound = True
+    ctx.settings.claims_reply_domain = "reply.konsilier.com"
     api.post(url(cid, aid, "/email"), json={"to": "shop@example.kz", "confirm": True})
     sent = ctx.container.claims_mailer.sent[0]
+    assert sent["reply_to"][1].startswith("claims+") and sent["reply_to"][1].endswith("@reply.konsilier.com")
     token = sent["reply_to"][1].split("+")[1].split("@")[0]
     assert sent["reply_to"][0] == CLIENT and f"[K-{token}]" in sent["subject"]
     raw = received(token)

@@ -225,6 +225,9 @@ class Settings(BaseSettings):
     # «[K-<token>]» in the subject; Resend's «email.received» webhook attaches the reply. Needs receiving turned on
     # for that domain in Resend (MX record) — off until then.
     claims_inbound: bool = False
+    # where replies are received (e.g. reply.konsilier.com): a subdomain keeps the main domain's mailbox untouched;
+    # empty → the domain of CLAIMS_EMAIL_FROM
+    claims_reply_domain: str = ""
     email_send_per_document: int = 3  # letters per document (failed attempts do not count)
     email_send_per_case_day: int = 5  # letters per case in 24 hours
     email_send_per_user_hour: int = 10  # attempts per person in an hour

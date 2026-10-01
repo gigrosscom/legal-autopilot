@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CodeForm } from "@/components/CodeForm";
+import { SignDocument } from "@/components/SignDocument";
 import { Badge, Button, Icon, type IconName } from "@/components/ui";
 import type { Tone } from "@/components/ui/Badge";
 import {
@@ -12,11 +13,15 @@ import {
   errorText,
   fetchFile,
   saveBlob,
+  shareFile,
+  type AuthMethods,
   type CaseAction,
   type CaseView,
   type Delivery,
   type EmailPreview,
   type FoundContact,
+  type RouteStep,
+  type SendGo,
   type SendPlan,
   type SignedIn,
 } from "@/lib/api";
@@ -33,13 +38,149 @@ const STATUS_TONE: Record<Delivery["status"], Tone> = {
   sending: "neutral", sent: "info", delivered: "brand", bounced: "danger", complained: "warning", failed: "danger",
 };
 
-/** «Мастер отправки» (owner 01.10.2026): we find the other side's contacts in the case, the client picks the
- *  fastest way and sends it themselves — from their own WhatsApp / Telegram / Instagram (we never message third
- *  parties), or by e-mail through our service (Reply-To and a copy to them). Each sending is kept as proof:
- *  Resend's statuses for e-mail, the client's screenshot for a messenger. The response deadline starts from it. */
+const STEP_ICON: Record<RouteStep["channel"], IconName> = {
+  email: "mail", whatsapp: "chat", telegram: "send", instagram: "camera", gov: "landmark", manual: "plus",
+};
+
+/** «Принцип 3 клика» (owner 01.10.2026): the server chooses where the document goes (e-mail to the address found
+ *  in the case, one messenger, eOtinish for a state body); the client sees «Куда отправим» and presses ONE button.
+ *  With ЭЦП available the button signs first (the existing signing flow), then sends; without it the press itself
+ *  is the client's instruction (consent text shown). E-mail goes at once; a messenger is one tap afterwards. */
 export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCase?: (c: CaseView) => void }) {
   const t = useT();
   const { lang } = useLang();
+  const base = `/v1/cases/${caseId}/actions/${a.id}`;
+  const [plan, setPlan] = useState<SendPlan | null>(null);
+  const [steps, setSteps] = useState<RouteStep[]>([]);
+  const [deliveries, setDeliveries] = useState<Delivery[]>(a.filings ?? []);
+  const [canSign, setCanSign] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [needEmail, setNeedEmail] = useState(false);
+  const [sentNow, setSentNow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [messenger, setMessenger] = useState<Route | null>(null);
+  const signed = (a.signatures ?? []).length > 0;
+
+  useEffect(() => {
+    let live = true;
+    api<SendPlan>(`${base}/send`).then((p) => { if (!live) return; setPlan(p); setSteps(p.route); setDeliveries(p.filings); })
+      .catch(() => { if (live) setPlan(null); });
+    api<AuthMethods>("/v1/auth/methods").then((m) => { if (live) setCanSign(!!(m.ecp || m.egov)); }).catch(() => {});
+    return () => { live = false; };
+  }, [base]);
+
+  const explain = (e: unknown) => {
+    if (e instanceof ApiError && e.code) {
+      const key = `send.errors.${e.code}`;
+      const text = t(key);
+      if (text !== key) return text;
+    }
+    return errorText(e);
+  };
+
+  const addDelivery = (f: Delivery) => setDeliveries((d) => [...d.filter((x) => x.id !== f.id), f]);
+
+  async function go() {
+    setBusy(true); setError(null); setSigning(false);
+    try {
+      const out = await api<SendGo>(`${base}/send/go`, { method: "POST", body: JSON.stringify({ confirm: true }) });
+      out.sent.forEach(addDelivery);
+      setSteps(out.steps);
+      setSentNow(true);
+      if (out.errors.length) setError(t(`send.errors.${out.errors[0].code}`));
+      onCase?.(out.case);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "email_required") setNeedEmail(true);
+      else setError(explain(e));
+    } finally { setBusy(false); }
+  }
+
+  const press = () => (canSign && !signed ? setSigning(true) : go());
+  const stepText = (s: RouteStep) => {
+    if (s.channel === "gov") return t("send.plan.gov", { to: s.to });
+    if (s.channel === "manual") return t("send.plan.manual");
+    if (s.channel === "email") return s.auto ? t("send.plan.emailAuto", { to: s.to }) : t("send.plan.emailOff", { to: s.to });
+    return t("send.plan.messenger", { app: t(`send.channels.${s.channel}`), to: s.to });
+  };
+
+  if (!plan) return <Deliveries caseId={caseId} items={deliveries} onUpdate={addDelivery} lang={lang} />;
+  const messengers = steps.filter((s) => ["whatsapp", "telegram", "instagram"].includes(s.channel));
+  const gov = steps.find((s) => s.channel === "gov");
+  return (
+    <section className="space-y-3 rounded-2xl border border-line p-3" aria-label={t("send.plan.title")}>
+      <div>
+        <h4 className="font-semibold">{t("send.plan.title")}</h4>
+        <ul className="mt-2 space-y-1.5">
+          {steps.map((s) => (
+            <li key={`${s.channel}-${s.to}`} className="flex items-start gap-2 text-sm">
+              <Icon name={s.done ? "checkCircle" : STEP_ICON[s.channel]} size={18} className="mt-0.5 shrink-0 text-brand" />
+              <span className="min-w-0 break-words">{stepText(s)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {needEmail ? (
+        <div className="space-y-2 rounded-2xl bg-brand-50 p-3">
+          <p className="text-sm">{t("send.needEmail")}</p>
+          <CodeForm kind="email" wide onDone={(r: SignedIn) => { applySignIn(r); setNeedEmail(false); go(); }} />
+        </div>
+      ) : signing ? (
+        <div className="space-y-2">
+          <SignDocument base={base} fileBase={a.action_id} initial={a.signatures ?? []} canSign
+            lead={t("send.plan.signLead")} onSigned={() => go()} />
+          <button type="button" className="text-xs text-muted underline" disabled={busy} onClick={go}>{t("send.plan.noSign")}</button>
+        </div>
+      ) : !sentNow && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">{t("send.consent")}</p>
+          <Button className="min-h-12 w-full" icon={busy ? "spinner" : canSign && !signed ? "key" : "send"} disabled={busy} onClick={press}>
+            {canSign && !signed ? t("send.plan.signAndSend") : t("send.plan.send")}
+          </Button>
+        </div>
+      )}
+
+      {sentNow && messengers.map((s) => (
+        <div key={s.channel} className="space-y-2 rounded-2xl bg-brand-50 p-3">
+          {/* the chat opens with the short text; the PDF goes by the share sheet (phone) or is downloaded to attach */}
+          <a className="btn-primary min-h-12 w-full" href={s.href ?? "#"} target="_blank" rel="noreferrer"
+            onClick={() => setMessenger({ key: s.channel, channel: s.channel as Channel, to: s.to, icon: STEP_ICON[s.channel], href: s.href ?? undefined })}>
+            <Icon name={STEP_ICON[s.channel]} size={18} />
+            <span>{t("send.plan.openMessenger", { app: t(`send.channels.${s.channel}`) })}</span>
+          </a>
+          <Button className="w-full" variant="secondary" icon="paperclip"
+            onClick={() => shareFile(`${base}/document?format=${a.has_pdf ? "pdf" : "docx"}`, `${a.action_id}.${a.has_pdf ? "pdf" : "docx"}`, a.title).catch(() => {})}>
+            {t("send.sharePdf")}
+          </Button>
+          {messenger?.key === s.channel && (
+            <ProofStep base={base} route={messenger} explain={explain}
+              onDone={(out) => { addDelivery(out.filing); if (out.case) onCase?.(out.case); setMessenger(null); }} />
+          )}
+        </div>
+      ))}
+      {sentNow && gov && <p className="rounded-2xl bg-brand-50 p-3 text-sm">{t("send.plan.govNext")}</p>}
+      {error && <p role="alert" className="text-xs text-danger">{error}</p>}
+
+      <Deliveries caseId={caseId} items={deliveries} onUpdate={addDelivery} lang={lang} />
+      <details className="rounded-2xl border border-line px-3 py-2">
+        <summary className="cursor-pointer text-sm">{t("send.plan.other")}</summary>
+        <div className="pt-2">
+          <ManualSend caseId={caseId} a={a} onCase={onCase} onDelivery={addDelivery} />
+        </div>
+      </details>
+    </section>
+  );
+}
+
+/** Other ways and a typed address (fallback): we find the other side's contacts in the case, the client picks the
+ *  fastest way and sends it themselves — from their own WhatsApp / Telegram / Instagram (we never message third
+ *  parties), or by e-mail through our service (Reply-To and a copy to them). Each sending is kept as proof:
+ *  Resend's statuses for e-mail, the client's screenshot for a messenger. The response deadline starts from it. */
+function ManualSend({ caseId, a, onCase, onDelivery }: {
+  caseId: string; a: CaseAction; onCase?: (c: CaseView) => void; onDelivery: (f: Delivery) => void;
+}) {
+  const t = useT();
   const base = `/v1/cases/${caseId}/actions/${a.id}`;
   const [plan, setPlan] = useState<SendPlan | null>(null);
   const [route, setRoute] = useState<Route | null>(null);
@@ -47,7 +188,6 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState("");
-  const [deliveries, setDeliveries] = useState<Delivery[]>(a.filings ?? []);
   const pdf = `${base}/document?format=${a.has_pdf ? "pdf" : "docx"}`;
   const fileName = `${a.action_id}.${a.has_pdf ? "pdf" : "docx"}`;
 
@@ -65,12 +205,11 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
     try {
       const p = await api<SendPlan>(`${base}/send`);
       setPlan(p);
-      setDeliveries(p.filings);
     } catch (e) { setError(explain(e)); } finally { setBusy(false); }
   }
 
   function done(out: { filing: Delivery; case?: CaseView }) {
-    setDeliveries((d) => [...d.filter((x) => x.id !== out.filing.id), out.filing]);
+    onDelivery(out.filing);
     if (out.case) onCase?.(out.case);
     setRoute(null);
   }
@@ -122,9 +261,8 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
   if (!plan) {
     return (
       <div className="space-y-2">
-        <Button className="min-h-12 w-full" icon={busy ? "spinner" : "send"} disabled={busy} onClick={open}>{t("send.open")}</Button>
+        <Button className="w-full" variant="secondary" icon={busy ? "spinner" : "send"} disabled={busy} onClick={open}>{t("send.open")}</Button>
         {error && <p role="alert" className="text-xs text-danger">{error}</p>}
-        <Deliveries caseId={caseId} items={deliveries} onUpdate={(f) => done({ filing: f })} lang={lang} />
       </div>
     );
   }
@@ -200,7 +338,6 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
           </div>
         ))}
       {error && <p role="alert" className="text-xs text-danger">{error}</p>}
-      <Deliveries caseId={caseId} items={deliveries} onUpdate={(f) => done({ filing: f })} lang={lang} />
     </section>
   );
 }
@@ -345,6 +482,7 @@ function Deliveries({ caseId, items, onUpdate, lang }: {
               <span className="font-medium">{t(`send.channels.${f.channel}`)}</span>
               {f.recipient && <span className="break-all text-muted">{f.recipient}</span>}
               <Badge tone={STATUS_TONE[f.status]}>{t(f.channel === "email" ? `send.status.${f.status}` : "send.status.reported")}</Badge>
+              {f.replied_at && <Badge tone="brand" icon="mail">{t("send.status.replied")}</Badge>}
               <span className="ms-auto text-xs tabular-nums text-muted">{when(f.delivered_at ?? f.sent_at ?? f.created_at)}</span>
             </div>
             {f.channel !== "email" && (

@@ -192,7 +192,8 @@ def inbound_address(container: Container, token: str) -> str | None:
     if not container.settings.claims_inbound:
         return None
     m = re.search(r"([A-Za-z0-9._-]+)@([A-Za-z0-9.-]+)", container.settings.claims_email_from)
-    return f"{m.group(1)}+{token}@{m.group(2)}" if m else None
+    domain = container.settings.claims_reply_domain or (m.group(2) if m else "")
+    return f"{m.group(1)}+{token}@{domain}" if m and domain else None
 
 
 def _main_file(container: Container, session: Session, action: Action) -> tuple[str, bytes]:
@@ -397,8 +398,8 @@ GOV_KINDS = ("authority", "forum")
 
 def route_plan(action: Action, contacts: list[dict[str, Any]], email: dict[str, Any],
                message: str) -> list[dict[str, Any]]:
-    """«Принцип 3 клика» (owner 01.10.2026): WE pick where the document goes. A state body → eOtinish (a step of its
-    own, done on eotinish.kz); the other side → e-mail if an address was found (sent by us at once, `auto`), and one
+    """«Принцип 3 клика» (owner 01.10.2026): WE pick where the document goes. A state body → the state portal (a step of its
+    own, done on the portal by the client); the other side → e-mail if an address was found (sent by us at once, `auto`), and one
     messenger (WhatsApp, else Telegram, else Instagram) as one button. Nothing found → the client adds an address."""
     addressee = action.addressee or {}
     steps: list[dict[str, Any]] = []
@@ -436,7 +437,7 @@ class GoIn(BaseModel):
 def send_go(case_id: uuid.UUID, action_id: uuid.UUID, body: GoIn, user: User = Depends(current_user),
             session: Session = Depends(get_session), container: Container = Depends(get_container)):
     """The one button: everything that can go without the client goes now (e-mail to the address found in the
-    case); the rest of the plan (a messenger, eOtinish) comes back as steps of one tap each."""
+    case); the rest of the plan (a messenger, the state portal) comes back as steps of one tap each."""
     from ..contacts import find_contacts
     from .views import case_view
 

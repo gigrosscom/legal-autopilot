@@ -49,6 +49,7 @@ export type Delivery = {
   recipient: string;
   status: "sending" | "sent" | "delivered" | "bounced" | "complained" | "failed";
   has_receipt: boolean;
+  replied_at?: string | null;  // a reply came to claims+<token>@… and is saved in the case
   sent_at: string | null;
   delivered_at: string | null;
   created_at: string | null;
@@ -60,8 +61,18 @@ export type FoundContact = {
   value: string;
   sources: { type: "addressee" | "case" | "evidence" | "story"; label?: string; filename?: string }[];
 };
+/** One step of the route the server chose («Принцип 3 клика»): `auto` steps go by themselves on the one button. */
+export type RouteStep = {
+  channel: "email" | "whatsapp" | "telegram" | "instagram" | "gov" | "manual";
+  to: string; auto: boolean; href?: string | null; reason?: string | null; done?: boolean;
+};
 export type SendPlan = {
   contacts: FoundContact[]; message: string; email: EmailSendState; reply_to: string | null; filings: Delivery[];
+  route: RouteStep[];
+};
+export type SendGo = {
+  sent: Delivery[]; errors: { channel: string; to: string; code: string }[]; steps: RouteStep[]; message: string;
+  case: CaseView;
 };
 export type EmailPreview = {
   from: string; to: string; reply_to: string; cc: string; subject: string; text: string;
