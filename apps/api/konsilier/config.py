@@ -238,6 +238,22 @@ class Settings(BaseSettings):
     report_max_nudges: int = 5  # then stop reminding until something changes  # eGov Mobile fetches the document to sign from here
     resend_api_key: str | None = None  # e-mail codes via Resend; otherwise SMTP_HOST; otherwise disabled
     email_from: str = "Konsiliér AI <no-reply@konsilier.com>"
+    # «Отправить по e-mail» from a case (owner 01.10.2026): the client's paid document goes to the other side from
+    # this address, Reply-To and a copy to the client. Needs RESEND_API_KEY and the domain verified in Resend.
+    claims_email_from: str = "Konsiliér AI <claims@konsilier.com>"
+    # Resend delivery webhooks (/v1/webhooks/resend, Svix signature): the «whsec_…» signing secret; empty → 404
+    resend_webhook_secret: str = ""
+    # replies from the other side into the case: Reply-To also claims+<token>@<domain of CLAIMS_EMAIL_FROM> and
+    # «[K-<token>]» in the subject; Resend's «email.received» webhook attaches the reply. Needs receiving turned on
+    # for that domain in Resend (MX record) — off until then.
+    claims_inbound: bool = False
+    # where replies are received (e.g. reply.konsilier.com): a subdomain keeps the main domain's mailbox untouched;
+    # empty → the domain of CLAIMS_EMAIL_FROM
+    claims_reply_domain: str = ""
+    email_send_per_document: int = 3  # letters per document (failed attempts do not count)
+    email_send_per_case_day: int = 5  # letters per case in 24 hours
+    email_send_per_user_hour: int = 10  # attempts per person in an hour
+    send_followup_hours: float = 2.0  # «Ответили?» this long after sending (owner 01.10: 2–3 hours, not a day)
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)
     sms_api_key: str | None = None  # Mobizon API key
     smsc_login: str | None = None

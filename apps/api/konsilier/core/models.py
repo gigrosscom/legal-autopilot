@@ -25,6 +25,7 @@ from sqlalchemy import (
     Uuid,
     event,
 )
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from .state_machine import CaseStatus
@@ -277,6 +278,76 @@ class DocumentSignature(TimestampMixin, Base):
 
     action: Mapped[Action | None] = relationship(back_populates="signatures")
     agreement: Mapped["Agreement | None"] = relationship(back_populates="signatures")
+
+
+class Filing(TimestampMixin, Base):
+    """«Подача» — one sending or filing of a prepared document to its addressee, with its proof
+    (docs/integrations-plan.md, 7.3). One table for every channel:
+
+    * ``email`` — the client's paid document goes from CLAIMS_EMAIL_FROM through Resend, Reply-To and a copy to the
+      client (api/delivery.py). ``external_id`` is Resend's e-mail id; Resend's webhooks move ``status`` (sending →
+      sent → delivered · bounced · complained; failed when Resend refused) and add to ``events``. Several letters per
+      document are allowed (limits in api/delivery.py).
+    * ``whatsapp`` · ``telegram`` · ``instagram`` · ``app_dispute`` · ``other`` — the client sent it from their own
+      account (we never message third parties); ``sent_at`` is when they told us, ``receipt_key`` their screenshot.
+    * the country's official appeal portal (the channel named in pack data ``appeal_portal.yaml``) — the person
+      files there themselves, then the appeal number (``appeal_number``) and the filing date (``filed_at``) are
+      read from the portal's confirmation (``source = receipt_read``) or typed (``client_entered``); the
+      confirmation is an ``Evidence`` row (``receipt_evidence_id``). ONE registered appeal per document: the
+      partial unique index ``uq_filings_action_appeal`` (only rows with an appeal number), so it never limits the
+      letters and messenger sendings of the same document.
+
+    ``recipient`` — where it went: an e-mail address, a phone or @handle, or what is chosen in the portal's
+    «Получатель». ``body`` / ``body_key`` — the addressee as an organisation or a state body (its name and
+    ``forum:<id>`` | ``authority:<key>``). ``message`` — the text that went (the letter).
+    """
+
+    __tablename__ = "filings"
+    __table_args__ = (
+        Index("uq_filings_action_appeal", "action_id", unique=True,
+              sqlite_where=sql_text("appeal_number IS NOT NULL"),
+              postgresql_where=sql_text("appeal_number IS NOT NULL")),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    action_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("actions.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)  # who sent / entered it
+    signature_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document_signatures.id"), nullable=True)
+    channel: Mapped[str] = mapped_column(String(32), default="email")
+    recipient: Mapped[str] = mapped_column(String(500))
+    body: Mapped[str | None] = mapped_column(String(500))  # the addressee organisation / state body, as shown
+    body_key: Mapped[str | None] = mapped_column(String(100))  # forum:<id> | authority:<key>
+    appeal_type: Mapped[str | None] = mapped_column(String(16))  # statement | complaint | proposal | request
+    category: Mapped[str | None] = mapped_column(String(300))  # the portal's topic / category
+    reply_to: Mapped[str | None] = mapped_column(String(254))
+    cc: Mapped[str | None] = mapped_column(String(254))
+    sender: Mapped[str | None] = mapped_column(String(200))
+    subject: Mapped[str | None] = mapped_column(String(300))
+    message: Mapped[str | None] = mapped_column(Text)  # the letter as it went
+    # e-mail: sending → sent → delivered · bounced · complained · failed; a client's sending: sent; portal: filed
+    status: Mapped[str] = mapped_column(String(16), default="sending", index=True)
+    external_id: Mapped[str | None] = mapped_column(String(100), index=True)  # the provider's id (Resend e-mail id)
+    appeal_number: Mapped[str | None] = mapped_column(String(64))  # the registration number given by the portal
+    filed_at: Mapped[date | None] = mapped_column(Date)  # the portal filing date (local date the person confirmed)
+    source: Mapped[str | None] = mapped_column(String(16))  # number+date: receipt_read | client_entered | api
+    doc_format: Mapped[str | None] = mapped_column(String(8))  # pdf | docx — the file the hash is of
+    doc_sha256: Mapped[str | None] = mapped_column(String(64))  # the document that went
+    attachments: Mapped[list[Any]] = mapped_column(JSON, default=list)  # [{name, size, sha256}]
+    events: Mapped[list[Any]] = mapped_column(JSON, default=list)  # [{at, type, source, ...}]
+    consent_text_version: Mapped[str | None] = mapped_column(String(32))
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(String(300))
+    # messengers and an app dispute: the client's screenshot «доставлено / прочитано» (the latest one)
+    receipt_key: Mapped[str | None] = mapped_column(String(300))
+    receipt_sha256: Mapped[str | None] = mapped_column(String(64))
+    # the appeal portal: its confirmation (screenshot, PDF, the notification text) kept as case evidence
+    receipt_evidence_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("evidence.id"), nullable=True)
+    followup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # «Ответили?» a day later
+    # e-mail: the token in claims+<token>@… and «[K-<token>]» in the subject, so a reply finds its case
+    reply_token: Mapped[str | None] = mapped_column(String(16), index=True)
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Agreement(TimestampMixin, Base):

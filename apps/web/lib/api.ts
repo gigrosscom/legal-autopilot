@@ -36,6 +36,75 @@ export type CaseAction = {
   response_summary: string | null;
   deadline: { due_date: string; status: string; norm_ref: string | null } | null;
   filing?: Filing | null;
+  /** «Отправить по e-mail» through our service: may it go now (paid document, limits), and why not */
+  email_send?: EmailSendState | null;
+  /** what has been sent: e-mail with Resend's statuses, messengers with the client's screenshot */
+  filings?: Delivery[];
+  submitted_via?: string | null;
+  /** Manual eOtinish bridge: what to pick on eotinish.kz (null → the step is not filed through eOtinish). */
+  appeal_portal?: EotinishTarget | null;
+  /** The filing record once the person entered the appeal number and date. */
+  filed?: FilingRecord | null;
+};
+
+export type EmailSendState = { available: boolean; reason: string | null; left: number };
+export type Delivery = {
+  id: string;
+  channel: "email" | "whatsapp" | "telegram" | "instagram" | "app_dispute" | "other";
+  recipient: string;
+  status: "sending" | "sent" | "delivered" | "bounced" | "complained" | "failed";
+  has_receipt: boolean;
+  replied_at?: string | null;  // a reply came to claims+<token>@… and is saved in the case
+  sent_at: string | null;
+  delivered_at: string | null;
+  created_at: string | null;
+  doc_sha256: string;
+  events: { at: string; type: string }[];
+};
+export type FoundContact = {
+  kind: "email" | "phone" | "whatsapp" | "telegram" | "instagram" | "website" | "bin" | "address";
+  value: string;
+  sources: { type: "addressee" | "case" | "evidence" | "story"; label?: string; filename?: string }[];
+};
+/** One step of the route the server chose («Принцип 3 клика»): `auto` steps go by themselves on the one button. */
+export type RouteStep = {
+  /** `portal`: the official appeal portal of the pack (eOtinish in KZ) — the step opens the portal bridge */
+  channel: "email" | "whatsapp" | "telegram" | "instagram" | "gov" | "portal" | "manual";
+  to: string; auto: boolean; href?: string | null; reason?: string | null; done?: boolean;
+  /** the portal's name for a `portal` step */
+  portal?: string | null;
+};
+export type SendPlan = {
+  contacts: FoundContact[]; message: string; email: EmailSendState; reply_to: string | null; filings: Delivery[];
+  route: RouteStep[];
+};
+export type SendGo = {
+  sent: Delivery[]; errors: { channel: string; to: string; code: string }[]; steps: RouteStep[]; message: string;
+  case: CaseView;
+};
+export type EmailPreview = {
+  from: string; to: string; reply_to: string; cc: string; subject: string; text: string;
+  attachments: { name: string; size: number }[];
+};
+
+export type EotinishTarget = {
+  channel: string;
+  name: string;
+  portal: string;
+  body: string;
+  body_key: string | null;
+  recipient: string | null;
+  appeal_type: "statement" | "complaint" | "proposal" | "request" | null;
+  category: string | null;
+  verified: boolean;
+};
+export type EotinishGuide = EotinishTarget & { text: string; has_pdf: boolean; filing: FilingRecord | null };
+/** What was read from the portal's confirmation (POST .../portal-filing/proof); it is kept as the receipt. */
+export type PortalProof = { evidence_id: string; number: string | null; filed_on: string | null; found: boolean; read_by: "text" | "model" | null };
+export type FilingRecord = {
+  id: string; channel: string; body: string; recipient: string; appeal_type: string | null; category: string | null;
+  number: string; filed_at: string; receipt_evidence_id: string | null; doc_sha256: string | null;
+  doc_format: string | null; source: string; created_at: string | null;
 };
 
 /** «Как подать»: everything comes from pack data; a null value is shown as «уточнит юрист». */
