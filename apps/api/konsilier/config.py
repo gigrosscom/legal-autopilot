@@ -216,6 +216,9 @@ class Settings(BaseSettings):
     self_service_documents: str = "claim_letter,complaint,statement,motion"
 
     admin_token: str = "change-me-admin"
+    # «Konsiliér Ops» sign-in by a code to e-mail (owner 01.10): only these addresses (comma-separated); empty → the
+    # ADMIN_TOKEN key only. The session it gives has the key's rights for 30 days and is never the key itself.
+    owner_emails: str = ""
     bot_api_secret: str = "change-me-bot"
 
     soffice_bin: str = "soffice"
