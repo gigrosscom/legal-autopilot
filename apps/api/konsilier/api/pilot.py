@@ -25,7 +25,7 @@ from ..core import lawyer_pilot as pilot
 from ..core.engine import EngineError
 from ..core.models import (Case, ChatMessage, Deadline, Evidence, Invoice, LawyerApplication, LawyerRequest,
                            Notification, User)
-from ..team import notify_team
+from ..team import is_test_text, is_test_user, notify_team
 from .deps import current_user, get_container, get_session, load_case, require_admin
 
 router = APIRouter(prefix="/v1")
@@ -119,7 +119,7 @@ def lawyer_payment_claim(case_id: uuid.UUID, user: User = Depends(current_user),
     except EngineError as e:
         raise _err(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if inv.status == "awaiting_confirmation" and not is_test_user(user):
         _tell_desk_claimed(container, inv, f"дело {case.id}, запрос юристу №{req.id}")
     return {"request": pilot.request_view(session, container.engine, req)}
 
@@ -197,7 +197,7 @@ def _answer(req_id: int, accept: bool, user: User, session: Session, container: 
                 f"Дело: {req.case_id}\nКлиент: {req.full_name}, тел. {req.phone}\n"
                 + ("Клиент оплачивает цену юриста на счёт компании; подтвердите оплату в оперативном центре."
                    if accept else "Клиент может выбрать другого юриста."), desk="clients",
-                test=session.get(User, req.user_id).is_test)
+                test=is_test_user(session.get(User, req.user_id)) or is_test_text(req.full_name))
     session.flush()
     return lawyer_request_view(session, container, req)
 

@@ -3,9 +3,28 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Literal
 
 Desk = Literal["lawyers", "clients"]
+
+# owner 01.10: QA / smoke runs must not mail the team. A test account: the is_test flag (smoke checks), a test source
+# (?src=team-test), or a test name or address («Тест…», «Person 0456», «Пилот Ссылкин», qa-test@…, @resend.dev)
+TEST_SOURCES = frozenset({"team-test", "qa-test", "smoke", "test"})
+TEST_MARK = re.compile(r"qa-test|team-test|smoke|@resend\.dev|@example\.(com|org)|^\s*(тест|test)(\b|[\s_-])|"
+                       r"^\s*person\s*\d+|ссылкин", re.I)
+
+
+def is_test_text(*texts: str | None) -> bool:
+    return any(TEST_MARK.search(t or "") for t in texts)
+
+
+def is_test_user(user: Any) -> bool:
+    """A test account: never mailed about to the team, kept out of the boards unless asked for."""
+    if user is None:
+        return False
+    return (bool(getattr(user, "is_test", False)) or (getattr(user, "source", None) or "") in TEST_SOURCES
+            or is_test_text(getattr(user, "email", None), getattr(user, "display_name", None)))
 
 
 def desk_emails(settings: Any, desk: Desk) -> list[str]:

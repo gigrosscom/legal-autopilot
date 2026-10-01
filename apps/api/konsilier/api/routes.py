@@ -16,7 +16,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..team import notify_team
+from ..team import is_test_text, is_test_user, notify_team
 from .referral import attribute
 from ..core.engine import OUTCOME_RESULTS, EngineError
 from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, Invoice, LawyerApplication, Notification, User, WaitlistEntry,
@@ -743,7 +743,7 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if inv.status == "awaiting_confirmation" and not is_test_user(user):
         _tell_desk_claimed(container, inv, f"дело {case.id}")
     if not case.narrative:
         prewrite_later(session, container, case.id)
@@ -791,7 +791,7 @@ def plan_claim(user: User = Depends(current_user), session: Session = Depends(ge
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if inv.status == "awaiting_confirmation" and not is_test_user(user):
         _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     return plans_view(container, session, user)
 
@@ -826,7 +826,7 @@ def choose_way(invoice_id: int, body: WayIn, user: User = Depends(current_user),
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if before != inv.status == "awaiting_confirmation" and not user.is_test:
+    if before != inv.status == "awaiting_confirmation" and not is_test_user(user):
         _tell_desk_claimed(container, inv, f"дело {inv.case_id}" if inv.case_id else
                            f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     if inv.case_id is not None:
@@ -1112,7 +1112,8 @@ def apply_as_lawyer(body: LawyerApplicationIn, request: Request, response: Respo
             response.status_code = 200
             notify_team(container, f"Заявка юриста №{same_phone.id}: ЭЦП подтверждена",
                         f"{same_phone.full_name}: к заявке привязана ЭЦП ({user.display_name or '—'}). "
-                        f"Сверьте ФИО по ЭЦП с ФИО в заявке и статус по реестру в оперативном центре.")
+                        f"Сверьте ФИО по ЭЦП с ФИО в заявке и статус по реестру в оперативном центре.",
+                        test=is_test_user(user) or is_test_text(same_phone.full_name, same_phone.email))
             return {"id": same_phone.id, "referral_code": same_phone.referral_code, "linked": True,
                     "ecp_verified": True, "invited": 0}
         raise HTTPException(409, {"code": "duplicate_application", "message": "duplicate_application",
@@ -1150,7 +1151,8 @@ def apply_as_lawyer(body: LawyerApplicationIn, request: Request, response: Respo
                  f"Телефон: {app_row.phone}\nE-mail: {app_row.email or '—'}\n"
                  f"Специализации: {', '.join(app_row.specializations or []) or '—'}\n"
                  f"ЭЦП: {'подтверждена' if ident is not None else 'ещё нет'}\n\n"
-                 f"Сверьте данные по чек-листу и реестру в оперативном центре: https://konsilier.com/ops")
+                 f"Сверьте данные по чек-листу и реестру в оперативном центре: https://konsilier.com/ops",
+                 test=is_test_user(user) or is_test_text(app_row.full_name, app_row.email))
     invited = session.scalar(select(func.count()).select_from(LawyerApplication)
                              .where(LawyerApplication.referred_by == code))
     return {"id": app_row.id, "referral_code": code, "invited": invited or 0, "ecp_verified": ident is not None,

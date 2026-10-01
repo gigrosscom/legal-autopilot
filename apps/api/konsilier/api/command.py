@@ -43,7 +43,8 @@ MAX_BYTES = 2_000_000
 # letters (any script), digits, dot, dash, underscore and slashes; no "..", no leading slash
 _PATH = re.compile(r"^team/(?:[\w.\-]+/)*[\w.\-]+\.(?:md|csv)$")
 # the files the app needs on every open, fetched in one call (GET /team/bundle)
-CORE = ("team/README.md", "team/sessions.md", "team/decisions.md", "team/backlog.md", "team/plan-month-1.md")
+CORE = ("team/README.md", "team/sessions.md", "team/decisions.md", "team/backlog.md", "team/plan-month-1.md",
+        "team/leads/lawyer-pilot.csv")  # the lawyers pilot board in «Сделки» (owner 01.10)
 
 _cache: dict[tuple[str, ...], tuple[float, Any]] = {}
 

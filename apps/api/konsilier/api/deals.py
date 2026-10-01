@@ -4,7 +4,6 @@ no new statuses."""
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Literal
@@ -18,6 +17,7 @@ from ..container import Container
 from ..core.models import Action, Case, Deadline, Invoice, SupportTicket, User
 from .deps import get_container, get_session, require_admin
 from .support import messages_of, ticket_view
+from ..team import is_test_text, is_test_user
 
 router = APIRouter(prefix="/v1/admin", dependencies=[Depends(require_admin)])
 
@@ -26,11 +26,15 @@ DEAL_COLUMNS = (
     ("confirm", "Ждёт подтверждения оплаты"), ("paid", "Оплачено"), ("ready", "Документ готов"),
     ("sent", "Отправлено"), ("closed", "Ответ получен / Закрыто"),
 )
-_TEST = re.compile(r"qa-test|team-test|smoke", re.I)
 
 
 def is_test_owner(u: User | None) -> bool:
-    return u is None or bool(u.is_test) or any(_TEST.search(x or "") for x in (u.email, u.display_name))
+    return u is None or is_test_user(u)
+
+
+def is_test_case(case: Case, owner: User | None) -> bool:
+    """A QA / smoke deal: a test account, or a test name typed as the applicant («Тест», «Person 0456»…)."""
+    return is_test_owner(owner) or is_test_text((case.facts or {}).get("applicant_name"))
 
 
 def _bill(session: Session, case: Case) -> Invoice | None:
@@ -90,18 +94,20 @@ def deal_card(container: Container, session: Session, case: Case, owner: User | 
 
 
 @router.get("/deals")
-def deals(limit: int = 500, session: Session = Depends(get_session),
+def deals(limit: int = 500, tests: bool = False, session: Session = Depends(get_session),
           container: Container = Depends(get_container)) -> dict[str, Any]:
-    """Real clients only (no test, QA or smoke accounts), newest first in each column."""
+    """Real clients, newest first in each column; QA / smoke deals only with tests=true, marked «test»."""
     cards: dict[str, list[dict[str, Any]]] = {k: [] for k, _ in DEAL_COLUMNS}
     owners: dict[Any, User | None] = {}
     for case in session.scalars(select(Case).order_by(Case.updated_at.desc()).limit(min(limit, 2000))):
         if case.owner_id not in owners:
             owners[case.owner_id] = session.get(User, case.owner_id)
         owner = owners[case.owner_id]
-        if is_test_owner(owner):
+        test = is_test_case(case, owner)
+        if test and not tests:
             continue
         card = deal_card(container, session, case, owner)
+        card["test"] = test
         cards[card["column"]].append(card)
     now = datetime.now(timezone.utc)
     paid = session.scalars(select(Invoice).where(Invoice.status == "paid", Invoice.decided_at.is_not(None),

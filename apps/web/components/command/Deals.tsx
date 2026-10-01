@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui";
 import { adminApi, API_URL, errorText } from "@/lib/api";
-import { Chip, Loading, PageTitle, Stat, useCentre } from "./ui";
+import { csv } from "@/lib/team";
+import { Chip, Loading, PageTitle, Stat, TeamUnavailable, useCentre } from "./ui";
 
 type Doc = { id: string; action_id: string; status: string; pdf: boolean; docx: boolean };
 export type Deal = {
   id: string; column: string; title: string | null; status_label: string; amount_at_stake: number | null; currency: string;
   created_at: string; updated_at: string | null; deadline: string | null; pending_review: string[]; documents: Doc[];
   bill: { code: string; status: string; amount: number; purpose: string } | null;
+  test?: boolean;
   client: { name: string; contacts: string[]; channel: string | null; ecp: boolean };
 };
 export type DealsBoard = { columns: { id: string; label: string; cards: Deal[] }[]; paid_today: number; paid_week: number;
@@ -25,18 +27,93 @@ const NEXT: Record<string, string> = { new: "ждём, когда ИИ опре�
 
 /** Owner 01.10: every real client's deal on one board, from the first question to the answer. */
 export function Deals() {
+  const [view, setView] = useState<"clients" | "lawyers">("clients");
+  const tab = (v: "clients" | "lawyers", label: string) => (
+    <button type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
+      className={`min-h-9 rounded-full px-4 text-[15px] font-semibold ${view === v ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{label}</button>
+  );
+  const switcher = <div role="tablist" aria-label="Чьи сделки" className="inline-flex rounded-full bg-sand p-1">{tab("clients", "Клиенты")}{tab("lawyers", "Юристы")}</div>;
+  return view === "clients" ? <ClientDeals switcher={switcher} /> : <LawyerPilot switcher={switcher} />;
+}
+
+/** The lawyers pilot (team/leads/lawyer-pilot.csv, kept by the team): one column per status. */
+const PILOT_COLUMNS = ["черновик готов", "письмо отправлено", "ответил", "созвон", "подключён", "отказ"];
+
+function LawyerPilot({ switcher }: { switcher: React.ReactNode }) {
+  const { bundle, teamError } = useCentre();
+  const [col, setCol] = useState(PILOT_COLUMNS[0]);
+  const text = bundle?.texts["team/leads/lawyer-pilot.csv"];
+  const rows = text ? csv(text) : [];
+  const head = rows[0] ?? [];
+  const at = (name: string) => head.indexOf(name);
+  const cards = rows.slice(1).map((r) => ({
+    id: r[at("pilot_id")] || r[at("name")], name: r[at("name")] ?? "", city: r[at("city")] ?? "",
+    spec: r[at("specialization")] ?? "", contact: r[at("public_contact")] ?? "", next: r[at("next_step")] ?? "",
+    status: (r[at("status")] ?? "").trim().toLowerCase().replace("подключен", "подключён"),
+  }));
+  const columns = [...PILOT_COLUMNS, ...new Set(cards.map((c) => c.status).filter((st) => st && !PILOT_COLUMNS.includes(st)))];
+  return (
+    <div className="space-y-6">
+      <PageTitle sub="Пилот «Юрист по кнопке»: из team/leads/lawyer-pilot.csv" actions={switcher}>Сделки</PageTitle>
+      {teamError && <TeamUnavailable />}
+      {!bundle && !teamError && <Loading />}
+      {bundle && !text && <p className="text-muted">Файла team/leads/lawyer-pilot.csv пока нет.</p>}
+      {text && (
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            {columns.map((c) => (
+              <button key={c} type="button" onClick={() => setCol(c)} aria-pressed={col === c}
+                className={`min-h-10 shrink-0 rounded-full px-3.5 text-[15px] ${col === c ? "bg-action font-semibold text-white" : "bg-sand"}`}>
+                {c} · {cards.filter((x) => x.status === c).length}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {columns.map((c) => {
+              const list = cards.filter((x) => x.status === c);
+              return (
+                <section key={c} aria-label={c}
+                  className={`w-full shrink-0 space-y-2 rounded-2xl bg-sand p-2.5 lg:block lg:w-72 ${col === c ? "block" : "hidden"}`}>
+                  <h2 className="flex items-baseline justify-between px-1 text-[15px] font-semibold first-letter:uppercase">{c}<span className="text-muted tabular-nums">{list.length}</span></h2>
+                  <ul className="space-y-2">
+                    {list.map((x) => (
+                      <li key={x.id} className="space-y-1.5 rounded-xl bg-surface p-3 shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-ink/[0.05]">
+                        <p className="text-[15px] font-semibold leading-snug">{x.name}</p>
+                        <p className="text-[14px] text-muted">{x.city}{x.spec && <> · {x.spec}</>}</p>
+                        {x.contact && <p className="break-words text-[14px]">{x.contact}</p>}
+                        {x.next && <p className="text-[14px]"><span className="text-muted">Дальше: </span>{x.next}</p>}
+                      </li>
+                    ))}
+                    {list.length === 0 && <li className="px-1 py-2 text-[14px] text-muted">пусто</li>}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ClientDeals({ switcher }: { switcher: React.ReactNode }) {
   const { token } = useCentre();
+  const [tests, setTests] = useState(false);
   const [b, setB] = useState<DealsBoard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [col, setCol] = useState("to_pay");
   const [open, setOpen] = useState<Deal | null>(null);
-  const load = useCallback(() => adminApi<DealsBoard>("/v1/admin/deals", token).then((r) => { setB(r); setError(null); })
-    .catch((e) => setError(errorText(e))), [token]);
+  const load = useCallback(() => adminApi<DealsBoard>(`/v1/admin/deals${tests ? "?tests=true" : ""}`, token).then((r) => { setB(r); setError(null); })
+    .catch((e) => setError(errorText(e))), [token, tests]);
   useEffect(() => { load(); }, [load]);
 
   return (
     <div className="space-y-6">
-      <PageTitle sub="Реальные клиенты (без тестовых): от первого вопроса до ответа адресата">Сделки</PageTitle>
+      <PageTitle sub={tests ? "Все клиенты, тестовые помечены «тест»" : "Реальные клиенты (без тестовых): от первого вопроса до ответа адресата"} actions={switcher}>Сделки</PageTitle>
+      <label className="flex w-fit items-center gap-2 text-[15px] text-muted">
+        <input type="checkbox" checked={tests} onChange={(e) => setTests(e.target.checked)} className="h-4 w-4 accent-[var(--color-action)]" />
+        Показать тестовые
+      </label>
       {error && <p role="alert" className="text-danger">{error}</p>}
       {!b && !error && <Loading />}
       {b && (
@@ -69,6 +146,7 @@ export function Deals() {
                         <p className="text-[15px] font-semibold leading-snug">{d.title || "Без сценария"}</p>
                         <p className="text-[14px] text-muted">{d.client.name || d.client.contacts[0] || "контакт не указан"} · {day(d.created_at)}</p>
                         <div className="flex flex-wrap gap-1.5">
+                          {d.test && <Chip tone="warn">тест</Chip>}
                           {d.amount_at_stake != null && <Chip>спор {money(d.amount_at_stake)}</Chip>}
                           {d.bill && <Chip tone={d.bill.status === "paid" ? "done" : d.bill.status === "awaiting_confirmation" ? "warn" : "blue"}>{d.bill.code} · {money(d.bill.amount)}</Chip>}
                           {d.pending_review.length > 0 && <Chip tone="warn">на проверке</Chip>}

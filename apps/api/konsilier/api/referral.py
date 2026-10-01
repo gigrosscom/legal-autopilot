@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..team import TEST_SOURCES
 from ..core.models import Case, User
 from .deps import current_user, get_session
 
@@ -38,6 +39,8 @@ def attribute(session: Session, user: User, ref: str | None, src: str | None) ->
     if inviter is not None:
         user.referred_by = inviter.id
     user.source = clean_source(src) or ("referral" if inviter is not None else None)
+    if user.source in TEST_SOURCES:
+        user.is_test = True  # QA runs (?src=team-test): out of metrics and no letters to the team (owner 01.10)
 
 
 def ensure_code(session: Session, user: User) -> str:

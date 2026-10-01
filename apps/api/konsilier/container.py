@@ -245,14 +245,14 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                              library=library)
     def approval_needed(session: Any, case: Any, action: Any) -> None:
         from .core.models import User
-        from .team import notify_team
+        from .team import is_test_text, is_test_user, notify_team
 
         owner = session.get(User, case.owner_id)
         notify_team(container, f"Документ ждёт проверки: {action.action_id}",
                     f"Клиент ждёт документ по делу {case.id} (сценарий {case.scenario_id}). "
                     f"Клиенту обещано: в течение нескольких минут — проверьте сейчас.\n\n"
                     f"Проверьте и одобрите или верните: {settings.public_site_url.rstrip('/')}/ops?tab=ops",
-                    desk="clients", test=bool(owner and owner.is_test))
+                    desk="clients", test=is_test_user(owner) or is_test_text((case.facts or {}).get("applicant_name")))
     engine.on_approval_needed = approval_needed
 
     def approval_reminders(session: Any, now: Any) -> int:
@@ -263,7 +263,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
         from sqlalchemy import select
 
         from .core.models import Action, AuditLog, Case, User
-        from .team import notify_team
+        from .team import is_test_text, is_test_user, notify_team
 
         sent = 0
         late = session.scalars(select(Action).where(Action.approval_status == "pending",
@@ -278,7 +278,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
             notify_team(container, f"Срочно: документ ждёт проверки больше {REVIEW_REMIND_MINUTES} минут ({action.action_id})",
                         f"Клиенту обещали проверку в течение нескольких минут. Дело {case.id}.\n\n"
                         f"Открыть очередь: {settings.public_site_url.rstrip('/')}/ops?tab=ops",
-                        desk="clients", test=bool(owner and owner.is_test))
+                        desk="clients", test=is_test_user(owner) or is_test_text((case.facts or {}).get("applicant_name")))
             session.add(AuditLog(case_id=case.id, actor="scheduler", event="approval_reminded",
                                  data={"action": action.action_id}))
             sent += 1
