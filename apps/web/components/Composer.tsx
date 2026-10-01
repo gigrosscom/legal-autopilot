@@ -66,7 +66,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   const attach = (
     <label title={t("chat.attach")}
       className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-sand ${
-        large ? "h-10 w-10 text-ink" : "h-11 w-10 text-[var(--chat-accent)]"} ${busy ? "pointer-events-none opacity-40" : ""}`}>
+        large ? "h-11 w-11 text-ink" : "h-11 w-10 text-[var(--chat-accent)]"} ${busy ? "pointer-events-none opacity-40" : ""}`}>
       <Icon name="plus" size={large ? 22 : 24} /><span className="sr-only">{t("chat.attach")}</span>
       <input type="file" multiple accept="image/*,application/pdf,text/plain,.doc,.docx" className="sr-only" disabled={busy}
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
@@ -75,13 +75,13 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   // as in ChatGPT: the microphone and «send» side by side; send turns blue once there is something to send
   const micButton = dictation.transcribing ? (
     <span role="status" title={t("chat.transcribing")}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink">
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink">
       <Icon name="spinner" size={20} /><span className="sr-only">{t("chat.transcribing")}</span>
     </span>
   ) : dictation.supported ? (
     <button type="button" onClick={dictation.listening ? dictation.stop : record} disabled={busy}
       aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${dictation.listening
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${dictation.listening
         ? "bg-danger text-white motion-safe:animate-pulse" : "text-ink hover:bg-sand"}`}>
       <Icon name={dictation.listening ? "stop" : "mic"} size={21} />
       <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
@@ -92,12 +92,12 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       {micButton}
       {onStop ? (
         <button type="button" onClick={onStop} title={t("chat.stop")}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white">
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-white">
           <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
         </button>
       ) : (
       <button type="submit" disabled={busy || (!hasText && !dictation.listening) || dictation.transcribing} title={t("chat.send")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action text-white transition-colors disabled:bg-sand-deep disabled:text-muted">
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-action text-white transition-colors disabled:bg-sand-deep disabled:text-muted">
         <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
       </button>
       )}

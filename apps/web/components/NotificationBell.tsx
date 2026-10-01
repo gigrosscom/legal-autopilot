@@ -21,7 +21,7 @@ export function NotificationBell({ className = "" }: { className?: string }) {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={label} title={label}
-        className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand-deep ${className}`}>
+        className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand-deep ${className}`}>
         <Icon name="bell" size={22} />
         {unread > 0 && (
           <span aria-hidden="true"
