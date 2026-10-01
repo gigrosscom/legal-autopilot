@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MetricsTab } from "@/components/MetricsTab";
 import { OpsDesk } from "@/components/OpsDesk";
+import { CourierDesk } from "./Courier";
 import { PaymentsToConfirm } from "./Payments";
 import { PilotLawyers } from "./PilotLawyers";
 import { ReviewsToCheck } from "./Reviews";
@@ -14,9 +15,10 @@ export function Operations() {
   const [view, setView] = useState<"desk" | "metrics">("desk");
   return (
     <div className="space-y-8">
-      <PageTitle sub="Проверка документов, оплаты, обращения клиентов и метрики.">Операции</PageTitle>
+      <PageTitle sub="Проверка документов, оплаты, курьер, обращения клиентов и метрики.">Операции</PageTitle>
       <ReviewsToCheck />
       <PaymentsToConfirm />
+      <CourierDesk />
       <PilotLawyers />
       <section className="space-y-3">
         <div role="tablist" className="flex gap-2">

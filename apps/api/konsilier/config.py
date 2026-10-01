@@ -259,6 +259,21 @@ class Settings(BaseSettings):
     email_send_per_case_day: int = 5  # letters per case in 24 hours
     email_send_per_user_hour: int = 10  # attempts per person in an hour
     send_followup_hours: float = 2.0  # «Ответили?» this long after sending (owner 01.10: 2–3 hours, not a day)
+    # «Доставить курьером» (pilot «Курьер», owner 01.10.2026; konsilier/courier): price, cities and windows come from
+    # the pack's courier.yaml. COURIER_PROVIDER: auto (cdek when its keys are set, else alemtat when its key and
+    # contract card are set, else manual) | cdek | alemtat | manual — manual: the order waits in /ops, the duty
+    # operator orders the courier and enters the tracking number and statuses. Keys only from the environment.
+    courier_enabled: bool = False  # off until the owner turns the pilot on (COURIER_ENABLED=true)
+    courier_provider: str = "auto"
+    cdek_client_id: str = ""
+    cdek_client_secret: str = ""
+    cdek_base_url: str = "https://api.edu.cdek.ru"  # the CDEK test environment; production: https://api.cdek.ru
+    alemtat_api_key: str = ""
+    alemtat_card: str = ""  # the client card number of the Alem TAT contract (required by its API)
+    alemtat_base_url: str = "https://api.alemtat.kz/web/json"
+    # /v1/webhooks/courier/<provider>?token=… — empty → 404 (statuses still come by polling)
+    courier_webhook_token: str = ""
+    courier_poll_minutes: int = 30  # an order's status is asked of the provider at most this often
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)
     sms_api_key: str | None = None  # Mobizon API key
     smsc_login: str | None = None

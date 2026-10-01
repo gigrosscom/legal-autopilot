@@ -145,6 +145,9 @@ class CaseEngine:
         self.defer_pdf = False
         # called when a document waits for a lawyer's check, so the lawyer learns of it at once (set by the container)
         self.on_approval_needed: Any = None
+        # what a paid bill of another purpose gives, by purpose (e.g. "delivery": konsilier/courier, set by the
+        # container): hook(session, invoice). Such a bill never unlocks documents and the hook tells the client.
+        self.paid_hooks: dict[str, Any] = {}
         self.scheduler = scheduler
         self.notifier = notifier
         self.payments = payments
@@ -1142,6 +1145,10 @@ class CaseEngine:
 
             lawyer_pilot.apply_paid(session, self, inv)
             return
+        hook = self.paid_hooks.get(inv.purpose)
+        if hook is not None:
+            hook(session, inv)
+            return
         self._referral_bonus(session, inv)
         if inv.purpose == "plan":
             now = utcnow()
@@ -1265,7 +1272,8 @@ class CaseEngine:
         case = session.get(Case, inv.case_id)
         pack = self.pack_of(case)
         lang = pack.lang(case.language)
-        if inv.purpose == "lawyer" and received:  # lawyer_pilot.apply_paid told the client and the lawyer
+        if received and (inv.purpose == "lawyer" or inv.purpose in self.paid_hooks):
+            # lawyer_pilot.apply_paid / the purpose's hook told the client
             self.audit(session, case, f"ops:{operator}", "payment_confirmed", invoice=inv.code)
             return
         if received:

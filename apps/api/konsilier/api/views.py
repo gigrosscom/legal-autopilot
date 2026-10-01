@@ -127,6 +127,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         # and the registered appeal on the appeal portal (one per document, with its number and date)
         filings = filings_of(session, case.id)
         registered = portal_filings(session, case.id)
+        courier = getattr(container, "courier", None)
         for a in case.actions:
             spec = sc.action(a.action_id)
             dl = deadlines.get(a.id)
@@ -162,6 +163,8 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 # manual filing on the appeal portal: what to pick there (None → not filed there) and the record
                 "appeal_portal": portal_target(pack, lang, a),
                 "filed": filing_record(registered[a.id]) if a.id in registered else None,
+                # «Доставить курьером» (konsilier/courier): may it be ordered, and the latest delivery
+                "courier": courier.state(session, case, a) if courier is not None and a.kind == "document" else None,
             })
         view["roadmap"] = build_roadmap(case, sc, pack, deadlines).to_dict()
         view["deadline"] = response_deadline(case, deadlines, pack)

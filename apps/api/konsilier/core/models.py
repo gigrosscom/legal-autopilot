@@ -350,6 +350,54 @@ class Filing(TimestampMixin, Base):
     replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class Delivery(TimestampMixin, Base):
+    """«Доставить курьером» (konsilier/courier): a paid document is picked up from the client (two copies signed by
+    them), handed to the addressee against a signature on the second copy, and the second copy comes back to the
+    client. Paid by its own bill (``invoices.purpose = "delivery"``); the provider is a courier service's API or
+    ``manual`` (the order waits in /ops, the operator enters the tracking number and statuses).
+
+    status: awaiting_payment → paid (to be ordered) → ordered → picked_up → in_transit → delivered | refused →
+    returned; cancelled (before pickup). ``events`` — every status change with its time and source (provider,
+    webhook, poll, operator). Delivered starts the response deadline (``engine.mark_submitted(submitted_on=…)``)
+    and closes the ``filing`` (channel ``courier``) — the proof."""
+
+    __tablename__ = "deliveries"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    action_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("actions.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), index=True)
+    filing_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("filings.id"), nullable=True)
+    provider: Mapped[str] = mapped_column(String(16), default="manual")
+    status: Mapped[str] = mapped_column(String(20), default="awaiting_payment", index=True)
+    city: Mapped[str] = mapped_column(String(32))  # the pack's city id
+    pickup_address: Mapped[str] = mapped_column(String(500))
+    pickup_date: Mapped[date] = mapped_column(Date)
+    pickup_from: Mapped[str] = mapped_column(String(5))  # HH:MM, local time of the pack
+    pickup_to: Mapped[str] = mapped_column(String(5))
+    contact_name: Mapped[str] = mapped_column(String(200))
+    contact_phone: Mapped[str] = mapped_column(String(20))
+    recipient_name: Mapped[str] = mapped_column(String(500))
+    recipient_address: Mapped[str] = mapped_column(String(500))
+    recipient_phone: Mapped[str | None] = mapped_column(String(20))
+    comment: Mapped[str | None] = mapped_column(String(500))
+    price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    external_id: Mapped[str | None] = mapped_column(String(100), index=True)  # the provider's order id
+    tracking: Mapped[str | None] = mapped_column(String(100))  # the number the client can track
+    meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # provider data: intake, return order, cost
+    events: Mapped[list[Any]] = mapped_column(JSON, default=list)  # [{at, status, source, code?, text?}]
+    error: Mapped[str | None] = mapped_column(String(300))
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    signer_name: Mapped[str | None] = mapped_column(String(200))  # who signed for it, when the courier says
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    picked_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Agreement(TimestampMixin, Base):
     """Customer ↔ lawyer paper for a case (consent, engagement), signed by both with ЭЦП: customer first."""
 

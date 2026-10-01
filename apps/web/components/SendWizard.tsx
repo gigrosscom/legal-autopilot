@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CodeForm } from "@/components/CodeForm";
+import { CourierDelivery } from "@/components/CourierDelivery";
 import { EotinishBridge } from "@/components/EotinishBridge";
 import { SignDocument } from "@/components/SignDocument";
 import { Badge, Button, Icon, type IconName } from "@/components/ui";
@@ -167,6 +168,8 @@ export function SendWizard({ caseId, a, onCase }: { caseId: string; a: CaseActio
       {error && <p role="alert" className="text-xs text-danger">{error}</p>}
 
       <Deliveries caseId={caseId} items={deliveries} onUpdate={addDelivery} lang={lang} />
+      {/* «Доставить курьером» (pilot «Курьер»): the paper copy handed over against a signature, paid like the document */}
+      {!portalOnly && <CourierDelivery caseId={caseId} a={a} onCase={onCase} />}
       <details className="rounded-2xl border border-line px-3 py-2">
         <summary className="cursor-pointer text-sm">{t("send.plan.other")}</summary>
         <div className="pt-2">

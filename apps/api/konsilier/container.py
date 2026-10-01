@@ -57,6 +57,7 @@ class Container:
     # when a sign-in code last failed to go out, per channel: payment must not wait on a channel that is down
     send_failed_at: dict[str, Any] = field(default_factory=dict)
     official_library: Any = None  # konsilier.official.search.OfficialLibrary, searched by the chat
+    courier: Any = None  # konsilier.courier.Courier: «Доставить курьером» (pilot «Курьер»)
 
     def law_agent_for(self, case: Any) -> Any:
         """The agent reads one official portal; it serves countries whose pack lists that portal as a source."""
@@ -300,4 +301,10 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     from .api.delivery import followups
 
     scheduler.extra_jobs.append(followups(container))  # «Ответили?» a day after a document went out
+    from .courier import Courier
+    from .courier.providers import build_provider as build_courier_provider
+
+    container.courier = Courier(container, build_courier_provider(settings))
+    engine.paid_hooks["delivery"] = container.courier.apply_paid  # the delivery bill is paid → order the courier
+    scheduler.extra_jobs.append(container.courier.job)  # place paid orders, poll the statuses
     return container

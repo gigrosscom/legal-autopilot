@@ -10,7 +10,7 @@ type Pay = {
   claimed_at: string | null;
   lawyer: { name: string | null; commission_pct: number | null; commission_amount: number | null; payout: number } | null;
 };
-const PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ", lawyer: "работа юриста, на счёт ТОО" };
+const PURPOSE: Record<string, string> = { document: "один документ", case: "дело под ключ", lawyer: "работа юриста, на счёт ТОО", delivery: "доставка курьером" };
 const sum = (n: number | null, currency: string | null) => `${(n ?? 0).toLocaleString("ru-RU")} ${currency === "KZT" ? "₸" : currency ?? ""}`;
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
