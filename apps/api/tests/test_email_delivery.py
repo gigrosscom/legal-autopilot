@@ -343,7 +343,7 @@ def test_route_is_chosen_and_one_button_sends_the_email_by_itself(case):
     plan = api.get(url(cid, aid, "/send")).json()
     route = plan["route"]
     assert [(s["channel"], s["auto"]) for s in route] == [("whatsapp", False), ("email", True)]
-    assert route[1]["href"].startswith("https://wa.me/77015554433?text=")
+    assert route[0]["href"].startswith("https://wa.me/77015554433?text=")
     r = ctx.client.post(url(cid, aid, "/send/go"), headers=api.h, json={})
     assert r.status_code == 422  # no instruction without the button
     out = api.post(url(cid, aid, "/send/go"), json={"confirm": True})
