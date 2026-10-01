@@ -39,6 +39,14 @@ main() {
     fi
   done
 
+  # Failed ЭЦП checks since the last run: the reason NCANode gave (chain / revoked / ocsp_unavailable / expired / …,
+  # with status codes, algorithm, validity dates and the issuing CA — the API logs no IIN, name or subject).
+  ECPSTAMP=/run/konsilier-ecplog.stamp
+  ECPSINCE=$(cat "$ECPSTAMP" 2>/dev/null || echo 3m)
+  date -u +%Y-%m-%dT%H:%M:%SZ > "$ECPSTAMP" 2>/dev/null || true
+  timeout 30 docker compose -f deploy/docker-compose.prod.yml --env-file .env logs --since "$ECPSINCE" --no-log-prefix api \
+    2>/dev/null | grep -o 'ecp verify failed.*' | tail -5 | cut -c1-900 | while read -r l; do log "$l"; done || true
+
   git fetch --quiet origin "$BRANCH"
   LOCAL=$(git rev-parse HEAD)
   REMOTE=$(git rev-parse "origin/$BRANCH")
@@ -68,8 +76,10 @@ s = get_settings(); c = build_container(s)
 m = ','.join(k for k, v in c.identity_methods().items() if v) or 'none'
 nca = 'off'
 if s.ncanode_url:
-    try: nca = str(httpx.post(s.ncanode_url.rstrip('/') + '/cms/verify', json={'cms': 'AA=='}, timeout=20).status_code)
-    except Exception as e: nca = e.__class__.__name__
+    # an empty CMS on purpose: 400 = NCANode is up and answers; 503 = still loading CA/CRL lists (warm-up)
+    try: code = httpx.post(s.ncanode_url.rstrip('/') + '/cms/verify', json={'cms': 'AA=='}, timeout=20).status_code
+    except Exception as e: code = e.__class__.__name__
+    nca = {200: 'up', 400: 'up', 503: 'warming'}.get(code, str(code))
 print(m + ';ncanode=' + nca)" 2>&1 | tail -1)
       # The legal agent reads the official portal live: one article of the Labour Code as a smoke test.
       LAWS=$(docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
@@ -142,7 +152,7 @@ except Exception as e:
       SUP_WEB=$(timeout 25 curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE_DOMAIN/support") || true
       # ЭЦП checks (NCANode) not answering: say why on the console — container state, memory, its last log lines —
       # restart it once and check again after it has loaded the certificate lists (Java, ~1–2 min).
-      case "$AUTH" in *ncanode=200*|*ncanode=400*|*ncanode=off*) ;; *)
+      case "$AUTH" in *ncanode=up*|*ncanode=warming*|*ncanode=off*) ;; *)
         DC="docker compose -f deploy/docker-compose.prod.yml --env-file .env"
         NCA_PS=$($DC ps -a --format '{{.State}}/{{.Status}}' ncanode 2>&1 | tail -1 || true)
         MEM=$(free -m 2>/dev/null | awk '/Mem:/{print $3"/"$2"MB"}' || true)
@@ -164,6 +174,26 @@ except Exception as e: print(e.__class__.__name__)" 2>&1 | tail -1 || true)
       log "host $HOST"
       log "deployed ${REMOTE:0:7} api=$API web=$WEB llm=$LLM auth=$AUTH laws=$LAWS acts=$ACTS chat=$CHAT bot=${BOT_STATE:-none}:getMe=${BOT_TG:-none} support=api:${SUP_API:-none},page:${SUP_WEB:-none} $HTTPS cache=[$CACHE]"
       log "$(docker compose -f deploy/docker-compose.prod.yml --env-file .env ps --format '{{.Service}}:{{.State}}' | tr '\n' ' ')"
+      # ЭЦП chain check, once per deploy, after NCANode has loaded its CA and CRL lists (waits up to 4 min for
+      # health UP): NCANode's version and health, then it checks a public certificate of «НУЦ РК (RSA) 2022» (the CA
+      # of today's RSA keys) with OCSP+CRL — "ecp ncanode=v3.5.0 health=UP(ca:UP,crl:UP) rsa2022=ok
+      # rev=[OCSP:OK,CRL:good]" means real RSA keys pass; plus whether the VM itself reaches the НУЦ РК servers.
+      DC="docker compose -f deploy/docker-compose.prod.yml --env-file .env"
+      ECP=$(timeout 330 $DC exec -T api python -c "
+from konsilier.config import get_settings
+from konsilier.identity.ncanode import NcaNode
+s = get_settings()
+if not s.ncanode_url:
+    print('off')
+else:
+    try: print(NcaNode(s.ncanode_url, timeout=60).self_check(wait=240))
+    except Exception as e: print(e.__class__.__name__ + ':' + str(e)[:60].replace(' ', '_'))" 2>&1 | tail -1 || true)
+      NIMG=$(docker inspect --format '{{.Config.Image}}' "$($DC ps -q ncanode 2>/dev/null | head -1)" 2>/dev/null || true)
+      REACH=""
+      for u in http://ocsp.pki.gov.kz/ http://crl.pki.gov.kz/nca_d_rsa_2022.crl http://pki.gov.kz/cert/nca_rsa_2022.cer; do
+        REACH="$REACH $(echo "$u" | cut -d/ -f3):$(timeout 20 curl -s -o /dev/null -m 15 -w '%{http_code}' "$u" || echo fail)"
+      done
+      log "ecp $ECP image=${NIMG:-none} vm-reach[$REACH ]"
       # KPI (owner 01.10): question → document in 3 minutes. After a deploy, at most every 3 hours, the real path is
       # timed for three cases as a marked test user (deploy/smoke.py --path3): «path3 refund=…s taps=…» lines.
       P3=/run/konsilier-path3.stamp
