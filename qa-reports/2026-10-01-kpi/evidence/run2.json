@@ -1,0 +1,114 @@
+[
+ {
+  "scenario": "Возврат за товар",
+  "ttft": 1.24,
+  "offer": true,
+  "scenario_id": "kz.consumer.refund",
+  "status": "qualified",
+  "t_draft": 5.6,
+  "facts": [
+   200,
+   null
+  ],
+  "t_invoice": 6.4,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-HSBV9P",
+   "status": "pending"
+  },
+  "claim": 200,
+  "confirm": 200,
+  "t_paid": 6.9,
+  "paid_to_doc_s": 4.5,
+  "t_doc": 11.3,
+  "action": {
+   "action_id": "claim_to_seller",
+   "title": "Претензия продавцу о возврате денег",
+   "status": "ready",
+   "approval_status": "not_required",
+   "downloadable": true,
+   "has_pdf": false
+  },
+  "dl_docx": [
+   200,
+   "application/vnd.openxmlformats-officedoc",
+   38418
+  ],
+  "dl_pdf": [
+   200,
+   "application/pdf",
+   32832
+  ],
+  "taps": 6,
+  "case_id": "af288553-7d07-4768-af0b-00d70510312f",
+  "t_total": 15.5
+ },
+ {
+  "scenario": "Невыплата зарплаты",
+  "ttft": 6.29,
+  "offer": true,
+  "scenario_id": "kz.labor.final_settlement",
+  "status": "qualified",
+  "t_draft": 8.1,
+  "facts": [
+   200,
+   null
+  ],
+  "t_invoice": 8.9,
+  "invoice": {
+   "amount": 1990.0,
+   "currency": "KZT",
+   "code": "KA-W9XS8E",
+   "status": "pending"
+  },
+  "claim": 200,
+  "confirm": 200,
+  "t_paid": 9.3,
+  "paid_to_doc_s": 3.8,
+  "t_doc": 13.1,
+  "action": {
+   "action_id": "statement_to_employer",
+   "title": "Письменное требование работодателю о выплате расчёта",
+   "status": "ready",
+   "approval_status": "not_required",
+   "downloadable": true,
+   "has_pdf": false
+  },
+  "dl_docx": [
+   200,
+   "application/vnd.openxmlformats-officedoc",
+   38425
+  ],
+  "dl_pdf": [
+   200,
+   "application/pdf",
+   30647
+  ],
+  "taps": 6,
+  "case_id": "c74b3e85-62e1-44bf-abcb-11f24f5a1046",
+  "t_total": 15.1
+ },
+ {
+  "scenario": "Жалоба на госорган",
+  "ttft": 4.54,
+  "offer": true,
+  "scenario_id": "kz.gov.inaction_complaint",
+  "status": "qualified",
+  "t_draft": 17.6,
+  "facts": [
+   422,
+   {
+    "detail": {
+     "code": "invalid_facts",
+     "message": "invalid_facts",
+     "fields": {
+      "applicant_iin": "pattern"
+     }
+    }
+   }
+  ],
+  "fail": "payment 422 {'detail': {'code': 'applicant_data_required', 'message': 'applicant_data_required', 'fields': [{'field': 'applicant_name', 'label': 'ФИО заявителя', 'type': 'text', 'pattern': None}, {'field': 'applicant_iin', 'label': 'ИИН', 'type': 'text', 'pattern': '^\\\\d{12}$'}, {'field': 'applicant_address', 'label': 'Адрес заявителя', 'type': 'text', 'pattern': None}, {'field': 'applicant_phone', 'label': 'Телефон', 'type': 'phone', 'pattern': None}]}}",
+  "t_total": 18.4
+ }
+]
