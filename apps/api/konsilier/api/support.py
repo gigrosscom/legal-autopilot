@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.models import Case, SupportTicket, TicketMessage, User
-from ..team import notify_team
+from ..team import is_test_user, notify_team
 from .deps import current_user, get_container, get_session
 
 router = APIRouter(prefix="/v1")
@@ -77,7 +77,7 @@ def create_ticket(body: TicketIn, user: User = Depends(current_user), session: S
     notify_team(container, f"{KIND_RU[t.kind]} №{t.id} от клиента",
                 f"{t.name or 'Без имени'} · {t.email or ''} {t.phone or ''}\n"
                 f"{'Дело: ' + str(t.case_id) if t.case_id else ''}\n\n{body.text.strip()}\n\n"
-                f"Ответьте в оперативном центре: https://konsilier.com/ops", desk="clients", test=user.is_test)
+                f"Ответьте в оперативном центре: https://konsilier.com/ops", desk="clients", test=is_test_user(user))
     return ticket_view(t, messages_of(session, [t.id])[t.id])
 
 
@@ -103,5 +103,5 @@ def client_reply(ticket_id: int, body: ClientReplyIn, user: User = Depends(curre
     t.status, t.updated_at = "in_progress" if t.status == "done" else t.status, datetime.now(timezone.utc)
     session.flush()
     notify_team(container, f"Ответ клиента по обращению №{t.id}", body.text.strip(), desk="clients",
-                test=user.is_test)
+                test=is_test_user(user))
     return ticket_view(t, messages_of(session, [t.id])[t.id])

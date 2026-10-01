@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..container import Container
-from ..team import notify_team
+from ..team import is_test_text, is_test_user, notify_team
 from ..core import lawyer_pilot as pilot
 from ..core.lawyer_pilot import iin_identity, render_agreement  # noqa: F401 — kept importable from here
 from ..core.models import Agreement, Case, LawyerApplication, LawyerRequest, User
@@ -196,17 +196,17 @@ def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depen
                     f"{req.full_name}, тел. {req.phone}{', ' + req.email if req.email else ''}\n"
                     f"Дело: {case.id}\nЮрист в каталоге: {body.lawyer_ref or '—'}\n\n"
                     f"Передайте дело юристу нужной специализации и сообщите клиенту.", desk="clients",
-                    test=user.is_test)
+                    test=is_test_user(user) or is_test_text(req.full_name))
         return {"id": req.id, "case_id": str(case.id), "status": req.status}
     currency = container.engine.pack_of(case).currency
     tell_lawyer(session, container, app, "Konsiliér AI: новый запрос клиента",
                 f"{app.full_name}, клиент отправил вам запрос по делу (ваша цена {pilot.money(req.price)} {currency}). "
                 f"Откройте кабинет юриста, чтобы принять или отклонить его: https://konsilier.com/lawyer",
-                test=user.is_test)
+                test=is_test_user(user) or is_test_text(req.full_name))
     notify_team(container, f"«Юрист по кнопке»: запрос №{req.id} юристу {pilot.lawyer_name(app)}",
                 f"Клиент: {req.full_name}, тел. {req.phone}\nДело: {case.id}\nЦена юриста: {req.price} {currency}\n\n"
                 f"Юрист получил уведомление и принимает или отклоняет запрос в своём кабинете.", desk="clients",
-                test=user.is_test)
+                test=is_test_user(user) or is_test_text(req.full_name))
     return {"id": req.id, "case_id": str(case.id), "status": req.status,
             "request": pilot.request_view(session, container.engine, req)}
 
