@@ -79,6 +79,8 @@ function SignIn({ onDone }: { onDone: (token: string) => void }) {
           className="min-h-12 w-full rounded-full bg-action text-[17px] font-semibold text-white hover:bg-action-hover disabled:opacity-50">
           {busy ? "Проверяем…" : "Войти"}
         </button>
+        <InstallButton storeKey={INSTALL_KEY} icon="smartphone" label="Установить на рабочий стол"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface text-[17px] font-semibold text-action hover:bg-sand" />
       </form>
     </main>
   );
