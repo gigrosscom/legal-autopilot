@@ -95,3 +95,22 @@ def test_scheduler_extra_jobs_get_the_time(ctx):
     ctx.container.scheduler.extra_jobs.append(lambda s, now: got.append(now) or 0)
     ctx.container.scheduler.tick()
     assert got and got[0] is not None and got[0].tzinfo is not None
+
+
+def test_site_goes_to_the_draft_at_once_the_bot_keeps_questions(ctx):
+    """Owner 01.10, «3 клика»: on the site the draft comes at once (filled from the story and files, blanks to fill);
+    the Telegram bot has no draft screen and keeps its few questions."""
+    from .test_e2e import telegram_user
+
+    ctx.container.engine.config.intake_max_questions = -1
+    api = web_user(ctx)
+    out = api.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})
+    case = out["case"]
+    assert case["status"] == "qualified" and case["question"] is None
+    assert "черновик" in out["reply"]["message"].lower()
+    draft = api.get(f"/v1/cases/{case['id']}/draft").json()
+    assert draft["blanks"] and draft["paid"] is False
+
+    tg = telegram_user(ctx)
+    case = tg.post("/v1/cases", expect=201, json={"text": STORY, "country": "KZ"})["case"]
+    assert case["status"] == "intake" and case["question"] is not None

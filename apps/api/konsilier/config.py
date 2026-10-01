@@ -145,7 +145,9 @@ class Settings(BaseSettings):
     # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
     # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
     # them. Telegram users are reachable in the bot and are not asked.
-    payment_requires_contact: bool = True
+    # owner 01.10 («3 клика»): no separate contact code before paying — the person is identified by the ЭЦП /
+    # eGov Mobile signature of the document; true brings the code back
+    payment_requires_contact: bool = False
     # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
     # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
     plan_case_price: int = 9990
@@ -185,7 +187,7 @@ class Settings(BaseSettings):
 
     qualify_min_confidence: float = 0.6
     # PM 01.10: the draft after at most this many interview questions (the rest are blanks); 0 = no cap
-    intake_max_questions: int = 4
+    intake_max_questions: int = -1  # -1: the draft at once on the site (owner 01.10, «3 клика»)
     approval_required_first_n: int = 50
     # Self-service: documents a person can file without a lawyer (pre-trial claim, complaint, statement, motion outside court) are
     # released at once; court documents and flagged cases still wait for a lawyer. False → the old rule
