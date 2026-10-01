@@ -8,6 +8,7 @@ import { adminApi, ApiError, errorText } from "@/lib/api";
 import type { Bundle } from "@/lib/team";
 import { Deals } from "./Deals";
 import { Decisions } from "./Decisions";
+import { Deliveries } from "./Deliveries";
 import { Goals } from "./Goals";
 import { pendingOf, type Metrics } from "./model";
 import { Operations } from "./Operations";
@@ -25,6 +26,7 @@ const INSTALL_KEY = "konsilier.opsInstalled";
 const TABS: { key: TabKey; label: string; icon: IconName }[] = [
   { key: "home", label: "Сводка", icon: "home" },
   { key: "deals", label: "Сделки", icon: "briefcase" },
+  { key: "deliveries", label: "Доставки", icon: "truck" },
   { key: "questions", label: "Вопросы", icon: "chat" },
   { key: "goals", label: "Цели и курс", icon: "map" },
   { key: "team", label: "Команда", icon: "users" },
@@ -153,7 +155,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
   const current = TABS.find((t) => t.key === tab)!;
   const body: Record<TabKey, ReactNode> = {
     home: <Summary />, deals: <Deals />, questions: <Questions />, goals: <Goals />, team: <TeamTab />, tasks: <Tasks />, decisions: <Decisions />,
-    reports: <Reports />, ops: <Operations />,
+    reports: <Reports />, ops: <Operations />, deliveries: <Deliveries />,
   };
   const badge = (k: TabKey) => (k === "decisions" && pending > 0 ? pending : null);
 

@@ -12,6 +12,7 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { SendWizard } from "@/components/SendWizard";
+import { CourierCard } from "@/components/Courier";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
 import { DraftPreview } from "@/components/DraftPreview";
@@ -418,6 +419,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
+
+      {/* pilot «Курьер» (owner 01.10): after the paid document, hand it to the respondent in person */}
+      {c.status !== "intake" && last?.downloadable && <CourierCard caseId={c.id} />}
 
       {c.status === "awaiting_response" && proposal?.message && (
         <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
