@@ -17,20 +17,43 @@ services:
       - ./:/etc/caddy/conf:ro
       - caddy_data:/data
       - caddy_config:/config
-    depends_on: [web, api]
+    depends_on: [web, api, api2]
 
-  api:
+  # Two copies of the API behind Caddy, so a deploy or an .env change never cuts a chat answer (owner saw «Вы име…»):
+  # deploy/update.sh restarts them one at a time and waits until the restarted one is healthy before the next.
+  # Caddy (Caddyfile) sends requests to `api` and switches to `api2` while `api` is down. A stopped copy gets SIGTERM,
+  # stops accepting connections and finishes the answers it is streaming (up to UVICORN_GRACE seconds; Docker waits
+  # stop_grace_period before a SIGKILL). Only `api` runs the scheduler (reminders, crawls, corpus jobs).
+  api: &api
     build: {context: .., dockerfile: apps/api/Dockerfile}
     restart: unless-stopped
     env_file: ../.env
-    environment:
+    environment: &api_env
       PACKS_DIR: /app/packs
       STORAGE_LOCAL_DIR: /data/files
       CORS_ORIGINS: https://${SITE_DOMAIN},https://www.${SITE_DOMAIN}
       PUBLIC_API_URL: https://${API_DOMAIN}
       PUBLIC_SITE_URL: https://${SITE_DOMAIN}
       NCANODE_URL: http://ncanode:14579
+      UVICORN_GRACE: "50"
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 120s  # alembic upgrade and the first imports
     volumes: [api_data:/data]
+
+  api2:
+    <<: *api
+    environment:
+      <<: *api_env
+      # the scheduler tick runs in `api` only (it also holds a PostgreSQL lock: konsilier/core/deadlines.py)
+      SCHEDULER_INTERVAL_SECONDS: "0"
+    # on a first start both would run `alembic upgrade` at once: api2 waits until api has migrated and is healthy
+    depends_on:
+      api: {condition: service_healthy}
 
   # ЭЦП verification (certificate chain to the national root CAs + OCSP). Internal only, no public port.
   ncanode:

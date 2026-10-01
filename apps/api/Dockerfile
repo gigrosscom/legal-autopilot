@@ -18,4 +18,7 @@ RUN [ -f /app/packs/kz/templates/consumer/claim_seller.docx ] && [ -f /app/packs
     || python /app/scripts/build_kz_templates.py
 ENV PACKS_DIR=/app/packs
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade heads && uvicorn --factory konsilier.main:app_factory --host 0.0.0.0 --port ${PORT:-8000}"]
+# `exec`: uvicorn becomes PID 1 and gets Docker's SIGTERM itself (sh never passed it on, so every restart ended in a
+# SIGKILL after 10 s and cut the chat answers being streamed). On SIGTERM uvicorn stops accepting connections and lets
+# the answers in flight finish for up to UVICORN_GRACE seconds (docker-compose.prod.yml: stop_grace_period is longer).
+CMD ["sh", "-c", "alembic upgrade heads && exec uvicorn --factory konsilier.main:app_factory --host 0.0.0.0 --port ${PORT:-8000} --timeout-graceful-shutdown ${UVICORN_GRACE:-50}"]

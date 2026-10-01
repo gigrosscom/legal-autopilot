@@ -33,5 +33,21 @@
 {$API_DOMAIN} {
 	import security
 	encode zstd gzip
-	reverse_proxy api:8000
+	# Two copies of the API (docker-compose.prod.yml: api, api2), restarted one at a time by update.sh. `first`: every
+	# request goes to `api` while it is healthy (one process, as before: its warm chat connections and in-memory
+	# limits), to `api2` while `api` restarts. A copy that is stopping refuses new connections at once; Caddy then
+	# tries the other one for up to lb_try_duration. Answers already streaming finish on the old copy.
+	reverse_proxy api:8000 api2:8000 {
+		lb_policy first
+		lb_try_duration 15s
+		lb_try_interval 250ms
+		fail_duration 10s
+		health_uri /health
+		health_interval 3s
+		health_timeout 3s
+		health_passes 1
+		health_fails 2
+		# server-sent events (the chat answer) go to the person chunk by chunk
+		flush_interval -1
+	}
 }

@@ -39,13 +39,41 @@ main() {
     fi
   done
 
+  DCF="docker compose -f deploy/docker-compose.prod.yml --env-file .env"
+  # Waits until the service's container reports healthy (its compose healthcheck), at most $2 seconds.
+  wait_healthy() {
+    local svc="$1" left="${2:-240}" cid st
+    while [ "$left" -gt 0 ]; do
+      cid=$($DCF ps -q "$svc" 2>/dev/null | head -1 || true)
+      st=$([ -n "$cid" ] && docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || true)
+      case "$st" in healthy|none) return 0 ;; esac
+      sleep 3; left=$((left - 3))
+    done
+    log "$svc not healthy: ${st:-no container}"
+    return 1
+  }
+  # Zero-downtime deploy: images are built while the old containers still serve; Caddy learns about both API copies;
+  # then the API copies are replaced one at a time — api2 (standby) first, then api (Caddy sends traffic to api2
+  # meanwhile) — each must be healthy before the next one stops. A stopping copy finishes the chat answers it is
+  # streaming (SIGTERM → uvicorn graceful shutdown, stop_grace_period). Then everything else (web, bot, …) as before.
+  # A copy whose config and image did not change is left running (`up` does nothing for it).
+  deploy_stack() {
+    $DCF build || return 1
+    $DCF exec -T caddy caddy reload --config /etc/caddy/conf/Caddyfile --adapter caddyfile >/dev/null 2>&1 || true
+    for svc in api2 api; do
+      $DCF up -d --no-deps "$svc" || return 1
+      wait_healthy "$svc" 240 || return 1
+    done
+    $DCF up -d --remove-orphans
+  }
+
   git fetch --quiet origin "$BRANCH"
   LOCAL=$(git rev-parse HEAD)
   REMOTE=$(git rev-parse "origin/$BRANCH")
   if [ "$LOCAL" != "$REMOTE" ] || [ "$FORCE" = "--force" ]; then
     git reset --quiet --hard "origin/$BRANCH"
     log "deploying ${REMOTE:0:7}"
-    if docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build --remove-orphans; then
+    if deploy_stack; then
       docker image prune -f >/dev/null
       docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T caddy \
         caddy reload --config /etc/caddy/conf/Caddyfile --adapter caddyfile >/dev/null 2>&1 || log "caddy reload failed"
