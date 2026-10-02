@@ -50,6 +50,7 @@ import {
 import { LAWYERS_PUBLIC, LAWYER_PILOT } from "@/lib/features";
 import { LawyerPilot } from "@/components/LawyerPilot";
 import { useLang, useT } from "@/lib/i18n";
+import { dateMask, exampleKey } from "@/lib/fieldExample";
 
 type Msg = { from: "bot" | "user"; text: string };
 
@@ -679,6 +680,8 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
 type ApplicantField = { field: string; label: string; type: string; pattern: string | null; own?: boolean };  // own: the applicant's data; false: the other side's (PM 02.10)
 
 /** The applicant's own data for the document, asked on one screen right before paying (PM 01.10). */
+const isDate = (f: { type: string }) => f.type === "date" || f.type === "date_future";
+
 function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: ApplicantField[]; onDone: () => void }) {
   const t = useT();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -706,13 +709,16 @@ function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: App
           {f.type === "longtext" ? (  // BUG-16: «Дети» — names and birth dates of several children, not one line
             <textarea className={`input mt-1 min-h-24 ${errors[f.field] ? "border-danger" : ""}`} required rows={3}
               value={values[f.field] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))}
+              placeholder={exampleKey(f) ? t(`draft.example.${exampleKey(f)}`) : undefined}
               aria-invalid={!!errors[f.field]} />
           ) : (
           <input className={`input mt-1 ${errors[f.field] ? "border-danger" : ""}`} required value={values[f.field] ?? ""}
             type={f.type === "phone" ? "tel" : f.type === "email" ? "email" : "text"}
-            inputMode={f.type === "phone" ? "tel" : f.pattern ? "numeric" : undefined}
+            inputMode={f.type === "phone" ? "tel" : f.pattern || isDate(f) ? "numeric" : f.type === "money" ? "numeric" : undefined}
+            placeholder={exampleKey(f) ? t(`draft.example.${exampleKey(f)}`) : undefined}
             autoComplete={f.own === false ? "off" : f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
-            onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))} aria-invalid={!!errors[f.field]} />
+            onChange={(e) => setValues((v) => ({ ...v, [f.field]: isDate(f) ? dateMask(e.target.value) : e.target.value }))}
+            aria-invalid={!!errors[f.field]} />
           )}
           {errors[f.field] && <span className="text-danger">{t(`draft.error.${known.includes(errors[f.field]) ? errors[f.field] : "generic"}`)}</span>}
         </label>
