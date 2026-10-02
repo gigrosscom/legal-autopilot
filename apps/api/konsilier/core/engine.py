@@ -65,6 +65,9 @@ OUTCOME_RESULTS = ("won", "partial", "lost", "settled", "abandoned")
 
 # the details a document needs that the form before payment asks (ZANN, api/chat.py DOC_DETAIL)
 _DOC_DETAIL = re.compile(r"_(?:name|address|bin|iin|email|phone)$")
+# the story itself: what happened and what the person wants are written from what they told (PM 02.10, flooding:
+# «Чего вы хотите добиться? …восстановить на работе, отменить штраф» held the offer back from a neighbour's case)
+_STORY_FIELDS = frozenset({"problem_description", "desired_outcome"})
 
 
 
@@ -640,17 +643,19 @@ class CaseEngine:
 
     def facts_missing(self, case: Case) -> list[str]:
         """R-29 (owner 02.10): the facts the case still lacks before a solution and a paid offer — what happened, when,
-        how much, and who the other side is (its name: «кому»). Not the parties' addresses and ID numbers, nor the
-        applicant's own data: those are asked in the form before payment (ZANN's rule in the chat's intake note).
+        how much. Not the parties' requisites (names, addresses, ID numbers, e-mails — «сосед» is enough for the
+        solution) nor the applicant's own data: those are asked in the form before payment and the document check
+        stops a document without them (PM 02.10, flooding: the seller/offender name held the offer back).
         One list for the chat's note and the offer's gate. [] when complete; ["scenario"] while not classified."""
         if not case.scenario_id:
             return ["scenario"]
         sc = self.scenario_of(case)
-        their_names = {p.name_field for role, p in sc.parties.items() if role != "applicant" and p.name_field}
+        requisites = {getattr(p, a) for p in sc.parties.values()
+                      for a in ("name_field", "id_field", "address_field", "email_field") if getattr(p, a, None)}
         facts = case.facts or {}
         return [f.name for f in sc.intake
                 if f.type != "evidence" and not f.optional and not f.pii and not facts.get(f.name)
-                and (f.name in their_names or not _DOC_DETAIL.search(f.name))]
+                and f.name not in requisites and not _DOC_DETAIL.search(f.name) and f.name not in _STORY_FIELDS]
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
         """Fields still to ask, in interview order: documents → what happened → identity document → personal data.
@@ -1227,6 +1232,10 @@ class CaseEngine:
         self.lock(session, case)
         sc, pack = self.scenario_of(case), self.pack_of(case)
         self.check_subject(case)
+        if case.hold_reason == "too_many_cases" and safety.abuse_reason(session, pack.coverage, case) is None:
+            # owner 02.10: held when every chat counted as a case — looked at again under today's rule
+            case.hold_reason = None
+            self.audit(session, case, "system", "hold_released", reason="too_many_cases")
         if case.hold_reason is None and not case.actions:
             reason = safety.abuse_reason(session, pack.coverage, case)
             if reason:

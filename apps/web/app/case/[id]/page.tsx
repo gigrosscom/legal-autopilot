@@ -46,6 +46,7 @@ import {
   type Payment,
   type SignedIn,
   saveFileAs,
+  copySentText,
 } from "@/lib/api";
 import { LAWYERS_PUBLIC, LAWYER_PILOT } from "@/lib/features";
 import { LawyerPilot } from "@/components/LawyerPilot";
@@ -912,6 +913,11 @@ function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
       { key: "whatsapp", label: t("helper.doc_toWhatsapp"), icon: "send", run: sendTo("whatsapp") },
       { key: "telegram", label: t("helper.doc_toTelegram"), icon: "send", run: sendTo("telegram") },
       { key: "mail", label: t("helper.doc_toMail"), icon: "mail", run: sendTo("mail") },
+      // owner 02.10: the document itself (PDF and Word) to the client's own confirmed e-mail
+      { key: "copy", label: t("helper.doc_copyToMe"), icon: "mail", run: async () => {
+        const out = await api<{ sent_to: string }>(`/v1/cases/${caseId}/actions/${a.id}/copy-to-me`, { method: "POST" });
+        setNote(copySentText(out.sent_to));
+      } },
       { key: "other", label: t("helper.doc_toOther"), icon: "share", run: () => shareFile(main.path, main.name, a.title) },
     ] },
     { key: "sign", icon: signed ? "shieldCheck" : "key", label: signed ? t("helper.doc_signed") : t("helper.doc_sign"),

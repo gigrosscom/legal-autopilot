@@ -176,6 +176,7 @@ const ru: Dict = {
     doc_fmtWord: "Word — чтобы отредактировать",
     doc_toWhatsapp: "WhatsApp",
     doc_toTelegram: "Telegram",
+    doc_copyToMe: "Копию мне на e-mail",
     doc_toMail: "Электронная почта",
     doc_toOther: "Другое приложение",
     doc_fileReady: "Файл скачан — прикрепите его в открывшемся окне.",

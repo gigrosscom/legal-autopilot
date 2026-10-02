@@ -215,8 +215,9 @@ Facts first, then one solution — this overrides anything above about answering
    rights, no steps, no {more_marker} marker, no {offer_marker} marker. A reply with a question never also gives the
    solution, not even «in case»: the solution comes in a later reply. Do not ask what is already in the
    conversation, the case context or the attached files. Usually 1–3 questions are enough; never more than four.
-   Ask only what changes the solution: never where to file or which body to choose (you decide that), never names,
-   addresses or ID numbers (they are filled in the document).
+   Ask only what changes the solution: never where to file or which body to choose (you decide that), never the
+   person's own name, address or ID number (the form asks them before payment). The other side's name and address
+   are asked when the case does not hold them yet (facts_missing): the document needs its addressee (R-29).
    No questions first: when life or health is in danger right now (the emergency number comes first); when a short
    time limit may run out (say so in the first line, then ask); and for a general question about the law that is
    not the person's own dispute («сколько дней на возврат товара?») — answer it at once.
@@ -447,12 +448,29 @@ _TERM = re.compile(
     r"(?:дн(?:я|ей|ю|ям|ями)\b|день\b|сут(?:ок|ки)\b)", re.IGNORECASE)
 _ART = re.compile(r"(\(\s*)?(?:(стать[яеиюй]\w*)|ст\.)\s*(\d+(?:-\d+)?)((?:\s*(?:,|и)?\s*(?:п(?:ункт\w*|п?\.)|ч(?:аст\w*|\.)|подпункт\w*)\s*\d+(?:-\d+)?\)?)*)(\s*\))?",
                   re.IGNORECASE)
+_ART_PAREN = re.compile(r"\s*\((?=[^()]*(?:стать\w*|ст\.)\s*\d)[^()]*\)", re.IGNORECASE)
 _NORM_WORD = {"статья": "норма", "статье": "норме", "статьи": "нормы", "статью": "норму", "статьей": "нормой",
               "статьёй": "нормой"}
 _STEP_LINE = re.compile(r"^\s*(?:\d+[.)]|[-•*]|\*\*)")
 
 
 _NEGATED = re.compile(r"«[^»]*$|\"[^\"\n]*$")  # inside a quoted wrong example: «3 days», "7 days to return"
+
+
+# months and years: checked only where the reply states a time limit («в течение двух месяцев», «срок — один год»,
+# «есть один месяц на …»), never in the person's own facts («ноутбук держат уже два месяца»)
+_RULE_MONTHS = re.compile(r"\b(\d+|one|two|three|six)\s*(months?|years?)\b", re.IGNORECASE)
+_WORD_N = {"one": 1, "two": 2, "three": 3, "six": 6, "один": 1, "одного": 1, "одним": 1, "два": 2, "двух": 2,
+           "три": 3, "трёх": 3, "трех": 3, "шесть": 6, "шести": 6}
+_TERM_MONTHS = re.compile(
+    r"(?:в\s+течение|через|не\s+позднее|не\s+позже|срок\w*[^.\n]{0,25}?|есть|остаётся|остается|да[её]тся|"
+    r"составляет)\s+(\d+|один|одного|одним|два|двух|три|трёх|трех|шесть|шести)\s*(месяц\w*|год\w*|лет)\b",
+    re.IGNORECASE)
+
+
+def _months(n: str, unit: str) -> tuple[int, str]:
+    num = int(n) if n.isdigit() else _WORD_N.get(n.lower(), -1)
+    return num, "year" if unit.lower().startswith(("year", "год", "лет")) else "month"
 
 
 def _kind(word: str | None) -> str:
@@ -478,6 +496,8 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
     """The reply without terms of days and article numbers that nobody checked; returns what was taken out."""
     days, arts = checked_terms(rules)
     arts |= set(opened)
+    months = {_months(m.group(1), m.group(2)) for m in _RULE_MONTHS.finditer(rules or "")
+              if not _NEGATED.search((rules or "")[:m.start()])}
     removed: list[str] = []
 
     def ok(m: re.Match) -> bool:  # «10 рабочих дней» is not «10 calendar days»; «10 дней» may be either
@@ -493,10 +513,19 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
         word = (m.group(2) or "").lower()
         return _NORM_WORD.get(word, "нормы") + ("" if m.group(0).endswith(" ") else "")
 
+    def paren(m: re.Match) -> str:
+        nums = re.findall(r"(?:стать\w*|ст\.)\s*(\d+(?:-\d+)?)", m.group(0), re.IGNORECASE)
+        if all(n in arts for n in nums):
+            return m.group(0)
+        removed.append(m.group(0).strip())
+        return ""
+
     out = []
     for line in text.split("\n"):
         if not opened_any:
             bad = [m for m in _TERM.finditer(line) if not ok(m)]
+            bad += [m for m in _TERM_MONTHS.finditer(line) if _months(m.group(1), m.group(2)) not in months]
+            bad.sort(key=lambda m: m.start())
             if bad:
                 if _STEP_LINE.match(line):
                     for m in reversed(bad):
@@ -504,9 +533,11 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
                         line = line[:m.start()] + line[m.end():]
                 else:
                     parts = re.split(r"(?<=[.!?])\s+", line)
-                    keep = [p for p in parts if all(ok(m) for m in _TERM.finditer(p))]
+                    keep = [p for p in parts if all(ok(m) for m in _TERM.finditer(p))
+                            and all(_months(m.group(1), m.group(2)) in months for m in _TERM_MONTHS.finditer(p))]
                     removed += [p for p in parts if p not in keep]
                     line = " ".join(keep)
+        line = _ART_PAREN.sub(paren, line)  # «(статья 53 Трудового кодекса)» goes whole, never half
         line = _ART.sub(art, line)
         line = re.sub(r"\s+([,.;:])", r"\1", re.sub(r"[ \t]{2,}", " ", line)).rstrip()
         out.append(line)

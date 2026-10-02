@@ -82,8 +82,12 @@ def abuse_reason(session: Session, cov: Coverage | None, case: Case) -> str | No
         return "abuse_suspected"
     limits = cov.routing.abuse
     since = utcnow() - timedelta(days=limits.window_days)
-    recent = session.scalar(select(func.count()).select_from(Case).where(
-        Case.owner_id == case.owner_id, Case.created_at >= since))
+    # owner 02.10 (on_hold on his own tests): every chat opens a case, so «cases» counted conversations — only the
+    # cases that reached a document count towards the limit of mass complaints
+    from .models import Action
+
+    recent = session.scalar(select(func.count(func.distinct(Action.case_id))).join(Case, Case.id == Action.case_id).where(
+        Case.owner_id == case.owner_id, Case.id != case.id, Action.created_at >= since))
     if (recent or 0) > limits.max_cases_per_applicant:
         return "too_many_cases"
     respondent = case.facts.get("respondent_name")

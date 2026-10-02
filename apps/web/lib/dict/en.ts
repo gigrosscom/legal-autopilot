@@ -176,6 +176,7 @@ const en: Dict = {
     doc_fmtWord: "Word — to edit",
     doc_toWhatsapp: "WhatsApp",
     doc_toTelegram: "Telegram",
+    doc_copyToMe: "Send me a copy by e-mail",
     doc_toMail: "Email",
     doc_toOther: "Another app",
     doc_fileReady: "The file has been downloaded — attach it in the window that opened.",

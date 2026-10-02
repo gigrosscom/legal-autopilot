@@ -769,3 +769,40 @@ def _inbound(container: Container, data: dict[str, Any], email_id: str) -> dict[
                                _texts(case.language)["replied"].format(title=title, sender=sender))
         session.commit()
         return {"ok": True, "matched": True, "status": filing.status, "replied": True}
+
+
+@router.post("/cases/{case_id}/actions/{action_id}/copy-to-me")
+def copy_to_me(case_id: uuid.UUID, action_id: uuid.UUID, user: User = Depends(current_user),
+               session: Session = Depends(get_session), container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Owner 02.10: «Копию мне на e-mail» — the document (PDF and Word) to the client's own confirmed e-mail. Only an
+    address confirmed by a code is used (User.email is set by the sign-in), so a copy never goes to someone else."""
+    case = load_case(case_id, session, user)
+    action = session.get(Action, action_id)
+    if action is None or action.case_id != case.id or not action.docx_key:
+        raise _http(404, "not_found")
+    if action.status not in ("ready", "submitted", "responded") or not container.engine.document_unlocked(case, action):
+        raise _http(409, "payment_required")
+    owner = session.get(User, case.owner_id)
+    to = (owner.email or "").strip() if owner else ""
+    if not to:
+        raise _http(422, "email_required")  # the page offers to confirm an e-mail first
+    mailer = container.claims_mailer
+    if mailer is None:
+        raise _http(503, "email_unavailable")
+    storage = container.engine.storage
+    files = [(f"{action.action_id}.docx", storage.get(action.docx_key))]
+    if action.pdf_key:
+        files.insert(0, (f"{action.action_id}.pdf", storage.get(action.pdf_key)))
+    pack = container.engine.pack_of(case)
+    lang = pack.lang(case.language)
+    title = pack.localized(container.engine.scenario_of(case).action(action.action_id).title, lang)
+    text = pack.t(lang, "copy_to_me.text", title=title,
+                  default=f"Ваш документ «{title}» во вложении: PDF для печати и Word для правок.\n\nKonsiliér AI")
+    try:
+        mailer.send_letter(to=to, subject=pack.t(lang, "copy_to_me.subject", title=title, default=title),
+                           text=text, attachments=files, idempotency_key=f"copy-{action.id}-{int(time.time() // 60)}")
+    except SendError as e:
+        raise _http(502, "send_failed") from e
+    container.engine.audit(session, case, f"user:{user.id}", "copy_to_me", action=action.action_id)
+    session.flush()
+    return {"sent_to": to}
