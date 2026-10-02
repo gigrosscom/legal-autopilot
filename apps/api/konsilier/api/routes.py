@@ -892,7 +892,9 @@ def invoice_bill(invoice_id: int, format: Literal["pdf", "docx"] = "pdf", user: 
     if inv.purpose == "plan":
         item = f"{item} «{PLAN_NAMES.get(inv.plan or '', inv.plan)}»"
     words = BillWords.of(container.engine.billing_pack(session, inv), inv.currency)
-    docx = make_bill_docx(bill_fields(req, inv, item=item, issued=inv.created_at.date(), words=words))
+    tz = container.engine.billing_pack(session, inv).tz  # the bill's date in the country's time, not UTC
+    created = inv.created_at if inv.created_at.tzinfo else inv.created_at.replace(tzinfo=timezone.utc)
+    docx = make_bill_docx(bill_fields(req, inv, item=item, issued=created.astimezone(tz).date(), words=words))
     name = f"schet-{inv.id}"
     if format == "pdf":
         pdf = container.engine.pdf.convert(docx) if container.engine.pdf is not None else None
