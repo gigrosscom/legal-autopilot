@@ -270,6 +270,7 @@ const en: Dict = {
     voiceOn: "Replies aloud: on",
     voiceOff: "Replies aloud: off",
     thinking: "Thinking…",
+    ways: { title: "Ways to solve it", document: "Prepare the document", case: "Full case service", lawyer: "Hire a lawyer", from: "from {price}" },
     lookingUp: "Checking the official text of the law…",
     remaining: "{n} of {limit} free messages left (24-hour limit)",
     interrupted: "The answer was cut off — only its beginning is shown above.",

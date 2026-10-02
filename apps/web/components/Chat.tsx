@@ -13,7 +13,7 @@ import { Invite } from "@/components/Invite";
 import { Icon, type IconName } from "@/components/ui";
 import { ApiError, api, errorText, publicApi, type CaseView, type Emergency, type Reply } from "@/lib/api";
 import { chatHistory, sendChat, type ChatMessage } from "@/lib/chat";
-import { LAWYERS_PUBLIC } from "@/lib/features";
+import { LAWYER_PILOT, LAWYERS_PUBLIC } from "@/lib/features";
 import { useLang, useT } from "@/lib/i18n";
 import { TERMS_VERSION, markTermsAccepted, termsAccepted } from "@/lib/legal/terms";
 import { SITUATIONS } from "@/lib/situations";
@@ -122,7 +122,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [caseId, setCaseId] = useState(initialCase);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // P0 02.10: the paid document of the case — the card «Услуга / Стоимость / Оплатить» under the last reply
-  const [docOffer, setDocOffer] = useState<{ title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean } | null>(null);
+  const [docOffer, setDocOffer] = useState<{ title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean;
+    case_price?: number | null; case_paid?: boolean } | null>(null);
   const [streaming, setStreaming] = useState<string | null>(null);
   // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
   const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[] } | null>(null);
@@ -423,21 +424,9 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 </ul>
               )}
               {m.id === offerId && caseId && (
-                // the owner's card: «Услуга / Стоимость / [Оплатить]» — straight to payment in the case
-                <div className="space-y-2 rounded-xl bg-surface p-3 ring-1 ring-line">
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                    <dt className="text-muted">{t("chat.docService")}</dt>
-                    <dd className="text-end font-semibold text-balance">{docOffer?.title ?? t("chat.doc")}</dd>
-                    <dt className="text-muted">{t("chat.docCost")}</dt>
-                    <dd className="whitespace-nowrap text-end font-semibold tabular-nums">
-                      {docOffer?.price && !docOffer.price_from ? `${docOffer.price.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${docOffer.currency ?? ""}`.trim() : t("chat.docPrice")}
-                    </dd>
-                  </dl>
-                  <Link href={`/case/${caseId}?pay=1`}
-                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-action px-4 text-base font-semibold text-white hover:bg-action-hover">
-                    <Icon name="coin" size={20} />{t("chat.docPay")}
-                  </Link>
-                </div>
+                // owner 02.10: the ways to solve it, under the answer that gave the solution (none while facts are
+                // collected): «Составить документ» → the existing payment, «Дело под ключ», «Нанять юриста»
+                <SolveWays caseId={caseId} offer={docOffer} lawyer={LAWYER_PILOT} />
               )}
             </Bubble>
           )];
@@ -480,5 +469,38 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
         )}
       </div>
     </AppShell>
+  );
+}
+
+function money(n: number, currency: string | null | undefined): string {
+  return `${n.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${currency ?? ""}`.trim();
+}
+
+function SolveWays({ caseId, offer, lawyer }: {
+  caseId: string; lawyer: boolean;
+  offer: { title: string | null; price: number | null; currency: string | null; price_from?: boolean; case_price?: number | null; case_paid?: boolean } | null;
+}) {
+  const t = useT();
+  const docPrice = offer?.price ? (offer.price_from ? t("chat.ways.from", { price: money(offer.price, offer.currency) }) : money(offer.price, offer.currency)) : t("chat.docPrice");
+  const ways: { href: string; icon: IconName; label: string; note: string | null; main?: boolean }[] = [
+    { href: `/case/${caseId}?pay=1`, icon: "document", label: t("chat.ways.document"), note: docPrice, main: true },
+    ...(offer?.case_paid ? [] : [{ href: `/case/${caseId}?pay=case`, icon: "shieldCheck" as IconName, label: t("chat.ways.case"),
+      note: offer?.case_price ? money(offer.case_price, offer.currency) : null }]),
+    ...(lawyer ? [{ href: `/case/${caseId}?lawyer=1`, icon: "lawyer" as IconName, label: t("chat.ways.lawyer"), note: null }] : []),
+  ];
+  return (
+    <nav aria-label={t("chat.ways.title")} className="grid gap-2 sm:grid-cols-3">
+      {ways.map((w) => (
+        <Link key={w.href} href={w.href}
+          className={`flex min-h-12 items-center gap-2 rounded-2xl px-3 py-2 text-start ${w.main
+            ? "bg-action text-white hover:bg-action-hover" : "bg-surface text-ink ring-1 ring-line hover:bg-sand"}`}>
+          <Icon name={w.icon} size={20} className="shrink-0" />
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[15px] font-semibold">{w.label}</span>
+            {w.note && <span className={`block text-sm tabular-nums ${w.main ? "text-white/85" : "text-muted"}`}>{w.note}</span>}
+          </span>
+        </Link>
+      ))}
+    </nav>
   );
 }

@@ -279,6 +279,7 @@ const ru: Dict = {
     docPrice: "от 2 990 ₸",
     docService: "Услуга",
     docCost: "Стоимость",
+    ways: { title: "Способы решения", document: "Составить документ", case: "Дело под ключ", lawyer: "Нанять юриста", from: "от {price}" },
     docPay: "Оплатить",
     lawyer: "Юрист или адвокат",
     lawyerPrice: "платно и бесплатно",

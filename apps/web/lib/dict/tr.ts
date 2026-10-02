@@ -270,6 +270,7 @@ const tr: Dict = {
     voiceOn: "Sesli yanıtlar: açık",
     voiceOff: "Sesli yanıtlar: kapalı",
     thinking: "Düşünüyorum…",
+    ways: { title: "Çözüm yolları", document: "Belgeyi hazırla", case: "Anahtar teslim dava", lawyer: "Avukat tut", from: "{price} itibaren" },
     lookingUp: "Kanunun resmî metnine bakıyorum…",
     remaining: "24 saatlik {limit} ücretsiz mesaj hakkınızdan {n} mesaj kaldı",
     interrupted: "Yanıt yarıda kesildi — yukarıda yalnızca başlangıcı gösteriliyor.",

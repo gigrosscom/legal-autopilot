@@ -252,7 +252,9 @@ def document_offer(session: Session, container: Container, case: Case, lang: str
     except Exception:  # noqa: BLE001 — the card works without them
         log.warning("document offer for case %s", case.id, exc_info=True)
     paid = bool(case.paid) or any(a.unlocked_by is not None for a in case.actions)
-    return {"title": title, "price": price, "currency": currency, "price_from": from_, "paid": paid}
+    # owner 02.10: the ways to solve it under the answer — «Дело под ключ» shows its price too
+    return {"title": title, "price": price, "currency": currency, "price_from": from_, "paid": paid,
+            "case_price": None if case.paid else float(eng.config.case_price), "case_paid": bool(case.paid)}
 
 
 def offer_text(offer: dict[str, Any], lang: str, pack: Any) -> str:

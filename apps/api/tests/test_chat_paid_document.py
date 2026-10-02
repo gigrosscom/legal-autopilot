@@ -104,3 +104,15 @@ def test_the_first_reply_keeps_the_offer_once_the_scenario_is_known(ctx):
     assert _say(ctx, api, cid, "Магазин не возвращает деньги за телевизор")["offer_document"]
     doc = api.get(f"/v1/cases/{cid}/chat/document").json()
     assert doc["title"] and doc["price"] == 2990 and doc["price_from"] is False
+
+
+def test_the_ways_to_solve_it_carry_the_full_case_price(ctx):
+    """Owner 02.10: under the answer — «Составить документ» (its price), «Дело под ключ» (its price), «Нанять юриста»."""
+    from .test_e2e import web_user
+
+    api = web_user(ctx)
+    cid = api.post("/v1/cases", expect=201, json={"text": "Купил телевизор, через неделю сломался, деньги не возвращают",
+                                                  "country": "KZ"})["case"]["id"]
+    offer = api.get(f"/v1/cases/{cid}/chat/document").json()
+    assert offer["price"] and offer["case_price"] == float(ctx.container.engine.config.case_price)
+    assert offer["case_paid"] is False
