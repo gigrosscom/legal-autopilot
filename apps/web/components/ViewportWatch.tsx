@@ -30,7 +30,11 @@ export function ViewportWatch() {
       root.setProperty("--app-gap", `${window.innerHeight - h}px`);
     };
     // the keyboard closing is not always followed by a resize event: look again once the field has let go
-    const later = () => { [0, 100, 400, 800].forEach((ms) => setTimeout(fit, ms)); };
+    const later = () => {
+      [0, 100, 400, 800].forEach((ms) => setTimeout(fit, ms));
+      // the keyboard is gone: scrolling to where the page already is makes iOS lay the fixed bars out again
+      if (standalone) setTimeout(() => { if (!editable(document.activeElement)) window.scrollTo(window.scrollX, window.scrollY); }, 350);
+    };
     fit();
     window.addEventListener("resize", fit);
     window.visualViewport?.addEventListener("resize", fit);
