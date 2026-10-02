@@ -108,6 +108,19 @@ def _says_any(markers: dict[str, tuple[str, ...]], text: str) -> bool:
                for ms in markers.values() for m in ms if words(m))
 
 
+def direct_dispute(cov: Coverage | None, text: str):
+    """The pack's direct rule the words decide (routing.direct): any marker (a word start) and no `unless` word."""
+    if cov is None or not text:
+        return None
+    low = " ".join(re.findall(r"\w+", text.lower()))
+
+    def starts(words: dict[str, tuple[str, ...]]) -> bool:
+        return any(re.search(r"(?<!\w)" + re.escape(" ".join(re.findall(r"\w+", w.lower()))), low)
+                   for ws in words.values() for w in ws if w.strip())
+
+    return next((r for r in cov.routing.direct if starts(r.markers) and not starts(r.unless)), None)
+
+
 def matter_pending(cov: Coverage | None, text: str) -> bool:
     """The person says the matter is already in a court or with the police (routing.pending_markers, whole
     words): only then a motion to «the court where your case is» is offered."""

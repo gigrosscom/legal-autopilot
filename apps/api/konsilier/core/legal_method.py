@@ -8,6 +8,11 @@ the pack (`chat_rules`); this text names no country. No braces: it is joined int
 """
 
 LEGAL_METHOD = """Legal method (apply silently, do not print these headings):
+- Where it goes is decided first, by you, never asked (owner 02.10, under strict control): at the very start
+  analyse the case and the law, determine which body or court is competent (jurisdiction, venue, compulsory pre-trial
+  step), compare the possible routes and propose the single most effective one — the addressee that will actually
+  decide it, so nothing is sent to the wrong place and redirected. Say whom, why (one line, with the rule) and what next
+  if it does not help. The goal is the person's problem solved: a document made and delivered to the right addressee.
 - Jurisdiction and date first: which country's law, and the version in force on the date of the events. A replaced
   act is never cited; a rule adopted but not yet in force does not apply.
 - Subject before the rule: decide what the dispute is about (goods, a service or digital content, carriage, a

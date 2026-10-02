@@ -380,6 +380,15 @@ class CaseEngine:
         if business:
             candidates = [s for s in candidates if "applicant" in s.parties and s.parties["applicant"].kind == "business"]
             self.audit(session, case, "system", "business_applicant")
+        else:
+            # QA BUG-24: a dispute the words alone decide (a private debt by a receipt) never goes to a model's guess
+            for p in self.packs.packs.values():
+                if case.jurisdiction and p.country != case.jurisdiction.upper():
+                    continue
+                rule = safety.direct_dispute(p.coverage, text)
+                if rule is not None and p.coverage is not None and p.coverage.has_registry:
+                    self.audit(session, case, "system", "direct_dispute", dispute=rule.dispute)
+                    return self._route_universal(session, case, p, llm, text, direct=rule)
         sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
                                    else (None, 0.0, "no business scenario"))
         case.qualification_confidence = confidence
@@ -422,7 +431,7 @@ class CaseEngine:
 
     # ================================================================ universal path (ADR 0001)
     def _route_universal(self, session: Session, case: Case, pack: JurisdictionPack, llm: RedactingLLM,
-                         text: str, business: bool = False) -> Reply:
+                         text: str, business: bool = False, direct: Any = None) -> Reply:
         cov = pack.coverage
         assert cov is not None
         lang = pack.lang(case.language)
@@ -432,6 +441,9 @@ class CaseEngine:
             options = [o for o in options if "business" in o["applicant_roles"]] or options
             roles = ["business"]
         result = ai.classify_taxonomy(llm, options, roles, text, lang)
+        if direct is not None:  # the words decide the dispute; the model's flags (abuse, emergency…) still count
+            result = {**result, "dispute_id": direct.dispute, "role": direct.role, "confidence": 1.0,
+                      "reason": "direct rule"}
         if business and result.get("dispute_id") not in {o["id"] for o in options}:
             fallback = next((o["id"] for o in options if o["id"].endswith("contract_breach")), options[0]["id"])
             result = {**result, "dispute_id": fallback, "role": "business",
@@ -1706,8 +1718,11 @@ class CaseEngine:
                 email = None
             address = polish.tidy_address(address) if looks_like_address(str(address)) else ""
             name = polish.tidy_name(str(name))
-        return {"kind": party.kind, "key": spec.addressee.party, "name": name,
-                "id": get("id_field"), "email": email, "address": address, "submit_url": None}
+        out = {"kind": party.kind, "key": spec.addressee.party, "name": name,
+               "id": get("id_field"), "email": email, "address": address, "submit_url": None}
+        if spec.addressee.heading:
+            out["heading"] = pack.localized(spec.addressee.heading, lang).replace("{name}", str(name or "")).strip()
+        return out
 
     def applicant_gender(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
         """From the name (patronymic, surname), else from the id number where the pack says how it tells."""
