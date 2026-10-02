@@ -78,7 +78,7 @@ def build_report(view: dict[str, Any], pack: Any, lang: str, kind: str, site_url
         step.append(t("next_question", question=q["text"]))
     elif ready:
         step.append(t("next_document", title=ready["title"]))
-        step += [f"{i}. {s}" for i, s in enumerate(ready.get("instructions") or [], 1)]
+        step += [f"{i}. {s.replace('**', '')}" for i, s in enumerate(ready.get("instructions") or [], 1)]
     elif view["status"] == CaseStatus.AWAITING_RESPONSE.value:
         step.append(t("next_wait"))
     elif (view.get("proposal") or {}).get("message"):

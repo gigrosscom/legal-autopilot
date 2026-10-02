@@ -112,9 +112,11 @@ def test_motion_in_court_waits_for_a_lawyer(ctx):
     hide_scenarios(ctx, "kz.labor.")
     api = web_user(ctx)
     created = api.post("/v1/cases", expect=201, json={
-        "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге", "country": "KZ"})
+        "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге. Дело уже в суде, "
+                "номер дела 7599-26", "country": "KZ"})
     cid = created["case"]["id"]
-    assert "kz.court.pending" in {o["id"] for o in created["case"]["coverage"]["other_forums"]}  # never by the system
+    # «the court where your case is» only when the person says the matter is in court (PM 02.10); never by the system
+    assert "kz.court.pending" in {o["id"] for o in created["case"]["coverage"]["other_forums"]}
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.pending"})["case"]
     answers = {**ANSWERS, "respondent_name": "ТОО «Ромашка»", "amount": "450000"}
     q = case["question"]

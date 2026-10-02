@@ -39,8 +39,11 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
             d = cov.dispute(tax["dispute_id"])
             out["dispute"] = {"id": d.id, "title": pack.localized(d.title, lang), "branch": d.branch}
         if case.forum_id in cov.forums:
-            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
-            why = cov.routing.forum_why.get(case.forum_id)
+            dispute = cov.disputes.get(tax.get("dispute_id"))
+            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang, dispute)
+            # «почему»: the dispute's own route (routes.yaml) when it names this forum, else the pack's line
+            step = cov.route_step(tax.get("dispute_id"), case.forum_id)
+            why = step.why if step is not None else cov.routing.forum_why.get(case.forum_id)
             out["forum"]["why"] = pack.localized(why, lang) if why else None
             out["other_forums"] = engine.other_forums(case)  # «Другой адресат»
         if cov.routing.upl_notice:
@@ -96,6 +99,8 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "deadline": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
+        # owner 02.10: who each step's document goes to and why — chosen by the system (routes.yaml)
+        "recipients": engine.recipient_route(case),
         "safety": {"hold_reason": case.hold_reason,
                    "hold_message": pack.t(lang, "safety.hold") if case.hold_reason else None,
                    "pending_ack": ack.ack_required if ack else None},

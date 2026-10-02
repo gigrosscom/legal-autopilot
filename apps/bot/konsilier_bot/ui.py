@@ -69,7 +69,7 @@ def case_screen(case: dict[str, Any], message: str | None = None) -> Screen:
             parts.append(t("awaiting_approval", lang))
         elif action.get("downloadable", True):
             doc = action
-            steps = "\n".join(f"{i}. {s}" for i, s in enumerate(action["instructions"], 1))
+            steps = "\n".join(f"{i}. {s.replace('**', '')}" for i, s in enumerate(action["instructions"], 1))
             parts.append(f"{t('instructions', lang)}\n{steps}")
             row = [(t("buttons.submitted", lang), f"sub:{cid}")]
             if action.get("email_allowed") and (action.get("addressee") or {}).get("email"):

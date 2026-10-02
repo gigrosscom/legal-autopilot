@@ -75,6 +75,11 @@ export type RouteStep = {
   /** the portal's name for a `portal` step */
   portal?: string | null;
 };
+/** Who each step's document goes to and why (packs/<cc>/routes.yaml) — chosen by the system, owner 02.10. */
+export type RecipientStep = {
+  step: number; kind: "forum" | "authority" | "party"; key: string | null; name: string | null;
+  label: string; when: string | null; why: string; norm: string;
+};
 export type SendPlan = {
   contacts: FoundContact[]; message: string; email: EmailSendState; reply_to: string | null; filings: Delivery[];
   route: RouteStep[];
@@ -143,6 +148,8 @@ export type CaseView = {
   status_label: string;
   stage: string;
   coverage: Coverage;
+  /** Addressee of each step and why — the screen shows it instead of a «Куда обратиться» list. */
+  recipients?: RecipientStep[];
   safety: { hold_reason: string | null; hold_message: string | null; pending_ack: "false_report" | "special_category" | null };
   needs_review: boolean;
   jurisdiction: string | null;
@@ -265,6 +272,10 @@ export type ForumOption = {
   verified: boolean;
   channels: string[];
   deadline_known: boolean;
+  /** A step to the other side itself: required before court (mandatory) or voluntary settlement. */
+  pretrial?: "mandatory" | "voluntary" | null;
+  /** What to know for this dispute: term, competent court, norm. */
+  hint?: string | null;
   why?: string | null;  // the system chose this recipient (owner 02.10): one line «почему»
 };
 

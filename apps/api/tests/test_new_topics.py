@@ -157,6 +157,7 @@ def test_production_routing_of_a_benefit_refusal(ctx):
     case = created["case"]
     assert case["coverage"]["dispute"]["id"] == "social.benefit_refusal"
     assert case["coverage"]["level"] == "universal"
-    # the system takes the prosecutor's office; the ombudsman is «Другой адресат» (owner 02.10)
-    assert case["coverage"]["forum"]["id"] == "kz.prosecutor"
-    assert {o["id"] for o in case["coverage"]["other_forums"]} == {"kz.ombudsman"}
+    # ZANN 02.10 (routes.yaml): first the superior body — a complaint through the body that refused; the prosecutor and
+    # the ombudsman are «Другой адресат»
+    assert case["coverage"]["forum"]["id"] == "kz.gov.superior"
+    assert {o["id"] for o in case["coverage"]["other_forums"]} == {"kz.prosecutor", "kz.ombudsman"}

@@ -25,7 +25,7 @@ def _universal_case(api):
     assert case["coverage"]["level"] == "universal"
     assert case["coverage"]["dispute"]["id"] == "labor.unpaid_wages"
     forum = case["coverage"]["forum"]
-    assert forum["id"] == "kz.counterparty.claim" and forum["why"].startswith("Первый шаг — письменная претензия")
+    assert forum["id"] == "kz.counterparty.claim" and forum["why"].startswith("Индивидуальный трудовой спор сначала рассматривает согласительная комиссия")
     assert case["scenario"]["id"].endswith("kz__counterparty__claim")
     options = {o["id"]: o for o in case["coverage"]["other_forums"]}  # «Другой адресат»
     assert "kz.labor_inspection" in options and "kz.court.district" in options and forum["id"] not in options

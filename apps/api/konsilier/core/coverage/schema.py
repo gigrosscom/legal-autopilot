@@ -200,6 +200,16 @@ class Forum(_Strict):
     source: str
     verified_at: date | None = None
     verified_by: str | None = None
+    # place in the «Куда подать» list (smaller first): the pre-trial step, then the authority or court, then optional ways
+    order: int = 50
+    # only where proceedings already run (a motion to the court or police handling the matter): offered only when the
+    # person says so (routing.pending_markers)
+    pending_only: bool = False
+    # disputes / branches where this pre-trial step is required by law or usual contract (court returns the claim
+    # without it): shown as «досудебный шаг — без него суд вернёт иск»; otherwise as voluntary settlement
+    mandatory_for: tuple[str, ...] = ()
+    # what the person should know about this forum for a dispute type or branch: term, competent court, norm
+    hints: dict[str, Localized] = Field(default_factory=dict)
 
     @field_validator("id")
     @classmethod
@@ -232,6 +242,37 @@ class Forum(_Strict):
                 continue
             return True
         return False
+
+
+# ---------------------------------------------------------------- recipient routes
+class RouteStep(_Strict):
+    """One step of a recipient route (owner 02.10: the system, not the person, chooses who a document goes to).
+    Exactly one of: a forum of the registry, an authority of the pack manifest, or the other side itself (party)."""
+
+    forum: str | None = None
+    authority: str | None = None
+    party: bool = False
+    label: Localized  # who, in plain words: «Продавец — досудебная претензия»
+    when: Localized = Field(default_factory=dict)  # condition for a later step: «если не ответили за 10 дней»
+    why: Localized  # one line: why this addressee
+    norm: str  # the norm behind it, as checked (act, article); "не подтверждено" when not opened
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "RouteStep":
+        if sum((self.forum is not None, self.authority is not None, self.party)) != 1:
+            raise ValueError("a route step needs exactly one of forum, authority, party")
+        return self
+
+
+class RecipientRoute(_Strict):
+    steps: tuple[RouteStep, ...] = Field(min_length=1)
+    note: Localized = Field(default_factory=dict)  # what the route does not cover («с несовершеннолетними детьми — …»)
+
+
+class RecipientRoutes(_Strict):
+    """routes.yaml: key = a dispute type id (universal path) or a scenario id of the pack."""
+
+    routes: dict[str, RecipientRoute] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- document types
@@ -303,6 +344,9 @@ class Routing(_Strict):
     # the person writes as a business (sole trader, company) about a dispute with a business: consumer law does not
     # apply; lang → phrases, matched on whole words
     business_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # the matter is already in a court or with the police (case number, hearing, investigator): only then the forums
+    # marked pending_only are offered; lang → phrases, matched on whole words
+    pending_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     # owner 02.10: the client does not choose where to file — the first forum of this order among the candidates is
     # the step's recipient; forums left out (mediation, a court or police already dealing with the case) are never
     # chosen by the system, only by «Другой адресат». forum id → the one line «почему» shown under «Кому».

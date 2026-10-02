@@ -21,10 +21,11 @@ def test_every_dispute_gets_a_recipient_and_a_reason(ctx):
             forums = cov.candidate_forums(d, role)
             if not forums or cov.is_lawyer_only(d, role):
                 continue
-            picked = cov.auto_forum(forums)
+            picked = cov.auto_forum(forums, d.id)
             assert picked is not None, (d.id, role)
             assert picked.id not in ("kz.mediation", "kz.court.pending", "kz.police.case"), (d.id, role)
-            assert picked.id in cov.routing.forum_why or len(forums) == 1, (d.id, role, picked.id)
+            assert picked.id in cov.routing.forum_why or len(forums) == 1 or cov.route_step(d.id, picked.id), \
+                (d.id, role, picked.id)
     assert all(f in cov.forums for f in cov.routing.forum_order)  # no typo in the pack's order
 
 
@@ -67,7 +68,8 @@ def test_the_reason_in_kazakh(ctx):
     hide_scenarios(ctx, "kz.labor.")
     api = web_user(ctx)
     case = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ", "language": "kk"})["case"]
-    assert case["coverage"]["forum"]["why"].startswith("Алғашқы қадам")
+    # labour: the dispute's own route (routes.yaml) gives the reason — the conciliation commission comes first
+    assert case["coverage"]["forum"]["why"].startswith("Жеке еңбек дауын алдымен келісім комиссиясы")
 
 
 def test_a_case_already_at_the_draft_can_switch_too(ctx):
