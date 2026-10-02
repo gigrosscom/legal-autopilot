@@ -9,7 +9,7 @@ import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell
 import { CodeForm } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
-import RoadmapView from "@/components/Roadmap";
+import { Sheet, DocMilestones } from "@/components/CaseDoc";
 import { SignDocument } from "@/components/SignDocument";
 import { SendWizard } from "@/components/SendWizard";
 import { ChooseLawyer } from "@/components/ChooseLawyer";
@@ -106,6 +106,12 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
   // PM 01.10: the applicant's own data (name, IIN, address, phone) on one screen right before paying
   const [applicant, setApplicant] = useState<{ fields: ApplicantField[]; purpose: string } | null>(null);
+  // owner 02.10: once the document is ready the screen shows one step + milestones + a couple of buttons; each
+  // secondary action («Подписать», «Отправить», «Скачать») opens its own sheet instead of unfolding on the screen.
+  const [docSheet, setDocSheet] = useState<"sign" | "send" | "download" | null>(null);
+  // the person has handled signing (ЭЦП done, or chose to sign by hand / send without ЭЦП): the main step moves on
+  // to «Отправить». ЭЦП signatures live on the action; this covers the off-platform (printed) signature too.
+  const [signAck, setSignAck] = useState(false);
 
   const push = (m: Msg) => setLog((l) => [...l, m]);
 
@@ -332,13 +338,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const ack = c.status === "intake" ? c.safety.pending_ack : null;
   const title = c.scenario?.title ?? cov.dispute?.title ?? t("case.untitled");
   const interviewing = c.status === "intake" && !choosingForum && !ack;
+  // the ready, downloadable document to act on: the main screen shows it compactly (status + milestones + a couple of
+  // buttons); everything else about filing it lives in the action sheets (owner 02.10).
+  const docA = last && last.downloadable && last.approval_status !== "pending" && last.approval_status !== "rejected" ? last : null;
   // the ready document (with «Отправьте другу» at the very end) is on screen: the page must open at the top, on the
   // document, not pinned to the referral block at the bottom; the chat/interview keeps the messenger pin-to-end
   // (owner 02.10, iPhone P0). This mirrors the condition that renders <Invite big /> below.
   const docReady = !!c.outcome || (c.status !== "intake" && (!!last?.downloadable || c.payment?.status === "paid"));
 
   const sections: MoreSection[] = [
-    ...(c.roadmap ? [{ key: "roadmap", icon: "map" as IconName, label: t("app.roadmap"), render: () => <RoadmapView roadmap={c.roadmap!} /> }] : []),
+    // the case milestones now live on the main screen (DocMilestones), not behind «Ещё» (owner 02.10)
     { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
     ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
       render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} onCase={setCase} />)}</> }] : []),
@@ -391,7 +400,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
     // owner 01.10 («3 клика»): one document by default — the bill is made at once; «Дело под ключ» is a link
     bar = (
       <>
-        <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
+        <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} signAck={signAck}
+          openSheet={setDocSheet} openPay={(purpose?: string) => {
           setPayOpen(true);
           if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
         }} />
@@ -484,17 +494,33 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         </Alert>
       )}
 
-      {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
-
-      {/* what «Документ подан» below does: said here, so the fixed bar stays compact */}
-      {c.status === "action_ready" && last && last.approval_status !== "pending" && last.approval_status !== "rejected" && (
-        <p className="flex items-start gap-2 px-1 text-xs leading-snug text-muted text-pretty">
-          <Icon name="info" size={16} className="mt-px shrink-0" /><span>{t("case.submittedHint")}</span>
-        </p>
-      )}
+      {/* owner 02.10: a ready document is shown compactly — a short card, the case milestones, and «Скачать /
+          Распечатать»; «Подписать» and «Отправить» are the one main step in the bar and open their own sheets.
+          A document still pending a lawyer's check, or a handoff, keeps the plain card. */}
+      {docA ? (
+        <>
+          <DocReadyCard c={c} a={docA} onPrint={() => printFile(`/v1/cases/${c.id}/actions/${docA.id}/document?format=pdf`)}
+            onDownload={() => setDocSheet("download")} />
+          {c.roadmap && <DocMilestones roadmap={c.roadmap} />}
+        </>
+      ) : c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
 
       {c.status === "awaiting_response" && proposal?.message && (
         <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
+      )}
+
+      {/* each secondary action opens its own sheet (owner 02.10): «Подписать» — ЭЦП или от руки; «Отправить» — куда,
+          как и адрес, с «Подписать и отправить»; «Скачать» — PDF или Word. «Как подать» lives inside «Отправить». */}
+      {docA && docSheet === "sign" && (
+        <SignSheet caseId={c.id} a={docA} onClose={() => setDocSheet(null)}
+          onDone={() => { setSignAck(true); setDocSheet("send"); }} />
+      )}
+      {docA && docSheet === "send" && (
+        <SendSheet caseId={c.id} a={docA} onCase={setCase} onClose={() => setDocSheet(null)}
+          onSubmittedSelf={async () => { await post(`/actions/${docA.id}/submitted`, { via: "user_submits" }); setDocSheet(null); }} busy={busy} />
+      )}
+      {docA && docSheet === "download" && (
+        <DownloadSheet caseId={c.id} a={docA} onClose={() => setDocSheet(null)} />
       )}
 
       {c.outcome && (
@@ -533,10 +559,12 @@ function FactsPanel({ c }: { c: CaseView }) {
   );
 }
 
-/** What to do now once the document stage has started: submitted? got a reply? close the case. */
-function NextStepBar({ c, busy, post, openPay, run, setCase }: {
+/** What to do now once the document stage has started: sign it, send it, wait for a reply, close the case. Always one
+ *  main action; «Подписать» and «Отправить» open their own sheets (owner 02.10). */
+function NextStepBar({ c, busy, post, openPay, run, setCase, openSheet, signAck }: {
   c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>; openPay: (purpose?: string) => void;
   run: (fn: () => Promise<void>) => Promise<boolean>; setCase: (c: CaseView) => void;
+  openSheet: (k: "sign" | "send" | "download") => void; signAck: boolean;
 }) {
   const t = useT();
   const [responseText, setResponseText] = useState("");
@@ -577,10 +605,19 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
       return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="lawyer" size={18} className="text-brand" />
         {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
     }
+    // one main step: not signed → «Подписать»; signed (or signed by hand) → «Отправить». Each opens its own sheet;
+    // the sheet carries «как подать», the recipient and the ways. A non-downloadable step keeps «Документ подан».
+    if (last.downloadable) {
+      const needSign = !(last.signatures ?? []).length && !signAck;
+      return (
+        <Button className="min-h-12 w-full" disabled={busy} icon={needSign ? "key" : "send"}
+          onClick={() => openSheet(needSign ? "sign" : "send")}>
+          {needSign ? t("case.signAction") : t("case.sendAction")}
+        </Button>
+      );
+    }
     return (
-      // the hint («Нажмите, когда вручите…») is in the conversation above the bar: the bar stays one button tall (owner 02.10)
       <div className="flex gap-2">
-        {/* sending itself (WhatsApp, Telegram, e-mail through us…) is the «Мастер отправки» in the document card */}
         <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
       </div>
     );
@@ -1113,6 +1150,103 @@ function LawyerBlock({ caseId }: { caseId: string }) {
       </div>
       <Agreements items={data.agreements} role="applicant" />
     </section>
+  );
+}
+
+/** The ready document on the main screen (owner 02.10): a short card — the document's name and its status
+ *  («Оплачено», «Подписан ЭЦП», «Ждём ответ до …») — and two secondary buttons, «Скачать» and «Распечатать».
+ *  The one main step («Подписать» / «Отправить») is the fixed bar; «как подать» lives inside the «Отправить» sheet. */
+function DocReadyCard({ c, a, onDownload, onPrint }: {
+  c: CaseView; a: CaseAction; onDownload: () => void; onPrint: () => void;
+}) {
+  const t = useT();
+  const { lang } = useLang();
+  const paid = c.payment?.status === "paid" || !!a.paid;
+  const signed = (a.signatures ?? []).length > 0;
+  const dueISO = c.deadline?.due_date ?? a.deadline?.due_date ?? null;
+  const due = c.status === "awaiting_response" && dueISO ? new Date(dueISO).toLocaleDateString(lang === "ar" ? "ar" : "ru-RU") : "";
+  return (
+    <section className="card space-y-4" aria-labelledby="doc-ready-title">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name="document" /></span>
+        <div className="min-w-0 flex-1">
+          <h2 id="doc-ready-title" className="font-semibold leading-snug">{a.title}</h2>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {paid && <Badge tone="brand" icon="checkCircle">{t("case.paid")}</Badge>}
+            {signed && <Badge tone="brand" icon="shieldCheck">{t("helper.doc_signed")}</Badge>}
+            {due && <Badge tone="info" icon="hourglass">{t("case.waitingUntil", { date: due })}</Badge>}
+          </div>
+        </div>
+      </div>
+      <div className={a.has_pdf ? "grid grid-cols-2 gap-2" : "grid gap-2"}>
+        <Button variant="secondary" className="min-h-12" icon="download" onClick={onDownload}>{t("helper.doc_download")}</Button>
+        {a.has_pdf && <Button variant="secondary" className="min-h-12" icon="printer" onClick={onPrint}>{t("helper.doc_print")}</Button>}
+      </div>
+    </section>
+  );
+}
+
+/** «Подписать» sheet: ЭЦП (eGov Mobile / NCALayer) or print and sign by hand. Then on to «Отправить». */
+function SignSheet({ caseId, a, onClose, onDone }: { caseId: string; a: CaseAction; onClose: () => void; onDone: () => void }) {
+  const t = useT();
+  const base = `/v1/cases/${caseId}/actions/${a.id}`;
+  return (
+    <Sheet title={t("case.signTitle")} icon="key" onClose={onClose}>
+      <p className="text-sm text-muted">{t("case.signLead")}</p>
+      <SignDocument base={base} fileBase={a.action_id} initial={a.signatures ?? []} canSign
+        lead={t("sign.lead")} onSigned={onDone} unavailable={t("helper.doc_signUnavailable")} />
+      {a.has_pdf && (
+        <div className="space-y-2 border-t border-line pt-3">
+          <p className="flex items-center gap-2 font-semibold"><Icon name="printer" size={18} className="text-brand" />{t("case.signHand")}</p>
+          <p className="text-sm text-muted">{t("case.signHandHint")}</p>
+          <Button variant="secondary" className="min-h-12 w-full" icon="printer"
+            onClick={() => printFile(`${base}/document?format=pdf`)}>{t("helper.doc_print")}</Button>
+        </div>
+      )}
+      <Button className="min-h-12 w-full" iconEnd="arrowRight" onClick={onDone}>{t("case.signToSend")}</Button>
+    </Sheet>
+  );
+}
+
+/** «Отправить» sheet: where (the recipient) and how (in person / post / e-mail), the address and «как подать», then
+ *  «Подписать и отправить» (the send wizard) or the portal bridge — and «Я подал документ сам» for a hand delivery. */
+function SendSheet({ caseId, a, onCase, onClose, onSubmittedSelf, busy }: {
+  caseId: string; a: CaseAction; onCase?: (c: CaseView) => void; onClose: () => void; onSubmittedSelf: () => void; busy: boolean;
+}) {
+  const t = useT();
+  const notSubmitted = !a.submitted_at && !["submitted", "responded"].includes(a.status);
+  const wizard = a.downloadable && !!a.email_send && a.email_send.reason !== "payment_required"
+    && ["ready", "submitted"].includes(a.status);
+  return (
+    <Sheet title={t("case.sendTitle")} icon="send" onClose={onClose}>
+      {a.filing && <FilingCard id={a.id} f={a.filing} />}
+      {wizard && <SendWizard caseId={caseId} a={a} onCase={onCase} />}
+      {!wizard && a.appeal_portal && !a.filed && notSubmitted && <EotinishBridge caseId={caseId} a={a} onCase={onCase} />}
+      {a.filed && <EotinishFiled caseId={caseId} a={a} onCase={onCase} />}
+      {!wizard && !a.appeal_portal && notSubmitted && <SubmitOnline caseId={caseId} a={a} />}
+      {notSubmitted && (
+        <div className="space-y-1.5 border-t border-line pt-3">
+          <Button variant="secondary" className="min-h-12 w-full" disabled={busy} icon="check" onClick={onSubmittedSelf}>{t("case.sendSelf")}</Button>
+          <p className="px-1 text-xs leading-snug text-muted">{t("case.submittedHint")}</p>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+/** «Скачать» sheet: PDF (for printing and filing) or Word (to edit). */
+function DownloadSheet({ caseId, a, onClose }: { caseId: string; a: CaseAction; onClose: () => void }) {
+  const t = useT();
+  const base = `/v1/cases/${caseId}/actions/${a.id}/document`;
+  return (
+    <Sheet title={t("case.downloadTitle")} icon="download" onClose={onClose}>
+      {a.has_pdf && (
+        <Button variant="secondary" className="min-h-12 w-full justify-start" icon="document"
+          onClick={() => downloadFile(`${base}?format=pdf`, `${a.action_id}.pdf`)}>{t("helper.doc_fmtPdf")}</Button>
+      )}
+      <Button variant="secondary" className="min-h-12 w-full justify-start" icon="document"
+        onClick={() => downloadFile(`${base}?format=docx`, `${a.action_id}.docx`)}>{t("helper.doc_fmtWord")}</Button>
+    </Sheet>
   );
 }
 
