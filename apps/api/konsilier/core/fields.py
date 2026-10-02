@@ -35,7 +35,15 @@ def parse_date(raw: Any) -> date:
     raise FieldError("date")
 
 
+_MULT = re.compile(r"(\d)\s*(тыс\w*|т\.|млн\w*|мың|млн)", re.IGNORECASE)
+
+
 def parse_money(raw: Any) -> Decimal:
+    mult = Decimal(1)
+    m = _MULT.search(str(raw))  # «450 тыс» is 450 000, not 450 (PM 02.10)
+    if m:
+        mult = Decimal(1_000_000) if m.group(2).lower().startswith("млн") else Decimal(1000)
+        raw = str(raw)[:m.start(2)]
     s = re.sub(r"[^\d.,]", "", str(raw)).replace(",", ".")
     if s.count(".") > 1:  # "1.500.000" → thousands separators
         s = s.replace(".", "")
@@ -43,9 +51,58 @@ def parse_money(raw: Any) -> Decimal:
         value = Decimal(s)
     except InvalidOperation as e:
         raise FieldError("money") from e
+    value *= mult
     if value <= 0:
         raise FieldError("money")
     return value.quantize(Decimal("0.01"))
+
+
+_MONEY_IN_TEXT = re.compile(
+    r"(?<![\d.,])(\d{1,3}(?:[ \u00a0]\d{3})+|\d+(?:[.,]\d+)?)\s*(тыс\w*|т\.|млн\w*|мың)?\s*(тенге|тг\b|₸|kzt)?",
+    re.IGNORECASE)
+_DATE_IN_TEXT = re.compile(r"(?<![\d.])(\d{1,2})\.(\d{1,2})(?:\.(\d{4}|\d{2}))?(?![\d.]*\d{3})")
+_MONTHS = {"январ": 1, "феврал": 2, "март": 3, "апрел": 4, "ма": 5, "июн": 6, "июл": 7, "август": 8, "сентябр": 9,
+           "октябр": 10, "ноябр": 11, "декабр": 12}
+_DATE_WORDS = re.compile(r"(?<!\d)(\d{1,2})\s+(январ\w*|феврал\w*|март\w*|апрел\w*|ма[яй]\w*|июн\w*|июл\w*|август\w*|"
+                         r"сентябр\w*|октябр\w*|ноябр\w*|декабр\w*)(?:\s+(\d{4}))?", re.IGNORECASE)
+
+
+def money_in_text(text: str) -> Decimal | None:
+    """The sum a person wrote in plain words: «ущерб примерно 450 000 тенге», «450 тыс», «450000 ₸». A number with a
+    currency or «тыс/млн» wins; else the largest bare number from 1 000 that is not a year, a date or a phone."""
+    marked, bare = [], []
+    for m in _MONEY_IN_TEXT.finditer(text or ""):
+        num, mult, cur = m.group(1), m.group(2), m.group(3)
+        try:
+            value = parse_money(num + (f" {mult}" if mult else ""))
+        except FieldError:
+            continue
+        if mult or cur:
+            marked.append(value)
+        elif value >= 1000 and not (1900 <= value <= 2100 and " " not in num) and len(re.sub(r"\D", "", num)) < 10:
+            bare.append(value)
+    return marked[0] if marked else (max(bare) if bare else None)
+
+
+def date_in_text(text: str, today: date) -> date | None:
+    """«25.09», «25.09.2026», «25 сентября»: the year is this one unless that lands in the future."""
+    for m in _DATE_IN_TEXT.finditer(text or ""):
+        day, month, year = int(m[1]), int(m[2]), m[3]
+        y = (int(year) + 2000 if len(year) == 2 else int(year)) if year else today.year
+        try:
+            d = date(y, month, day)
+        except ValueError:
+            continue
+        return d.replace(year=y - 1) if not year and d > today else d
+    for m in _DATE_WORDS.finditer(text or ""):
+        month = next(v for k, v in _MONTHS.items() if m[2].lower().startswith(k))
+        y = int(m[3]) if m[3] else today.year
+        try:
+            d = date(y, month, int(m[1]))
+        except ValueError:
+            continue
+        return d.replace(year=y - 1) if not m[3] and d > today else d
+    return None
 
 
 def looks_like_address(value: str) -> bool:
