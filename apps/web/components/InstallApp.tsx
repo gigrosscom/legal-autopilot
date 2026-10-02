@@ -372,10 +372,10 @@ export function AppBanner({ above = false }: { above?: boolean }) {
           {kind === "install" && <span className="block text-muted">{t("pwa.bannerText")}</span>}
         </p>
         {kind === "install"
-          ? <InstallButton onInstalled={dismiss} className="btn-primary min-h-9 shrink-0 px-3 text-sm" />
-          : <button type="button" onClick={enable} className="btn-primary min-h-9 shrink-0 px-3 text-sm">{t("push.enable")}</button>}
+          ? <InstallButton onInstalled={dismiss} className="btn-primary min-h-11 shrink-0 px-3 text-sm" />
+          : <button type="button" onClick={enable} className="btn-primary min-h-11 shrink-0 px-3 text-sm">{t("push.enable")}</button>}
         <button type="button" onClick={dismiss} aria-label={t("app.close")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={18} /></button>
+          className="-me-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={18} /></button>
       </div>
     </div>
   );
