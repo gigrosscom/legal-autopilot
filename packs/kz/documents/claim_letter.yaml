@@ -1,6 +1,6 @@
 # Досудебная претензия (уровень 2): адресат — сама сторона спора. Реквизиты и шаблон не проверены юристом — TODO(lawyer).
 id: claim_letter
-title: {ru: "Досудебная претензия", kk: "Сотқа дейінгі талап-арыз"}
+title: {ru: "Досудебная претензия", kk: "Сотқа дейінгі наразылық"}
 template: kz/templates/generic/claim_letter.docx
 forum_types: [private_org]
 required_fields:
