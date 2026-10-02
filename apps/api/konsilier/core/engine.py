@@ -70,6 +70,11 @@ _DOC_DETAIL = re.compile(r"_(?:name|address|bin|iin|email|phone)$")
 _STORY_FIELDS = frozenset({"problem_description", "desired_outcome"})
 
 
+
+def _aware(d: datetime) -> datetime:
+    """A stored time as UTC-aware (SQLite gives naive datetimes back)."""
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
 class EngineError(Exception):
     """A request that is valid HTTP but not allowed in the current case state."""
 
@@ -1995,7 +2000,8 @@ class CaseEngine:
             pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
             for e in case.evidence if e.kind != "response"))
         previous = [{"title": pack.localized(sc.action(a.action_id).title, lang),
-                     "date": a.submitted_at.strftime("%d.%m.%Y") if a.submitted_at else "",
+                     # the filing day in the country's time (PM 02.10: after 19:00 UTC it is already tomorrow in Almaty)
+                     "date": _aware(a.submitted_at).astimezone(pack.tz).strftime("%d.%m.%Y") if a.submitted_at else "",
                      "response": pack.t(lang, f"responses.{a.response_class}", default=a.response_class or "")}
                     for a in case.actions if a.action_id != spec.id and a.submitted_at]
         today = pack.local_now().date().strftime("%d.%m.%Y")

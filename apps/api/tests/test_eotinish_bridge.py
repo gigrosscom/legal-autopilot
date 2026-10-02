@@ -132,9 +132,10 @@ def test_validation_of_number_date_and_receipt(ctx):
     # today is fine (no response term on this step since the lawyer's check of 01.10)
     out = post(number="№ 12345").json()
     assert out["filing"]["number"] == "№ 12345"
-    # stored in UTC; «today» is the pack's local date (Almaty is UTC+5: after 19:00 UTC it is already tomorrow there)
+    # the filing day is the country's day (Asia/Almaty), whatever the UTC date (PM 02.10: failed after 19:00 UTC)
+    tz = ctx.container.packs.pack("KZ").tz
     submitted = datetime.fromisoformat(out["case"]["actions"][-1]["submitted_at"])
-    assert submitted.astimezone(ctx.container.packs.pack("KZ").tz).date() == today
+    assert submitted.astimezone(tz).date() == today
 
 
 def test_only_own_case(ctx):
@@ -288,3 +289,15 @@ def test_one_filings_table_for_the_portal_and_the_send_wizard(ctx):
     view = api.get(f"/v1/cases/{cid}").json()["actions"][-1]
     assert [f["channel"] for f in view["filings"]] == ["email", "whatsapp"]
     assert view["filed"]["number"] == "ЖТ-2026-555"
+
+
+def test_previous_step_date_is_the_almaty_day():
+    """PM 02.10: a filing at 20:30 UTC is the next day in Almaty — «направлено 03.10.2026», not 02.10."""
+    from datetime import timezone as tzu
+    from zoneinfo import ZoneInfo
+
+    from konsilier.core.engine import _aware
+
+    at = datetime(2026, 10, 2, 20, 30, tzinfo=tzu.utc)
+    assert _aware(at).astimezone(ZoneInfo("Asia/Almaty")).strftime("%d.%m.%Y") == "03.10.2026"
+    assert _aware(at.replace(tzinfo=None)).astimezone(ZoneInfo("Asia/Almaty")).strftime("%d.%m.%Y") == "03.10.2026"
