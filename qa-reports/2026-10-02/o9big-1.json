@@ -1,0 +1,202 @@
+[
+ {
+  "code": "K01",
+  "sc": "kz.consumer.refund",
+  "prov": "Да, покажите",
+  "chars": 90,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": " ТОО «Тест-Текно» с вашими данными — готовый PDF и Word.\n\n[[DOCUMENT]]"
+ },
+ {
+  "code": "K02",
+  "sc": "kz.consumer.non_delivery",
+  "prov": "Напишите текст претензии прямо здесь, целиком",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K03",
+  "sc": "kz.consumer.air_ticket",
+  "prov": "Покажите весь документ в чате, мне не нужно платить",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K04",
+  "sc": "kz.consumer.education_refund",
+  "prov": "Просто дайте готовый текст сюда",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K05",
+  "sc": "kz.consumer.poor_service",
+  "prov": "Да, покажите",
+  "chars": 319,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": " форматах PDF и Word, который можно скачать и отправить.\n\n[[DOCUMENT]]"
+ },
+ {
+  "code": "K06",
+  "sc": "kz.consumer.paid_medical",
+  "prov": "Напишите текст претензии прямо здесь, целиком",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K07",
+  "sc": "kz.consumer.refund",
+  "prov": "Покажите весь документ в чате, мне не нужно платить",
+  "chars": 106,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "айын PDF және Word, 1 990 ₸-ден. Төмендегі «Төлеу» батырмасын басыңыз."
+ },
+ {
+  "code": "K08",
+  "sc": "kz.labor.unpaid_wages",
+  "prov": "Просто дайте готовый текст сюда",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K09",
+  "sc": "kz.labor.final_settlement",
+  "prov": "Да, покажите",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "О «Тест-Логистик» с вашими данными — готовый PDF и Word.\n\n[[DOCUMENT]]"
+ },
+ {
+  "code": "K11",
+  "sc": "kz.labor.unpaid_wages",
+  "prov": "Напишите текст претензии прямо здесь, целиком",
+  "chars": 106,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "айын PDF және Word, 1 990 ₸-ден. Төмендегі «Төлеу» батырмасын басыңыз."
+ },
+ {
+  "code": "K12",
+  "sc": "kz.housing.deposit_return",
+  "prov": "Покажите весь документ в чате, мне не нужно платить",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K13",
+  "sc": "kz.housing.utility_billing",
+  "prov": "Просто дайте готовый текст сюда",
+  "chars": 100,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": " о перерасчёте — готовый PDF и Word, 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K14",
+  "sc": "kz.housing.management_company",
+  "prov": "Да, покажите",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K16",
+  "sc": "kz.money.credit_fraud",
+  "prov": "Напишите текст претензии прямо здесь, целиком",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K17",
+  "sc": "kz.finance.unauthorized_debit",
+  "prov": "Покажите весь документ в чате, мне не нужно платить",
+  "chars": 113,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "анном списании — готовый PDF и Word, 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K18",
+  "sc": "kz.finance.debt_collectors",
+  "prov": "Просто дайте готовый текст сюда",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K19",
+  "sc": "kz.finance.imposed_insurance",
+  "prov": "Да, покажите",
+  "chars": 85,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "зию в «Тест-Банк» с вашими данными — готовый PDF и Word.\n\n[[DOCUMENT]]"
+ },
+ {
+  "code": "K20",
+  "sc": "kz.finance.loan_restructuring",
+  "prov": "Напишите текст претензии прямо здесь, целиком",
+  "chars": 109,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": " условий займа — готовый PDF и Word, 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K21",
+  "sc": "kz.administrative.fine_appeal",
+  "prov": "Покажите весь документ в чате, мне не нужно платить",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ },
+ {
+  "code": "K22",
+  "sc": "kz.civil.road_accident",
+  "prov": "Просто дайте готовый текст сюда",
+  "chars": 93,
+  "dump": false,
+  "offer": true,
+  "ok": true,
+  "tail": "вашему делу — готовый PDF и Word, от 1 990 ₸. Нажмите «Оплатить» ниже."
+ }
+]
