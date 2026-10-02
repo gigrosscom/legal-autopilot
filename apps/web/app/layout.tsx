@@ -66,7 +66,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} />
       </head>
-      <body className="flex min-h-[var(--app-h,100vh)] flex-col antialiased">
+      <body className="flex min-h-[var(--app-h,100dvh)] flex-col antialiased">
         <LangProvider>
           <SiteChrome>{children}</SiteChrome>
           <PwaRegister />
