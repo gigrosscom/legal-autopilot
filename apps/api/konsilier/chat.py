@@ -447,6 +447,7 @@ _TERM = re.compile(
     r"(?:дн(?:я|ей|ю|ям|ями)\b|день\b|сут(?:ок|ки)\b)", re.IGNORECASE)
 _ART = re.compile(r"(\(\s*)?(?:(стать[яеиюй]\w*)|ст\.)\s*(\d+(?:-\d+)?)((?:\s*(?:,|и)?\s*(?:п(?:ункт\w*|п?\.)|ч(?:аст\w*|\.)|подпункт\w*)\s*\d+(?:-\d+)?\)?)*)(\s*\))?",
                   re.IGNORECASE)
+_ART_PAREN = re.compile(r"\s*\((?=[^()]*(?:стать\w*|ст\.)\s*\d)[^()]*\)", re.IGNORECASE)
 _NORM_WORD = {"статья": "норма", "статье": "норме", "статьи": "нормы", "статью": "норму", "статьей": "нормой",
               "статьёй": "нормой"}
 _STEP_LINE = re.compile(r"^\s*(?:\d+[.)]|[-•*]|\*\*)")
@@ -493,6 +494,13 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
         word = (m.group(2) or "").lower()
         return _NORM_WORD.get(word, "нормы") + ("" if m.group(0).endswith(" ") else "")
 
+    def paren(m: re.Match) -> str:
+        nums = re.findall(r"(?:стать\w*|ст\.)\s*(\d+(?:-\d+)?)", m.group(0), re.IGNORECASE)
+        if all(n in arts for n in nums):
+            return m.group(0)
+        removed.append(m.group(0).strip())
+        return ""
+
     out = []
     for line in text.split("\n"):
         if not opened_any:
@@ -507,6 +515,7 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
                     keep = [p for p in parts if all(ok(m) for m in _TERM.finditer(p))]
                     removed += [p for p in parts if p not in keep]
                     line = " ".join(keep)
+        line = _ART_PAREN.sub(paren, line)  # «(статья 53 Трудового кодекса)» goes whole, never half
         line = _ART.sub(art, line)
         line = re.sub(r"\s+([,.;:])", r"\1", re.sub(r"[ \t]{2,}", " ", line)).rstrip()
         out.append(line)

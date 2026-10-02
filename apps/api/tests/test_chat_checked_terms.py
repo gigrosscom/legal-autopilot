@@ -49,3 +49,10 @@ def test_opened_article_and_its_terms_pass():
 def test_clean_reply_unchanged():
     text = "Что делать:\n1. **Направьте претензию продавцу.** Ответ — в течение 10 календарных дней."
     assert keep_checked(text, RULES, set()) == (text, [])
+
+
+def test_unchecked_article_in_brackets_goes_whole():
+    out, removed = keep_checked("Увольнение на больничном запрещено (статья 999 Трудового кодекса). Дальше.", RULES, set())
+    assert out == "Увольнение на больничном запрещено. Дальше." and removed == ["(статья 999 Трудового кодекса)"]
+    text = "Претензия — ответ 10 календарных дней (ст. 42-4 ЗоЗПП)."
+    assert keep_checked(text, RULES, set()) == (text, [])

@@ -164,6 +164,13 @@ ASKED_DOCUMENTS = re.compile(r"пришлите|прикрепите|загру�
                              r"send\s+(?:a\s+)?(?:photo|scan|cop)|upload", re.IGNORECASE)
 
 
+def needs_documents_line(text: str, *, asked_before: bool, offer: bool, files: bool, told: str) -> bool:
+    """A fact-finding question (no solution, no offer) that does not ask for the documents, in a chat where they were
+    never asked and none came, after a story (not «здравствуйте»). The QA gate (scripts/qa_gate.py) uses it too."""
+    return (not ASKED_DOCUMENTS.search(text) and not asked_before and not offer and not files
+            and not re.search(r"\[\[\s*MORE", text) and text.rstrip().endswith("?") and len(told) >= 40)
+
+
 def documents_line(pack: Any, lang: str, note: dict[str, Any]) -> str:
     """The one sentence asking for the documents (owner 02.10), with this scenario's documents when known."""
     docs = [d[:1].lower() + d[1:] for d in note.get("documents_to_ask") or []]
@@ -448,10 +455,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         # model forgot, the server adds the sentence — no files yet, never asked before in this chat.
         asked_docs = bool(ASKED_DOCUMENTS.search(text))
         asked_before = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
-        if not asked_docs and not asked_before and not result.offer_document and not body.attachments \
-                and not ctx["case"].get("files") and not re.search(r"\[\[\s*MORE", text) \
-                and text.rstrip().endswith("?") \
-                and len(" ".join(m.text for m in rows if m.role == "user")) >= 40:  # a story, not «здравствуйте»
+        if needs_documents_line(text, asked_before=asked_before, offer=result.offer_document,
+                                files=bool(body.attachments or ctx["case"].get("files")),
+                                told=" ".join(m.text for m in rows if m.role == "user")):
             extra = documents_line(pack, lang if reply_lang not in ("ru", "kk") else reply_lang, ctx["case"])
             if extra and "{" not in extra:
                 text = f"{text.rstrip()}\n\n{extra}"
