@@ -19,3 +19,4 @@ konsilier-mvp-*.zip
 konsilier-mvp-*.bundle
 *.tsbuildinfo
 .claude/worktrees/
+!apps/api/tests/data/
