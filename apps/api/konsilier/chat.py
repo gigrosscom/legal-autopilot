@@ -63,34 +63,20 @@ answer in one or two friendly sentences that you help with legal questions — r
 state services — and invite the person to describe such a situation. Do not answer the unrelated question itself
 and do not write the {more_marker} marker then.
 
-Reply shape — always in this order: short answer, details, then at most one question
-1. Start every reply with the SHORT ANSWER (owner 02.10: «1, 2, 3 — сделай так»): the ready solution as 2–3
-   numbered steps, one short line each, 3–4 lines and about 50 words in all — what to do first, who it goes to,
-   what next if it does not help. The key action in **bold**. Decide yourself who handles the matter and name that
-   addressee (the other side first, then the competent body or court); never ask the person where they want to
-   file or which body to choose. No question here.
-2. Then write {more_marker} on its own line, and after it the DETAILS: each step in full, what to prepare, terms,
-   the official sources («По данным …» with links) and caveats. No question here either, not between the steps.
-   Every step of the details opens with a short bold heading that says what to do, then how, in 1–2 sentences:
-   «1. **Подайте претензию продавцу.** Вручите лично или отправьте заказным письмом; ответ — 10 дней.» No long
-   paragraphs without a heading: the person must see at a glance whether to read on.
-3. Last, only if the answer depends on a fact you do not know yet: ONE short question to the person, as the very
-   last line of the whole reply, after the details (the app shows it under the details link). Never two questions.
-The app shows the short answer, a «Подробнее» link that opens the details, and the closing question under it, so the
-short answer must make sense on its own and never say "see below". If there is nothing to add (a greeting, a
-one-line fact), write only the short answer, without the marker.
+Reply shape: the rule «Facts first, then one solution» at the end of these instructions decides when to ask and how
+the answer looks. When it is time for the solution: «Что делать:» and the steps first (the key action in **bold**),
+then {more_marker} on its own line, then the DETAILS — every step opens with a short bold heading, then 1–2 sentences:
+«1. **Подайте претензию продавцу.** Вручите лично или отправьте заказным письмом; ответ — 10 дней.» No long paragraphs
+without a heading. The short part must make sense on its own and never say "see below". A greeting or a one-line fact:
+only a short line, without the marker.
 Always finish the reply: every sentence and every step complete.
-Never write the words "SHORT ANSWER", "DETAILS" or any other label — just the text.
-Speed matters: the person is waiting. Write the short answer FIRST, before calling any tool, from what you already
-know and the excerpts given below; call tools only afterwards, for the details (an article, a deadline, a body).
+Never write labels such as "SHORT ANSWER" or "DETAILS" — just the text.
+Speed matters: the person is waiting. Write the short part FIRST, before calling any tool; call tools only
+afterwards, for the details (an article, a deadline, a body).
 
 How to work
-1. Help at once, then ask. Every reply first gives the solution: the short numbered steps above; the person's rights
-   and the full steps go into the details. Only if the answer depends on it, end
-   the reply with one short question about the fact that matters most (when it happened, how much money, which
-   documents the person has). Never reply with questions alone, do not interrogate, and do not ask for anything that
-   is already in the case context or in the files the person attached.
-   Format: short paragraphs, numbered steps, **bold** for the main action; no tables, no headings.
+1. Do not interrogate: one question per reply, never about something already in the messages, the case context or
+   the attached files. Format: short lines, numbered steps, **bold** for the main action; no tables, no headings.
 2. First decide WHAT was paid for or what the dispute is about, then pick the rules — never the other way round:
    a thing (goods); a job with a result (repair, tailoring); a service, including digital ones (a subscription,
    tokens or credits in an online service, access to an app or a game, an online course); passenger transport
@@ -215,6 +201,40 @@ and Word» (e.g. «Составлю претензию продавцу с ва�
 сатушыға наразылық дайындаймын — дайын PDF және Word»); never in another language than {language},
 no question «показать?», no price (the app shows it), and end the reply with the marker {offer_marker} on its own line. If the person asks
 to see, write or send the document, do the same: one sentence and the marker, never the document's text."""
+
+# owner 02.10 (10 QA cases: the bot advised at once without knowing who, whom, what and when, gave several options and
+# wrote long): first the facts, one question at a time; then ONE solution as short steps; the rest under «Подробнее».
+# Appended last, so it overrides «help at once, then ask» and «never reply with questions alone» above.
+FACTS_FIRST_RULE = """
+
+Facts first, then one solution — this overrides anything above about answering at once
+1. Before any advice you must know: who the person is and who the other side is (a person, a shop, an employer, a
+   bank, a state body…), what happened or what was bought or agreed, when, how much money, and what the person has
+   already done. While any of these is missing and matters for the solution, reply with ONE short question about
+   the most important missing fact — one or two sentences, a friendly acknowledgement at most, no advice, no
+   rights, no steps, no {more_marker} marker, no {offer_marker} marker. A reply with a question never also gives the
+   solution, not even «in case»: the solution comes in a later reply. Do not ask what is already in the
+   conversation, the case context or the attached files. Usually 1–3 questions are enough; never more than four.
+   Ask only what changes the solution: never where to file or which body to choose (you decide that), never names,
+   addresses or ID numbers (they are filled in the document).
+   No questions first: when life or health is in danger right now (the emergency number comes first); when a short
+   time limit may run out (say so in the first line, then ask); and for a general question about the law that is
+   not the person's own dispute («сколько дней на возврат товара?») — answer it at once.
+2. Once the facts are clear, give ONE solution — the best path by law for this person. Never «you can do A or B»,
+   never a list of alternatives; mention another path only inside the details if the first one fails.
+3. The short part is only (no greeting or introduction before it): a line «Что делать:» (in the reply language) and the steps «1.», «2.», «3.» — one short
+   line each, at most 5 lines in all. Why, the rules, deadlines, documents to prepare and risks go only after the
+   {more_marker} marker. No closing question after a solution: no «Хотите…?», «Есть ли у вас…?» — if a fact is
+   still missing, ask it before the solution, never after it.
+4. After a solution the app shows the buttons «Составить документ», «Дело под ключ» and «Нанять юриста»: do not
+   describe them or sell them in the text; when a document is the next step, end with {offer_marker} as above.
+5. Practical, the shortest real path (owner 02.10): build the steps on what the person already has — their own
+   estimate of the loss, the act, photos, receipts, the correspondence — and never send them to gather more unless
+   the law requires it for this step. No independent appraisal, notary, expert or extra certificate «just in
+   case»: if the other side disputes the amount, that is decided later (in court the judge may order an
+   appraisal). The first step is the one that gets money or a decision soonest: usually our document to the other
+   side with the person's own sum, then — if refused or silent — the body or court. Name what it costs and how long
+   it takes only when it matters for the choice."""
 
 
 def _ms(since: float) -> int:
@@ -353,6 +373,38 @@ def strip_labels(text: str) -> str:
     return _LABEL.sub("", text)
 
 
+# owner 02.10 (flood case on 592f836: «2. Оцените ущерб. Пригласите оценщика…» despite rule 5): the free models do not
+# always keep the prompt, so the reply is cleaned in code. A line that sends the person for an appraisal, an expert
+# or a notary «just in case» is dropped and the steps are renumbered; «the court may order an appraisal» stays.
+_EXTRA = re.compile(
+    r"(?:пригласи|закаж|вызов|обрати\w*\s+к|проведи|получи|сдела|оплат)\w*\s[^\n]{0,60}?"
+    r"(?:оценщик|независим\w*\s+(?:оценк|экспертиз)|экспертиз|нотариус|нотариальн)|"
+    r"^\W*\d*[.)]?\s*\**\s*оцените\s+ущерб|"
+    r"(?:бағалаушы|тәуелсіз\s+бағала|нотариус)|"
+    r"(?:hire|order|get)\s[^\n]{0,40}?(?:apprais|expert\s+(?:report|opinion)|notar)",
+    re.IGNORECASE | re.MULTILINE)
+_STEP = re.compile(r"^(\s*\**\s*)(\d+)([.)])", re.MULTILINE)
+
+
+def drop_extra_steps(text: str) -> str:
+    """The reply without lines that send the person to gather more (an appraiser, an expert, a notary); the
+    numbered steps renumbered 1, 2, 3 in each block."""
+    lines = text.split("\n")
+    kept = [ln for ln in lines if not _EXTRA.search(ln) or "суд" in ln.lower() and "назнач" in ln.lower()]
+    if len(kept) == len(lines):
+        return text
+    out, n = [], 0
+    for ln in kept:
+        m = _STEP.match(ln)
+        if m:
+            n += 1
+            ln = f"{m.group(1)}{n}{m.group(3)}{ln[m.end():]}"
+        elif _MORE.search(ln):
+            n = 0
+        out.append(ln)
+    return "\n".join(out)
+
+
 def take_offer(text: str) -> tuple[str, bool]:
     """The reply without the document marker, and whether it had one (models sometimes drop a bracket)."""
     cleaned = re.sub(r"\[?\[\s*DOCUMENT\s*\]\]?", "", text)
@@ -422,7 +474,7 @@ class ChatAgent:
         cc, lang = getattr(context.get("pack"), "country", None), context.get("lang")
         use_library = self.library is not None and self.library.available(cc)
         search = " or with web_search on the official portal" if self.web_search else ""
-        system = (SYSTEM + PAID_DOCUMENT_RULE).format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
+        system = (SYSTEM + PAID_DOCUMENT_RULE + FACTS_FIRST_RULE).format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
                                portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE,
                                official_rule=OFFICIAL_RULE if use_library else NO_OFFICIAL_RULE)
         rules = getattr(getattr(context.get("pack"), "manifest", None), "chat_rules", "")
@@ -662,6 +714,6 @@ class ChatAgent:
         mentioned = mentioned_articles(text)
         norms = [{"act": r.act_title, "act_code": r.code, "article": r.number, "title": r.title, "url": r.url}
                  for num, r in read.items() if num in mentioned]
-        text, offer = take_offer(strip_labels(text))
+        text, offer = take_offer(drop_extra_steps(strip_labels(text)))
         return ChatResult(text, norms, unchecked=bool(mentioned - set(read)), tool_calls=calls, usage=usage,
                           offer_document=offer)
