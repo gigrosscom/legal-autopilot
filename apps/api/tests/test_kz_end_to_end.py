@@ -116,8 +116,8 @@ def _check_document(sid: str, spec, a: dict, text: str, previous: list[str]) -> 
         if ref != "TODO":
             assert ref.rsplit(", статья", 1)[0] in VERIFIED_ACTS, (where, ref)
             assert ref in t, (where, ref)
-        else:
-            assert "[норма" in t, where
+        else:  # PM 02.10: a norm not checked yet is left out, never «[норма: уточнит юрист]»
+            assert "[норма" not in t and "уточнит юрист" not in t, where
     # attachments: the uploaded file and, from the second step on, the earlier documents
     assert "Приложение:" in t and "(dokument.txt)" in t, where  # D-30
     for title in previous:

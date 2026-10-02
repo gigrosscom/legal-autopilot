@@ -4,6 +4,7 @@
     python -m konsilier.cli todos [PACKS_DIR]
     python -m konsilier.cli tick
     python -m konsilier.cli backup      # pg_dump → S3 bucket (backups/…) or ./data/backups
+    python -m konsilier.cli reissue-documents [--apply]   # «Проверьте данные перед подачей» out of given documents
     python -m konsilier.cli review CC [PACKS_DIR]   # refresh the generated table in packs/<cc>/REVIEW.md
     python -m konsilier.cli forums-export CC OUT.yaml  # admin drafts → YAML for a reviewed PR
     python -m konsilier.cli zann-bench [PATH] [--no-examples] [--limit N] [--out REPORT.json]  # score the system
@@ -29,6 +30,8 @@ from .core.packs import PackRegistry, PackValidationError
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "backup":
         return backup()
+    if argv and argv[0] == "reissue-documents":
+        return reissue_documents("--apply" in argv)
     if argv and argv[0] == "official-crawl":
         return official_crawl(argv[1:])
     if argv and argv[0] == "official-search" and len(argv) > 1:
@@ -72,6 +75,20 @@ def main(argv: list[str]) -> int:
             else:
                 for todo in sc.todos():
                     print(todo)
+    return 0
+
+
+def reissue_documents(apply: bool) -> int:
+    """Owner 02.10: «Проверьте данные перед подачей» out of every document already given (dry run without --apply)."""
+    from .container import build_container
+    from .core.reissue import reissue_all
+
+    container = build_container(get_settings())
+    with container.session_factory() as s:
+        out = reissue_all(s, container.storage, container.engine.pdf, apply)
+        if apply:
+            s.commit()
+    print(out)
     return 0
 
 

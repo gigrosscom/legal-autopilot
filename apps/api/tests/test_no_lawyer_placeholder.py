@@ -12,7 +12,12 @@ PHRASES = re.compile(r"(?i)уточнит юрист|юрист уточнит|�
 
 
 def _client_lines(path: Path):
+    stop_words = False  # routing.yaml document_markers: the words the document check stops, never shown to a client
     for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
+        if line and not line[0].isspace():
+            stop_words = line.startswith("document_markers:")
+        if stop_words:
+            continue
         code = line.split("#", 1)[0] if path.suffix == ".yaml" else line.split("//", 1)[0]
         if PHRASES.search(code):
             yield f"{path.relative_to(REPO)}:{n}"

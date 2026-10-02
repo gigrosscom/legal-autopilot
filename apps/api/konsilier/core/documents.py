@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 def render_docx(template_path: Path, context: dict[str, Any], ai_label: str,
                 draft_disclaimer: str | None, finish: Callable[[str], str] | None = None,
-                style: DocStyle | None = None, lang: str = "ru") -> bytes:
+                style: DocStyle | None = None, lang: str = "ru", drop_empty: tuple[str, ...] = ()) -> bytes:
     """`draft_disclaimer` (a scenario not reviewed by a lawyer) is no longer printed: the document carries one AI line
     in the footer (owner 01.10); the argument stays for the callers."""
     tpl = DocxTemplate(str(template_path))
@@ -37,6 +37,11 @@ def render_docx(template_path: Path, context: dict[str, Any], ai_label: str,
     tpl.save(buf)
 
     doc = Document(io.BytesIO(buf.getvalue()))
+    if drop_empty:  # PM 02.10: a label left with nothing after it («Правовое основание:») is not printed
+        empty = {f"{label.strip().lower()}:" for label in drop_empty}
+        for p in list(doc.paragraphs):
+            if p.text.strip().lower() in empty:
+                p._element.getparent().remove(p._element)
     if finish is not None:
         paragraphs = list(doc.paragraphs) + [p for t in doc.tables for row in t.rows for c in row.cells for p in c.paragraphs]
         for p in paragraphs:

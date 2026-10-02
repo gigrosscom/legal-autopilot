@@ -344,6 +344,12 @@ class Routing(_Strict):
     # the person writes as a business (sole trader, company) about a dispute with a business: consumer law does not
     # apply; lang → phrases, matched on whole words
     business_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # words that must never reach a document given to a client (core/docgate.py): lang (or "*") → phrases
+    document_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # words that make a sentence a citation of a norm (статья, закон, кодекс): one cited twice in a row is stopped
+    norm_words: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # labels of a document left with nothing after them («Правовое основание:» when no norm is checked): not printed
+    document_drop_empty: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     # the matter is already in a court or with the police (case number, hearing, investigator): only then the forums
     # marked pending_only are offered; lang → phrases, matched on whole words
     pending_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)

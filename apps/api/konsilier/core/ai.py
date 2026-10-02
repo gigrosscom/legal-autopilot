@@ -217,6 +217,7 @@ def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPac
         "precise dates and amounts from the facts, no emotions or evaluative words. Where a fact is supported "
         "by an attached document from 'attachments', say so (e.g. 'что подтверждается приложенным чеком'). "
         "Use only the provided facts. Do not cite laws, do not state demands (they are added separately), "
+        "do not mention whether documents are attached or not (attachments are listed separately, PM 02.10), "
         "do not add greetings or signatures. Grammar (QA 01.10): the applicant's grammatical gender is "
         "'applicant_gender' — 'male' or 'female' forms of verbs and adjectives accordingly; if it is 'unknown', "
         "build sentences that need no gendered form (e.g. 'мною было подано обращение'). Never write alternatives "
