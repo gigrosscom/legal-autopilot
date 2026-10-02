@@ -140,6 +140,14 @@ class EngineConfig:
     kaspi_push: bool = False
 
 
+_EMPTY_BRACKETS = re.compile(r"\s*\(\s*\)")
+
+
+def _tidy(text: str) -> str:
+    """An instruction whose placeholder is still unknown (no addressee name yet) loses the empty «()» around it."""
+    return _EMPTY_BRACKETS.sub("", text)
+
+
 class CaseEngine:
     def __init__(self, *, packs: PackRegistry, llm: LLMProvider, storage: Storage, pdf: PdfConverter,
                  scheduler: DeadlineScheduler, notifier: Notifier, payments: PaymentAdapter,
@@ -1602,8 +1610,8 @@ class CaseEngine:
         lang = case.language
         action.addressee = addressee
         action.instructions = [
-            s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
-                                                      spec.instructions.get(pack.manifest.default_language) or ())
+            _tidy(s.format_map(_Fmt(ctx["fmt"]))) for s in (spec.instructions.get(lang) or
+                                                             spec.instructions.get(pack.manifest.default_language) or ())
         ]
         if self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"

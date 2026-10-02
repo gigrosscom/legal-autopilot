@@ -1041,7 +1041,7 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
             {a.instructions.map((s, i) => (
               <li key={i} className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
-                <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+                <span className="min-w-0 break-words pt-0.5"><Step text={s} /></span>
               </li>
             ))}
           </ol>
@@ -1097,7 +1097,7 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
             {f.to.email && <a href={`mailto:${f.to.email}`} className="link block">{f.to.email}</a>}
           </>
         ))}
-        {row("calendar", t("filing.fileBy"), f.file_by ? (
+        {f.file_by && row("calendar", t("filing.fileBy"), (
           <>
             {f.file_by.date
               ? <b className="tabular-nums">{date(f.file_by.date)}</b>
@@ -1106,14 +1106,14 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
             {norm(f.file_by)}
             {f.file_by.overdue && <span className="block text-xs text-danger">{t("filing.overdue")}</span>}
           </>
-        ) : lawyer)}
-        {row("clock", t("case.deadline"), f.response ? (
+        ))}
+        {f.response && row("clock", t("case.deadline"), (
           <>
             <span>{t("filing.respond", { term: within(f.response) })}</span>
             {norm(f.response)}
           </>
-        ) : lawyer)}
-        {row("key", t("filing.signature"), f.signature_text ?? lawyer)}
+        ))}
+        {f.signature_text && row("key", t("filing.signature"), f.signature_text)}
       </dl>
       {f.ways.length > 0 && (
         <div className="space-y-2">
@@ -1145,7 +1145,7 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
                 {steps.map((s, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
-                    <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+                    <span className="min-w-0 break-words pt-0.5"><Step text={s} /></span>
                   </li>
                 ))}
               </ol>
@@ -1225,6 +1225,19 @@ function SubmitOnline({ caseId, a }: { caseId: string; a: CaseAction }) {
         {step(3, t("submit.s3"), <p className="text-xs text-muted">{t("submit.s3hint", { btn: t("case.submitted") })}</p>)}
       </ol>
     </section>
+  );
+}
+
+/** One step: «**Что сделать.** Как это сделать» — the heading on its own line in bold, so the person sees at a glance
+ *  whether to read on (owner 02.10); a step without a heading stays plain text. */
+function Step({ text }: { text: string }) {
+  const m = /^\*\*(.+?)\*\*\s*([\s\S]*)$/.exec(text);
+  if (!m) return <Linkified text={text} />;
+  return (
+    <>
+      <span className="block font-semibold text-ink">{m[1]}</span>
+      {m[2] && <span className="block text-muted"><Linkified text={m[2]} /></span>}
+    </>
   );
 }
 
