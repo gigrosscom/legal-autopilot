@@ -210,13 +210,13 @@ def document_offer(session: Session, container: Container, case: Case, lang: str
 
 def offer_text(offer: dict[str, Any], lang: str) -> str:
     """The paid offer, in place of the document's text (the price is the case's own)."""
-    price = f" — {offer['price']:,.0f} {offer.get('currency') or ''}".replace(",", " ").rstrip() if offer.get("price") else ""
+    amount = f"{offer['price']:,.0f}".replace(",", " ") if offer.get("price") else ""
+    price = f", {amount} {offer.get('currency') or ''}".rstrip() if amount else ""
     title = (offer.get("title") or "").strip()
+    # the title as it is, no declension (PM 02.10: «Составлю претензия…» read wrong): «Документ: Претензия продавцу…»
     if lang == "kk":
-        what = title.lower() if title else "құжатты"
-        return f"Сіздің деректеріңізбен {what} дайындаймын: дайын PDF және Word{price}. Төмендегі батырманы басыңыз."
-    what = title[:1].lower() + title[1:] if title else "документ"
-    return f"Составлю {what} с вашими данными: готовый PDF и Word{price}. Нажмите кнопку ниже."
+        return f"Құжат: {title or 'құжат'} — дайын PDF және Word{price}. «Төлеу» батырмасын басыңыз."
+    return f"Документ: {title or 'документ по вашему делу'} — готовый PDF и Word{price}. Нажмите «Оплатить» ниже."
 
 
 class ChatIn(BaseModel):

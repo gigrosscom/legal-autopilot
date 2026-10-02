@@ -53,7 +53,7 @@ def test_asking_for_the_document_text_gets_the_offer(ctx):
     ctx.container.chat_agent = _agent(CLAIM)
     api, cid = _case(ctx)
     reply = _say(ctx, api, cid, "Составьте мне претензию")
-    assert reply["offer_document"] and "Составлю" in reply["text"]
+    assert reply["offer_document"] and reply["text"].startswith("Документ: ")
 
 
 def test_a_written_out_document_is_cut(ctx):
