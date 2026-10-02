@@ -132,6 +132,45 @@ def _view(m: ChatMessage) -> dict[str, Any]:
             "sources": m.meta.get("sources", []), "offer_document": bool(m.meta.get("offer_document"))}
 
 
+# owner 02.10 (decisions.md): understand the gist → ask for the documents (what is in them is read, never asked) → one
+# or two questions only if still short → then the solution. The chat model sees which documents this scenario uses,
+# which of them came, which facts are already known (from the story, the chat and the files) and which facts that
+# change the solution are still missing — names, addresses and ID numbers are left to the form before payment.
+DOC_DETAIL = re.compile(r"_(?:name|address|bin|iin|email|phone)$")
+
+
+def intake_note(container: Container, case: Case, lang: str) -> dict[str, Any]:
+    if not case.scenario_id:
+        return {}
+    try:
+        sc = container.engine.scenario_of(case)
+        pack = container.engine.pack_of(case)
+    except Exception:  # noqa: BLE001 — a scenario that went away: the chat goes on without the note
+        return {}
+    came = {e.kind for e in case.evidence}
+    kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds
+             if k not in ("id_document", "other")]
+    facts = case.facts or {}
+    return {
+        "documents_to_ask": [pack.t(lang, f"evidence.{k}", default=k) for k in kinds if k not in came],
+        "documents_received": [pack.t(lang, f"evidence.{k}", default=k) for k in kinds if k in came],
+        "facts_known": sorted(n for n in facts if not n.startswith("_")),
+        "facts_missing": [f.name for f in sc.intake if f.type != "evidence" and not f.optional and not f.pii
+                          and not DOC_DETAIL.search(f.name) and f.name not in facts],
+    }
+
+
+ASKED_DOCUMENTS = re.compile(r"пришлите|прикрепите|загрузите|отправьте\s+(?:фото|скан|копи)|жіберіңіз|жүктеңіз|"
+                             r"send\s+(?:a\s+)?(?:photo|scan|cop)|upload", re.IGNORECASE)
+
+
+def documents_line(pack: Any, lang: str, note: dict[str, Any]) -> str:
+    """The one sentence asking for the documents (owner 02.10), with this scenario's documents when known."""
+    docs = [d[:1].lower() + d[1:] for d in note.get("documents_to_ask") or []]
+    listed = "; ".join(docs) if docs else pack.t(lang, "chat_documents.any")
+    return pack.t(lang, "chat_documents.ask", docs=listed)
+
+
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
     rows = session.scalars(select(Evidence).where(Evidence.case_id == case.id)).all()
     return [vault.redact_obj({"file": e.filename, "kind": e.kind, "facts": e.extracted_facts or {},
@@ -277,7 +316,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     ctx = _context(container, case)
     vault: PiiVault = ctx.pop("vault")
     pack = ctx["pack"]
-    ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault)}
+    ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault),
+                   **intake_note(container, case, pack.lang(case.language))}
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
     lang = pack.lang(case.language)  # the pack's language for its titles (KZ: ru, kk)
     # the reply follows the person: the interface language they write from, else the case's language — not the pack's
@@ -402,6 +442,19 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         if cut:  # the document's text was taken out: its place is the paid offer, even in the first reply
             result.offer_document = True
+        # owner 02.10: documents first. A fact-finding question (no solution yet) asks for the documents once; if the
+        # model forgot, the server adds the sentence — no files yet, never asked before in this chat.
+        asked_docs = bool(ASKED_DOCUMENTS.search(text))
+        asked_before = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
+        if not asked_docs and not asked_before and not result.offer_document and not body.attachments \
+                and not ctx["case"].get("files") and not re.search(r"\[\[\s*MORE", text) \
+                and text.rstrip().endswith("?") \
+                and len(" ".join(m.text for m in rows if m.role == "user")) >= 40:  # a story, not «здравствуйте»
+            extra = documents_line(pack, lang if reply_lang not in ("ru", "kk") else reply_lang, ctx["case"])
+            if extra and "{" not in extra:
+                text = f"{text.rstrip()}\n\n{extra}"
+                yield _sse({"type": "text", "text": f"\n\n{extra}"})
+                asked_docs = True
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)
         timing = {**(getattr(result, "timing", None) or {}), "queue_ms": queue_ms}
         served_by = timing.get("provider") or used  # inside the free chain: cerebras, gemini …
@@ -414,6 +467,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                             meta={"provider": used, "served_by": served_by, "norms": result.norms,
                                   "sources": result.sources, "unchecked": result.unchecked,
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
+                                  "asked_documents": asked_docs,
                                   "usage": result.usage, "first_ms": first_ms,
                                   # P0 01.10: rounds cut before their end ("provider:reason") — continued, or the
                                   # reply ended at its last whole sentence (trimmed); counted hourly (chatspeed)

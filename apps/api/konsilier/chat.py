@@ -220,6 +220,13 @@ Facts first, then one solution — this overrides anything above about answering
    No questions first: when life or health is in danger right now (the emergency number comes first); when a short
    time limit may run out (say so in the first line, then ask); and for a general question about the law that is
    not the person's own dispute («сколько дней на возврат товара?») — answer it at once.
+1-1. Documents first (owner 02.10): in the first reply after the gist is clear, ask for the documents in one
+   sentence, together with the one question if there is one — what is in them you take yourself, it is never asked:
+   «Пришлите фото чека и гарантийного талона — я сам возьму из них даты и суммы». Name the documents of this case:
+   the case context lists them (documents_to_ask); without that list, the obvious ones for the subject — a receipt
+   or contract, a warranty card, an act, photos, screenshots, the correspondence, a notice or a decision. Ask once;
+   if the person has none or will send them later, go on with the questions. Facts in the attached files and in
+   facts_known are never asked again; facts_missing are the facts still to learn before the solution.
 2. Once the facts are clear, give ONE solution — the best path by law for this person. Never «you can do A or B»,
    never a list of alternatives; mention another path only inside the details if the first one fails.
 3. The short part is only (no greeting or introduction before it): a line «Что делать:» (in the reply language) and the steps «1.», «2.», «3.» — one short
@@ -383,6 +390,12 @@ _EXTRA = re.compile(
     r"(?:бағалаушы|тәуелсіз\s+бағала|нотариус)|"
     r"(?:hire|order|get)\s[^\n]{0,40}?(?:apprais|expert\s+(?:report|opinion)|notar)",
     re.IGNORECASE | re.MULTILINE)
+# Kept although they name an expert or an appraiser (ZANN 02.10, checked on adilet): the court orders an expertise on a
+# party's motion or of its own accord (Civil Procedure Code art. 82 p. 3) — «суд назначит», «ходатайство об экспертизе»;
+# and under compulsory motor insurance the victim may hire an appraiser at the insurer's expense when the insurer has
+# not assessed the damage in time (Law on OGPO VTS art. 22 p. 3-1) — «за счёт страховщика».
+_LAWFUL_EXTRA = re.compile(r"суд\w*[^\n]{0,40}назнач|назнач\w*[^\n]{0,40}суд|ходатайств|за\s+сч[её]т\s+страхов",
+                           re.IGNORECASE)
 _STEP = re.compile(r"^(\s*\**\s*)(\d+)([.)])", re.MULTILINE)
 
 
@@ -390,7 +403,7 @@ def drop_extra_steps(text: str) -> str:
     """The reply without lines that send the person to gather more (an appraiser, an expert, a notary); the
     numbered steps renumbered 1, 2, 3 in each block."""
     lines = text.split("\n")
-    kept = [ln for ln in lines if not _EXTRA.search(ln) or "суд" in ln.lower() and "назнач" in ln.lower()]
+    kept = [ln for ln in lines if not _EXTRA.search(ln) or _LAWFUL_EXTRA.search(ln)]
     if len(kept) == len(lines):
         return text
     out, n = [], 0
