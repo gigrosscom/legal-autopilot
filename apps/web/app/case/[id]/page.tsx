@@ -522,7 +522,7 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
         {prepareOrPay(t("case.prepare"))}
         {needsPay && pay!.available && pay!.status === "none" && whole && (
           <button type="button" disabled={busy} onClick={() => openPay("case")}
-            className="w-full py-1 text-center text-sm text-muted underline">
+            className="flex min-h-11 w-full items-center justify-center text-center text-sm text-muted underline">
             {t("payment.option.case", { price: money(whole.amount, pay!.currency) })}
           </button>
         )}
@@ -670,7 +670,7 @@ function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: App
         <label key={f.field} className="block text-sm">{f.label}
           <input className={`input mt-1 ${errors[f.field] ? "border-danger" : ""}`} required value={values[f.field] ?? ""}
             type={f.type === "phone" ? "tel" : f.type === "email" ? "email" : "text"}
-            inputMode={f.pattern || f.type === "phone" ? "numeric" : undefined}
+            inputMode={f.type === "phone" ? "tel" : f.pattern ? "numeric" : undefined}
             autoComplete={f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
             onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))} aria-invalid={!!errors[f.field]} />
           {errors[f.field] && <span className="text-danger">{t(`draft.error.${known.includes(errors[f.field]) ? errors[f.field] : "generic"}`)}</span>}

@@ -301,11 +301,11 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
 }
 
 /** The install button of the header menu and the footer. */
-export function InstallApp({ className = "" }: { className?: string }) {
+export function InstallApp({ className = "", full = false }: { className?: string; full?: boolean }) {
   return (
     <div className={className} onClickCapture={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}>
       <InstallButton icon="smartphone"
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand [&>svg]:text-brand" />
+        className={`${full ? "flex w-full justify-center" : "inline-flex"} min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand [&>svg]:text-brand`} />
     </div>
   );
 }
@@ -372,10 +372,10 @@ export function AppBanner({ above = false }: { above?: boolean }) {
           {kind === "install" && <span className="block text-muted">{t("pwa.bannerText")}</span>}
         </p>
         {kind === "install"
-          ? <InstallButton onInstalled={dismiss} className="btn-primary min-h-9 shrink-0 px-3 text-sm" />
-          : <button type="button" onClick={enable} className="btn-primary min-h-9 shrink-0 px-3 text-sm">{t("push.enable")}</button>}
+          ? <InstallButton onInstalled={dismiss} className="btn-primary min-h-11 shrink-0 px-3 text-sm" />
+          : <button type="button" onClick={enable} className="btn-primary min-h-11 shrink-0 px-3 text-sm">{t("push.enable")}</button>}
         <button type="button" onClick={dismiss} aria-label={t("app.close")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={18} /></button>
+          className="-me-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={18} /></button>
       </div>
     </div>
   );

@@ -377,7 +377,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                   <li key={e}>
                     <button type="button" onClick={() => { setDraft(e); document.getElementById("chat-input")?.focus(); }}
                       className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-[var(--chat-in-bg)] px-4 py-3 text-start text-[17px] font-medium shadow-[var(--chat-shadow)] text-ink hover:bg-sand-deep">
-                      <Icon name="chat" size={20} className="shrink-0 text-muted" />{e}
+                      <Icon name="chat" size={20} className="shrink-0 text-muted" /><span className="text-balance">{e}</span>
                     </button>
                   </li>
                 ))}
@@ -424,9 +424,9 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 <div className="space-y-2 rounded-xl bg-surface p-3 ring-1 ring-line">
                   <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                     <dt className="text-muted">{t("chat.docService")}</dt>
-                    <dd className="text-end font-semibold">{docOffer?.title ?? t("chat.doc")}</dd>
+                    <dd className="text-end font-semibold text-balance">{docOffer?.title ?? t("chat.doc")}</dd>
                     <dt className="text-muted">{t("chat.docCost")}</dt>
-                    <dd className="text-end font-semibold tabular-nums">
+                    <dd className="whitespace-nowrap text-end font-semibold tabular-nums">
                       {docOffer?.price && !docOffer.price_from ? `${docOffer.price.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${docOffer.currency ?? ""}`.trim() : t("chat.docPrice")}
                     </dd>
                   </dl>
@@ -464,7 +464,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               </Bubble>
             )}
             <button type="button" onClick={retryFailed} disabled={busy}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--chat-in-bg)] px-4 text-sm font-semibold shadow-[var(--chat-shadow)] hover:text-brand disabled:opacity-50">
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--chat-in-bg)] px-4 text-sm font-semibold shadow-[var(--chat-shadow)] hover:text-brand disabled:opacity-50">
               <Icon name="send" size={16} />{t("chat.retry")}
             </button>
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Brand } from "@/components/Brand";
 import { InstallApp } from "@/components/InstallApp";
 import { Icon } from "@/components/ui";
@@ -11,13 +12,15 @@ import { useT } from "@/lib/i18n";
 
 export default function Footer() {
   const t = useT();
+  // /app is all about installing — its own button is enough, no second one in the footer
+  const onAppPage = usePathname() === "/app";
   return (
     <footer className="bg-sand">
       <div className="mx-auto grid max-w-[1208px] gap-6 px-5 py-10 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Brand size={26} />
           <p className="text-muted text-balance">{t("footer.said")}</p>
-          <InstallApp className="pt-2" />
+          {!onAppPage && <InstallApp className="pt-2" />}
         </div>
         <nav aria-label={t("footer.product")} className="flex flex-col gap-2">
           <Link href="/how-it-works" className="inline-flex items-center text-muted hover:text-ink pointer-coarse:min-h-11">{t("nav.howItWorks")}</Link>

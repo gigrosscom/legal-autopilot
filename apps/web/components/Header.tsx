@@ -102,7 +102,7 @@ export default function Header() {
               {NAV.map((n) => (
                 <Link key={n.href} href={n.href} className="rounded-xl px-3 py-3 hover:bg-sand">{t(n.key)}</Link>
               ))}
-              <InstallApp className="border-t border-ink/[0.08] px-1 pt-2" />
+              <InstallApp full className="border-t border-ink/[0.08] px-1 pt-2" />
             </nav>
           </details>
         </div>
