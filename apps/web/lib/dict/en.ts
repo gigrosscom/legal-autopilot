@@ -1092,6 +1092,7 @@ const en: Dict = {
     },
   },
   draft: {
+    examplePrefix: "For example: {v}",
     title: "Draft",
     lead: "This is how your document will look. You can read the beginning now; the full text opens after payment.",
     locked: "Full text after payment",

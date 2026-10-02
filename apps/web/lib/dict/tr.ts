@@ -964,6 +964,7 @@ const tr: Dict = {
     },
   },
   draft: {
+    examplePrefix: "Örneğin: {v}",
     title: "Taslak",
     lead: "Belgeniz böyle görünecek. Başını şimdi okuyabilirsiniz; tam metin ödemeden sonra açılır.",
     locked: "Tam metin ödemeden sonra",
