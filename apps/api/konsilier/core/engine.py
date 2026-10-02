@@ -1596,6 +1596,22 @@ class CaseEngine:
             view.update(self.payments.details())
         return view
 
+    def document_title(self, case: Case) -> str | None:
+        """«Услуга» in the payment window: the document the case makes next («Претензия продавцу о возврате денег»),
+        not a bare «Документ» (PM 02.10)."""
+        if not case.scenario_id:
+            return None
+        try:
+            sc = self.scenario_of(case)
+            spec = self.next_action_spec(case, sc)
+            if spec is None:
+                return None
+            pack = self.pack_of(case)
+            return pack.localized(spec.title, pack.lang(case.language)) or None
+        except Exception:  # noqa: BLE001 — the window falls back to «Документ»
+            log.warning("document title for case %s", case.id, exc_info=True)
+            return None
+
     def payment_view(self, session: Session, case: Case) -> dict[str, Any] | None:
         """What the payment screen shows: whether the next document is paid for, what can be bought, the open bill
         and, while it is unpaid, where to transfer. status "paid" = the next document can be prepared now."""
@@ -1619,7 +1635,8 @@ class CaseEngine:
             "bonus": self.bonus_documents(session, case.owner_id),
             "bonus_balance": (owner.bonus_balance if (owner := session.get(User, case.owner_id)) else 0),
             "bonus_used": inv.bonus_used if inv is not None else 0,
-            "subscription": self.subscription_view(session, case.owner_id)}
+            "subscription": self.subscription_view(session, case.owner_id),
+            "title": self.document_title(case)}
         if inv is not None and status != "paid":
             view.update(self.payments.details())
         # «status» is about the NEXT document; the last paid bill is shown apart (QA 01.10: «Оплачено» after the

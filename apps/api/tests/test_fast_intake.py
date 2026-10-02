@@ -137,9 +137,13 @@ def test_gov_inaction_complaint_is_a_paid_document_and_asks_applicant_data_befor
     assert r.status_code == 422 and r.json()["detail"]["code"] == "applicant_data_required"
     need = {f["field"] for f in r.json()["detail"]["fields"]}
     assert {"applicant_name", "applicant_iin", "applicant_address", "applicant_phone"} <= need
+    # PM 02.10: whose inaction it is is asked too — never a complaint with an empty «Орган» (the test model does not
+    # read «Акимат района» out of the story; the real one fills it before the draft)
+    assert need - {"applicant_name", "applicant_iin", "applicant_address", "applicant_phone"} <= {"respondent_name"}
     api.post(f"/v1/cases/{cid}/facts", json={"values": {
         "applicant_name": "Иванов Иван Иванович", "applicant_iin": "900101300123",
-        "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67"}})
+        "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67",
+        **({"respondent_name": "Акимат Алмалинского района"} if "respondent_name" in need else {})}})
     pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
     assert pay["amount"] == 2990 and pay["code"]
 

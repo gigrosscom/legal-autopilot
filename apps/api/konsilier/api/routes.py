@@ -625,6 +625,10 @@ def list_forums(country: str, lang: str = "ru", branch: str | None = None,
 def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
                  container: Container = Depends(get_container)):
     case = load_case(case_id, session, user)
+    missing = applicant_blanks(container, case) if case.status == "qualified" else []
+    if missing:  # PM 02.10: paid by credits, a plan or bonuses too — never a document with an empty addressee
+        raise HTTPException(422, {"code": "applicant_data_required", "message": "applicant_data_required",
+                                  "fields": missing})
     try:
         action = container.engine.prepare_next_action(session, case, f"user:{user.id}")
     except EngineError as e:
@@ -669,15 +673,21 @@ class PaymentIn(BaseModel):
 
 
 def applicant_blanks(container: Container, case: Case) -> list[dict[str, Any]]:
-    """The applicant's personal data still blank in the draft (name, ID number, address, phone): asked right before
-    paying. Other blanks (the other side's details) may stay and be filled in the draft."""
+    """Required data still blank in the draft, asked right before paying: the applicant's own (name, ID number,
+    address, phone) and, since PM 02.10, the other side's name and address too — a paid document never goes out with
+    «Адрес: [Адрес продавца]» or an empty addressee. Only the other side's ID number (BIN/IIN) may stay blank: a person
+    often cannot know it (a foreign seller); free-text fields are written from the story."""
     if not case.scenario_id:
         return []
     engine = container.engine
     sc, pack = engine.scenario_of(case), engine.pack_of(case)
+    their_ids = {p.id_field for role, p in sc.parties.items() if role != "applicant" and p.id_field}
+    parties = {getattr(p, a) for p in sc.parties.values() for a in ("name_field", "address_field") if getattr(p, a, None)}
     return [{"field": n, "label": ai.field_label(sc, pack, case.language, n), "type": sc.field(n).type,
-             "pattern": sc.field(n).pattern}
-            for n in engine.draft_blanks(case, sc) if sc.field(n).pii]
+             "pattern": sc.field(n).pattern, "own": bool(sc.field(n).pii)}
+            for n in engine.draft_blanks(case, sc)
+            # free text («Чего просите») is written from the story; names, addresses, dates and sums are not
+            if n not in their_ids and (sc.field(n).pii or n in parties or sc.field(n).type != "text")]
 
 
 CONFIRMED_CONTACTS = {"phone", "email", "iin", "google", "apple"}

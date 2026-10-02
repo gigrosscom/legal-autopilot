@@ -137,7 +137,7 @@ export function KaspiOneTap({ pay, busy, price, onWay }: {
     <div className="space-y-4">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[17px]">
         <dt className="text-muted">{t("payment.service")}</dt>
-        <dd className="font-semibold">{t(pay.purpose === "case" ? "payment.serviceCase" : "payment.serviceDocument")}</dd>
+        <dd className="font-semibold">{pay.purpose === "case" ? t("payment.serviceCase") : pay.title || t("payment.serviceDocument")}</dd>
         <dt className="text-muted">{t("payment.cost")}</dt>
         <dd className="text-xl font-semibold tabular-nums">{price}</dd>
       </dl>
