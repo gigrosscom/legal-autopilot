@@ -1073,7 +1073,7 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
   };
   const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "ar" ? "ar" : "ru-RU");
   const norm = (d: { norm_ref: string | null; verified: boolean }) => (
-    <span className="block text-xs text-muted">{d.norm_ref && d.verified ? t("filing.norm", { ref: d.norm_ref }) : <>{t("filing.norm", { ref: "" }).trim()} {t("filing.lawyer")}</>}</span>
+    d.norm_ref && d.verified ? <span className="block text-xs text-muted">{t("filing.norm", { ref: d.norm_ref })}</span> : null
   );
   const row = (icon: IconName, label: string, body: ReactNode) => (
     <div className="flex gap-3">
