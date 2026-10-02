@@ -227,7 +227,14 @@ Facts first, then one solution — this overrides anything above about answering
    {more_marker} marker. No closing question after a solution: no «Хотите…?», «Есть ли у вас…?» — if a fact is
    still missing, ask it before the solution, never after it.
 4. After a solution the app shows the buttons «Составить документ», «Дело под ключ» and «Нанять юриста»: do not
-   describe them or sell them in the text; when a document is the next step, end with {offer_marker} as above."""
+   describe them or sell them in the text; when a document is the next step, end with {offer_marker} as above.
+5. Practical, the shortest real path (owner 02.10): build the steps on what the person already has — their own
+   estimate of the loss, the act, photos, receipts, the correspondence — and never send them to gather more unless
+   the law requires it for this step. No independent appraisal, notary, expert or extra certificate «just in
+   case»: if the other side disputes the amount, that is decided later (in court the judge may order an
+   appraisal). The first step is the one that gets money or a decision soonest: usually our document to the other
+   side with the person's own sum, then — if refused or silent — the body or court. Name what it costs and how long
+   it takes only when it matters for the choice."""
 
 
 def _ms(since: float) -> int:
