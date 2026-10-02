@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import uuid
 
 import pytest
@@ -24,7 +26,7 @@ ANSWERS = {
     "applicant_name": "Иванов Иван Иванович", "applicant_iin": "900101300128", "applicant_address": "Алматы, ул. Абая 1",
     "applicant_phone": "+7 701 123 45 67", "applicant_birth_date": "01.01.1990", "applicant_email": "пропустить",
     "seller_address": "Алматы, пр. Достык 10", "lender_address": "пропустить", "respondent_address": "Алматы, пр. Достык 10",
-    "respondent_bin": "пропустить", "respondent_iin": "пропустить", "children_info": "Иванова Алия, 01.02.2018",
+    "respondent_bin": "пропустить", "respondent_iin": "пропустить", "children_info": "Иванова Алия, 01.02.2018", "children_count": "2", "respondent_income": "пропустить",
     "decision_number": "№ 123 от 01.09.2026",
     "appeal_date": "01.08.2026", "appeal_number": "пропустить", "appeal_subject": "Ремонт дороги",
     "higher_authority": "пропустить",
@@ -55,4 +57,10 @@ def test_first_document_renders(ctx, sid):
     assert "{" not in text.replace("{{", "")
     for ref in sc.actions[0].norm_refs:
         if ref != "TODO":
-            assert ref in text
+            assert ref in text or _named_once(ref, text)
+
+
+def _named_once(ref: str, text: str) -> bool:
+    """The act is named once with all its articles («…, статьи 30 и 42-4» — engine.group_norms)."""
+    act, _, art = ref.rpartition(", статья ")
+    return bool(act) and re.search(re.escape(act) + r", статьи [^\n]*\b" + re.escape(art) + r"\b", text) is not None

@@ -25,7 +25,7 @@ def _universal_case(api):
     assert case["coverage"]["level"] == "universal"
     assert case["coverage"]["dispute"]["id"] == "labor.unpaid_wages"
     forum = case["coverage"]["forum"]
-    assert forum["id"] == "kz.counterparty.claim" and forum["why"].startswith("Индивидуальный трудовой спор сначала рассматривает согласительная комиссия")
+    assert forum["id"] == "kz.counterparty.claim" and forum["why"].startswith("Если в организации есть согласительная комиссия")
     assert case["scenario"]["id"].endswith("kz__counterparty__claim")
     options = {o["id"]: o for o in case["coverage"]["other_forums"]}  # «Другой адресат»
     assert "kz.labor_inspection" in options and "kz.court.district" in options and forum["id"] not in options
@@ -127,7 +127,7 @@ def test_alimony_scenario_lawsuit_waits_for_a_lawyer(ctx):
                "desired_outcome": "Взыскать алименты на сына", "applicant_iin": "900101300128",
                "applicant_birth_date": "01.01.1990", "applicant_email": "пропустить",
                "respondent_address": "Алматы, ул. Сатпаева 3", "respondent_iin": "пропустить",
-               "children_info": "Петров Алихан Петрович, 01.02.2018"}
+               "children_info": "Петров Алихан Петрович, 01.02.2018", "children_count": "1", "respondent_income": "пропустить"}
     q = case["question"]
     while q is not None:
         out = api.answer(case["id"], "пропустить" if q["type"] == "evidence" else answers[q["field"]])

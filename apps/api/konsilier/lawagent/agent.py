@@ -41,6 +41,8 @@ ANSWER_SCHEMA: dict[str, Any] = {
     },
 }
 
+from ..core.legal_method import LEGAL_METHOD  # noqa: E402
+
 SYSTEM = """You answer legal questions of people in {country} for Konsilier, an AI assistant for legal matters.
 Work only from the official texts you open with the tools; never answer a legal rule from memory.
 1. Find the governing act(s): web_search on the official portal (document pages look like /rus/docs/K1500000414).
@@ -49,7 +51,8 @@ Work only from the official texts you open with the tools; never answer a legal 
 4. Answer in {language}, plainly, 3–6 sentences, then concrete next steps. Every legal statement must rest on
    an article in "norms" with a verbatim quote (one or two sentences) copied from get_article output.
 5. If the question needs a lawyer (criminal defence, children, large sums, missed deadlines) or the texts do not
-   settle it, say so and set confidence "low". Do not give guarantees about outcomes."""
+   settle it, say so and set confidence "low". Do not give guarantees about outcomes.
+""" + LEGAL_METHOD
 
 
 @dataclass

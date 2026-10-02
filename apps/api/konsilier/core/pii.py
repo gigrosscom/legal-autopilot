@@ -30,7 +30,8 @@ _KIND_LABEL = {
     "address": "ADDRESS",
 }
 
-LABEL_RE = re.compile(r"\[(?:PERSON|ID_NUMBER|ACCOUNT|CARD|PHONE|EMAIL|ADDRESS)_\d+\]")
+LABEL_RE = re.compile(r"\[(?:PERSON|ID_NUMBER|ACCOUNT|CARD|PHONE|EMAIL|ADDRESS)_\d+(?:_\d+)?\]")
+_WHOLE = re.compile(r"\[[A-Z_]+?_\d+\]")  # a whole value's label, not a part of a name («[PERSON_1_2]»)
 
 
 class PiiVault:
@@ -43,7 +44,7 @@ class PiiVault:
         for label, v in self.mapping.items():
             if v == value:
                 return label
-        n = 1 + sum(1 for label in self.mapping if label.startswith(f"[{kind}_"))
+        n = 1 + sum(1 for label in self.mapping if label.startswith(f"[{kind}_") and _WHOLE.fullmatch(label))
         label = f"[{kind}_{n}]"
         self.mapping[label] = value
         return label
@@ -62,11 +63,15 @@ class PiiVault:
         for label, value in sorted(self.mapping.items(), key=lambda kv: -len(kv[1])):
             text = re.sub(re.escape(value), label, text, flags=re.IGNORECASE)
         # a person's name also appears in parts — «И. Петров» under the signature, «Петрову» in the text: every part of
-        # three letters or more goes too (with its endings)
-        for label, value in self.mapping.items():
-            if label.startswith("[PERSON_"):
-                for part in re.findall(r"\w{3,}", value):
-                    text = re.sub(rf"\b{re.escape(part)}\w{{0,3}}\b", label, text, flags=re.IGNORECASE)
+        # three letters or more goes too. Each part has its OWN label and comes back as that part with its ending kept:
+        # the whole-name label for a part put the applicant's full name where only the part stood — «ТОО «Тест»» came
+        # back as «ТОО «Тестов Тест Тестович»» (P0 02.10, a seller replaced by the applicant)
+        for label, value in list(self.mapping.items()):
+            if label.startswith("[PERSON_") and _WHOLE.fullmatch(label):
+                for i, part in enumerate(re.findall(r"\w{3,}", value), 1):
+                    part_label = f"{label[:-1]}_{i}]"
+                    self.mapping.setdefault(part_label, part)
+                    text = re.sub(rf"\b{re.escape(part)}(?=\w{{0,3}}\b)", part_label, text, flags=re.IGNORECASE)
         for kind, pattern in _PATTERNS:
             text = pattern.sub(lambda m, k=kind: self._label_for(k, m.group(0)), text)
         return text

@@ -48,6 +48,7 @@ ANSWERS = {
     "event_date": "01.09.2026", "purchase_date": "01.09.2026", "loan_date": "01.09.2026", "amount": "150000",
     "problem_description": "Описание ситуации", "desired_outcome": "Вернуть деньги",
     "children_info": "Иванова Алия Ивановна, 01.02.2018",
+    "children_count": "1", "respondent_income": "300000",
     "applicant_name": NAME, "applicant_iin": IIN, "applicant_address": ADDRESS, "applicant_phone": PHONE,
     "applicant_birth_date": "01.01.1990", "identity_document": "пропустить",
 }
@@ -115,9 +116,9 @@ def _check_document(sid: str, spec, a: dict, text: str, previous: list[str]) -> 
     for ref in spec.norm_refs:
         if ref != "TODO":
             assert ref.rsplit(", статья", 1)[0] in VERIFIED_ACTS, (where, ref)
-            assert ref in t, (where, ref)
+            assert ref in t or _named_once(ref, t), (where, ref)
         else:
-            assert "[норма" in t, where
+            assert "[норма" not in t and "юрист" not in t, where  # owner 02.10: an unchecked norm is left out
     # attachments: the uploaded file and, from the second step on, the earlier documents
     assert "Приложение:" in t and "(dokument.txt)" in t, where  # D-30
     for title in previous:
@@ -210,3 +211,9 @@ def test_full_answer_closes_the_case(ctx, sid):
     api.post(f"/v1/cases/{cid}/actions/next", expect=409)
     closed = api.post(f"/v1/cases/{cid}/close", json={"result": "won"})
     assert closed["case"]["status"] == "resolved"
+
+
+def _named_once(ref: str, text: str) -> bool:
+    """The act is named once with all its articles («…, статьи 30 и 42-4» — engine.group_norms)."""
+    act, _, art = ref.rpartition(", статья ")
+    return bool(act) and re.search(re.escape(act) + r", статьи [^\n]*\b" + re.escape(art) + r"\b", text) is not None
