@@ -855,7 +855,7 @@ const tr: Dict = {
     share: "Bağlantıyı paylaş",
     copied: "Bağlantı kopyalandı",
     invited: "Bağlantınızla gelenler: {n}",
-    shareText: "Her türlü hukuki durum — paranızı geri almaktan bir devlet kurumuyla anlaşmazlığa kadar. Konsiliér haklarınızı sade bir dille açıklar ve talep, şikâyet ya da dilekçe hazırlar. Bağlantım üzerinden ilk belgenizi hazırladığınızda ikimiz de birer belgeyi hediye alırız:",
+    shareText: "Her türlü hukuki durum — paranızı geri almaktan bir devlet kurumuyla anlaşmazlığa kadar. Konsiliér haklarınızı sade bir dille açıklar ve talep, şikâyet ya da dilekçe hazırlar. Bağlantım üzerinden hesabınıza hemen 1.000 bonus yüklenir — bunlarla bir belgenin bir kısmını ödeyebilirsiniz:",
   },
   submit: {
     courtName: "Yargı Kabineti",

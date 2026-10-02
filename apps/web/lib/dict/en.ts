@@ -855,7 +855,7 @@ const en: Dict = {
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    shareText: "Any legal situation — from getting your money back to a dispute with a state body. Konsiliér explains your rights in plain words and prepares the claim, complaint or application. Through my link we both get a document as a gift once you prepare your first document:",
+    shareText: "Any legal situation — from getting your money back to a dispute with a state body. Konsiliér explains your rights in plain words and prepares the claim, complaint or application. Through my link you get 1,000 bonuses right away — use them to pay part of a document:",
   },
   send: {
     open: "Show the contacts found and all ways",
