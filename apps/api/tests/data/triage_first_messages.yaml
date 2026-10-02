@@ -1,0 +1,33 @@
+# 30 первых сообщений клиентов и ожидаемый «юридический разбор» (решение владельца 01.10).
+# scenario — сценарий из packs/kz (null — сценария нет: честный ответ и вопрос); category и subject — по
+# packs/kz/triage.yaml. Проверяется разбор по словам правил (без модели) — он же перекрёстная проверка модели.
+- {text: "Купил телевизор в Технодоме, через неделю перестал включаться, деньги возвращать отказываются", scenario: kz.consumer.refund, category: consumer, subject: goods}
+- {text: "кросовки порвались через 3 дня, магазин не хочет обменять", scenario: kz.consumer.refund, category: consumer, subject: goods}
+- {text: "Смартфон Samsung брак, экран мерцает, продавец говорит гарантия не распространяется", scenario: kz.consumer.refund, category: consumer, subject: goods}
+- {text: "Оплатил токены для ИИ-сервиса 10 000 тенге, токены не начислились, поддержка молчит", scenario: kz.consumer.service_refund, category: consumer, subject: service}
+- {text: "Списали за подписку ChatGPT Plus после отмены, автопродление без моего согласия", scenario: kz.consumer.service_refund, category: consumer, subject: service}
+- {text: "купил премиум тариф в приложении, доступ так и не дали", scenario: kz.consumer.service_refund, category: consumer, subject: service}
+- {text: "Оплатил онлайн курс по программированию 150000, материалы слабые, хочу вернуть деньги", scenario: kz.consumer.service_refund, category: consumer, subject: service}
+- {text: "Записался в онлайн-школу английского, преподаватель перестал выходить на занятия", scenario: kz.consumer.education_refund, category: consumer, subject: service}
+- {text: "Курсы английского с преподавателем отменили, деньги за 3 месяца не возвращают", scenario: kz.consumer.education_refund, category: consumer, subject: service}
+- {text: "Работодатель не платит зарплату уже 2 месяца", scenario: kz.labor.unpaid_wages, category: labor, subject: money}
+- {text: "задерживают зарплату постоянно, сейчас долг по зарплате 400 тысяч", scenario: kz.labor.unpaid_wages, category: labor, subject: money}
+- {text: "ТОО не выплачивает зарплату сотрудникам с августа", scenario: kz.labor.unpaid_wages, category: labor, subject: money}
+- {text: "Уволился 1 сентября, до сих пор не рассчитались, отпускные при увольнении не выплатили", scenario: kz.labor.final_settlement, category: labor, subject: money}
+- {text: "Меня незаконно уволили без предупреждения, хочу восстановиться", scenario: kz.labor.dismissal, category: labor, subject: other}
+- {text: "Уволили без причины по сокращению, хочу восстановить на работе", scenario: kz.labor.dismissal, category: labor, subject: other}
+- {text: "Съехал из квартиры месяц назад, хозяин квартиры не отдает депозит 150 000", scenario: kz.housing.deposit_return, category: housing, subject: money}
+- {text: "Арендодатель не вернул залог за квартиру, говорит что обои поцарапаны", scenario: kz.housing.deposit_return, category: housing, subject: money}
+- {text: "снимала жилье, при выезде не отдают залог за жилье", scenario: kz.housing.deposit_return, category: housing, subject: money}
+- {text: "Пришел штраф с камеры Сергек за превышение скорости, а я не ехал там", scenario: kz.administrative.fine_appeal, category: fine, subject: state_service}
+- {text: "Хочу обжаловать постановление о штрафе ПДД, инспектор не прав", scenario: kz.administrative.fine_appeal, category: fine, subject: state_service}
+- {text: "машину увезли на эвакуатор и выписали штраф, знака не было", scenario: kz.administrative.fine_appeal, category: fine, subject: state_service}
+- {text: "Взял займ в МФО, нечем платить кредит, просрочка 2 месяца, хочу отсрочку", scenario: kz.finance.loan_restructuring, category: finance, subject: money}
+- {text: "МФО начисляет огромные проценты, нужна реструктуризация", scenario: kz.finance.loan_restructuring, category: finance, subject: money}
+- {text: "Звонят коллекторы по долгу МФО, угрожают родственникам", scenario: kz.finance.debt_collectors, category: finance, subject: money}
+- {text: "Акимат не отвечает на мое обращение уже два месяца", scenario: kz.gov.inaction_complaint, category: gov, subject: state_service}
+- {text: "Подал заявление через eOtinish, госорган ничего не сделал, бездействие", scenario: kz.gov.inaction_complaint, category: gov, subject: state_service}
+- {text: "В акимат писал про яму во дворе, нет ответа на обращение", scenario: kz.gov.inaction_complaint, category: gov, subject: state_service}
+- {text: "Контрагент не оплатил счет за поставку, долг по договору 2 млн", scenario: kz.business.debt_claim, category: business, subject: money}
+- {text: "Наше ТОО оказало услуги, клиент не оплатил счёт уже 3 месяца", scenario: kz.business.debt_claim, category: business, subject: money}
+- {text: "Дебитор не платит по договору поставки, что делать", scenario: kz.business.debt_claim, category: business, subject: money}

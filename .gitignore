@@ -8,6 +8,8 @@ node_modules/
 .next/
 out/
 data/
+# test fixtures are part of the code (PR #157 lost tests/data/triage_first_messages.yaml to the rule above)
+!apps/api/tests/data/
 # Zann corpus of law texts (tools/zann/collect_laws.py): never committed
 data/zann/
 *.db
