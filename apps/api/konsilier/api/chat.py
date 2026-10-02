@@ -166,6 +166,22 @@ ASKED_DOCUMENTS = re.compile(r"пришлите|прикрепите|прило�
                              r"send\s+(?:a\s+)?(?:photo|scan|cop)|upload", re.IGNORECASE)
 
 
+SOLUTION = re.compile(r"\[\[\s*MORE\s*\]\]|Что делать:|Не істеу керек:", re.IGNORECASE)
+STEPS_HEAD = {"ru": "Что делать:", "kk": "Не істеу керек:"}
+
+
+def route_steps_text(route: list[dict[str, Any]], lang: str) -> str:
+    """«Что делать:» and the route's steps, one line each (who, and when the next one comes in)."""
+    if not route:
+        return ""
+    lines = [STEPS_HEAD.get(lang, STEPS_HEAD["ru"])]
+    for st in route[:3]:
+        label = (st.get("label") or "").strip().rstrip(".")
+        when = f" — {st['when'].strip().rstrip('.')}" if st.get("when") else ""
+        lines.append(f"{st['step']}. **{label}**{when}.")
+    return "\n".join(lines)
+
+
 def needs_documents_line(text: str, *, asked_before: bool, offer: bool, files: bool, told: str) -> bool:
     """A fact-finding question (no solution, no offer) that does not ask for the documents, in a chat where they were
     never asked and none came, after a story (not «здравствуйте»). The QA gate (scripts/qa_gate.py) uses it too."""
@@ -356,7 +372,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     vault: PiiVault = ctx.pop("vault")
     pack = ctx["pack"]
     ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault),
-                   **intake_note(container, case, pack.lang(case.language))}
+                   **intake_note(container, case, pack.lang(case.language)),
+                   "route": [{k: st[k] for k in ("step", "label", "when", "why", "norm")}
+                             for st in container.engine.recipient_route(case)]}
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
     lang = pack.lang(case.language)  # the pack's language for its titles (KZ: ru, kk)
     # the reply follows the person: the interface language they write from, else the case's language — not the pack's
@@ -536,6 +554,17 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 elif (cc.taxonomy or {}).get("doc_mismatch"):
                     cc.taxonomy = {k: v for k, v in cc.taxonomy.items() if k != "doc_mismatch"}  # they agree again
                     s.commit()
+        # after the «chat = card» check, which reads the model's own words
+        # PM 02.10 (flooding, prod 19:51 «претензия → суд», 20:50 «иск → экспертиза»): the steps of a solution come from
+        # the case's route (routes.yaml, checked by ZANN), never from the model — the same source as the card's
+        # document. The model's «Подробнее» stays (its terms are checked in the agent).
+        if SOLUTION.search(text):
+            with container.session_factory() as s:
+                route = container.engine.recipient_route(s.get(Case, case_pk))
+            steps = route_steps_text(route, reply_lang)
+            if steps:
+                details = re.split(r"\[\[\s*MORE\s*\]\]", text, maxsplit=1)
+                text = steps + (f"\n\n[[MORE]]\n{details[1].strip()}" if len(details) > 1 and details[1].strip() else "")
         if not result.offer_document:
             text = without_button_talk(text)  # no card under this reply: no word about its button
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)
