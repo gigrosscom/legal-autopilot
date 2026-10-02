@@ -158,6 +158,10 @@ class Settings(BaseSettings):
     # The platform keeps LAWYER_COMMISSION_PCT of the price; payouts to lawyers are manual in the pilot.
     lawyer_payment_account: str = ""
     lawyer_commission_pct: float = 15.0
+    # «Юрист по кнопке», owner 01.10 «15 % по счёту ТОО раз в месяц»: the client pays the lawyer directly (the lawyer
+    # sends the contract and the bill); the lawyer marks «оплачено клиентом» and pays the platform 15 % monthly by the
+    # company's bill. Off — the client pays the lawyer's price to the company's account (PR #105).
+    lawyer_pay_direct: bool = False
     # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
     # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
     # them. Telegram users are reachable in the bot and are not asked.

@@ -8,6 +8,7 @@ type Row = {
   id: number; full_name: string; ecp_name: string | null; kind: string; organization: string | null; city: string | null;
   pilot: boolean; price: number | null; price_note: string; listed: boolean; has_account: boolean;
   requests: Record<"new" | "accepted" | "declined" | "paid", number>;
+  commission_due?: number;  // paid directly: 15 % of the requests the lawyer marked «оплачено клиентом»
 };
 type State = { lawyers: Row[]; commission_pct: number; payment_available: boolean; payment_channel: string[] };
 const KIND: Record<string, string> = { advocate: "адвокат", legal_consultant: "юридический консультант", human_rights: "правозащитник", other: "юрист" };
@@ -74,6 +75,7 @@ function PilotRow({ row, token, onSaved }: { row: Row; token: string; onSaved: (
         {[KIND[row.kind] ?? row.kind, row.organization, row.city].filter(Boolean).join(" · ")}
         {row.has_account ? "" : " · нет входа через ЭЦП"}
         {` · запросы: новых ${r.new}, принято ${r.accepted}, отказов ${r.declined}, оплачено ${r.paid}`}
+        {row.commission_due ? ` · комиссия к счёту ТОО: ${row.commission_due.toLocaleString("ru-RU")} ₸` : ""}
       </p>
       <div className="grid gap-2 sm:grid-cols-[10rem_1fr_auto]">
         <input className="min-h-11 rounded-xl bg-surface px-3 ring-1 ring-line" inputMode="numeric" placeholder="Цена, ₸" aria-label="Цена, ₸"
