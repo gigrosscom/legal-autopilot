@@ -406,6 +406,11 @@ chat_documents:
   # owner 02.10: documents first — what is in them is read, never asked (added by the server when the model forgot)
   ask: "Пришлите фото или скан документов, которые есть: {docs} — я сам возьму из них даты и суммы."
   any: "чек или договор, гарантийный талон или акт, переписка, уведомление или решение"
+chat_ask:
+  # the chat's own words for the fact the solution still waits for (R-29); the form keeps its questions
+  claim_amount: "Какую сумму вы требуете — во сколько оцениваете ущерб, в тенге?"
+  amount: "О какой сумме идёт речь, в тенге?"
+  event_date: "Когда это случилось?"
 chat_offer:
   # P0 02.10: the chat's paid offer, in place of a document's text; the title as it is (no declension)
   document: "Документ: {title} — готовый PDF и Word, {price}. Нажмите «Составить документ» ниже."

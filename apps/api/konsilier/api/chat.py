@@ -373,8 +373,10 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     pack = ctx["pack"]
     ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault),
                    **intake_note(container, case, pack.lang(case.language)),
+                   # the route only once the facts are in: given earlier it pulled the model to a solution (P0 02.10)
                    "route": [{k: st[k] for k in ("step", "label", "when", "why", "norm")}
-                             for st in container.engine.recipient_route(case)]}
+                             for st in container.engine.recipient_route(case)]
+                   if not container.engine.facts_missing(case) else []}
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
     lang = pack.lang(case.language)  # the pack's language for its titles (KZ: ru, kk)
     # the reply follows the person: the interface language they write from, else the case's language — not the pack's
@@ -518,6 +520,44 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                     if q and q not in text:
                         text = f"{text}\n\n{q}".strip()
                         yield _sse({"type": "text", "text": f"\n\n{q}"})
+        # PM 02.10 (P0 after #215): a solution comes only after the facts (R-29, decisions 225, 226, 229) and its steps
+        # follow the case's route (R-35). The facts of this very message are read first (they would otherwise reach
+        # the case only after the reply, and the bot would ask the sum it was just told).
+        if SOLUTION.search(text):
+            eng = container.engine
+            with container.session_factory() as s:
+                cc = s.get(Case, case_pk)
+                missing = eng.facts_missing(cc) if cc is not None else []
+                if missing and missing != ["scenario"]:
+                    try:
+                        eng.facts_from_chat(s, case_pk, asked_text)
+                        s.commit()
+                    except Exception:  # noqa: BLE001 — no extraction: ask, never guess
+                        log.warning("chat facts before the solution failed for case %s", case_pk, exc_info=True)
+                    cc = s.get(Case, case_pk)
+                    missing = eng.facts_missing(cc)
+                q = ""
+                if missing and missing != ["scenario"]:
+                    sc_cc, pack_cc = eng.scenario_of(cc), eng.pack_of(cc)
+                    lg = pack_cc.lang(reply_lang)
+                    q = pack_cc.t(lg, f"chat_ask.{missing[0]}", default="") or \
+                        eng.question_for(sc_cc, pack_cc, lg, missing[0]).text or ""
+                route = eng.recipient_route(cc) if cc is not None and not q else []
+                kinds = (eng.pack_of(cc).coverage.routing.document_kinds
+                         if cc is not None and eng.pack_of(cc).coverage else {})
+            if q:  # not yet: one question (and the documents, below), no solution and no card
+                own = [ln for ln in re.split(r"\[\[\s*MORE\s*\]\]", text)[0].splitlines() if ln.strip().endswith("?")]
+                text = own[-1].strip() if own else q
+                result.offer_document = False
+                log.info("chat=solution_held case=%s missing=%s", case_pk, missing)
+            elif route:
+                short = re.split(r"\[\[\s*MORE\s*\]\]", text, maxsplit=1)
+                first = next((ln for ln in short[0].splitlines() if re.match(r"\s*\**\s*1[.)]", ln)), "")
+                want = document_kinds(route[0].get("label") or "", kinds)
+                if first and want and not (document_kinds(first, kinds) & want):  # its first step is not the route's
+                    text = route_steps_text(route, reply_lang) + (
+                        f"\n\n[[MORE]]\n{short[1].strip()}" if len(short) > 1 and short[1].strip() else "")
+                    log.warning("chat=steps_from_route case=%s model_first=%r", case_pk, first[:120])
         # [[FILES]] — ZANN's mark of a reply that asks for the documents: taken out of the text, counted as asking
         marked_files = bool(FILES_MARK.search(text))
         text = FILES_MARK.sub("", text).strip()
@@ -554,17 +594,6 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 elif (cc.taxonomy or {}).get("doc_mismatch"):
                     cc.taxonomy = {k: v for k, v in cc.taxonomy.items() if k != "doc_mismatch"}  # they agree again
                     s.commit()
-        # after the «chat = card» check, which reads the model's own words
-        # PM 02.10 (flooding, prod 19:51 «претензия → суд», 20:50 «иск → экспертиза»): the steps of a solution come from
-        # the case's route (routes.yaml, checked by ZANN), never from the model — the same source as the card's
-        # document. The model's «Подробнее» stays (its terms are checked in the agent).
-        if SOLUTION.search(text):
-            with container.session_factory() as s:
-                route = container.engine.recipient_route(s.get(Case, case_pk))
-            steps = route_steps_text(route, reply_lang)
-            if steps:
-                details = re.split(r"\[\[\s*MORE\s*\]\]", text, maxsplit=1)
-                text = steps + (f"\n\n[[MORE]]\n{details[1].strip()}" if len(details) > 1 and details[1].strip() else "")
         if not result.offer_document:
             text = without_button_talk(text)  # no card under this reply: no word about its button
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)

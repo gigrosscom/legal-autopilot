@@ -71,6 +71,9 @@ def test_no_line_when_the_model_asked_or_answered(ctx):
     story = "Купил телефон Samsung за 250000 тенге в магазине «Технодом», сломался, деньги не возвращают."
     cid = api.post("/v1/cases", expect=201, json={"text": story, "country": "KZ"})["case"]["id"]
     _say(ctx, "Что делать:\n1. **Направьте претензию продавцу.**\n[[MORE]]\nПодробнее.")
+    from .conftest import complete_facts
+
+    complete_facts(ctx, cid)  # the facts are in: the solution stands (R-29)
     assert "Пришлите" not in _chat(ctx, api, cid, story)[-1]["message"]["text"]  # a solution, not a question
     cid = api.post("/v1/cases", expect=201, json={"text": story, "country": "KZ"})["case"]["id"]
     _say(ctx, "Пришлите фото чека. Когда вы купили телефон?")

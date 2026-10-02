@@ -260,6 +260,9 @@ def test_truncated_reply_is_recorded_in_the_meta(ctx):
     api = web_user(ctx)
     cid = api.post("/v1/cases", expect=201, json={"text": "Вернуть деньги за бракованный товар", "country": "KZ"})
     cid = cid["case"]["id"]
+    from .conftest import complete_facts
+
+    complete_facts(ctx, cid)  # a solution, not the fact-finding question (R-29)
     r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Вернуть деньги за бракованный товар"})
     events = [json.loads(x[6:]) for x in r.text.splitlines() if x.startswith("data: ")]
     streamed = "".join(e["text"] for e in events if e["type"] == "text")

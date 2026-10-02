@@ -86,3 +86,19 @@ def hide_scenarios(ctx, prefix: str) -> None:
         for sid, sc in list(pack.scenarios.items()):
             if sid.startswith(prefix):
                 pack.scenarios[sid] = sc.model_copy(update={"published": False})
+
+
+def complete_facts(ctx, cid) -> None:
+    """Fill the facts a solution waits for (R-29, engine.facts_missing): for tests of what comes after them."""
+    import uuid
+
+    from konsilier.core.models import Case
+
+    with ctx.container.session_factory() as s:
+        c = s.get(Case, uuid.UUID(str(cid)))
+        for name in ctx.container.engine.facts_missing(c):
+            if name == "scenario":
+                continue
+            value = "250000" if "amount" in name else "2026-09-10" if "date" in name else "телефон Samsung"
+            c.facts = {**(c.facts or {}), name: value}
+        s.commit()
