@@ -279,11 +279,15 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const askedToPay = useRef(false);
   useEffect(() => {
     if (!c || askedToPay.current || typeof window === "undefined") return;
-    if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
+    const params = new URLSearchParams(window.location.search);
+    // owner 02.10: «Нанять юриста» under the chat's answer (?lawyer=1) opens the existing «Выбрать юриста»
+    if (params.get("lawyer") === "1") { askedToPay.current = true; setChooseOpen(true); return; }
+    const pay = params.get("pay");  // «Составить документ» (?pay=1) or «Дело под ключ» (?pay=case)
+    if (pay !== "1" && pay !== "case") return;
     if (c.status !== "qualified" || c.payment?.status === "paid") return;
     askedToPay.current = true;
     setPayOpen(true);
-    if (!c.payment?.code && c.payment?.status === "none") choosePayment("document");
+    if (!c.payment?.code && c.payment?.status === "none") choosePayment(pay === "case" ? "case" : "document");
   }, [c]);  // eslint-disable-line react-hooks/exhaustive-deps
   const payStatus = c?.payment?.status;
   const prepareRef = useRef(post);
