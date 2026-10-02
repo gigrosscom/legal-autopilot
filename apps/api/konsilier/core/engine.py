@@ -145,6 +145,36 @@ class EngineConfig:
     kaspi_push: bool = False
 
 
+_NORM = re.compile(r"^(?P<act>.+?), (?:статья|статьи) (?P<art>[\w.-]+)$")
+
+
+def group_norms(refs: Any) -> list[str]:
+    """«Закон …, статья 30» + «Закон …, статья 42-4» → «Закон …, статьи 30 и 42-4» (P0 02.10: the act is named once)."""
+    out: list[str] = []
+    acts: dict[str, list[str]] = {}
+    for ref in refs or ():
+        if "TODO" in str(ref):  # a norm not yet checked never reaches the document (owner 02.10: no «уточнит юрист»)
+            continue
+        m = _NORM.match(str(ref).strip())
+        if not m:
+            out.append(str(ref))
+            continue
+        if m["act"] not in acts:
+            acts[m["act"]] = []
+            out.append(m["act"])
+        acts[m["act"]].append(m["art"])
+    result = []
+    for item in out:
+        arts = acts.get(item)
+        if arts is None:
+            result.append(item)
+        elif len(arts) == 1:
+            result.append(f"{item}, статья {arts[0]}")
+        else:
+            result.append(f"{item}, статьи {', '.join(arts[:-1])} и {arts[-1]}")
+    return result
+
+
 _EMPTY_BRACKETS = re.compile(r"\s*\(\s*\)")
 
 
@@ -1879,6 +1909,12 @@ class CaseEngine:
         if spec.deadline:
             fmt["deadline_days"] = spec.deadline.calendar_days or spec.deadline.business_days
         demands = pack.localized(spec.demands, lang).format_map(_Fmt(fmt)) if spec.demands else ""
+        if spec.deadline is not None and "в установленный законом срок" in demands:
+            # P0 02.10: the term itself, not «в установленный законом срок»
+            d = spec.deadline
+            unit = "календарных" if d.calendar_days is not None else "рабочих"
+            demands = demands.replace("в установленный законом срок",
+                                      f"в течение {d.calendar_days or d.business_days} {unit} дней со дня получения")
         extra: dict[str, Any] = {}
         if spec.package:
             default = pack.manifest.default_language
@@ -1902,8 +1938,7 @@ class CaseEngine:
             "addressee": addressee,
             "narrative": narrative,
             "demands": demands,
-            # a norm not checked yet («TODO») is never printed as «[норма: уточнит юрист]» (PM 02.10)
-            "norm_refs": [r for r in spec.norm_refs if "TODO" not in r],
+            "norm_refs": group_norms(spec.norm_refs),  # unchecked («TODO») left out, each act named once
             "evidence": evidence,
             "previous_actions": previous,
             "date": today,

@@ -69,7 +69,7 @@ def test_the_reason_in_kazakh(ctx):
     api = web_user(ctx)
     case = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ", "language": "kk"})["case"]
     # labour: the dispute's own route (routes.yaml) gives the reason — the conciliation commission comes first
-    assert case["coverage"]["forum"]["why"].startswith("Жеке еңбек дауын алдымен келісім комиссиясы")
+    assert case["coverage"]["forum"]["why"].startswith("Ұйымда келісім комиссиясы болса")
 
 
 def test_a_case_already_at_the_draft_can_switch_too(ctx):

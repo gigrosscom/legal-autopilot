@@ -100,7 +100,7 @@ def test_beta_scenario_story_to_documents(ctx, sid):
         assert "гарант" in sc.disclaimer["ru"] and "гарант" in sc.disclaimer["kk"].replace("кепілдік", "гарант")  # no promise of the result
     for ref in sc.actions[0].norm_refs:
         if sc.kind == "dispute" and "TODO" not in ref:
-            assert ref in text
+            assert ref in text or _named_once(ref, text)
 
 
 @pytest.mark.parametrize("sid", SERVICES)
@@ -235,3 +235,9 @@ def test_flag_defaults_off_in_settings(monkeypatch):
 
     monkeypatch.delenv("EXPERIMENTAL_SCENARIOS", raising=False)
     assert Settings(_env_file=None).experimental_scenarios is False
+
+
+def _named_once(ref: str, text: str) -> bool:
+    """The act is named once with all its articles («…, статьи 30 и 42-4» — engine.group_norms)."""
+    act, _, art = ref.rpartition(", статья ")
+    return bool(act) and re.search(re.escape(act) + r", статьи [^\n]*\b" + re.escape(art) + r"\b", text) is not None

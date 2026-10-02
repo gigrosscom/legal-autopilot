@@ -22,6 +22,8 @@ from .scenario import RESPONSE_CLASSES, Scenario
 
 log = logging.getLogger(__name__)
 
+from .legal_method import LEGAL_METHOD  # noqa: E402 — owner 02.10: the method in every model call
+
 _COMMON_RULES = (
     "You are a component of Konsilier, a service that helps people prepare documents "
     "for everyday legal problems. You never give legal conclusions, never invent laws, "
@@ -30,8 +32,8 @@ _COMMON_RULES = (
     "as they are and never try to guess the real values. Company names: the official name and legal form as the "
     "document shows it; a widely known company by its registered name in Latin (e.g. 'Anthropic, PBC'), never a "
     "phonetic spelling in another script. The person's own e-mail, phone, ID number and address are never the "
-    "other side's: leave the other side's contact empty rather than repeat the person's."
-)
+    "other side's: leave the other side's contact empty rather than repeat the person's.\n"
+) + LEGAL_METHOD
 
 
 def _field_specs(scenario: Scenario, pack: JurisdictionPack, lang: str,
@@ -226,7 +228,10 @@ def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPac
         "bought (owner 01.10): a service or digital content (a subscription, tokens or credits, access to an online "
         "service, a course, an app) is never called a 'товар' and never 'бракованный': write that the service was "
         "not provided or was provided improperly ('услуга не оказана' / 'оказана ненадлежащим образом'); 'брак' "
-        "only for a physical item with a defect."
+        "only for a physical item with a defect. Parties (P0 02.10): the applicant's name, address and ID belong "
+        "only to the applicant — never give them to the other side (the seller, employer, landlord, bank, body). "
+        "Name the other side only by its own fields (respondent_*); if its address is not in the facts, do not "
+        "mention an address for it."
     )
     try:
         out = llm.complete_json(task="narrative", system=system, schema=schema,

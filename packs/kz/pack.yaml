@@ -226,6 +226,10 @@ chat_rules: |
   - Compulsory pre-trial steps: an individual employment dispute goes to the employer's conciliation commission
     before court, except the disputes the Labour Code exempts; a complaint about a state body is filed through that
     body to the higher one before court (Administrative Procedure Code).
+  - Many employers have no conciliation commission (micro-businesses, non-profits and branches of foreign companies
+    with up to 15 workers need none; many others simply never set one up). Ask once whether there is one; if not:
+    a written demand to the employer and a complaint to the labour inspection, and the time limit for court does not
+    run while there is no commission (Labour Code, art. 160). Never send the person to a commission that does not exist.
   - The one exception to "a state body does not return money": a labour inspector's order to pay wages is enforced.
   - Electronic signature is ЭЦП (via NCALayer or eGov Mobile).
   - Replaced acts — never cite them: the 2003 law on electronic documents and digital signatures (now the Digital

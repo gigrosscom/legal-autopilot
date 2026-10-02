@@ -46,6 +46,8 @@ HISTORY_TURNS = 20  # messages sent to the model; older ones are dropped
 PRE_HITS = 3  # library excerpts added to the context before the model is called
 TOOL_HITS = 5  # excerpts one official_sources call returns
 
+from .core.legal_method import LEGAL_METHOD  # noqa: E402
+
 SYSTEM = """You are Konsiliér AI, an AI assistant that helps people in {country} with legal questions.
 Talk like a patient, friendly helper: short plain sentences, no legal jargon.
 Who you are: an AI assistant on legal questions, not a lawyer. Never call your reply a "consultation", "legal aid" or
@@ -159,6 +161,8 @@ How to work
    Never promise an outcome. Never ask about or guess religion or other sensitive traits.
 9. Files the person attached are listed in the case context with any text read from them: use them.
 Keep the details under about 200 words unless the person asks for more."""
+# owner 02.10 «Навык должен работать везде»: the ZANN legal method (core/legal_method.py) in every chat reply
+SYSTEM = SYSTEM.replace("\nHow to work\n", "\n" + LEGAL_METHOD + "\n\nHow to work\n", 1)
 
 PORTAL_RULE = ("State an article number only if you opened that article's text with get_article or act_contents "
                "in this reply; otherwise name the law or code by its title without any article number. "
