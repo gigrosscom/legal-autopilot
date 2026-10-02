@@ -189,9 +189,13 @@ def amounts_in_words(text: str, code: str, symbol: str, word: str, lang: str) ->
         return text
 
     def repl(m: re.Match[str]) -> str:
-        figures = m.group(1)
+        figures, cents = m.group(1), m.group(2)
         number = re.sub(r"\D", "", figures)
-        spelled = number_words(int(number), lang) if number and not m.group(2) else None
-        shown = f"{figures}{m.group(2) or ''} {symbol or code}"
+        if cents and not cents.strip(".,").strip("0"):  # QA BUG-22: «380000.00 <code>» is a whole sum
+            cents = None
+        if number and len(number) > 3 and not re.search(r"\D", figures):  # «380000» → «380 000»
+            figures = f"{int(number):,}".replace(",", "\u00a0")
+        spelled = number_words(int(number), lang) if number and not cents else None
+        shown = f"{figures}{cents or ''} {symbol or code}"
         return f"{shown} ({spelled} {word})" if spelled and word else shown
     return re.sub(rf"(\d{{1,3}}(?:[ \u00a0\u202f]\d{{3}})*|\d+)([.,]\d{{1,2}})?\s{re.escape(code)}\b", repl, text)

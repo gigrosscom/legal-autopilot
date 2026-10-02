@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import uuid
 
-from konsilier.api.chat import asks_for_files
+from konsilier.api.chat import ASKED_DOCUMENTS
 from konsilier.core.models import Case
 
 from .test_chat_paid_document import _agent, _case, _say
@@ -46,7 +46,7 @@ def test_the_bot_asking_for_documents_shows_the_upload_buttons(ctx):
     api, cid = _case(ctx)
     reply = _say(ctx, api, cid, "Купил телевизор, сломался")
     assert reply["ask_files"] is True and "[[FILES]]" not in reply["text"]
-    assert asks_for_files("Приложите договор аренды.")[1] and not asks_for_files("Вы вправе вернуть деньги.")[1]
+    assert ASKED_DOCUMENTS.search("Приложите договор аренды.") and not ASKED_DOCUMENTS.search("Вы вправе вернуть деньги.")
 
 
 def test_the_chat_and_the_card_name_the_same_document(ctx):

@@ -402,6 +402,10 @@ billing:
   currency_forms: "тенге|тенге|тенге"
   minor: "тиын"
   sign: "₸"
+chat_documents:
+  # owner 02.10: documents first — what is in them is read, never asked (added by the server when the model forgot)
+  ask: "Пришлите фото или скан документов, которые есть: {docs} — я сам возьму из них даты и суммы."
+  any: "чек или договор, гарантийный талон или акт, переписка, уведомление или решение"
 chat_offer:
   # P0 02.10: the chat's paid offer, in place of a document's text; the title as it is (no declension)
   document: "Документ: {title} — готовый PDF и Word, {price}. Нажмите «Оплатить» ниже."

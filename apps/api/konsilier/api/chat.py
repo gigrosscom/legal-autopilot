@@ -130,7 +130,47 @@ def _view(m: ChatMessage) -> dict[str, Any]:
     return {"id": str(m.id), "role": m.role, "text": m.text, "created_at": m.created_at.isoformat(),
             "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", []),
             "sources": m.meta.get("sources", []), "offer_document": bool(m.meta.get("offer_document")),
-            "ask_files": bool(m.meta.get("ask_files"))}
+            "ask_files": bool(m.meta.get("asked_documents") or m.meta.get("ask_files"))}
+
+
+# owner 02.10 (decisions.md): understand the gist → ask for the documents (what is in them is read, never asked) → one
+# or two questions only if still short → then the solution. The chat model sees which documents this scenario uses,
+# which of them came, which facts are already known (from the story, the chat and the files) and which facts that
+# change the solution are still missing — names, addresses and ID numbers are left to the form before payment.
+DOC_DETAIL = re.compile(r"_(?:name|address|bin|iin|email|phone)$")
+
+
+def intake_note(container: Container, case: Case, lang: str) -> dict[str, Any]:
+    if not case.scenario_id:
+        return {}
+    try:
+        sc = container.engine.scenario_of(case)
+        pack = container.engine.pack_of(case)
+    except Exception:  # noqa: BLE001 — a scenario that went away: the chat goes on without the note
+        return {}
+    came = {e.kind for e in case.evidence}
+    kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds
+             if k not in ("id_document", "other")]
+    facts = case.facts or {}
+    return {
+        "documents_to_ask": [pack.t(lang, f"evidence.{k}", default=k) for k in kinds if k not in came],
+        "documents_received": [pack.t(lang, f"evidence.{k}", default=k) for k in kinds if k in came],
+        "facts_known": sorted(n for n in facts if not n.startswith("_")),
+        # one list with the offer's gate (engine.facts_missing, R-29): the chat asks exactly what the gate waits for
+        "facts_missing": [n for n in container.engine.facts_missing(case) if n != "scenario"],
+    }
+
+
+ASKED_DOCUMENTS = re.compile(r"пришлите|прикрепите|приложите|загрузите|сфотографируйте|отправьте\s+(?:фото|скан|копи)|"
+                             r"жіберіңіз|жүктеңіз|суретке\s+түсіріңіз|тіркеңіз|"
+                             r"send\s+(?:a\s+)?(?:photo|scan|cop)|upload", re.IGNORECASE)
+
+
+def documents_line(pack: Any, lang: str, note: dict[str, Any]) -> str:
+    """The one sentence asking for the documents (owner 02.10), with this scenario's documents when known."""
+    docs = [d[:1].lower() + d[1:] for d in note.get("documents_to_ask") or []]
+    listed = "; ".join(docs) if docs else pack.t(lang, "chat_documents.any")
+    return pack.t(lang, "chat_documents.ask", docs=listed)
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -184,11 +224,9 @@ _DOC_SIGNS = [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in (
 )]
 
 
-# owner 02.10: the bot asks for the documents first — under such an answer the chat shows «Сфотографировать» and
-# «Приложить файл». ZANN's prompt marks it with [[FILES]]; until then the request is read from the words.
+# owner 02.10: the bot asks for the documents first — under such an answer (meta asked_documents, ASKED_DOCUMENTS)
+# the chat shows «Сфотографировать» and «Приложить файл»; ZANN's prompt may also mark it with [[FILES]]
 FILES_MARK = re.compile(r"\[\[\s*FILES\s*\]\]")
-ASKS_FILES = re.compile(r"(?i)\b(прилож(ите|ить)|сфотографируйте|загрузите|пришлите\s+(фото|скан|копи)|"
-                        r"отправьте\s+(фото|скан|копи)|жүктеңіз|суретке\s+түсіріңіз|тіркеңіз)")
 
 
 def document_kinds(text: str, kinds: dict[str, tuple[str, ...]]) -> set[str]:
@@ -198,13 +236,6 @@ def document_kinds(text: str, kinds: dict[str, tuple[str, ...]]) -> set[str]:
     if "lawsuit" in found:  # «исковое заявление» names a lawsuit, not a statement
         found.discard("statement")
     return found
-
-
-def asks_for_files(text: str) -> tuple[str, bool]:
-    """The reply without the [[FILES]] mark, and whether it asks the person for documents."""
-    marked = bool(FILES_MARK.search(text or ""))
-    clean = FILES_MARK.sub("", text or "").strip()
-    return clean, marked or bool(ASKS_FILES.search(re.split(r"\[\[\s*MORE\s*\]\]", clean)[0]))
 
 
 def looks_like_document(text: str) -> bool:
@@ -305,7 +336,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     ctx = _context(container, case)
     vault: PiiVault = ctx.pop("vault")
     pack = ctx["pack"]
-    ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault)}
+    ctx["case"] = {**ctx["case"], "files": _evidence_note(session, case, vault),
+                   **intake_note(container, case, pack.lang(case.language))}
     turns = [{"role": m.role, "text": vault.redact(m.text)} for m in rows]
     lang = pack.lang(case.language)  # the pack's language for its titles (KZ: ru, kk)
     # the reply follows the person: the interface language they write from, else the case's language — not the pack's
@@ -436,18 +468,34 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             missing = container.engine.facts_missing(cc) if cc is not None else []
             if result.offer_document and missing:
                 # R-29 (owner 02.10): no solution buttons and no paid offer while who, whom, what, when, how much is
-                # not known — the next missing fact is asked instead
+                # not known; if the bot did not ask anything itself, the next missing fact is asked (one question)
                 result.offer_document = False
-                if missing != ["scenario"]:
+                if cut:
+                    text = re.split(r"\[\[\s*MORE\s*\]\]", text)[0].strip()
+                    text = "" if looks_like_document(text) else text
+                if missing != ["scenario"] and not text.rstrip().endswith("?"):
                     eng = container.engine
                     sc_cc, pack_cc = eng.scenario_of(cc), eng.pack_of(cc)
                     q = eng.question_for(sc_cc, pack_cc, pack_cc.lang(reply_lang), missing[0]).text
-                    if cut:
-                        text = re.split(r"\[\[\s*MORE\s*\]\]", text)[0].strip()
-                        text = "" if looks_like_document(text) else text
                     if q and q not in text:
                         text = f"{text}\n\n{q}".strip()
-        text, ask_files = asks_for_files(text)
+                        yield _sse({"type": "text", "text": f"\n\n{q}"})
+        # [[FILES]] — ZANN's mark of a reply that asks for the documents: taken out of the text, counted as asking
+        marked_files = bool(FILES_MARK.search(text))
+        text = FILES_MARK.sub("", text).strip()
+        # owner 02.10: documents first. A fact-finding question (no solution yet) asks for the documents once; if the
+        # model forgot, the server adds the sentence — no files yet, never asked before in this chat.
+        asked_docs = marked_files or bool(ASKED_DOCUMENTS.search(text))
+        asked_before = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
+        if not asked_docs and not asked_before and not result.offer_document and not body.attachments \
+                and not ctx["case"].get("files") and not re.search(r"\[\[\s*MORE", text) \
+                and text.rstrip().endswith("?") \
+                and len(" ".join(m.text for m in rows if m.role == "user")) >= 40:  # a story, not «здравствуйте»
+            extra = documents_line(pack, lang if reply_lang not in ("ru", "kk") else reply_lang, ctx["case"])
+            if extra and "{" not in extra:
+                text = f"{text.rstrip()}\n\n{extra}"
+                yield _sse({"type": "text", "text": f"\n\n{extra}"})
+                asked_docs = True
         if result.offer_document:
             # PM 02.10: the chat and the card name the same document — «Составлю исковое заявление» over a card
             # «Досудебная претензия» is a contradiction: the card is withheld and the case goes to a second look
@@ -481,7 +529,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                             meta={"provider": used, "served_by": served_by, "norms": result.norms,
                                   "sources": result.sources, "unchecked": result.unchecked,
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
-                                  "ask_files": ask_files and not result.offer_document,
+                                  # one sign for «the bot asks for the documents»: the upload buttons show under it
+                                  "asked_documents": asked_docs and not result.offer_document,
                                   "usage": result.usage, "first_ms": first_ms,
                                   # P0 01.10: rounds cut before their end ("provider:reason") — continued, or the
                                   # reply ended at its last whole sentence (trimmed); counted hourly (chatspeed)

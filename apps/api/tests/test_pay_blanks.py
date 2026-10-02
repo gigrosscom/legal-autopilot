@@ -36,7 +36,8 @@ def test_the_other_sides_address_must_be_filled_before_paying(ctx):
     assert r2.status_code == 422 and r2.json()["detail"]["code"] == "applicant_data_required"
     by_type = {"date": "12.08.2026", "money": "150000", "phone": "+7 701 123 45 67", "address": "г. Алматы, ул. Абая, 10"}
     values = {n: by_type.get(f["type"]) or ("г. Алматы, ул. Абая, 10" if n.endswith("address")
-                                            else "880101300123" if n.endswith("iin") else "ТОО «Техномир»")
+                                            else "880101300123" if n.endswith("iin")
+                                            else "Иванов Иван Иванович" if n == "applicant_name" else "ТОО «Техномир»")
               for n, f in fields.items()}
     out = api.c.post(f"/v1/cases/{cid}/facts", headers=api.h, json={"values": values})
     assert out.status_code == 200, out.json()

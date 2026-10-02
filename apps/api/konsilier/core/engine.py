@@ -21,7 +21,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, package, polish, qualifier, safety
+from . import ai, docgate, package, polish, qualifier, safety
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
@@ -63,11 +63,16 @@ _IIN = re.compile(r"(?<!\d)\d{12}(?!\d)")
 OUTCOME_RESULTS = ("won", "partial", "lost", "settled", "abandoned")
 
 
+# the details a document needs that the form before payment asks (ZANN, api/chat.py DOC_DETAIL)
+_DOC_DETAIL = re.compile(r"_(?:name|address|bin|iin|email|phone)$")
+
+
 class EngineError(Exception):
     """A request that is valid HTTP but not allowed in the current case state."""
 
-    def __init__(self, code: str, message: str | None = None):
+    def __init__(self, code: str, message: str | None = None, fields: list[str] | None = None):
         self.code = code
+        self.fields = fields or []  # document_check: the one field the client is asked to fix
         super().__init__(message or code)
 
 
@@ -629,18 +634,18 @@ class CaseEngine:
         return Reply(message=message)
 
     def facts_missing(self, case: Case) -> list[str]:
-        """R-29 (owner 02.10): the facts the case still lacks before a solution and a document are offered — who the
-        other side is and where, when, how much (not the applicant's own data: that is asked before paying, and not
-        free text, which is written from the story). [] when the case is complete; ["scenario"] while not classified."""
+        """R-29 (owner 02.10): the facts the case still lacks before a solution and a paid offer — what happened, when,
+        how much, and who the other side is (its name: «кому»). Not the parties' addresses and ID numbers, nor the
+        applicant's own data: those are asked in the form before payment (ZANN's rule in the chat's intake note).
+        One list for the chat's note and the offer's gate. [] when complete; ["scenario"] while not classified."""
         if not case.scenario_id:
             return ["scenario"]
         sc = self.scenario_of(case)
-        their_ids = {p.id_field for role, p in sc.parties.items() if role != "applicant" and p.id_field}
-        parties = {getattr(p, a) for role, p in sc.parties.items() if role != "applicant"
-                   for a in ("name_field", "address_field") if getattr(p, a, None)}
+        their_names = {p.name_field for role, p in sc.parties.items() if role != "applicant" and p.name_field}
+        facts = case.facts or {}
         return [f.name for f in sc.intake
-                if f.type != "evidence" and not f.optional and not f.pii and f.name not in their_ids
-                and (f.name in parties or f.type not in ("text", "longtext")) and not case.facts.get(f.name)]
+                if f.type != "evidence" and not f.optional and not f.pii and not facts.get(f.name)
+                and (f.name in their_names or not _DOC_DETAIL.search(f.name))]
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
         """Fields still to ask, in interview order: documents → what happened → identity document → personal data.
@@ -696,7 +701,11 @@ class CaseEngine:
                                ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                                draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
                                if sc.is_draft else None, finish=self._finishing(case, sc, pack),
-                               style=self.doc_style(pack), lang=lang)
+                               style=self.doc_style(pack), lang=lang, drop_empty=self._drop_empty(pack, lang))
+            problems = self.check_document(case, sc, pack, ctx, addressee, docx)
+            if problems:  # the desk sees what is still wrong in a document made again (PM 02.10)
+                self.audit(session, case, "admin", "document_check_failed", action=spec.id,
+                           problems=[f"{p.kind}: {p.detail}" for p in problems])
             action.addressee = addressee  # where «Отправить» sends it: never the client's own e-mail
             base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
             action.docx_key = self.storage.put(f"{base}.docx", docx,
@@ -760,6 +769,15 @@ class CaseEngine:
         own = self._own_contacts(case, sc)
         other_side = {getattr(p, a) for k, p in sc.parties.items() if k != "applicant"
                       for a in ("email_field", "id_field", "address_field") if getattr(p, a, None)}
+        # PM 02.10: «приобрёл в Тестов Тест Тестович» — the applicant's own name read as the seller's / landlord's
+        mine = sc.parties.get("applicant")
+        my_name = str(values.get(mine.name_field) or facts.get(mine.name_field) or "").strip().lower() \
+            if mine is not None and mine.name_field else ""
+        if case.owner is not None and case.owner.display_name:
+            own = own | {case.owner.display_name.strip().lower()}
+        if my_name:
+            own = own | {my_name}
+        other_side |= {p.name_field for k, p in sc.parties.items() if k != "applicant" and p.name_field}
         for name, raw in values.items():
             try:
                 f = sc.field(name)
@@ -772,6 +790,8 @@ class CaseEngine:
                 if name in party_addresses and not looks_like_address(str(value)):
                     raise FieldError("address")  # QA BUG-10: a name or a BIN given instead of the postal address
                 if name in other_side and str(value).strip().lower() in own:
+                    if strict:  # typed by the person: say why it is not taken
+                        raise FieldError("own")
                     continue  # silently dropped: the field stays empty (a blank in the draft)
                 facts[name] = value
             except FieldError as e:
@@ -901,6 +921,7 @@ class CaseEngine:
             self._save_vault(case, llm)
             if pending not in errors:
                 self._count_question(case, f)
+                self.audit(session, case, "user", "answered", field=pending)  # typed by the person (the check's source)
             if pending in errors:
                 q = self.question_for(sc, pack, lang, pending)
                 msg = pack.t(lang, f"errors.{errors[pending]}", default=pack.t(lang, "errors.generic"))
@@ -1808,13 +1829,60 @@ class CaseEngine:
                            ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                            draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
                            if sc.is_draft else None, finish=self._finishing(case, sc, pack), style=self.doc_style(pack),
-                           lang=lang)
+                           lang=lang, drop_empty=self._drop_empty(pack, lang))
+        problems = self.check_document(case, sc, pack, ctx, addressee, docx)
+        lawyer_only = [p for p in problems if not p.client_can_fix]
+        if problems and problems[0].client_can_fix:
+            # the client fixes it first: one field, asked before the document is made (nothing is stored)
+            raise EngineError("document_check", problems[0].detail, fields=[problems[0].field])
         base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
         action.docx_key = self.storage.put(f"{base}.docx", docx,
                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         pdf = None if self.defer_pdf else self.pdf.convert(docx)
         action.pdf_key = self.storage.put(f"{base}.pdf", pdf, "application/pdf") if pdf else None
-        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf))
+        return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf),
+                                   checked=lawyer_only)
+
+    def _told(self, case: Case, sc: Scenario) -> tuple[dict[str, tuple[str, Any]], str, set[str]]:
+        """What the check holds the document's names, sums and dates against (PM 02.10: nothing made up): the values,
+        everything the person said or uploaded, and the fields they typed themselves."""
+        from sqlalchemy.orm import object_session
+
+        session = object_session(case)
+        parties = {p.name_field for role, p in sc.parties.items() if role != "applicant" and p.name_field}
+        values = {f.name: (f.type if f.type in ("money", "date") else "name", case.facts.get(f.name)) for f in sc.intake
+                  if (f.type in ("money", "date") or f.name in parties) and not f.pii}
+        said = [case.initial_text or ""]
+        typed: set[str] = set()
+        if session is not None:
+            said += [m for m in session.scalars(select(ChatMessage.text).where(
+                ChatMessage.case_id == case.id, ChatMessage.role == "user")).all() if m]
+            for row in session.scalars(select(AuditLog).where(
+                    AuditLog.case_id == case.id, AuditLog.event.in_(("answered", "draft_filled", "facts_corrected")))):
+                data = row.data or {}
+                typed |= set(data.get("fields") or []) | ({data["field"]} if data.get("field") else set())
+        for e in case.evidence:
+            said += [e.text or "", " ".join(str(v) for v in (e.extracted_facts or {}).values())]
+        return values, "\n".join(said), typed
+
+    @staticmethod
+    def _drop_empty(pack: JurisdictionPack, lang: str) -> tuple[str, ...]:
+        routing = pack.coverage.routing if pack.coverage else None
+        return tuple((routing.document_drop_empty if routing else {}).get(lang, ()))
+
+    def check_document(self, case: Case, sc: Scenario, pack: JurisdictionPack, ctx: dict[str, Any],
+                       addressee: dict[str, Any], docx: bytes) -> list[docgate.Problem]:
+        """PM 02.10 (owner: «грубые ошибки в документах»): the finished text, before it is stored — core/docgate.py."""
+        routing = pack.coverage.routing if pack.coverage else None
+        marks = routing.document_markers if routing else {}
+        words = tuple(marks.get(case.language, ())) + tuple(marks.get("*", ()))
+        norms = tuple((routing.norm_words if routing else {}).get(case.language, ()))
+        roles = {role: ctx.get(role) or {} for role in ("applicant", "respondent") if role in sc.parties}
+        fields = {role: {"name": p.name_field} for role, p in sc.parties.items() if p.name_field}
+        required = {f.name: case.facts.get(f.name) for f in sc.intake if f.type in ("money", "date") and not f.optional}
+        told = self._told(case, sc)
+        return docgate.check(docx_text(docx), words=words, norm_words=norms, told=told, addressee=addressee, parties=roles, fields=fields,
+                             required=required)
 
     def _ensure_text(self, case: Case, sc: Scenario, pack: JurisdictionPack, title: str) -> None:
         """The written parts of the document (statement of circumstances, demands): the slow LLM step. Kept on the
@@ -1868,14 +1936,17 @@ class CaseEngine:
 
     def _finish_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec,
                        action: Action, actor: str, addressee: dict[str, Any], ctx: dict[str, Any],
-                       pdf: bool) -> Action:
+                       pdf: bool, checked: list[docgate.Problem] | None = None) -> Action:
         lang = case.language
         action.addressee = addressee
         action.instructions = [
             _tidy(s.format_map(_Fmt(ctx["fmt"]))) for s in (spec.instructions.get(lang) or
                                                              spec.instructions.get(pack.manifest.default_language) or ())
         ]
-        if self.approval_required(session, case, spec):
+        if checked:  # PM 02.10: what only a lawyer can fix («[рассчитает юрист]», a norm twice) — never to the client
+            self.audit(session, case, "system", "document_check_failed", action=spec.id,
+                       problems=[f"{p.kind}: {p.detail}" for p in checked])
+        if checked or self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"
             if self.on_approval_needed is not None:
                 try:
@@ -1954,11 +2025,11 @@ class CaseEngine:
             "addressee": addressee,
             "narrative": narrative,
             "demands": demands,
-            "norm_refs": group_norms(spec.norm_refs),
+            "norm_refs": group_norms(spec.norm_refs),  # unchecked («TODO») left out, each act named once
             "evidence": evidence,
             "previous_actions": previous,
             "date": today,
-            "currency": case.currency or pack.currency,
+            "currency": case.currency or pack.currency,  # the code: the last pass prints «₸ (… тенге)»
             "fmt": fmt,
         }
 
@@ -1980,7 +2051,9 @@ class CaseEngine:
             if name in blank_names and not addressee.get(key):
                 addressee[key] = f"[{ai.field_label(sc, pack, lang, name)}]"
         ctx = self.document_context(case, sc, pack, spec, addressee, placeholders=True)
-        data = render_docx(pack.packs_root / spec.template, ctx, ai_label="", draft_disclaimer=None)
+        data = render_docx(pack.packs_root / spec.template, ctx, ai_label="", draft_disclaimer=None,
+                           drop_empty=self._drop_empty(pack, lang),
+                           finish=self._finishing(case, sc, pack))  # QA BUG-22: the draft shows «₸ (… тенге)» too
         blanks = [{"field": n, "label": ai.field_label(sc, pack, lang, n), "type": sc.field(n).type,
                    "pattern": sc.field(n).pattern} for n in self.draft_blanks(case, sc)]
         return {"title": pack.localized(spec.title, lang), "text": docx_text(data).strip(), "blanks": blanks}
