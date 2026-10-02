@@ -373,6 +373,38 @@ def strip_labels(text: str) -> str:
     return _LABEL.sub("", text)
 
 
+# owner 02.10 (flood case on 592f836: «2. Оцените ущерб. Пригласите оценщика…» despite rule 5): the free models do not
+# always keep the prompt, so the reply is cleaned in code. A line that sends the person for an appraisal, an expert
+# or a notary «just in case» is dropped and the steps are renumbered; «the court may order an appraisal» stays.
+_EXTRA = re.compile(
+    r"(?:пригласи|закаж|вызов|обрати\w*\s+к|проведи|получи|сдела|оплат)\w*\s[^\n]{0,60}?"
+    r"(?:оценщик|независим\w*\s+(?:оценк|экспертиз)|экспертиз|нотариус|нотариальн)|"
+    r"^\W*\d*[.)]?\s*\**\s*оцените\s+ущерб|"
+    r"(?:бағалаушы|тәуелсіз\s+бағала|нотариус)|"
+    r"(?:hire|order|get)\s[^\n]{0,40}?(?:apprais|expert\s+(?:report|opinion)|notar)",
+    re.IGNORECASE | re.MULTILINE)
+_STEP = re.compile(r"^(\s*\**\s*)(\d+)([.)])", re.MULTILINE)
+
+
+def drop_extra_steps(text: str) -> str:
+    """The reply without lines that send the person to gather more (an appraiser, an expert, a notary); the
+    numbered steps renumbered 1, 2, 3 in each block."""
+    lines = text.split("\n")
+    kept = [ln for ln in lines if not _EXTRA.search(ln) or "суд" in ln.lower() and "назнач" in ln.lower()]
+    if len(kept) == len(lines):
+        return text
+    out, n = [], 0
+    for ln in kept:
+        m = _STEP.match(ln)
+        if m:
+            n += 1
+            ln = f"{m.group(1)}{n}{m.group(3)}{ln[m.end():]}"
+        elif _MORE.search(ln):
+            n = 0
+        out.append(ln)
+    return "\n".join(out)
+
+
 def take_offer(text: str) -> tuple[str, bool]:
     """The reply without the document marker, and whether it had one (models sometimes drop a bracket)."""
     cleaned = re.sub(r"\[?\[\s*DOCUMENT\s*\]\]?", "", text)
@@ -682,6 +714,6 @@ class ChatAgent:
         mentioned = mentioned_articles(text)
         norms = [{"act": r.act_title, "act_code": r.code, "article": r.number, "title": r.title, "url": r.url}
                  for num, r in read.items() if num in mentioned]
-        text, offer = take_offer(strip_labels(text))
+        text, offer = take_offer(drop_extra_steps(strip_labels(text)))
         return ChatResult(text, norms, unchecked=bool(mentioned - set(read)), tool_calls=calls, usage=usage,
                           offer_document=offer)
