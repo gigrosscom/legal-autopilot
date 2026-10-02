@@ -43,17 +43,29 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
     const el = root.current;
     if (!vv || !el) return;
     const fit = () => {
-      el.style.height = `${vv.height}px`;
-      el.style.transform = `translateY(${vv.offsetTop}px)`;
-      setKeyboard(window.innerHeight - vv.height > 150);  // the tab bar gives its room to the keyboard
+      const open = window.innerHeight - vv.height > 150;  // the keyboard is up
+      // only while the keyboard is up: iOS (above all a Home-screen app) does not always report the viewport's
+      // full height again after the keyboard closes, and a height left from it cut every screen short (owner 02.10)
+      el.style.height = open ? `${vv.height}px` : "";
+      el.style.transform = open && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+      setKeyboard(open);  // the tab bar gives its room to the keyboard
       const typing = contentField(scroller.current);
       if (typing) typing.scrollIntoView({ block: "center" });  // the field stays in sight above the keyboard
       else end.current?.scrollIntoView({ block: "end" });
     };
+    // the keyboard closing is not always followed by a resize event: look again once the field has let go
+    const later = () => { [100, 400].forEach((ms) => setTimeout(fit, ms)); };
     fit();
     vv.addEventListener("resize", fit);
     vv.addEventListener("scroll", fit);
-    return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); };
+    window.addEventListener("focusout", later);
+    window.addEventListener("orientationchange", later);
+    window.addEventListener("pageshow", fit);
+    return () => {
+      vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit);
+      window.removeEventListener("focusout", later); window.removeEventListener("orientationchange", later);
+      window.removeEventListener("pageshow", fit);
+    };
   }, []);
 
   return (
