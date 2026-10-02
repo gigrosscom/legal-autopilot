@@ -1164,6 +1164,7 @@ const en: Dict = {
     hintCta: "Confirm email",
   },
   payment: {
+    blanks: { title: "Fill in to complete the document", lead: "These details go into the document. Without them it will have gaps. Fill them in once and we will move on to payment.", missing: "First fill in: {fields} — otherwise the document will have gaps." },
     applicant: { title: "Your details for the document", lead: "They appear in the document as the applicant's details. Fill them in once and we go on to payment.", continue: "Continue to payment" },
     contact: {
       phone: "Your phone — we will send the document and remind you of the deadline",

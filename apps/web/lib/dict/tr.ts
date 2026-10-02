@@ -1036,6 +1036,7 @@ const tr: Dict = {
     hintCta: "E-postayı doğrula",
   },
   payment: {
+    blanks: { title: "Belgenin eksiksiz olması için doldurun", lead: "Bu bilgiler belgeye girecek. Bunlar olmadan belgede boşluklar kalır. Bir kez doldurun, ödemeye geçelim.", missing: "Önce şunları doldurun: {fields} — yoksa belgede boşluklar kalır." },
     applicant: { title: "Belge için bilgileriniz", lead: "Belgede başvuru sahibinin bilgileri olarak yer alacak. Bir kez doldurun, ödemeye geçelim.", continue: "Ödemeye devam et" },
     contact: {
       phone: "Telefonunuz — belgeyi göndeririz ve süreyi hatırlatırız",

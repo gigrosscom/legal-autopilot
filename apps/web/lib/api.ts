@@ -189,6 +189,8 @@ export type Payment = {
   currency: string | null;
   status: "none" | "pending" | "awaiting_confirmation" | "not_found" | "paid";
   purpose: "document" | "case" | null;
+  /** The document the case makes next («Претензия продавцу о возврате денег»): «Услуга» in the payment window. */
+  title?: string | null;
   method: string;
   available: boolean;
   code: string | null;

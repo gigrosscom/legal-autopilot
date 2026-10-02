@@ -131,7 +131,9 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       await fn();
       return true;
     } catch (e) {
-      setError(errorText(e));
+      // PM 02.10: a required blank of the draft (the seller's address) is filled before the document is made
+      const blanks = e instanceof ApiError && e.code === "applicant_data_required" ? (e.detail as { fields?: ApplicantField[] }).fields : null;
+      setError(blanks?.length ? t("payment.blanks.missing", { fields: blanks.map((f) => f.label.toLowerCase()).join(", ") }) : errorText(e));
       return false;
     } finally {
       setBusy(false);
@@ -652,7 +654,7 @@ function CopyValue({ label, value, mono }: { label: string; value: string; mono?
  *  «Дело под ключ», confirm a phone by SMS code if the server asks (an e-mail where SMS is not available), Kaspi
  *  details and the code, "I have paid". Once the transfer is confirmed the page prepares the
  *  document by itself (and the server does, if the page is closed). */
-type ApplicantField = { field: string; label: string; type: string; pattern: string | null };
+type ApplicantField = { field: string; label: string; type: string; pattern: string | null; own?: boolean };  // own: the applicant's data; false: the other side's (PM 02.10)
 
 /** The applicant's own data for the document, asked on one screen right before paying (PM 01.10). */
 function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: ApplicantField[]; onDone: () => void }) {
@@ -674,14 +676,15 @@ function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: App
   const known = ["pattern", "address", "date", "date_future", "money", "email", "phone"];
   return (
     <form onSubmit={save} className="space-y-3">
-      <p className="text-base font-semibold">{t("payment.applicant.title")}</p>
-      <p className="text-sm text-muted">{t("payment.applicant.lead")}</p>
+      {/* the other side's details too (PM 02.10): then the title is about the document, not «Ваши данные» */}
+      <p className="text-base font-semibold">{t(fields.every((f) => f.own !== false) ? "payment.applicant.title" : "payment.blanks.title")}</p>
+      <p className="text-sm text-muted">{t(fields.every((f) => f.own !== false) ? "payment.applicant.lead" : "payment.blanks.lead")}</p>
       {fields.map((f) => (
         <label key={f.field} className="block text-sm">{f.label}
           <input className={`input mt-1 ${errors[f.field] ? "border-danger" : ""}`} required value={values[f.field] ?? ""}
             type={f.type === "phone" ? "tel" : f.type === "email" ? "email" : "text"}
             inputMode={f.type === "phone" ? "tel" : f.pattern ? "numeric" : undefined}
-            autoComplete={f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
+            autoComplete={f.own === false ? "off" : f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
             onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))} aria-invalid={!!errors[f.field]} />
           {errors[f.field] && <span className="text-danger">{t(`draft.error.${known.includes(errors[f.field]) ? errors[f.field] : "generic"}`)}</span>}
         </label>
