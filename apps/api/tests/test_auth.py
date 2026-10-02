@@ -323,7 +323,7 @@ def test_ncanode_self_check_line(monkeypatch):
         if url.endswith("/actuator/health"):
             return httpx.Response(200, json={"status": "UP", "components": {"ca": {"status": "UP"},
                                                                             "crl": {"status": "UP"}}})
-        return httpx.Response(200, text="<div class=\"version\">\n v3.5.0\n</div>")
+        return httpx.Response(200, text="<title>NCANode v3.5.0</title>")
 
     monkeypatch.setattr(httpx, "post", fake_post)
     monkeypatch.setattr(httpx, "get", fake_get)
