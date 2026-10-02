@@ -8,7 +8,7 @@ from typing import Any
 
 import anthropic
 
-from .base import Attachment, LLMError
+from .base import DETERMINISTIC_TASKS, Attachment, LLMError
 
 log = logging.getLogger(__name__)
 
@@ -69,6 +69,8 @@ class AnthropicProvider:
         request = dict(model=model, max_tokens=self.max_tokens, system=system,
                        messages=[{"role": "user", "content": content}],
                        output_config={"format": {"type": "json_schema", "schema": schema}})
+        if task in DETERMINISTIC_TASKS:
+            request["temperature"] = 0
         try:
             try:
                 response = self.client.messages.create(**request, **extra)

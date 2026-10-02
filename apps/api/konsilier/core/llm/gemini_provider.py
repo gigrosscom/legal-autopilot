@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from .base import Attachment, LLMError
+from .base import DETERMINISTIC_TASKS, Attachment, LLMError
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ class GeminiProvider:
             return {"systemInstruction": {"parts": [{"text": system}]},
                     "contents": [{"role": "user", "parts": parts}],
                     "generationConfig": {"responseMimeType": "application/json",
+                                         **({"temperature": 0} if task in DETERMINISTIC_TASKS else {}),
                                          field: schema if field == "responseJsonSchema" else _openapi(schema)}}
 
         try:

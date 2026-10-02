@@ -377,6 +377,7 @@ class CaseEngine:
         # not apply) — a business scenario if one is offered, else the business branch of the universal path
         business = any(safety.writes_as_business(p.coverage, text) for p in self.packs.packs.values()
                        if not case.jurisdiction or p.country == case.jurisdiction.upper())
+        direct_sid = None
         if business:
             candidates = [s for s in candidates if "applicant" in s.parties and s.parties["applicant"].kind == "business"]
             self.audit(session, case, "system", "business_applicant")
@@ -386,10 +387,16 @@ class CaseEngine:
                 if case.jurisdiction and p.country != case.jurisdiction.upper():
                     continue
                 rule = safety.direct_dispute(p.coverage, text)
-                if rule is not None and p.coverage is not None and p.coverage.has_registry:
-                    self.audit(session, case, "system", "direct_dispute", dispute=rule.dispute)
+                if rule is None:
+                    continue
+                self.audit(session, case, "system", "direct_dispute", dispute=rule.dispute, scenario=rule.scenario)
+                if rule.scenario and any(s.id == rule.scenario for s in candidates):
+                    direct_sid = rule.scenario
+                    break
+                if p.coverage is not None and p.coverage.has_registry:
                     return self._route_universal(session, case, p, llm, text, direct=rule)
-        sid, confidence, reason = (ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
+        sid, confidence, reason = ((direct_sid, 1.0, "direct rule") if direct_sid else
+                                   ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
                                    else (None, 0.0, "no business scenario"))
         case.qualification_confidence = confidence
         if sid is None:
@@ -1154,11 +1161,32 @@ class CaseEngine:
             Case.scenario_id == case.scenario_id, Case.created_at <= case.created_at))
         return (rank or 0) <= self.config.approval_required_first_n
 
+    def subject_mismatch(self, case: Case) -> str | None:
+        """PM 02.10 (QA BUG-24): the subject the person's words decide (routing.direct) must be the case's — a flood never
+        gets a «poor service» document, a tour never an air-ticket one, a debt never a purchase. Returns the right
+        scenario or dispute when the case has another one, else None."""
+        pack = self.pack_of(case)
+        text = " ".join(str(x) for x in (case.initial_text, (case.facts or {}).get("problem_description")) if x)
+        rule = safety.direct_dispute(pack.coverage, text) if pack.coverage is not None else None
+        if rule is None or not case.scenario_id:
+            return None
+        if case.scenario_id == rule.scenario:
+            return None
+        if (case.taxonomy or {}).get("dispute_id") == rule.dispute and ".generic." in case.scenario_id:
+            return None
+        return rule.scenario or rule.dispute
+
+    def check_subject(self, case: Case) -> None:
+        right = self.subject_mismatch(case)
+        if right is not None:
+            raise EngineError("subject_mismatch", f"the case is about {right}, not {case.scenario_id}")
+
     def prepare_next_action(self, session: Session, case: Case, actor: str) -> Action:
         if not case.scenario_id:
             raise EngineError("no_document_path")
         self.lock(session, case)
         sc, pack = self.scenario_of(case), self.pack_of(case)
+        self.check_subject(case)
         if case.hold_reason is None and not case.actions:
             reason = safety.abuse_reason(session, pack.coverage, case)
             if reason:
@@ -1313,6 +1341,8 @@ class CaseEngine:
                        plan: str | None = None, actor: str = "system") -> Invoice:
         """A bill for one document or the whole case (purpose document | case) or a subscription (plan). An open
         bill of the same kind is reused; an unclaimed bill of another kind for the same case is cancelled."""
+        if case is not None and purpose in ("document", "case"):
+            self.check_subject(case)  # never a bill for a document of another subject (PM 02.10)
         if purpose == "plan":
             if plan not in self.config.plans:
                 raise EngineError("unknown_plan")
