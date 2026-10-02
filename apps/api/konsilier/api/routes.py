@@ -24,6 +24,7 @@ from ..core.models import (Action, Consent, AuditLog, Case, Evidence, Identity, 
 from ..core import ai, suggestions
 from ..core.scenario import RESPONSE_CLASSES
 from .background import after_commit
+from .kaspi_push import match_waiting_push, push_confirms
 from .deps import current_user, get_container, get_session, load_case, optional_user, require_bot
 from .views import case_view
 
@@ -50,10 +51,11 @@ class NewUser(BaseModel):
 
 
 @router.post("/users")
-def create_user(body: NewUser, session: Session = Depends(get_session)) -> dict[str, Any]:
+def create_user(body: NewUser, session: Session = Depends(get_session),
+                container: Container = Depends(get_container)) -> dict[str, Any]:
     user = User(channel="web", language=body.language, country=(body.country or "").upper() or None,
                 email=body.email)
-    attribute(session, user, body.ref, body.src)
+    attribute(session, user, body.ref, body.src, container.engine.config.referral_bonus_points)
     session.add(user)
     session.flush()
     return {"id": str(user.id), "token": user.api_token}
@@ -69,16 +71,18 @@ class TelegramUser(BaseModel):
 
 
 @router.post("/users/telegram", dependencies=[Depends(require_bot)])
-def upsert_telegram_user(body: TelegramUser, session: Session = Depends(get_session)) -> dict[str, Any]:
+def upsert_telegram_user(body: TelegramUser, session: Session = Depends(get_session),
+                         container: Container = Depends(get_container)) -> dict[str, Any]:
     user = session.scalar(select(User).where(User.channel == "telegram", User.external_id == body.telegram_id))
     if user is None:
         user = User(channel="telegram", external_id=body.telegram_id, language=body.language,
                     country=(body.country or "").upper() or None, display_name=body.display_name)
-        attribute(session, user, body.ref, body.src)
+        attribute(session, user, body.ref, body.src, container.engine.config.referral_bonus_points)
         session.add(user)
         session.flush()
     elif body.ref and user.referred_by is None and not user.cases:
-        attribute(session, user, body.ref, body.src)  # opened the bot before, came back by an invitation
+        # opened the bot before, came back by an invitation
+        attribute(session, user, body.ref, body.src, container.engine.config.referral_bonus_points)
     return {"id": str(user.id), "token": user.api_token}
 
 
@@ -281,6 +285,12 @@ def get_case(case_id: uuid.UUID, user: User = Depends(current_user), session: Se
                 container.engine.qualify_later(session, case.id)
         except Exception:  # noqa: BLE001 — the model is still down: the case opens as it is, tried again next time
             log.exception("deferred classification of case %s failed", case.id)
+    if case.status == "intake" and not case.scenario_id and case.taxonomy:
+        try:  # left at the old «Выберите адресата» list: the system chooses the recipient now (owner 02.10)
+            with session.begin_nested():
+                container.engine.auto_choose_forum(session, case)
+        except Exception:  # noqa: BLE001 — the case opens as it is
+            log.exception("auto recipient for case %s failed", case.id)
     return case_view(container.engine, session, case)
 
 
@@ -369,6 +379,10 @@ def get_draft(case_id: uuid.UUID, user: User = Depends(current_user), session: S
               container: Container = Depends(get_container)) -> dict[str, Any]:
     """PM 01.10: the draft of the document before payment — part readable, part blurred, and the blanks to fill."""
     case = load_case(case_id, session, user)
+    try:  # what the person already told goes into the blanks first (owner 01.10)
+        container.engine.prefill_blanks(session, case)
+    except Exception:  # noqa: BLE001 — the model being down must not hide the draft
+        log.warning("draft prefill failed for case %s", case_id, exc_info=True)
     try:
         d = container.engine.draft(case)
     except Exception:  # noqa: BLE001 — a template problem must not break the case page
@@ -521,7 +535,7 @@ class ForumIn(BaseModel):
 @router.post("/cases/{case_id}/forum")
 def choose_forum(case_id: uuid.UUID, body: ForumIn, user: User = Depends(current_user),
                  session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    """Universal path: the user picks where to file from the pack's registry candidates."""
+    """Universal path: «Другой адресат» — the person changes the recipient the system chose (owner 02.10)."""
     case = load_case(case_id, session, user)
     try:
         reply = container.engine.choose_forum(session, case, body.forum_id, actor=f"user:{user.id}")
@@ -743,7 +757,9 @@ def claim_payment(case_id: uuid.UUID, user: User = Depends(current_user), sessio
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if not user.is_test and match_waiting_push(session, container, inv):
+        pass  # its Kaspi Pay push came first: paid now, nothing for the desk
+    elif inv.status == "awaiting_confirmation" and not user.is_test and not push_confirms(container, inv):
         _tell_desk_claimed(container, inv, f"дело {case.id}")
     if not case.narrative:
         prewrite_later(session, container, case.id)
@@ -791,7 +807,9 @@ def plan_claim(user: User = Depends(current_user), session: Session = Depends(ge
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if inv.status == "awaiting_confirmation" and not user.is_test:
+    if not user.is_test and match_waiting_push(session, container, inv):
+        pass
+    elif inv.status == "awaiting_confirmation" and not user.is_test and not push_confirms(container, inv):
         _tell_desk_claimed(container, inv, f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     return plans_view(container, session, user)
 
@@ -826,7 +844,9 @@ def choose_way(invoice_id: int, body: WayIn, user: User = Depends(current_user),
     except EngineError as e:
         raise engine_error(e) from e
     session.flush()
-    if before != inv.status == "awaiting_confirmation" and not user.is_test:
+    if not user.is_test and match_waiting_push(session, container, inv):
+        pass
+    elif before != inv.status == "awaiting_confirmation" and not user.is_test and not push_confirms(container, inv):
         _tell_desk_claimed(container, inv, f"дело {inv.case_id}" if inv.case_id else
                            f"тариф «{inv.plan}», клиент {user.email or user.phone}")
     if inv.case_id is not None:

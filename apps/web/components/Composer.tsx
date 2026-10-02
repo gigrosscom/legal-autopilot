@@ -42,7 +42,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     const el = box.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, large ? 320 : 200)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, large ? 320 : 240)}px`;
   }, [shown, large]);
   useEffect(() => { if (autoFocus && matchMedia("(pointer: fine)").matches) box.current?.focus(); }, [autoFocus]);
 
@@ -57,6 +57,15 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     discard.current = false; typed.current = false; sendAfter.current = false; before.current = value; dictation.start();
   };
   const cancel = () => { discard.current = true; sendAfter.current = false; dictation.stop(); setValue(before.current); };
+  // «■»: stop and keep the words in the box to be corrected — the cursor at the end, the keyboard may stay open
+  const refocus = useRef(false);
+  const focusEnd = () => {
+    const el = box.current;
+    if (el) { el.focus(); requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = el.value.length; }); }
+  };
+  const stopKeep = () => { refocus.current = true; dictation.stop(); focusEnd(); };
+  // the chat's box is laid out anew once recording ends: give it the focus back, cursor after the last word
+  useEffect(() => { if (!waiting && refocus.current) { refocus.current = false; focusEnd(); } }, [waiting]);
   // «send» while recording: stop, then send what is in the box once the last words are written down
   const submit = () => {
     if (waiting) { sendAfter.current = true; if (dictation.listening) dictation.stop(); return; }
@@ -117,20 +126,6 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       ))}
     </ul>
   );
-  // while recording: a red dot and the time, with «cancel»; the words themselves are in the box
-  const recording = dictation.listening && (
-    <span className="flex shrink-0 items-center gap-1.5">
-      <button type="button" onClick={cancel} title={t("chat.cancel")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sand">
-        <Icon name="x" size={20} /><span className="sr-only">{t("chat.cancel")}</span>
-      </button>
-      <span className="flex items-center gap-1.5 pe-1 text-sm tabular-nums text-ink">
-        <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-danger motion-safe:animate-pulse" />
-        <Elapsed since={dictation.startedAt} />
-        <span role="status" className="sr-only">{t("chat.listening")}</span>
-      </span>
-    </span>
-  );
   const textarea = (
     <>
       <label htmlFor={large ? "home-input" : "chat-input"} className="sr-only">{placeholder}</label>
@@ -153,6 +148,32 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
         style={{ outline: "none" }} /* the whole box shows focus */ />
     </>
   );
+  // Recording, as in the Claude app (owner's sample 02.10): the words grow in the box above, and one row below —
+  // «✕» (cancel) · the loudness wave · «■» (stop, keep the text to correct) · «↑» (send now)
+  const ctl = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full";
+  const recordingRow = waiting && (
+    <div className="flex items-center gap-2 px-1 pt-1">
+      <button type="button" onClick={cancel} title={t("chat.cancel")} className={`${ctl} bg-surface text-ink ring-1 ring-line hover:bg-sand`}>
+        <Icon name="x" size={20} /><span className="sr-only">{t("chat.cancel")}</span>
+      </button>
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+        {dictation.transcribing
+          ? <span role="status" className="flex items-center gap-2 text-sm text-muted"><Icon name="spinner" size={18} />{t("chat.transcribing")}</span>
+          : <>
+              <Wave levels={dictation.levels} />
+              <span className="shrink-0 text-xs tabular-nums text-muted"><Elapsed since={dictation.startedAt} /></span>
+              <span role="status" className="sr-only">{t("chat.listening")}</span>
+            </>}
+      </div>
+      <button type="button" onClick={stopKeep} disabled={!dictation.listening} title={t("chat.micStop")}
+        className={`${ctl} bg-surface text-ink ring-1 ring-line hover:bg-sand disabled:opacity-40`}>
+        <span className="h-3.5 w-3.5 rounded-[3px] bg-current" /><span className="sr-only">{t("chat.micStop")}</span>
+      </button>
+      <button type="submit" title={t("chat.send")} className={`${ctl} bg-action text-white`}>
+        <Icon name="arrowUp" size={20} /><span className="sr-only">{t("chat.send")}</span>
+      </button>
+    </div>
+  );
   const errorLine = dictation.error && (
     <p role="alert" className="px-3 pt-1 pb-1 text-xs text-danger">{t(`chat.errors.${dictation.error}`)}</p>
   );
@@ -163,7 +184,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       {filesList}
       <div className="space-y-2">
         {textarea}
-        <div className="flex items-center justify-between">{recording || attach}{action}</div>
+        {recordingRow || <div className="flex items-center justify-between">{attach}{action}</div>}
       </div>
       {errorLine}
     </form>
@@ -172,16 +193,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   // The chat's box, as in WhatsApp: «+» · the message · camera · one round button (microphone, or send once
   // there is text, or stop while the answer is being written).
   const round = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full";
-  const main = dictation.listening ? (
-    <span className="flex shrink-0 items-center">
-      <button type="button" onClick={dictation.stop} title={t("chat.micStop")} className={`${round} text-[var(--chat-accent)] hover:bg-sand`}>
-        <span className="h-3.5 w-3.5 rounded-[3px] bg-current" /><span className="sr-only">{t("chat.micStop")}</span>
-      </button>
-      <button type="submit" title={t("chat.send")} className={`${round} text-[var(--chat-accent)] hover:bg-sand`}>
-        <Icon name="send" size={24} /><span className="sr-only">{t("chat.send")}</span>
-      </button>
-    </span>
-  ) : onStop ? (
+  const main = onStop ? (
     <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-surface`}>
       <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
     </button>
@@ -213,18 +225,25 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
       {filesList}
+      {recordingRow ? (
+        <div className="rounded-[22px] bg-[var(--chat-field)] p-1 shadow-[var(--chat-shadow)]">
+          {textarea}
+          {recordingRow}
+        </div>
+      ) : (
       <div className="flex items-end gap-1">
-        {dictation.listening ? recording : (folded ? (
+        {folded ? (
           <button type="button" onClick={() => setTools(true)} title={t("chat.attach")}
             className="flex h-11 w-9 shrink-0 items-center justify-center text-[var(--chat-accent)]">
             <Icon name="chevronDown" size={22} className="-rotate-90 rtl:rotate-90" /><span className="sr-only">{t("chat.attach")}</span>
           </button>
-        ) : <>{attach}{camera}</>)}
+        ) : <>{attach}{camera}</>}
         <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] bg-[var(--chat-field)] shadow-[var(--chat-shadow)]">
           {textarea}
         </div>
         {main}
       </div>
+      )}
       {errorLine}
     </form>
   );
@@ -239,4 +258,22 @@ function Elapsed({ since }: { since: number }) {
   }, []);
   const s = Math.max(0, Math.floor((now - (since || now)) / 1000));
   return <span aria-hidden>{`${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`}</span>;
+}
+
+/** The loudness wave while recording: quiet moments are dots, speech rises as bars (newest on the right). Without a
+ *  level (the browser's own recognition) the bars just breathe. */
+function Wave({ levels }: { levels: number[] }) {
+  const n = 28;
+  const pts = levels.length ? [...Array(Math.max(0, n - levels.length)).fill(0), ...levels].slice(-n) : null;
+  return (
+    <span aria-hidden className="flex h-7 min-w-0 flex-1 items-center justify-center gap-[3px] overflow-hidden">
+      {Array.from({ length: n }, (_, i) => {
+        const v = pts ? pts[i] : null;
+        return v === null
+          ? <span key={i} className="voice-bar w-[3px] rounded-full bg-action" style={{ animationDelay: `${(i % 7) * 110}ms` }} />
+          : <span key={i} className="w-[3px] rounded-full bg-action transition-[height] duration-75"
+              style={{ height: `${Math.max(3, Math.round(v * 28))}px`, opacity: v < 0.08 ? 0.45 : 1 }} />;
+      })}
+    </span>
+  );
 }

@@ -29,6 +29,7 @@ export type CaseAction = {
   has_docx: boolean;
   has_pdf: boolean;
   signatures?: DocSignature[];
+  paid?: boolean;
   downloadable: boolean;
   submitted_at: string | null;
   response_class: string | null;
@@ -73,6 +74,11 @@ export type RouteStep = {
   to: string; auto: boolean; href?: string | null; reason?: string | null; done?: boolean;
   /** the portal's name for a `portal` step */
   portal?: string | null;
+};
+/** Who each step's document goes to and why (packs/<cc>/routes.yaml) — chosen by the system, owner 02.10. */
+export type RecipientStep = {
+  step: number; kind: "forum" | "authority" | "party"; key: string | null; name: string | null;
+  label: string; when: string | null; why: string; norm: string;
 };
 export type SendPlan = {
   contacts: FoundContact[]; message: string; email: EmailSendState; reply_to: string | null; filings: Delivery[];
@@ -142,6 +148,8 @@ export type CaseView = {
   status_label: string;
   stage: string;
   coverage: Coverage;
+  /** Addressee of each step and why — the screen shows it instead of a «Куда обратиться» list. */
+  recipients?: RecipientStep[];
   safety: { hold_reason: string | null; hold_message: string | null; pending_ack: "false_report" | "special_category" | null };
   needs_review: boolean;
   jurisdiction: string | null;
@@ -202,8 +210,17 @@ export type Payment = {
   buyer?: { name: string; bin: string | null; address: string | null } | null;
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
+  /** The Kaspi Pay link bill was paid on trust: the document is given, the desk still matches the payment. */
+  trusted?: boolean;
+  /** A payment given on trust was not found: no new document until it is paid. */
+  owed?: boolean;
+  /** The last paid bill of the case (status is about the next document). */
+  last_paid?: { code: string; amount: number; purpose: string; paid_at: string | null } | null;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
+  /** Bonus account points of the owner (owner 02.10) and the points the open bill took (its amount is less by them). */
+  bonus_balance?: number;
+  bonus_used?: number;
   subscription: Subscription | null;
 };
 
@@ -255,6 +272,11 @@ export type ForumOption = {
   verified: boolean;
   channels: string[];
   deadline_known: boolean;
+  /** A step to the other side itself: required before court (mandatory) or voluntary settlement. */
+  pretrial?: "mandatory" | "voluntary" | null;
+  /** What to know for this dispute: term, competent court, norm. */
+  hint?: string | null;
+  why?: string | null;  // the system chose this recipient (owner 02.10): one line «почему»
 };
 
 export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };
@@ -275,6 +297,7 @@ export type Coverage = {
   forum: ForumOption | null;
   reasons: { code: string; label: string }[];
   options: ForumOption[];
+  other_forums: ForumOption[];  // «Другой адресат» until the document is made
   upl_notice: string | null;
 };
 
@@ -294,7 +317,8 @@ export type CaseLawyer = {
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
 export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[];
-  bonus_documents: number };  // free documents for inviting a friend who paid (any case)
+  bonus_documents: number;  // free documents for inviting a friend who paid (any case)
+  bonus_balance?: number };  // bonus account points: they pay part of a document bill
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean; google?: boolean; apple?: boolean };
 export type SignedIn = { token: string; me: Me };
 
@@ -466,10 +490,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /** Dictated audio → text (POST /v1/transcribe, free Gemini on the server; the audio is not stored). */
-export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm"): Promise<string> {
+/** `partial`: the recording so far while the person is still speaking — the live text in the box. */
+export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm", partial = false): Promise<string> {
   const form = new FormData();
   form.append("file", audio, filename);
   form.append("lang", lang);
+  if (partial) form.append("partial", "true");
   const r = await api<{ text: string }>("/v1/transcribe", { method: "POST", body: form });
   return r.text ?? "";
 }

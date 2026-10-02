@@ -193,7 +193,15 @@ def decide(session: Session, engine: "CaseEngine", req: LawyerRequest, accept: b
     lang = pack.lang(case.language)
     engine.audit(session, case, actor, "lawyer_request_accepted" if accept else "lawyer_request_declined",
                  request=req.id, application_id=req.application_id)
-    if accept:
+    if accept and engine.config.lawyer_pay_direct:
+        # paid directly (owner 01.10): the lawyer gets the case and the client's contacts now, sends the contract
+        # and the bill; no company bill for the client
+        if case.lawyer_application_id != app.id:
+            assign(session, engine, case, app, "system:lawyer_accepted")
+        text = pack.t(lang, "notifications.lawyer_accepted_direct", name=lawyer_name(app),
+                      default=f"Юрист {lawyer_name(app)} принял запрос. Юрист свяжется с вами и пришлёт договор "
+                              f"и счёт. Оплата — напрямую юристу.")
+    elif accept:
         text = pack.t(lang, "notifications.lawyer_accepted", name=lawyer_name(app),
                       default=f"Юрист {lawyer_name(app)} принял запрос. Оплатите, чтобы он получил материалы дела.")
     else:
@@ -219,6 +227,8 @@ def invoice_of(session: Session, req: LawyerRequest) -> Invoice | None:
 
 def create_invoice(session: Session, engine: "CaseEngine", req: LawyerRequest, actor: str) -> Invoice:
     """The client's bill for the lawyer's price, after the lawyer accepted. The open bill is reused."""
+    if engine.config.lawyer_pay_direct:
+        raise PilotError("direct_payment")  # the client pays the lawyer, by the lawyer's own bill
     if req.status == "paid":
         raise PilotError("already_paid")
     if req.status != "accepted" or req.price is None:
@@ -270,6 +280,21 @@ def apply_paid(session: Session, engine: "CaseEngine", inv: Invoice) -> None:
                 "https://konsilier.com/lawyer")))
 
 
+def mark_client_paid(session: Session, engine: "CaseEngine", req: LawyerRequest, actor: str) -> Decimal:
+    """Paid directly: the lawyer marks that the client paid them. The platform's commission (15 %) is counted from
+    this mark and billed to the lawyer monthly by the company's bill. Returns the commission."""
+    if not engine.config.lawyer_pay_direct:
+        raise PilotError("not_direct")
+    if req.status != "accepted" or req.price is None:
+        raise PilotError("not_accepted")
+    req.status = "paid"
+    fee = commission(money(req.price), engine.config.lawyer_commission_pct)
+    case = session.get(Case, req.case_id)
+    engine.audit(session, case, actor, "lawyer_client_paid", request=req.id, amount=str(money(req.price)),
+                 commission=str(fee), commission_pct=engine.config.lawyer_commission_pct)
+    return fee
+
+
 def payout(inv: Invoice) -> Decimal:
     return money(Decimal(inv.amount) - Decimal(inv.commission_amount or 0))
 
@@ -292,4 +317,5 @@ def request_view(session: Session, engine: "CaseEngine", req: LawyerRequest) -> 
             "price": float(req.price) if req.price is not None else None,
             "created_at": req.created_at.isoformat(),
             "invoice": payment_view(session, engine, inv) if inv is not None and inv.status != "cancelled" else None,
-            "payment_available": channel(engine) is not None}
+            "payment_available": channel(engine) is not None or engine.config.lawyer_pay_direct,
+            "direct": engine.config.lawyer_pay_direct}

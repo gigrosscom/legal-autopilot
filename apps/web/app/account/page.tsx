@@ -6,7 +6,7 @@ import { CodeForm, useAuthError } from "@/components/CodeForm";
 import { Invite } from "@/components/Invite";
 import { PushToggle } from "@/components/PushToggle";
 import { ThemePicker } from "@/components/ThemePicker";
-import { ProviderSignIn } from "@/components/ProviderSignIn";
+import { ProviderSignIn, SIGNIN_BTN, SoonButton } from "@/components/ProviderSignIn";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import { api, applySignIn, errorText, type AuthMethods, type Me, type SignedIn } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -70,6 +70,9 @@ export default function AccountPage() {
 
       {me && me.bonus_documents > 0 && (
         <Alert tone="info" icon="checkCircle" role="status">{t("account.bonus", { n: me.bonus_documents })}</Alert>
+      )}
+      {me && (me.bonus_balance ?? 0) > 0 && (
+        <Alert tone="info" icon="checkCircle" role="status">{t("account.bonusBalance", { n: me.bonus_balance ?? 0 })}</Alert>
       )}
 
       {me && me.identities.length > 0 && (
@@ -299,24 +302,26 @@ function SignInSheet({ methods, onClose, onDone, onOther }: {
           <button type="button" onClick={onClose} aria-label={t("app.close")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sand hover:bg-sand-deep"><Icon name="x" size={20} /></button>
         </div>
-        <ProviderSignIn google={!!methods.google} apple={!!methods.apple} onDone={onDone} />
-        {methods.email && (email ? <CodeForm kind="email" onDone={onDone} wide /> : (
-          <button type="button" onClick={() => setEmail(true)}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
-            <Icon name="mail" size={20} />{t("account.withEmail")}
-          </button>
-        ))}
-        {/* owner 01.10: Google, Apple, e-mail, ЭЦП, eGov Mobile — in this order, each its own button */}
-        {methods.ecp && (
-          <button type="button" onClick={() => onOther("ecp")} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
-            <Icon name="key" size={20} />{t("account.withEcp")}
-          </button>
-        )}
-        {methods.egov && (
-          <button type="button" onClick={() => onOther("egov")} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-[17px] font-semibold text-ink hover:bg-sand">
-            <Icon name="smartphone" size={20} />{t("account.withEgov")}
-          </button>
-        )}
+        {/* owner 01.10: every way is listed, in this order — Google, Apple, e-mail, ЭЦП, eGov Mobile — each its own
+            button of one style and width (400 px at most: Google's limit); one not connected yet shows, but does not let in */}
+        <div className="mx-auto w-full max-w-[400px] space-y-3">
+          <ProviderSignIn google={!!methods.google} apple={!!methods.apple} onDone={onDone} />
+          {methods.email && (email ? <CodeForm kind="email" onDone={onDone} wide /> : (
+            <button type="button" onClick={() => setEmail(true)} className={SIGNIN_BTN}>
+              <Icon name="mail" size={20} />{t("account.withEmail")}
+            </button>
+          ))}
+          {methods.ecp ? (
+            <button type="button" onClick={() => onOther("ecp")} className={SIGNIN_BTN}>
+              <Icon name="key" size={20} />{t("account.withEcp")}
+            </button>
+          ) : <SoonButton icon={<Icon name="key" size={20} />} label={t("account.withEcp")} />}
+          {methods.egov ? (
+            <button type="button" onClick={() => onOther("egov")} className={SIGNIN_BTN}>
+              <Icon name="smartphone" size={20} />{t("account.withEgov")}
+            </button>
+          ) : <SoonButton icon={<Icon name="smartphone" size={20} />} label={t("account.withEgov")} />}
+        </div>
       </div>
     </div>,
     document.body,

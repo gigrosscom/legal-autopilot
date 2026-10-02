@@ -242,7 +242,7 @@ def zann_corpus(args: list[str]) -> int:
     print("run:", json.dumps(asdict(stats), ensure_ascii=False))
     with container.session_factory() as s:
         print("corpus:", json.dumps(corpus_metrics(s), ensure_ascii=False))
-    return 1 if stats.stopped == "robots" else 0
+    return 1 if stats.stopped in ("robots", "unreachable") else 0
 
 
 def zann_court(args: list[str]) -> int:
@@ -263,7 +263,7 @@ def zann_court(args: list[str]) -> int:
     print("run:", json.dumps(asdict(stats), ensure_ascii=False))
     with container.session_factory() as s:
         print("court:", json.dumps(court_metrics(s), ensure_ascii=False))
-    return 1 if stats.stopped == "robots" else 0
+    return 1 if stats.stopped in ("robots", "unreachable") else 0
 
 
 def zann_court_import(args: list[str]) -> int:

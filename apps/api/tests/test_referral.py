@@ -46,11 +46,13 @@ def _pay_document(desk, api, cid: str) -> None:
 
 
 def test_invited_person_pays_and_both_get_one_free_document(ctx):
+    """The old reward (REFERRAL_BONUS_POINTS=0): one free document to each on the first payment."""
     from .test_e2e import Api
     from .test_ops_centre import operator
     from .test_payment import confirm, manual
 
     manual(ctx)
+    ctx.container.engine.config.referral_bonus_points = 0
     ctx.container.settings.ops_clients_emails = "support@konsilier.com"
     desk = operator(ctx, "support@konsilier.com")
     alice = Api(ctx, new_user(ctx.client)["token"])
@@ -105,3 +107,54 @@ def test_no_bonus_without_an_inviter(ctx):
     _pay_document(desk, carol, cid)
     assert carol.get("/v1/me").json()["bonus_documents"] == 0
     assert not any(n["kind"] == "referral" for n in carol.get("/v1/notifications").json()["items"])
+
+
+def test_bonus_account_points_on_joining_and_for_the_inviter(ctx):
+    """Owner 02.10 «Бонусный счёт»: 1000 points to the invited person on joining, 1000 to the inviter on that
+    person's first payment; points pay at most half of a document bill and come back if the bill is cancelled."""
+    from .test_e2e import Api
+    from .test_ops_centre import operator
+    from .test_payment import confirm, manual
+
+    manual(ctx)
+    assert ctx.container.engine.config.referral_bonus_points == 1000
+    ctx.container.settings.ops_clients_emails = "support@konsilier.com"
+    desk = operator(ctx, "support@konsilier.com")
+    alice = Api(ctx, new_user(ctx.client)["token"])
+    code = alice.get("/v1/referral").json()["code"]
+    bob = Api(ctx, new_user(ctx.client, ref=code)["token"])
+    assert bob.get("/v1/me").json()["bonus_balance"] == 1000
+    assert alice.get("/v1/me").json()["bonus_balance"] == 0
+
+    cid = _case(bob)
+    confirm(bob)
+    price = bob.get(f"/v1/cases/{cid}").json()["payment"]["options"][0]["amount"]
+    use = min(1000, int(price * 0.5))
+    # «Дело под ключ» first, then a document: the cancelled bill gives its points back, the new one takes them
+    pay = bob.post(f"/v1/cases/{cid}/payment", json={"purpose": "case"})["case"]["payment"]
+    assert pay["bonus_used"] == 1000 and bob.get("/v1/me").json()["bonus_balance"] == 0
+    pay = bob.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
+    assert pay["bonus_used"] == use and pay["amount"] == price - use
+    assert bob.get("/v1/me").json()["bonus_balance"] == 1000 - use
+    # nothing for the inviter until the payment is really found
+    assert alice.get("/v1/me").json()["bonus_balance"] == 0
+    bob.post(f"/v1/cases/{cid}/payment/claim")
+    row = next(r for r in desk.get("/v1/ops/clients/payments").json() if r["case_id"] == cid)
+    assert row["amount"] == price - use
+    desk.post(f"/v1/ops/clients/payments/{row['id']}", json={"decision": "paid"})
+    assert alice.get("/v1/me").json()["bonus_balance"] == 1000
+    assert alice.get("/v1/referral").json()["bonus_balance"] == 1000
+    assert any(n["kind"] == "referral" for n in alice.get("/v1/notifications").json()["items"])
+    # no free documents in this mode
+    assert alice.get("/v1/me").json()["bonus_documents"] == 0 and bob.get("/v1/me").json()["bonus_documents"] == 0
+
+    # once per invited person
+    cid2 = _case(bob)
+    _pay_document(desk, bob, cid2)
+    assert alice.get("/v1/me").json()["bonus_balance"] == 1000
+
+
+def test_no_joining_points_without_a_valid_invite(ctx):
+    carol = new_user(ctx.client, ref="nosuchcode")
+    me = ctx.client.get("/v1/me", headers={"Authorization": f"Bearer {carol['token']}"}).json()
+    assert me["bonus_balance"] == 0

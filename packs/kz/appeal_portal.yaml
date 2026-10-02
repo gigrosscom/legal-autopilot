@@ -74,6 +74,16 @@ recipients:
       ru: "Трудовые отношения"
       kk: "Еңбек қатынастары"
       en: "Labour relations"
+  forum:kz.gov.superior:
+    appeal_type: complaint
+    recipient:
+      ru: "Вышестоящий орган над тем, который принял решение или не ответил (жалоба подаётся через этот орган)"
+      kk: "Шешім қабылдаған немесе жауап бермеген органнан жоғары тұрған орган (шағым осы орган арқылы беріледі)"
+      en: "The body above the one that decided or did not answer (the complaint goes through that body)"
+    category:
+      ru: "Обжалование действий (бездействия) государственных органов и должностных лиц"
+      kk: "Мемлекеттік органдар мен лауазымды тұлғалардың әрекетіне (әрекетсіздігіне) шағымдану"
+      en: "Appeals against actions (inaction) of state bodies and officials"
   forum:kz.prosecutor:
     appeal_type: complaint
     recipient:

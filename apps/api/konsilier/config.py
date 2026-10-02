@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # once (minimal | low | medium | high; empty → the model's default). A model that refuses it is asked again
     # without it.
     gemini_chat_thinking_level: str = "minimal"
+    # The OpenAI-compatible free providers (Cerebras, Groq …): their models' thinking, sent as reasoning_effort.
+    # "none" (P0 01.10): qwen on Cerebras otherwise spent the whole token limit thinking — a chat answer cut mid-word.
+    chat_reasoning_effort: str = "none"
+    # Token limit of one chat model round. Large on purpose: the answer's length is set by the prompt, the limit only
+    # must never cut it (thinking tokens count against it too).
+    chat_max_tokens: int = 4096
     # Chat speed: when GEMINI_MODEL has not started answering after this many seconds, the fallback models are asked
     # in parallel and the first to answer is used (0 → only after a failure). Measured 30.09: gemini-3.1-flash-lite
     # answered after 2–8 s (median ≈5 s), gemini-3.5-flash-lite and gemini-flash-lite-latest after ≈0.5–1 s. Shorter
@@ -70,6 +76,11 @@ class Settings(BaseSettings):
     # uploads per account and per IP address in a rolling hour.
     transcribe_per_user_hour: int = 30
     transcribe_per_ip_hour: int = 60
+    # Live text while the person speaks (iOS app, browsers without speech recognition): the recording so far is sent
+    # every ~1.5 s with partial=1 — Whisper on Groq when GROQ_API_KEY is set (its own free quota), else Gemini.
+    transcribe_partial_per_user_hour: int = 900
+    transcribe_partial_per_ip_hour: int = 1800
+    groq_whisper_model: str = "whisper-large-v3-turbo"
     # When every Gemini model fails before the reply starts, answer with Claude (fast model) if it is configured.
     # Off by default: the free chat does not fall back to a paid model unless this is switched on explicitly.
     chat_fallback_to_anthropic: bool = False
@@ -136,21 +147,42 @@ class Settings(BaseSettings):
     # answers 404 until this is on and the secret is set (HMAC-SHA256 of the body in X-Konsilier-Signature).
     payment_kaspi_webhook: bool = False
     payment_kaspi_webhook_secret: str = ""
+    # Kaspi Pay pushes (konsilier/kaspi_parse.py): a separate Android phone with the company's Kaspi Pay app and
+    # MacroDroid posts every Kaspi Pay notification to /v1/payments/kaspi/push with this token in X-Konsilier-Token;
+    # one push of the bill's amount within 60 min of «Оплатить» marks it paid at once. Empty → the endpoint is 404,
+    # no 15-minute reminder and no stop on new bills (the desk confirms by hand, as before).
+    payment_kaspi_push_token: str = ""
     # «Юрист по кнопке» (closed pilot): the client pays the lawyer's price to the COMPANY's account only — the Kaspi
     # Pay link of the ТОО (PAYMENT_KASPI_PAY_LINK, https://…) or the company's requisites below (name, tax number, IBAN,
     # bank as plain text). Never the Kaspi Gold of PAYMENT_KASPI_PHONE: with neither set, lawyer payment is off.
     # The platform keeps LAWYER_COMMISSION_PCT of the price; payouts to lawyers are manual in the pilot.
     lawyer_payment_account: str = ""
     lawyer_commission_pct: float = 15.0
+    # «Юрист по кнопке», owner 01.10 «15 % по счёту ТОО раз в месяц»: the client pays the lawyer directly (the lawyer
+    # sends the contract and the bill); the lawyer marks «оплачено клиентом» and pays the platform 15 % monthly by the
+    # company's bill. Off — the client pays the lawyer's price to the company's account (PR #105).
+    lawyer_pay_direct: bool = False
     # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
     # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
     # them. Telegram users are reachable in the bot and are not asked.
     # owner 01.10 («3 клика»): no separate contact code before paying — the person is identified by the ЭЦП /
     # eGov Mobile signature of the document; true brings the code back
     payment_requires_contact: bool = False
-    # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
+    # Plans. A document costs the scenario price (2 990 ₸, owner 02.10) and unlocks one document; «Дело под ключ» unlocks every
     # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
     plan_case_price: int = 9990
+    # owner 01.10: with the Kaspi Pay link «Оплатить» gives the document at once; the desk matches the payment in /ops
+    # («Не найдена» → the person owes it and gets no new document until paid). false → only after the desk confirms
+    payment_trust_kaspi_link: bool = True
+    # owner 02.10 «пока не настроим платёжку — выдаём документы на доверии»: «Я оплатил(а)» gives the document at once
+    # for EVERY way to pay (transfer, Kaspi QR, Kaspi bill, company bill), not only the Kaspi Pay link; the desk still
+    # matches each bill in /ops. false → only the Kaspi Pay link is trusted (PAYMENT_TRUST_KASPI_LINK)
+    payment_trust_all: bool = True
+    # owner 02.10 «Бонусный счёт»: an invited person gets REFERRAL_BONUS_POINTS on joining by the link, the inviter as
+    # many once that person first pays; points pay at most REFERRAL_BONUS_MAX_SHARE of a document bill. 0 → the old
+    # reward (one free document to each)
+    referral_bonus_points: int = 1000
+    referral_bonus_max_share: float = 0.5
     plan_biz_price: int = 29990
     plan_biz_documents: int = 20
     plan_bizpro_price: int = 59990
@@ -182,6 +214,11 @@ class Settings(BaseSettings):
     zann_corpus_statuses: str = "in_force"  # in_force | in_force,lost (acts that lost force, after all in force)
     zann_corpus_refresh_days: int = 30  # walk the listings again and re-read texts older than this (0 = never)
     zann_corpus_tz: str = "Asia/Almaty"  # the portal's time zone: ZANN_CORPUS_HOUR is local time there
+    # Nightly pass over recently changed acts (the index sorted by the date of change): once a day, the first run
+    # after ZANN_CORPUS_RECENT_HOUR local time (-1 = off) reads at most ZANN_CORPUS_RECENT_PAGES pages of 100 acts
+    # and puts new and changed acts at the head of the queue; the 30-day walk (ZANN_CORPUS_REFRESH_DAYS) stays.
+    zann_corpus_recent_hour: int = 2
+    zann_corpus_recent_pages: int = 20
     # Zann court practice (konsilier/zann/court.py, docs/zann-court.md; owner 01.10.2026): what a country's courts
     # publish openly — sources, categories and anonymisation rules are pack data (packs/<cc>/zann/court.yaml,
     # anonymize.yaml); originals and texts gzip under zann/court/ in our storage only. Off by default.

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAST_CASE_KEY } from "@/components/AppNav";
 import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
@@ -46,7 +47,18 @@ function splitReply(text: string): [string, string | null] {
   return [text, null];
 }
 
-/** A reply: the short answer, and «Подробнее» that opens the details in place. */
+/** The question a reply ends with (konsilier/chat.py: one clarifying question, after the details) stays visible
+ * under «Подробнее» instead of hiding in the details: [the details without it, the question]. */
+function closingQuestion(details: string): [string | null, string | null] {
+  const paras = details.trim().split(/\n\s*\n/);
+  const last = paras[paras.length - 1].trim();
+  if (!/\?[*_»"')]*$/.test(last) || last.length > 300 || /^\s*(\d+[.)]|[-*•])\s/.test(last)) {
+    return [details, null];
+  }
+  return [paras.length > 1 ? paras.slice(0, -1).join("\n\n") : null, last];
+}
+
+/** A reply: the short answer, «Подробнее» that opens the details in place, and the closing question. */
 function Reply({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -57,7 +69,8 @@ function Reply({ text, streaming = false }: { text: string; streaming?: boolean 
     const shown = (m ? cleaned.slice(0, m.index) : cleaned).replace(MORE_TAIL, "").trimEnd();
     return shown ? <Markdown text={shown} /> : null;
   }
-  const [short, rest] = splitReply(cleaned);
+  const [short, details] = splitReply(cleaned);
+  const [rest, ask] = details ? closingQuestion(details) : [null, null];
   return (
     <>
       <Markdown text={short} />
@@ -67,6 +80,7 @@ function Reply({ text, streaming = false }: { text: string; streaming?: boolean 
           {t("chat.more")}<Icon name="chevronDown" size={16} />
         </button>
       ))}
+      {ask && <Markdown text={ask} />}
     </>
   );
 }
@@ -107,6 +121,8 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const { lang } = useLang();
   const [caseId, setCaseId] = useState(initialCase);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // P0 02.10: the paid document of the case — the card «Услуга / Стоимость / Оплатить» under the last reply
+  const [docOffer, setDocOffer] = useState<{ title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean } | null>(null);
   const [streaming, setStreaming] = useState<string | null>(null);
   // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
   const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[] } | null>(null);
@@ -114,6 +130,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<(Emergency & { text: string }) | null>(null);
   const [draft, setDraft] = useState(initialDraft);
@@ -129,8 +146,16 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
   useEffect(() => {
     if (initialCase) markTermsAccepted();  // an existing conversation: the terms were accepted with it
-    if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => setError(errorText(e)));
-  }, [initialCase]);
+    if (initialCase) chatHistory(initialCase).then(setMessages).catch((e) => {
+      // a remembered conversation of another account or session (e.g. after signing in): start a new one quietly
+      if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
+        try { if (localStorage.getItem(LAST_CASE_KEY) === initialCase) localStorage.removeItem(LAST_CASE_KEY); } catch {}
+        router.replace("/start");
+        return;
+      }
+      setError(errorText(e));
+    });
+  }, [initialCase, router]);
 
   useEffect(() => setTts(canSpeak()), []);
   useEffect(() => {
@@ -273,9 +298,22 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
     () => [...fromScenarios, ...fallback.filter((e) => !fromScenarios.includes(e))].slice(0, 4),
     [fromScenarios, fallback]);
 
-  // the document is offered under the latest reply that offers it, and only while nothing was said after it
+  // once the document was offered, the card stays under the latest reply until the document is paid (P0 02.10)
   const last = messages[messages.length - 1];
-  const offerId = streaming === null && last?.role === "assistant" && last.offer_document ? last.id : null;
+  // …and already under the first reply once the case's scenario is known (owner 01.10: the situation is clear)
+  const offered = messages.some((m) => m.role === "assistant" && m.offer_document) || !!docOffer?.title;
+  const offerId = streaming === null && last?.role === "assistant" && offered && !docOffer?.paid ? last.id : null;
+  const lastId = last?.id;
+  useEffect(() => {
+    if (!caseId || streaming !== null) return;
+    type Offer = { title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean };
+    let live = true;
+    const get = () => api<Offer>(`/v1/cases/${caseId}/chat/document`).then((o) => { if (live) setDocOffer(o); }).catch(() => {});
+    get();
+    // the scenario of a new chat is worked out in the background after the first reply: look again shortly
+    const again = setTimeout(get, 5000);
+    return () => { live = false; clearTimeout(again); };
+  }, [caseId, lastId, streaming]);
 
   const links: MoreLink[] = [
     ...(caseId ? [{ href: `/case/${caseId}`, icon: "document" as IconName, label: `${t("chat.doc")} · ${t("chat.docPrice")}` }] : []),
@@ -339,7 +377,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                   <li key={e}>
                     <button type="button" onClick={() => { setDraft(e); document.getElementById("chat-input")?.focus(); }}
                       className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-[var(--chat-in-bg)] px-4 py-3 text-start text-[17px] font-medium shadow-[var(--chat-shadow)] text-ink hover:bg-sand-deep">
-                      <Icon name="chat" size={20} className="shrink-0 text-muted" />{e}
+                      <Icon name="chat" size={20} className="shrink-0 text-muted" /><span className="text-balance">{e}</span>
                     </button>
                   </li>
                 ))}
@@ -382,11 +420,21 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                 </ul>
               )}
               {m.id === offerId && caseId && (
-                // an action inside the reply, as business chats do: one clear button
-                <Link href={`/case/${caseId}`}
-                  className="flex min-h-12 w-full flex-col items-center justify-center rounded-xl bg-[var(--chat-action-bg)] px-3 py-2 text-center hover:opacity-90">
-                  <span className="font-semibold text-[var(--chat-accent)]">{t("chat.doc")}</span>
-                </Link>
+                // the owner's card: «Услуга / Стоимость / [Оплатить]» — straight to payment in the case
+                <div className="space-y-2 rounded-xl bg-surface p-3 ring-1 ring-line">
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                    <dt className="text-muted">{t("chat.docService")}</dt>
+                    <dd className="text-end font-semibold text-balance">{docOffer?.title ?? t("chat.doc")}</dd>
+                    <dt className="text-muted">{t("chat.docCost")}</dt>
+                    <dd className="whitespace-nowrap text-end font-semibold tabular-nums">
+                      {docOffer?.price && !docOffer.price_from ? `${docOffer.price.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${docOffer.currency ?? ""}`.trim() : t("chat.docPrice")}
+                    </dd>
+                  </dl>
+                  <Link href={`/case/${caseId}?pay=1`}
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-action px-4 text-base font-semibold text-white hover:bg-action-hover">
+                    <Icon name="coin" size={20} />{t("chat.docPay")}
+                  </Link>
+                </div>
               )}
             </Bubble>
           )];
@@ -416,7 +464,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
               </Bubble>
             )}
             <button type="button" onClick={retryFailed} disabled={busy}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--chat-in-bg)] px-4 text-sm font-semibold shadow-[var(--chat-shadow)] hover:text-brand disabled:opacity-50">
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--chat-in-bg)] px-4 text-sm font-semibold shadow-[var(--chat-shadow)] hover:text-brand disabled:opacity-50">
               <Icon name="send" size={16} />{t("chat.retry")}
             </button>
           </div>

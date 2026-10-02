@@ -18,7 +18,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
     return (
       <>
         <Sidebar />
-        <div className="flex min-h-screen flex-1 flex-col lg:ps-64">
+        <div className="flex min-h-[var(--app-h,100dvh)] flex-1 flex-col lg:ps-64">
           <AppTopBar />
           <main id="main" className="mx-auto w-full max-w-4xl flex-1 px-5 pt-6 pb-28 md:pt-10 lg:px-10 lg:pb-12">{children}</main>
         </div>

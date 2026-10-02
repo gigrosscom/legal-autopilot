@@ -146,3 +146,49 @@ def test_gemini_next_model_on_quota_then_unavailable():
         raise AssertionError("expected TranscribeFailed")
     except TranscribeFailed:
         pass
+
+
+# ---- live text while speaking (owner 01.10, iPhone app): partial=1 ---------------------------------------------
+def _partial(client, token, **kw):
+    return client.post("/v1/transcribe", files={"file": ("voice.m4a", b"\x00\x00ftypM4A", "audio/mp4")},
+                       data={"lang": "kk", "partial": "true"}, headers={"Authorization": f"Bearer {token}"}, **kw)
+
+
+def test_partial_goes_to_the_fast_transcriber_with_its_own_limits(ctx):
+    final, fast = FakeTranscriber("финал"), FakeTranscriber("Сатушы ақшаны")
+    ctx.container.transcriber, ctx.container.partial_transcriber = final, fast
+    ctx.container.transcribe_limits = (SlidingLimiter(1), SlidingLimiter(1))
+    ctx.container.partial_limits = (SlidingLimiter(5), SlidingLimiter(5))
+    tok = _token(ctx.client)
+    assert [_partial(ctx.client, tok).json()["text"] for _ in range(3)] == ["Сатушы ақшаны"] * 3
+    assert fast.calls[0][1:] == ("audio/mp4", "kk") and final.calls == []
+    # the live text does not use up the final transcriptions, and the final one still goes to Gemini
+    assert _post(ctx.client, tok).json() == {"text": "финал"}
+    assert [_partial(ctx.client, tok).status_code for _ in range(3)] == [200, 200, 429]
+
+
+def test_partial_without_groq_uses_the_same_transcriber(ctx):
+    ctx.container.transcriber, ctx.container.partial_transcriber = FakeTranscriber("жарайды"), None
+    assert _partial(ctx.client, _token(ctx.client)).json() == {"text": "жарайды"}
+
+
+def test_groq_whisper_request():
+    from konsilier.transcribe import GroqWhisperTranscriber
+
+    seen = []
+
+    def handler(req):
+        seen.append(req)
+        return httpx.Response(200, json={"text": " Купил телевизор "})
+    t = GroqWhisperTranscriber("gk", http=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert t.transcribe(b"abc", "audio/mp4", "kk") == "Купил телевизор"
+    req = seen[0]
+    assert req.url.path.endswith("/audio/transcriptions") and req.headers["authorization"] == "Bearer gk"
+    body = req.content.decode("latin-1")
+    assert 'name="language"' in body and "kk" in body and "whisper-large-v3-turbo" in body and 'filename="voice.m4a"' in body
+    busy = GroqWhisperTranscriber("gk", http=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(429))))
+    try:
+        busy.transcribe(b"a", "audio/webm", "ru")
+        raise AssertionError("expected TranscribeUnavailable")
+    except TranscribeUnavailable:
+        pass

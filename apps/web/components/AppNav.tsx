@@ -59,7 +59,7 @@ export function TabBar({ inline = false }: { inline?: boolean }) {
   const signed = useSignedIn();
   return (
     <nav aria-label={t("nav.main")}
-      className={`${inline ? "" : "fixed inset-x-0 bottom-0 z-30"} border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden`}>
+      className={`${inline ? "" : "fixed inset-x-0 bottom-[var(--app-gap,0px)] z-30"} border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden`}>
       <ul className="mx-auto grid max-w-lg grid-cols-5">
         {tabs.map((tab) => {
           const on = tab.match(path);
@@ -126,7 +126,7 @@ export function Sidebar() {
       )}
       <div className="mt-auto space-y-3 border-t border-line pt-4">
         {signed === false && (
-          <SignInLink className="btn-ghost min-h-10 w-full justify-center gap-2 text-sm" />
+          <SignInLink className="btn-ghost min-h-11 w-full justify-center gap-2 text-sm" />
         )}
         <LangSelect />
         <Link href="/" className="flex min-h-10 items-center justify-between rounded-xl px-3 text-sm text-ink-soft hover:bg-sand-deep">
@@ -146,7 +146,7 @@ export function AppTopBar() {
         <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
         <div className="flex items-center gap-1">
           {signed === false && (
-            <SignInLink className="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-brand hover:bg-ink/[0.05]" />
+            <SignInLink className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-brand hover:bg-ink/[0.05]" />
           )}
           <NotificationBell />
           <LangSelect />

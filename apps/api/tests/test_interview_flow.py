@@ -23,8 +23,11 @@ def test_documents_come_first_and_take_several_files(ctx):
     _, second = _upload(api, cid, "receipt", "photo.txt", "Фото чека".encode())
     assert second["case"]["question"]["field"] == "evidence" and second["case"]["question"]["uploaded"] == 2
     api.answer(cid, "готово")
-    body = run_intake(api, cid, STORY)
-    assert body["question"]["field"] == "identity_document"  # then the story, then personal data
+    body = api.get(f"/v1/cases/{cid}").json()
+    while body["question"] and body["question"]["field"] in STORY:  # the story's questions
+        body = api.answer(cid, STORY[body["question"]["field"]])["case"]
+    # then personal data; no ID copy for a claim to a seller (lawyer 01.10, D-18)
+    assert body["question"]["field"].startswith("applicant_")
     assert not any(f["field"].startswith("applicant_") for f in body["facts"])
 
 
@@ -60,14 +63,16 @@ def test_a_document_fills_the_case_and_is_not_asked_again(ctx):
 def test_identity_document_never_reaches_the_llm_and_fills_the_iin(ctx):
     api = web_user(ctx)
     cid = api.post("/v1/cases", expect=201, json={"text": REFUND, "country": "KZ"})["case"]["id"]
-    run_intake(api, cid, {**STORY, "evidence": "пропустить"})
+    body = api.answer(cid, "пропустить")["case"]  # no documents
+    while body["question"] and body["question"]["field"] in STORY:
+        body = api.answer(cid, STORY[body["question"]["field"]])["case"]
     calls = len(ctx.llm.calls)
     id_text = "УДОСТОВЕРЕНИЕ ЛИЧНОСТИ\nИВАНОВ ИВАН ИВАНОВИЧ\nИИН 900101300123\nМВД РК".encode()
     up, conf = _upload(api, cid, "id_document", "id.txt", id_text)
     assert len(ctx.llm.calls) == calls  # nothing about the ID went to the model
     assert up["evidence"]["extracted_facts"] == {"applicant_iin": "900101300123"}
-    assert conf["case"]["question"]["field"] == "identity_document"
-    body = run_intake(api, cid, {"identity_document": "готово", "applicant_name": "Иванов Иван Иванович",
+    # the claim to a seller does not ask for the ID (D-18), but one uploaded anyway still fills the IIN, unread
+    body = run_intake(api, cid, {"applicant_name": "Иванов Иван Иванович",
                                  "applicant_address": "Алматы, ул. Абая 1", "applicant_phone": "+7 701 123 45 67"})
     assert body["status"] == "qualified"  # the IIN question is not asked: it came from the ID
     a = api.post(f"/v1/cases/{cid}/actions/next")["case"]["actions"][0]
@@ -77,7 +82,8 @@ def test_identity_document_never_reaches_the_llm_and_fills_the_iin(ctx):
 
 def _motion_case(api, text):
     created = api.post("/v1/cases", expect=201, json={"text": text, "country": "KZ"})
-    return created["case"]["id"], {o["id"] for o in created["case"]["coverage"]["options"]}, created["case"]
+    cov = created["case"]["coverage"]  # the system's recipient and «Другой адресат» (owner 02.10)
+    return created["case"]["id"], {o["id"] for o in cov["options"] + cov["other_forums"]}, created["case"]
 
 
 ANSWERS = {"applicant_name": "Иванов Иван Иванович", "applicant_iin": "пропустить",
@@ -106,9 +112,11 @@ def test_motion_in_court_waits_for_a_lawyer(ctx):
     hide_scenarios(ctx, "kz.labor.")
     api = web_user(ctx)
     created = api.post("/v1/cases", expect=201, json={
-        "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге", "country": "KZ"})
+        "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге. Дело уже в суде, "
+                "номер дела 7599-26", "country": "KZ"})
     cid = created["case"]["id"]
-    assert "kz.court.pending" in {o["id"] for o in created["case"]["coverage"]["options"]}
+    # «the court where your case is» only when the person says the matter is in court (PM 02.10); never by the system
+    assert "kz.court.pending" in {o["id"] for o in created["case"]["coverage"]["other_forums"]}
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.pending"})["case"]
     answers = {**ANSWERS, "respondent_name": "ТОО «Ромашка»", "amount": "450000"}
     q = case["question"]
@@ -126,7 +134,7 @@ def test_solution_is_proposed_right_after_the_story(ctx):
     assert plan["document"] == "Претензия продавцу о возврате денег"
     assert {c["kind"] for c in plan["channels"]} >= {"in_person", "post"}
     assert "Чек или квитанция об оплате" in plan["attachments"]  # asked for up front
-    assert "Копия удостоверения личности" in plan["attachments"]
+    assert "Копия удостоверения личности" not in plan["attachments"]  # lawyer 01.10, D-18: not needed here
     assert plan["lawyer_check"] is False
 
 

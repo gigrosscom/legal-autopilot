@@ -163,8 +163,13 @@ def lawyer_request_view(session: Session, container: Container, req: LawyerReque
             "commission_pct": float(inv.commission_pct) if inv is not None and inv.commission_pct is not None
             else container.engine.config.lawyer_commission_pct,
             "summary": _summary(container, case), "client": None}
-    if req.status in ("paid", "closed"):  # contacts only once the client paid
+    direct = container.engine.config.lawyer_pay_direct
+    # contacts once the client paid — or, when paid directly, once the lawyer accepted (they send the contract)
+    if req.status in ("paid", "closed") or (direct and req.status == "accepted"):
         view["client"] = {"name": req.full_name, "phone": req.phone, "email": req.email}
+    view["direct"] = direct
+    if direct and req.status == "paid" and req.price is not None:
+        view["commission"] = float(pilot.commission(pilot.money(req.price), container.engine.config.lawyer_commission_pct))
     return view
 
 
@@ -195,7 +200,9 @@ def _answer(req_id: int, accept: bool, user: User, session: Session, container: 
     notify_team(container, f"«Юрист по кнопке»: юрист {pilot.lawyer_name(app)} "
                            f"{'принял' if accept else 'отклонил'} запрос №{req.id}",
                 f"Дело: {req.case_id}\nКлиент: {req.full_name}, тел. {req.phone}\n"
-                + ("Клиент оплачивает цену юриста на счёт компании; подтвердите оплату в оперативном центре."
+                + (("Клиент платит юристу напрямую по его договору и счёту; юрист отметит «оплачено клиентом»."
+                    if container.engine.config.lawyer_pay_direct else
+                    "Клиент оплачивает цену юриста на счёт компании; подтвердите оплату в оперативном центре.")
                    if accept else "Клиент может выбрать другого юриста."), desk="clients",
                 test=session.get(User, req.user_id).is_test)
     session.flush()
@@ -208,21 +215,39 @@ def accept_request(req_id: int, user: User = Depends(current_user), session: Ses
     return _answer(req_id, True, user, session, container)
 
 
+@router.post("/lawyer/requests/{req_id}/client-paid")
+def client_paid(req_id: int, user: User = Depends(current_user), session: Session = Depends(get_session),
+                container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Paid directly (owner 01.10): the lawyer marks that the client paid them; 15 % is due to the platform monthly."""
+    req = _own_request(session, user, req_id)
+    try:
+        fee = pilot.mark_client_paid(session, container.engine, req, f"lawyer:{user.id}")
+    except pilot.PilotError as e:
+        raise _err(e) from e
+    app = session.get(LawyerApplication, req.application_id)
+    notify_team(container, f"«Юрист по кнопке»: клиент оплатил юристу {pilot.lawyer_name(app)} (запрос №{req.id})",
+                f"Дело: {req.case_id}\nЦена: {req.price}\nКомиссия платформы к счёту за месяц: {fee}", desk="clients",
+                test=session.get(User, req.user_id).is_test)
+    session.flush()
+    return lawyer_request_view(session, container, req)
+
+
 @router.post("/lawyer/requests/{req_id}/decline")
 def decline_request(req_id: int, user: User = Depends(current_user), session: Session = Depends(get_session),
                     container: Container = Depends(get_container)) -> dict[str, Any]:
     return _answer(req_id, False, user, session, container)
 
 
-def _dossier_case(session: Session, user: User, case_id: uuid.UUID) -> tuple[Case, LawyerRequest]:
+def _dossier_case(session: Session, user: User, case_id: uuid.UUID, direct: bool = False) -> tuple[Case, LawyerRequest]:
     """The case, only for the lawyer it is assigned to and only once the client paid for the lawyer's work."""
     ids = {a.id for a in _lawyer_apps(session, user)}
     case = session.get(Case, case_id)
     if case is None or case.lawyer_user_id != user.id or case.lawyer_application_id not in ids:
         raise HTTPException(403, {"code": "not_your_case", "message": "not_your_case"})
+    open_statuses = ("accepted", "paid", "closed") if direct else ("paid", "closed")  # direct: from «принял»
     req = session.scalar(select(LawyerRequest).where(
         LawyerRequest.case_id == case.id, LawyerRequest.application_id == case.lawyer_application_id,
-        LawyerRequest.status.in_(("paid", "closed"))).order_by(LawyerRequest.id.desc()).limit(1))
+        LawyerRequest.status.in_(open_statuses)).order_by(LawyerRequest.id.desc()).limit(1))
     if req is None:
         raise HTTPException(403, {"code": "not_paid", "message": "not_paid"})
     return case, req
@@ -235,7 +260,7 @@ def dossier(case_id: uuid.UUID, user: User = Depends(current_user), session: Ses
     from .lawyers import _lawyer_block
     from .views import case_view
 
-    case, req = _dossier_case(session, user, case_id)
+    case, req = _dossier_case(session, user, case_id, container.engine.config.lawyer_pay_direct)
     view = case_view(container.engine, session, case)
     story = [m.text for m in session.scalars(select(ChatMessage).where(
         ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()]
@@ -261,7 +286,7 @@ def dossier(case_id: uuid.UUID, user: User = Depends(current_user), session: Ses
 @router.get("/lawyer/cases/{case_id}/evidence/{evidence_id}")
 def dossier_evidence(case_id: uuid.UUID, evidence_id: uuid.UUID, user: User = Depends(current_user),
                      session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    case, _ = _dossier_case(session, user, case_id)
+    case, _ = _dossier_case(session, user, case_id, container.engine.config.lawyer_pay_direct)
     ev = session.get(Evidence, evidence_id)
     if ev is None or ev.case_id != case.id or not ev.storage_key:
         raise HTTPException(404, "evidence not found")
@@ -281,7 +306,10 @@ def pilot_admin_view(session: Session, container: Container, a: LawyerApplicatio
             "status": a.status, "ecp_verified": bool(a.iin_hash), "has_account": a.user_id is not None,
             "pilot": bool(a.pilot), "price": float(a.price) if a.price is not None else None,
             "price_note": a.price_note or "", "listed": pilot.is_pilot_lawyer(a),
-            "requests": {s: sum(1 for r in reqs if r.status == s) for s in ("new", "accepted", "declined", "paid")}}
+            "requests": {s: sum(1 for r in reqs if r.status == s) for s in ("new", "accepted", "declined", "paid")},
+            # paid directly: what the lawyer owes the platform (15 % of the requests marked «оплачено клиентом»)
+            "commission_due": float(sum(pilot.commission(pilot.money(r.price), container.engine.config.lawyer_commission_pct)
+                                        for r in reqs if r.status == "paid" and r.invoice_id is None and r.price is not None))}
 
 
 @admin_router.get("/pilot-lawyers")
@@ -292,6 +320,7 @@ def pilot_lawyers(session: Session = Depends(get_session),
                            .order_by(LawyerApplication.id)).all()
     ch = pilot.channel(container.engine)
     return {"lawyers": [pilot_admin_view(session, container, a) for a in rows],
+            "direct": container.engine.config.lawyer_pay_direct,
             "commission_pct": container.engine.config.lawyer_commission_pct,
             "payment_available": ch is not None,
             "payment_channel": ["kaspi_pay_link"] * ("kaspi_pay_link" in (ch or {}))

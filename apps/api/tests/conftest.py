@@ -24,6 +24,19 @@ os.environ.setdefault("EXPERIMENTAL_SCENARIOS", "true")
 os.environ.setdefault("BETA_SCENARIOS_OFF", "")  # tests cover every beta scenario; production keeps study and visas off
 
 
+# Keys of outside services that a test run must never use, whatever the machine running it has set: tests talk to
+# fakes only (a run in a session with RESEND_API_KEY set sent real e-mail — 02.10).
+OUTSIDE_KEYS = ("RESEND_API_KEY", "SMTP_HOST", "GEMINI_API_KEY", "GROQ_API_KEY", "CEREBRAS_API_KEY",
+                "ANTHROPIC_API_KEY", "KONSILIER_ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "SMS_API_KEY",
+                "MOBIZON_API_KEY", "TELEGRAM_BOT_TOKEN")
+
+
+@pytest.fixture(autouse=True)
+def _no_outside_services(monkeypatch):
+    for key in OUTSIDE_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+
 @pytest.fixture
 def packs_dir(tmp_path: Path) -> Path:
     """Real packs + the test-only XX pack, in a temp dir."""
@@ -48,6 +61,8 @@ def ctx(tmp_path: Path, packs_dir: Path):
         llm_provider="mock", soffice_bin="", admin_token="adm", bot_api_secret="bot",
         approval_required_first_n=50, scheduler_interval_seconds=0, qualify_min_confidence=0.6,
         smtp_host=None, payment_mode="stub", background_jobs="off",
+        resend_api_key=None,  # never real e-mail from a test run, whatever the environment has (it did send — 02.10)
+        payment_trust_all=False,  # the desk's path; trust for every way has its own test (test_payment_ways.py)
         intake_max_questions=0, extract_images_with_llm=False, payment_requires_contact=True,  # the full interview; the cap has its own tests
     )
     llm = HeuristicMockProvider()

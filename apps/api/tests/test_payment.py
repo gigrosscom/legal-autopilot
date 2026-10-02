@@ -68,18 +68,18 @@ def test_manual_transfer_full_path(ctx):
     ctx.container.email_sender = outbox
     api, cid = qualified_case(ctx)
 
-    # first try: no document; the person chooses one document (1 990 ₸) or «Дело под ключ» (9 990 ₸)
+    # first try: no document; the person chooses one document (2 990 ₸) or «Дело под ключ» (9 990 ₸)
     out = api.post(f"/v1/cases/{cid}/actions/next")
     assert out["action_id"] is None and out["case"]["status"] == "qualified" and out["case"]["actions"] == []
     assert out["payment"]["status"] == "none" and out["payment"]["code"] is None
-    assert out["payment"]["options"] == [{"purpose": "document", "amount": 1990}, {"purpose": "case", "amount": 9990}]
+    assert out["payment"]["options"] == [{"purpose": "document", "amount": 2990}, {"purpose": "case", "amount": 9990}]
     # a bill only once the phone is confirmed: the document and the reminders reach the person
     r = ctx.client.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
     assert r.status_code == 422 and r.json()["detail"] == {"code": "contact_required", "message": "contact_required",
                                                            "methods": ["phone"]}
     confirm(api)
     pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
-    assert pay["amount"] == 1990 and pay["currency"] == "KZT" and pay["status"] == "pending"
+    assert pay["amount"] == 2990 and pay["currency"] == "KZT" and pay["status"] == "pending"
     assert pay["purpose"] == "document"
     assert pay["recipient_name"] == RECIPIENT and pay["kaspi_phone"] == PHONE and pay["code"].startswith("KA-")
     # asking again keeps the same invoice
@@ -96,7 +96,7 @@ def test_manual_transfer_full_path(ctx):
     cl = operator(ctx, "support@konsilier.com")
     assert cl.get("/v1/ops/me").json()["new"]["clients"] == 1
     rows = cl.get("/v1/ops/clients/payments").json()
-    assert [r["code"] for r in rows] == [pay["code"]] and rows[0]["amount"] == 1990
+    assert [r["code"] for r in rows] == [pay["code"]] and rows[0]["amount"] == 2990
     assert ctx.client.get("/v1/ops/clients/payments", headers=api.h).status_code == 403
     nf = cl.post(f"/v1/ops/clients/payments/{rows[0]['id']}", json={"decision": "not_found"})
     assert nf["status"] == "not_found"
@@ -162,11 +162,11 @@ def test_stub_mode_pays_at_once_and_universal_path_is_priced(ctx):
     cid2, _ = _universal_case(api)
     case2 = api.post(f"/v1/cases/{cid2}/forum", json={"forum_id": "kz.labor_inspection"})["case"]
     assert case2["scenario"]["id"].startswith("kz.generic.")
-    assert case2["scenario"]["price"] == {"amount": 1990, "currency": "KZT", "model": "fixed"}
+    assert case2["scenario"]["price"] == {"amount": 2990, "currency": "KZT", "model": "fixed"}
 
 
 def test_one_document_or_the_whole_case(ctx):
-    """1 990 ₸ pays for one document; «Дело под ключ» for every document of the case; switching the choice before
+    """2 990 ₸ pays for one document; «Дело под ключ» for every document of the case; switching the choice before
     paying cancels the first bill."""
     manual(ctx)
     api, cid = qualified_case(ctx)

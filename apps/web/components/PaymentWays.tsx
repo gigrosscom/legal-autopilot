@@ -111,3 +111,44 @@ export function PaymentWays({ pay, busy, amount, copy, transfer, onWay }: {
     </div>
   );
 }
+
+/** True when the server offers the Kaspi Pay link (and at most the plain transfer and a company bill): then the
+ *  window is the owner's three lines (01.10) — Услуга, Стоимость, «Оплатить». */
+export function kaspiOneTap(pay: Payment): boolean {
+  const ways = pay.ways ?? [];
+  return ways.some((w) => w.id === "kaspi_link" && w.url)
+    && ways.every((w) => w.id === "kaspi_link" || w.id === "bank_invoice" || w.id === "kaspi_transfer");
+}
+
+/** «Оплатить»: silently copies the amount (digits) for pasting in Kaspi Pay, sends the bill to the clients desk (as
+ *  «Я оплатил(а)» did) and opens the Kaspi Pay link — one link for every product; the document is given on return,
+ *  the desk matches the payment by amount and time (no payment code for the client). */
+export function KaspiOneTap({ pay, busy, price, onWay }: {
+  pay: Payment; busy: boolean; price: string; onWay: (body: WayBody, then?: "claim" | "bill") => void;
+}) {
+  const t = useT();
+  const url = pay.ways?.find((w) => w.id === "kaspi_link")?.url ?? "";
+  const waiting = pay.status === "awaiting_confirmation";
+  const pressed = () => {
+    navigator.clipboard?.writeText(String(Math.round(Number(pay.amount)))).catch(() => {});
+    if (!waiting) onWay({ way: "kaspi_link" }, "claim");
+  };
+  return (
+    <div className="space-y-4">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[17px]">
+        <dt className="text-muted">{t("payment.service")}</dt>
+        <dd className="font-semibold">{t(pay.purpose === "case" ? "payment.serviceCase" : "payment.serviceDocument")}</dd>
+        <dt className="text-muted">{t("payment.cost")}</dt>
+        <dd className="text-xl font-semibold tabular-nums">{price}</dd>
+      </dl>
+      {waiting ? (
+        <p className="text-sm text-muted">{t("payment.afterPay")}</p>
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer" onClick={pressed} aria-disabled={busy}
+          className={`btn-primary btn-lg min-h-14 w-full text-[18px] font-semibold ${busy ? "pointer-events-none opacity-60" : ""}`}>
+          {t("payment.paid")}
+        </a>
+      )}
+    </div>
+  );
+}
