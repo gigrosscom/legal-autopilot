@@ -99,6 +99,21 @@ def abuse_reason(session: Session, cov: Coverage | None, case: Case) -> str | No
     return None
 
 
+def _says_any(markers: dict[str, tuple[str, ...]], text: str) -> bool:
+    def words(t: str) -> str:
+        return " ".join(re.findall(r"\w+", t.lower()))
+
+    low = words(text)
+    return any(re.search(r"(?<!\w)" + re.escape(words(m)) + r"(?!\w)", low)
+               for ms in markers.values() for m in ms if words(m))
+
+
+def matter_pending(cov: Coverage | None, text: str) -> bool:
+    """The person says the matter is already in a court or with the police (routing.pending_markers, whole
+    words): only then a motion to «the court where your case is» is offered."""
+    return cov is not None and bool(text) and _says_any(cov.routing.pending_markers, text)
+
+
 def writes_as_business(cov: Coverage | None, text: str) -> bool:
     """The person writes as a sole trader or a company about a dispute with a business (routing.business_markers,
     whole words): consumer-protection scenarios do not apply to them."""

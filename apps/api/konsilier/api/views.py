@@ -39,7 +39,8 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
             d = cov.dispute(tax["dispute_id"])
             out["dispute"] = {"id": d.id, "title": pack.localized(d.title, lang), "branch": d.branch}
         if case.forum_id in cov.forums:
-            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
+            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang,
+                                               cov.disputes.get(tax.get("dispute_id")))
         if cov.routing.upl_notice:
             out["upl_notice"] = pack.localized(cov.routing.upl_notice.text, lang)
     out["reasons"] = [{"code": r, "label": pack.t(lang, f"routing.reasons.{r}", default=r)}

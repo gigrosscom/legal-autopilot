@@ -200,6 +200,16 @@ class Forum(_Strict):
     source: str
     verified_at: date | None = None
     verified_by: str | None = None
+    # place in the «Куда подать» list (smaller first): the pre-trial step, then the authority or court, then optional ways
+    order: int = 50
+    # only where proceedings already run (a motion to the court or police handling the matter): offered only when the
+    # person says so (routing.pending_markers)
+    pending_only: bool = False
+    # disputes / branches where this pre-trial step is required by law or usual contract (court returns the claim
+    # without it): shown as «досудебный шаг — без него суд вернёт иск»; otherwise as voluntary settlement
+    mandatory_for: tuple[str, ...] = ()
+    # what the person should know about this forum for a dispute type or branch: term, competent court, norm
+    hints: dict[str, Localized] = Field(default_factory=dict)
 
     @field_validator("id")
     @classmethod
@@ -303,3 +313,6 @@ class Routing(_Strict):
     # the person writes as a business (sole trader, company) about a dispute with a business: consumer law does not
     # apply; lang → phrases, matched on whole words
     business_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # the matter is already in a court or with the police (case number, hearing, investigator): only then the forums
+    # marked pending_only are offered; lang → phrases, matched on whole words
+    pending_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)

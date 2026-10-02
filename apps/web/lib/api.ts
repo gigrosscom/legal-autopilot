@@ -262,6 +262,10 @@ export type ForumOption = {
   verified: boolean;
   channels: string[];
   deadline_known: boolean;
+  /** A step to the other side itself: required before court (mandatory) or voluntary settlement. */
+  pretrial?: "mandatory" | "voluntary" | null;
+  /** What to know for this dispute: term, competent court, norm. */
+  hint?: string | null;
 };
 
 export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };

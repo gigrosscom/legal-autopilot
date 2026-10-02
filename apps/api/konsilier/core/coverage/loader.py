@@ -51,9 +51,12 @@ class Coverage:
     def dispute(self, dispute_id: str) -> DisputeType:
         return self.disputes[dispute_id]
 
-    def candidate_forums(self, dispute: DisputeType, role: str) -> list[Forum]:
-        """First-instance forums that accept this dispute and role."""
-        return [f for f in self.forums.values() if f.instance != "appeal" and f.accepts_case(dispute, role)]
+    def candidate_forums(self, dispute: DisputeType, role: str, pending: bool = False) -> list[Forum]:
+        """First-instance forums that accept this dispute and role, in the pack's order; forums where proceedings
+        already run only when `pending` (the person said the matter is in a court or with the police)."""
+        found = [f for f in self.forums.values() if f.instance != "appeal" and f.accepts_case(dispute, role)
+                 and (pending or not f.pending_only)]
+        return sorted(found, key=lambda f: f.order)
 
     def escalation_chain(self, forum_id: str, dispute: DisputeType, role: str) -> list[Forum]:
         """Forums reached by following appeals_to from forum_id (first accepting target each step)."""

@@ -371,7 +371,8 @@ class CaseEngine:
             result = {**result, "dispute_id": fallback, "role": "business",
                       "confidence": max(float(result.get("confidence") or 0), cov.routing.min_confidence)}
         self._save_vault(case, llm)
-        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake)
+        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake,
+                                          pending=safety.matter_pending(cov, text))
         case.jurisdiction = case.jurisdiction or pack.country
         case.taxonomy = route.to_taxonomy()
         case.route_reasons = route.reasons
@@ -395,13 +396,21 @@ class CaseEngine:
             return self.choose_forum(session, case, route.forums[0].id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
                                     dispute=pack.localized(cov.dispute(route.dispute_id).title, lang)),
-                     options=[self.forum_option(pack, f, lang) for f in route.forums])
+                     options=[self.forum_option(pack, f, lang, cov.dispute(route.dispute_id))
+                              for f in route.forums])
 
-    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str) -> dict[str, Any]:
+    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str, dispute: Any = None) -> dict[str, Any]:
+        keys = (dispute.id, dispute.branch) if dispute is not None else ()
+        hint = next((pack.localized(forum.hints[k], lang) for k in keys if k in forum.hints), None)
+        pretrial = None
+        if forum.legal_effect == "none":  # a step to the other side itself, not a body that decides
+            pretrial = "mandatory" if any(k in forum.mandatory_for for k in keys) else "voluntary"
         out = {"id": forum.id, "name": pack.localized(forum.name, lang), "type": forum.type,
                "legal_effect": forum.legal_effect, "verified": forum.verified,
                "channels": [ch.kind for ch in forum.submission],
-               "deadline_known": forum.response_deadline is not None}
+               # a court sets its own terms; elsewhere the term comes from the forum or from the hint
+               "deadline_known": forum.response_deadline is not None or hint is not None or forum.type == "court",
+               "pretrial": pretrial, "hint": hint}
         return out
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
@@ -413,8 +422,10 @@ class CaseEngine:
         if cov is None or not case.taxonomy.get("dispute_id"):
             return []
         dispute = cov.dispute(case.taxonomy["dispute_id"])
-        return [self.forum_option(pack, f, case.language)
-                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])]
+        pending = "pending" in (case.taxonomy.get("flags") or [])
+        return [self.forum_option(pack, f, case.language, dispute)
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0],
+                                              pending)]
 
     def choose_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
         if case.status != S.INTAKE.value or case.scenario_id:
