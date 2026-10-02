@@ -370,6 +370,10 @@ def get_draft(case_id: uuid.UUID, user: User = Depends(current_user), session: S
               container: Container = Depends(get_container)) -> dict[str, Any]:
     """PM 01.10: the draft of the document before payment — part readable, part blurred, and the blanks to fill."""
     case = load_case(case_id, session, user)
+    try:  # what the person already told goes into the blanks first (owner 01.10)
+        container.engine.prefill_blanks(session, case)
+    except Exception:  # noqa: BLE001 — the model being down must not hide the draft
+        log.warning("draft prefill failed for case %s", case_id, exc_info=True)
     try:
         d = container.engine.draft(case)
     except Exception:  # noqa: BLE001 — a template problem must not break the case page

@@ -8,6 +8,7 @@ language tasks through ``core.ai``.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import re
@@ -20,12 +21,13 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import ai, package, qualifier, safety
+from . import ai, package, polish, qualifier, safety
 from .adapters.payment import PaymentAdapter
 from .adapters.storage import Storage
 from .adapters.submission import SubmissionAdapter
 from .deadlines import DeadlineScheduler
 from .documents import PdfConverter, docx_text, render_docx
+from .docstyle import DocStyle
 from .fields import FieldError, display, looks_like_address, normalize
 from .llm import Attachment, LLMProvider, RedactingLLM
 from .generic import GenericRef, is_generic
@@ -199,10 +201,12 @@ class CaseEngine:
         missing (and the case can reach «Подготовить документ» without the same questions again). Runs after the
         chat reply, in the background; only while the case is being filled in. Returns the fields filled."""
         case = session.get(Case, case_id)
-        if case is None or case.status != S.INTAKE.value or not case.scenario_id or len((text or "").strip()) < 15:
+        if case is None or case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.scenario_id \
+                or len((text or "").strip()) < 15:
             return []
         sc, pack = self.scenario_of(case), self.pack_of(case)
-        missing = [n for n in self.missing_fields(case, sc) if sc.field(n).type != "evidence"
+        # the draft's blanks too: told in the chat after «Данные собраны», they go into the document (owner 01.10)
+        missing = [n for n in [*self.missing_fields(case, sc), *self.draft_blanks(case, sc)] if sc.field(n).type != "evidence"
                    and not (keep_question and n == case.pending_field)]  # the question on screen stays as asked
         if not missing:
             return []
@@ -215,7 +219,8 @@ class CaseEngine:
         if not filled:
             return []
         self.audit(session, case, "system", "facts_from_chat", fields=filled)
-        if not keep_question and (case.pending_field is None or case.pending_field in case.facts):
+        if case.status == S.INTAKE.value and not keep_question \
+                and (case.pending_field is None or case.pending_field in case.facts):
             self._next_step(session, case, sc, pack)  # the next question — or «Проверьте данные» when all is known
         return filled
 
@@ -494,11 +499,14 @@ class CaseEngine:
                 continue
             lang = case.language
             self._ensure_text(case, sc, pack, pack.localized(spec.title, lang))
-            ctx = self.document_context(case, sc, pack, spec, self._addressee(case, sc, pack, spec))
+            addressee = self._addressee(case, sc, pack, spec)
+            ctx = self.document_context(case, sc, pack, spec, addressee)
             docx = render_docx(pack.packs_root / spec.template, ctx,
                                ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                                draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                               if sc.is_draft else None)
+                               if sc.is_draft else None, finish=self._finishing(case, sc, pack),
+                               style=self.doc_style(pack), lang=lang)
+            action.addressee = addressee  # where «Отправить» sends it: never the client's own e-mail
             base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
             action.docx_key = self.storage.put(f"{base}.docx", docx,
                                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -512,6 +520,36 @@ class CaseEngine:
         applicant = sc.parties.get("applicant")
         name = applicant.name_field if applicant is not None else None
         return str(case.facts.get(name) or "") if name else ""
+
+    def prefill_blanks(self, session: Session, case: Case) -> list[str]:
+        """Owner 01.10: «Данные собраны», yet the draft's fields were empty though the person had named the goods, the
+        date and the sum. Before the draft is shown, its blanks are looked for once in everything the person told
+        (the first message and the chat); only what is really not there stays blank. Once per story: the same text
+        is never sent to the model twice."""
+        if case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.scenario_id:
+            return []
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        blanks = self.draft_blanks(case, sc)
+        if not blanks:
+            return []
+        said = [m.text for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+            if m.text and m.text.strip() and m.text.strip() not in (case.initial_text or "")]
+        story = "\n".join([case.initial_text or "", *said]).strip()
+        mark = hashlib.sha256(story.encode()).hexdigest()[:16]  # the story read, not the blanks: they shrink
+        taxonomy = dict(case.taxonomy or {})
+        if len(story) < 15 or taxonomy.get("draft_prefill") == mark:
+            return []
+        llm = self.llm_for(case)
+        before = set(case.facts)
+        values = ai.extract_fields(llm, sc, pack, case.language, story, None, blanks)
+        self._apply_values(case, sc, pack, values, llm, strict=False)
+        self._save_vault(case, llm)
+        case.taxonomy = {**taxonomy, "draft_prefill": mark}
+        filled = sorted(set(case.facts) - before)
+        if filled:
+            self.audit(session, case, "system", "draft_prefilled", fields=filled)
+        return filled
 
     def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
         """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
@@ -927,7 +965,11 @@ class CaseEngine:
         return forum is not None and forum.type == "court"
 
     def approval_required(self, session: Session, case: Case, spec: ActionSpec | None = None) -> bool:
-        if self.config.self_service and not case.needs_review and case.hold_reason is None:
+        # BUG-20 (QA run 5, 01.10): low qualification confidence (needs_review) no longer holds a pre-trial document
+        # — when the model is out of quota, the keyword fallback caps confidence at 0.55 and every paid claim went to
+        # the owner. The owner's rule (30.09): the manual check is for court documents only; needs_review still
+        # shows the case to the owner in /ops.
+        if self.config.self_service and case.hold_reason is None:
             if not is_generic(case.scenario_id):
                 # level-1 scenarios: pre-trial documents go out directly; a lawsuit to a court
                 # (e.g. kz.family.alimony) is filed only after a lawyer's check, as on the universal path
@@ -1415,6 +1457,13 @@ class CaseEngine:
             "subscription": self.subscription_view(session, case.owner_id)}
         if inv is not None and status != "paid":
             view.update(self.payments.details())
+        # «status» is about the NEXT document; the last paid bill is shown apart (QA 01.10: «Оплачено» after the
+        # document was given, not «none»)
+        last = session.scalar(select(Invoice).where(Invoice.case_id == case.id, Invoice.status == "paid",
+                                                    Invoice.purpose.in_(("document", "case")))
+                              .order_by(Invoice.id.desc()).limit(1))
+        view["last_paid"] = {"code": last.code, "amount": float(last.amount), "purpose": last.purpose,
+                             "paid_at": last.decided_at.isoformat() if last.decided_at else None} if last else None
         return view
 
     def _addressee(self, case: Case, sc: Scenario, pack: JurisdictionPack, spec: ActionSpec) -> dict[str, Any]:
@@ -1438,9 +1487,44 @@ class CaseEngine:
                     "email": auth.email, "submit_url": auth.submit_url, "id": None}
         party = sc.parties[spec.addressee.party]
         get = lambda attr: case.facts.get(getattr(party, attr)) if getattr(party, attr) else None  # noqa: E731
-        return {"kind": party.kind, "key": spec.addressee.party, "name": get("name_field") or "",
-                "id": get("id_field"), "email": get("email_field"), "address": get("address_field") or "",
-                "submit_url": None}
+        name, email, address = get("name_field") or "", get("email_field"), get("address_field") or ""
+        if spec.addressee.party != "applicant":
+            # owner 01.10: never the person's own contact as the other side's, never a description as an address
+            if email and str(email).strip().lower() in self._own_contacts(case, sc):
+                email = None
+            address = polish.tidy_address(address) if looks_like_address(str(address)) else ""
+            name = polish.tidy_name(str(name))
+        return {"kind": party.kind, "key": spec.addressee.party, "name": name,
+                "id": get("id_field"), "email": email, "address": address, "submit_url": None}
+
+    def applicant_gender(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
+        """From the name (patronymic, surname), else from the id number where the pack says how it tells."""
+        gender = _grammatical_gender(self._applicant_name(case, sc))
+        rule = pack.manifest.id_number_sex
+        applicant = sc.parties.get("applicant")
+        if gender == "unknown" and rule and applicant is not None and applicant.id_field:
+            gender = polish.gender_from_id(str(case.facts.get(applicant.id_field) or ""), rule.position, rule.male,
+                                           rule.female)
+        return gender
+
+    @staticmethod
+    def doc_style(pack: JurisdictionPack) -> DocStyle:
+        """The pack's official layout (document_style), over the defaults; unknown keys are ignored."""
+        known = DocStyle.__dataclass_fields__
+        return DocStyle(**{k: v for k, v in (pack.manifest.document_style or {}).items() if k in known})
+
+    def _finishing(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> Any:
+        """The last pass over the document's text: gendered forms in brackets resolved for the applicant, amounts
+        with the currency sign and in words (owner 01.10)."""
+        lang = case.language
+        gender = self.applicant_gender(case, sc, pack)
+        code = case.currency or pack.currency
+        symbol = pack.t(lang, f"currency_symbol.{code}", default=code)
+        word = pack.t(lang, f"currency_word.{code}", default="")
+
+        def finish(text: str) -> str:
+            return polish.amounts_in_words(polish.gender_forms(text, gender), code, symbol, word, lang)
+        return finish
 
     def _render_action(self, session: Session, case: Case, sc: Scenario, pack: JurisdictionPack,
                        spec: ActionSpec, action: Action, actor: str) -> Action:
@@ -1452,7 +1536,8 @@ class CaseEngine:
         docx = render_docx(pack.packs_root / spec.template, ctx,
                            ai_label=pack.localized(pack.manifest.compliance.ai_label, lang),
                            draft_disclaimer=pack.localized(pack.manifest.compliance.draft_disclaimer, lang)
-                           if sc.is_draft else None)
+                           if sc.is_draft else None, finish=self._finishing(case, sc, pack), style=self.doc_style(pack),
+                           lang=lang)
         base = f"cases/{case.id}/actions/{action.sequence:02d}-{spec.id}"
         action.docx_key = self.storage.put(f"{base}.docx", docx,
                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1477,7 +1562,7 @@ class CaseEngine:
                 currency = pack.t(lang, f"currency_word.{case.currency or pack.currency}",
                                   default=case.currency or pack.currency)
                 case.narrative = ai.write_narrative(llm, sc, pack, lang, facts, title, attached,
-                                                    gender=_grammatical_gender(self._applicant_name(case, sc)),
+                                                    gender=self.applicant_gender(case, sc, pack),
                                                     currency=currency)
             self._save_vault(case, llm)
         if is_generic(sc.id) and not case.formal_demands and case.facts.get("desired_outcome"):
@@ -1546,9 +1631,18 @@ class CaseEngine:
                           "email": f.get(p.email_field or "", ""), "address": f.get(p.address_field or "", ""),
                           "kind": p.kind}
                    for role, p in sc.parties.items()}
+        own = self._own_contacts(case, sc)
+        for role, party in parties.items():  # owner 01.10: capitals, real addresses, nobody else's contacts
+            party["name"] = polish.tidy_name(str(party["name"] or ""))
+            address = str(party["address"] or "")
+            if not address.startswith("["):  # a draft's blank («[Адрес продавца]») stays a blank
+                party["address"] = polish.tidy_address(address) if role == "applicant" or looks_like_address(address) else ""
+            if role != "applicant" and str(party["email"] or "").strip().lower() in own:
+                party["email"] = ""
         applicant = parties.get("applicant", {})
-        evidence = [pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
-                    for e in case.evidence if e.kind != "response"]
+        evidence = list(dict.fromkeys(  # the same file attached twice is listed once
+            pack.t(lang, f"evidence.{e.kind}", default=e.kind) + (f" ({e.filename})" if e.filename else "")
+            for e in case.evidence if e.kind != "response"))
         previous = [{"title": pack.localized(sc.action(a.action_id).title, lang),
                      "date": a.submitted_at.strftime("%d.%m.%Y") if a.submitted_at else "",
                      "response": pack.t(lang, f"responses.{a.response_class}", default=a.response_class or "")}
@@ -1570,14 +1664,18 @@ class CaseEngine:
                      "scenario_title": pack.localized(sc.title, lang),
                      "id_label": ai.field_label(sc, pack, lang, sc.parties["applicant"].id_field)
                      if "applicant" in sc.parties and sc.parties["applicant"].id_field else ""}
+        narrative = case.narrative or f.get("problem_description", "")
+        purchase = str(f.get("purchase_date") or "")
         return {**extra,
+            # the narrative already tells the purchase (date first): the template's own line is not repeated
+            "narrative_tells_purchase": bool(purchase) and purchase in narrative,
             "title": pack.localized(spec.title, lang),
             "f": f,
             "applicant": applicant,
             "respondent": parties.get("respondent", {}),
             "labels": {fl.name: ai.field_label(sc, pack, lang, fl.name) for fl in sc.intake},
             "addressee": addressee,
-            "narrative": case.narrative or f.get("problem_description", ""),
+            "narrative": narrative,
             "demands": demands,
             "norm_refs": list(spec.norm_refs),
             "evidence": evidence,
@@ -1762,15 +1860,9 @@ class _Fmt(dict):
 
 
 def _grammatical_gender(full_name: str) -> str:
-    """For the document's grammar only (verb and adjective forms): from the patronymic ending, as written in the
-    person's identity document; 'unknown' when there is none — the text is then written without gendered forms."""
-    words = [w.lower().strip(".,") for w in full_name.split()]
-    for w in words:
-        if w.endswith(("вич", "ұлы", "улы", "оглы", "uly")):
-            return "male"
-        if w.endswith(("вна", "чна", "қызы", "кызы", "кизи", "qyzy")):
-            return "female"
-    return "unknown"
+    """For the document's grammar only (verb and adjective forms): from the patronymic, else the surname ending;
+    'unknown' when neither tells — the text is then written without gendered forms."""
+    return polish.gender_from_name(full_name)
 
 
 DRAFT = "draft:"  # skipped_fields entry: a required answer left blank, filled in the draft before paying

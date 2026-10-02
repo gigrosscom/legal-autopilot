@@ -11,12 +11,12 @@ from konsilier.core.models import Action
 from konsilier.core.packs import load_pack
 
 from .test_e2e import web_user
-from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU, PACKS
+from .test_pilot_drafts import AI_LINE_RU, DRAFT_WORDS, PACKS
 
 KZ = load_pack(PACKS / "kz", PACKS)
 PUBLISHED = sorted(s.id for s in KZ.scenarios.values() if s.published)
 ANSWERS = {
-    "respondent_name": "ТОО «Ромашка»", "seller_name": "ТОО «Ромашка»", "lender_name": "АО «Банк»",
+    "respondent_email": "пропустить", "respondent_name": "ТОО «Ромашка»", "seller_name": "ТОО «Ромашка»", "lender_name": "АО «Банк»",
     "seller_bin": "пропустить", "lender_bin": "пропустить", "seller_email": "пропустить", "lender_email": "пропустить",
     "contract_number": "пропустить", "police_report_number": "пропустить", "goods_description": "Товар",
     "event_date": "01.09.2026", "purchase_date": "01.09.2026", "loan_date": "01.09.2026", "amount": "100000",
@@ -51,7 +51,7 @@ def test_first_document_renders(ctx, sid):
     assert action["instructions"] and not any("{" in s for s in action["instructions"]), action["instructions"]
     with ctx.container.session_factory() as s:
         text = docx_text(ctx.container.storage.get(s.get(Action, uuid.UUID(action["id"])).docx_key))
-    assert NEUTRAL_NOTE_RU in text and not DRAFT_WORDS.search(text)
+    assert text.count(AI_LINE_RU) == 1 and not DRAFT_WORDS.search(text)
     assert "{" not in text.replace("{{", "")
     for ref in sc.actions[0].norm_refs:
         if ref != "TODO":

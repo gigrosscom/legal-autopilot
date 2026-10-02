@@ -8,10 +8,10 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..core.models import Case, Identity, LawyerApplication, LoginChallenge, PushSubscription, User
+from ..core.models import Base, Identity, LoginChallenge, User
 from . import normalize as norm
 
 CODE_TTL = timedelta(minutes=10)
@@ -118,17 +118,9 @@ class Identities:
             session.add(Identity(user_id=user.id, kind=kind, subject_hash=subject, display=display))
         elif ident.user_id != user.id:
             owner = session.get(User, ident.user_id)
-            # cases started anonymously on this device move to the existing account
-            session.execute(update(Case).where(Case.owner_id == user.id).values(owner_id=owner.id))
-            # so do lawyer applications sent from this device before signing in
-            session.execute(update(LawyerApplication).where(LawyerApplication.user_id == user.id)
-                            .values(user_id=owner.id))
-            # and this device's push notifications
-            session.execute(update(PushSubscription).where(PushSubscription.user_id == user.id)
-                            .values(user_id=owner.id))
-            # and unused referral bonus documents
-            owner.bonus_documents += user.bonus_documents
-            user.bonus_documents = 0
+            # the person proved this identifier now: this device's account joins the one that owns it — its cases,
+            # applications, push, bills and its other sign-in ways (owner 01.10: one person, one account)
+            merge_users(session, user, owner)
             ident.verified_at = _now()
         else:
             ident.verified_at = _now()
@@ -140,6 +132,26 @@ class Identities:
             owner.display_name = name
         session.flush()
         return owner
+
+
+def merge_users(session: Session, src: User, dst: User) -> None:
+    """Everything that belongs to `src` moves to `dst`: every row pointing at the user (cases, identities, bills,
+    notifications, push, applications…), unused bonus documents and contacts `dst` lacks. `src` stays, empty."""
+    if src.id == dst.id:
+        return
+    session.flush()
+    for table in Base.metadata.sorted_tables:
+        if table.name in (User.__tablename__, LoginChallenge.__tablename__):
+            continue  # who invited whom stays as it was; a sign-in in progress stays with its device
+        for col in table.columns:
+            if any(fk.column.table.name == User.__tablename__ for fk in col.foreign_keys):
+                session.execute(table.update().where(col == src.id).values({col.name: dst.id}))
+    dst.bonus_documents += src.bonus_documents
+    src.bonus_documents = 0
+    dst.email, dst.phone = dst.email or src.email, dst.phone or src.phone
+    dst.display_name = dst.display_name or src.display_name
+    session.flush()
+    session.expire_all()  # rows moved behind the ORM's back: read them again
 
 
 def me_view(user: User) -> dict:

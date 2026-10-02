@@ -220,6 +220,105 @@ def test_ncanode_parses_signer_and_checks_data(monkeypatch):
         NcaNode("http://ncanode:14579").verify("Q01T", nonce)
 
 
+# NCANode 3.5 answers recorded per failure mode (shapes from its CmsVerificationResponse); the subject is fake.
+def _nca(valid, status="VALID", sub=None, revocations=None, not_after="2027-03-01T00:00:00.000+00:00", cert_valid=None):
+    cert = {"valid": valid if cert_valid is None else cert_valid, "keyUsage": "AUTH",
+            "notBefore": "2026-03-01T00:00:00.000+00:00", "notAfter": not_after,
+            "signAlg": "SHA256withRSA", "issuer": {"commonName": "ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (RSA) 2022"},
+            "subject": {"iin": IIN, "commonName": "ИВАНОВ ИВАН"},
+            "revocations": revocations if revocations is not None else [{"revoked": False, "by": "OCSP", "reason": "OK"}]}
+    signer = {"certificates": [cert], "status": status, "adesLevel": "T", "tsp": {"genTime": "2026-10-01"}}
+    if sub:
+        signer |= {"subIndication": sub, "message": "details"}
+    return {"status": 200, "message": "OK", "valid": valid, "signers": [signer]}
+
+
+NO_ROOT = [{"revoked": False, "by": "OCSP",
+            "reason": "Cannot find root certificate in NCANode. Try add it using NCANODE_CA_URL variable."},
+           {"revoked": False, "by": "CRL", "reason": None}]
+
+
+@pytest.mark.parametrize("answer, code", [
+    (_nca(False, "INDETERMINATE", "CHAIN_INCOMPLETE", NO_ROOT), "chain"),  # 01.10: RSA 2022 key, CA not in NCANode
+    (_nca(False, "INVALID", "CERT_REVOKED", [{"revoked": True, "by": "OCSP", "reason": "revoked"}]), "revoked"),
+    (_nca(False, "INDETERMINATE", "REVOCATION_DATA_MISSING",
+          [{"revoked": False, "by": "OCSP", "reason": "Connect timed out"}]), "ocsp_unavailable"),
+    (_nca(False, "INDETERMINATE", "OUT_OF_BOUNDS_NO_POE", not_after="2025-01-01T00:00:00.000+00:00"), "expired"),
+    (_nca(False, "INVALID", "SIG_CRYPTO_FAILURE"), "data_mismatch"),
+    ({**_nca(False, "INDETERMINATE", None, NO_ROOT), "signers": [{"certificates": [
+        {"valid": False, "revocations": NO_ROOT, "subject": {"iin": IIN}}]}]}, "chain"),  # NCANode before 3.5
+    ({"status": 400, "message": "NoSuchAlgorithmException: unknown algorithm 1.2.398.3.10.1.1.2.3.2"},
+     "unsupported_alg"),
+])
+def test_ncanode_failure_reasons_are_mapped_and_logged_without_personal_data(monkeypatch, caplog, answer, code):
+    monkeypatch.setattr(httpx, "post", lambda url, json, timeout: httpx.Response(200, json=answer))
+    with caplog.at_level("WARNING"), pytest.raises(SignatureError) as e:
+        NcaNode("http://ncanode:14579").verify("Q01T", b"nonce")
+    assert e.value.code == code
+    line = caplog.text
+    assert "ecp verify failed reason=" + code in line
+    assert IIN not in line and "ИВАНОВ" not in line  # no IIN, no name, no subject in the log
+    if answer.get("signers") and answer["signers"][0].get("status"):
+        assert "(RSA) 2022" in line and "notAfter" in line  # the issuing CA and dates are there for diagnosis
+
+
+def test_ncanode_accepts_crl_when_ocsp_is_unreachable(monkeypatch):
+    """OCSP and CRL are both asked for; NCANode grades the signer VALID when CRL says good and OCSP did not answer,
+    while the certificate's own flag (it wants every source) stays false — the signer's grade decides."""
+    answer = _nca(True, revocations=[{"revoked": False, "by": "OCSP", "reason": "Connect timed out"},
+                                     {"revoked": False, "by": "CRL", "reason": None}], cert_valid=False)
+    bodies = []
+
+    def fake_post(url, json, timeout):
+        bodies.append(json)
+        if url.endswith("/cms/verify"):
+            return httpx.Response(200, json=answer)
+        return httpx.Response(200, json={"data": base64.b64encode(b"nonce").decode()})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert NcaNode("http://ncanode:14579").verify("Q01T", b"nonce").iin == IIN
+    assert bodies[0]["revocationCheck"] == ["OCSP", "CRL"]
+
+
+def test_ncanode_detached_signature_is_checked_with_our_data(monkeypatch):
+    bodies = []
+
+    def fake_post(url, json, timeout):
+        bodies.append((url, json))
+        if "data" not in json:  # detached CMS without the data: NCANode cannot check it
+            return httpx.Response(400, json={"status": 400, "message": "CMS has no content"})
+        return httpx.Response(200, json=_nca(True))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert NcaNode("http://ncanode:14579").verify("Q01T", b"nonce").key_usage == "AUTH"
+    assert bodies[1][1]["data"] == base64.b64encode(b"nonce").decode()
+    assert [u for u, _ in bodies] == ["http://ncanode:14579/cms/verify"] * 2  # no /cms/extract for detached
+
+
+def test_ncanode_self_check_line(monkeypatch):
+    seen = {}
+
+    def fake_post(url, json, timeout):
+        seen["url"], seen["body"] = url, json
+        return httpx.Response(200, json={"valid": True, "signers": [{"valid": True, "revocations": [
+            {"revoked": False, "by": "OCSP", "reason": "OK"}, {"revoked": False, "by": "CRL", "reason": None}]}]})
+
+    def fake_get(url, timeout):
+        if url.endswith("/actuator/health"):
+            return httpx.Response(200, json={"status": "UP", "components": {"ca": {"status": "UP"},
+                                                                            "crl": {"status": "UP"}}})
+        return httpx.Response(200, text="<div class=\"version\">\n v3.5.0\n</div>")
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setattr(httpx, "get", fake_get)
+    assert NcaNode("http://ncanode:14579").self_check() == (
+        "ncanode=v3.5.0 health=UP(ca:UP,crl:UP) rsa2022=ok rev=[OCSP:OK,CRL:good]")
+    assert seen["url"].endswith("/x509/info") and seen["body"]["revocationCheck"] == ["OCSP", "CRL"]
+    monkeypatch.setattr(httpx, "post", lambda url, json, timeout: httpx.Response(200, json={
+        "valid": False, "signers": [{"valid": False, "revocations": NO_ROOT[:1]}]}))
+    assert "rsa2022=FAIL rev=[OCSP:Cannot_find_root" in NcaNode("http://ncanode:14579").self_check()
+
+
 def test_normalizers():
     assert norm.phone("8 (701) 123-45-67") == "+77011234567"
     assert norm.phone("7011234567") == "+77011234567"

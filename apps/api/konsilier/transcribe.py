@@ -102,6 +102,38 @@ class GeminiTranscriber:
         raise TranscribeUnavailable(last or "no model configured")
 
 
+class GroqWhisperTranscriber:
+    """``transcribe(audio, mime, lang) -> text`` with Whisper on Groq (free tier, its own quota — the chat's Gemini
+    quota is left alone). Fast enough for the live text while the person is still speaking (owner 01.10)."""
+
+    URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+    FILE_EXT = {"audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "m4a", "audio/aac": "m4a", "audio/wav": "wav",
+                "audio/mp3": "mp3"}
+
+    def __init__(self, api_key: str, model: str = "whisper-large-v3-turbo", *, http: httpx.Client | None = None,
+                 timeout: float = 20):
+        self.api_key, self.model = api_key, model
+        self.http = http or httpx.Client(timeout=timeout)
+
+    def transcribe(self, audio: bytes, mime: str, lang: str) -> str:
+        data = {"model": self.model, "response_format": "json", "temperature": "0"}
+        if lang in LANGUAGES:
+            data["language"] = lang
+        try:
+            r = self.http.post(self.URL, headers={"Authorization": f"Bearer {self.api_key}"}, data=data,
+                               files={"file": (f"voice.{self.FILE_EXT.get(mime, 'webm')}", audio, mime)})
+        except httpx.HTTPError as e:
+            raise TranscribeUnavailable(f"groq {e.__class__.__name__}") from e
+        if r.status_code in RETRY_STATUSES:
+            raise TranscribeUnavailable(f"groq {r.status_code}")
+        if r.status_code >= 400:
+            raise TranscribeFailed(f"groq {r.status_code}: {r.text[:300]}")
+        try:
+            return str(r.json().get("text") or "").strip()
+        except ValueError as e:
+            raise TranscribeFailed("groq: invalid response") from e
+
+
 class SlidingLimiter:
     """At most ``limit`` hits per key in the last ``window`` seconds, kept in memory (per API worker)."""
 
