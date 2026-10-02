@@ -32,3 +32,8 @@ class LLMProvider(Protocol):
         schema: dict[str, Any],
         attachments: tuple[Attachment, ...] = (),
     ) -> dict[str, Any]: ...
+
+
+# PM 02.10 (QA BUG-24): the same story must get the same scenario — choosing and reading facts run at temperature 0
+DETERMINISTIC_TASKS = frozenset({"qualify", "classify_taxonomy", "classify_response", "extract_fields",
+                                 "extract_evidence"})

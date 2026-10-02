@@ -336,6 +336,9 @@ class DirectRule(_Strict):
 
     dispute: str
     role: str
+    # a published scenario of the pack for this subject (PM 02.10: a flood, a tour, a debt never get a neighbouring
+    # scenario); when set and on offer, the case gets it directly, else the dispute on the universal path
+    scenario: str | None = None
     markers: dict[str, tuple[str, ...]]
     unless: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 

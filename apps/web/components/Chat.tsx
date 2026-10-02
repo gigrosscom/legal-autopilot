@@ -301,7 +301,10 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   // once the document was offered, the card stays under the latest reply until the document is paid (P0 02.10)
   const last = messages[messages.length - 1];
   // …and already under the first reply once the case's scenario is known (owner 01.10: the situation is clear)
-  const offered = messages.some((m) => m.role === "assistant" && m.offer_document) || !!docOffer?.title;
+  // owner 02.10: while the bot is still asking for the facts there is no card; it comes with the first solution (a reply
+  // with details under «Подробнее») or an explicit offer
+  const solved = messages.some((m) => m.role === "assistant" && (m.offer_document || MORE.test(m.text ?? "")));
+  const offered = solved && (messages.some((m) => m.role === "assistant" && m.offer_document) || !!docOffer?.title);
   const offerId = streaming === null && last?.role === "assistant" && offered && !docOffer?.paid ? last.id : null;
   const lastId = last?.id;
   useEffect(() => {
