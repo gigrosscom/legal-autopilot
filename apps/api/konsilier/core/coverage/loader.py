@@ -55,6 +55,15 @@ class Coverage:
         """First-instance forums that accept this dispute and role."""
         return [f for f in self.forums.values() if f.instance != "appeal" and f.accepts_case(dispute, role)]
 
+    def auto_forum(self, forums: list[Forum]) -> Forum | None:
+        """The step's recipient chosen by the system (owner 02.10): the first candidate in the pack's forum_order;
+        none when the order names none of them (then the person is asked one question, not shown a list)."""
+        order = self.routing.forum_order
+        if not order:
+            return forums[0] if len(forums) == 1 else None
+        ranked = sorted((f for f in forums if f.id in order), key=lambda f: order.index(f.id))
+        return ranked[0] if ranked else (forums[0] if len(forums) == 1 else None)
+
     def escalation_chain(self, forum_id: str, dispute: DisputeType, role: str) -> list[Forum]:
         """Forums reached by following appeals_to from forum_id (first accepting target each step)."""
         chain: list[Forum] = []

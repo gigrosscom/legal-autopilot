@@ -31,7 +31,7 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
     """Coverage level and what it means for this case (ADR 0001): shown to the user on every step."""
     cov = pack.coverage
     out: dict[str, Any] = {"level": qualifier.display_level(case.coverage_level, _scenario_is_draft(engine, case), bool(case.scenario_id)), "dispute": None, "forum": None, "reasons": [],
-                           "options": engine.forum_options(case), "upl_notice": None,
+                           "options": engine.forum_options(case), "other_forums": [], "upl_notice": None,
 }
     tax = case.taxonomy or {}
     if cov is not None:
@@ -40,6 +40,9 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
             out["dispute"] = {"id": d.id, "title": pack.localized(d.title, lang), "branch": d.branch}
         if case.forum_id in cov.forums:
             out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
+            why = cov.routing.forum_why.get(case.forum_id)
+            out["forum"]["why"] = pack.localized(why, lang) if why else None
+            out["other_forums"] = engine.other_forums(case)  # «Другой адресат»
         if cov.routing.upl_notice:
             out["upl_notice"] = pack.localized(cov.routing.upl_notice.text, lang)
     out["reasons"] = [{"code": r, "label": pack.t(lang, f"routing.reasons.{r}", default=r)}

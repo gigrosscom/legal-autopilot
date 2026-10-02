@@ -397,6 +397,7 @@ const tr: Dict = {
     special_category: { title: "Özel nitelikli verilerin işlenmesine onay", button: "Onay veriyorum", text: "Dosyada sağlık, din veya sabıka bilgileri olabilir. En az veriyi saklar ve yalnızca belgeniz için kullanırız." },
   },
   forum: {
+    to: "Kime", other: "Başka bir muhatap", otherLead: "Belgeyi seçtiğiniz muhataba göre hazırlayacağız:", keep: "Böyle kalsın",
     chooseTitle: "Nereye başvurulur",
     chooseLead: "Muhatabı seçin. Liste yalnızca bu ülkenin kurum sicilinden; farklar aşağıda gösteriliyor.",
     type: { court: "Mahkeme", prosecutor: "Savcılık", police: "Polis", regulator: "Düzenleyici kurum", ministry: "Bakanlık",

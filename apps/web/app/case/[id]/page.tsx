@@ -394,6 +394,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
       {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
 
+      {/* owner 02.10: the system chose the recipient — «Кому: … — почему», switched only by «Другой адресат» */}
+      {cov.forum && (c.status === "intake" || c.status === "qualified") && (
+        <RecipientCard forum={cov.forum} others={cov.other_forums ?? []} busy={busy} onChoose={chooseForum} />
+      )}
+
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
         <PlanCard plan={c.plan} />
       )}
@@ -916,6 +921,45 @@ function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
   );
 }
 
+function RecipientCard({ forum, others, busy, onChoose }: {
+  forum: ForumOption; others: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="card space-y-2" aria-label={t("forum.to")}>
+      <p className="flex items-start gap-2">
+        <Icon name={forum.type === "court" ? "landmark" : "building"} size={20} className="mt-0.5 shrink-0 text-brand" />
+        <span className="min-w-0"><span className="text-muted">{t("forum.to")}: </span><span className="font-semibold">{forum.name}</span></span>
+      </p>
+      {forum.why && <p className="text-sm text-muted">{forum.why}</p>}
+      {others.length > 0 && !open && (
+        <button type="button" onClick={() => setOpen(true)} className="text-sm text-brand-dark underline-offset-2 hover:underline">
+          {t("forum.other")}
+        </button>
+      )}
+      {open && (
+        <div className="space-y-2 border-t border-line pt-2">
+          <p className="text-sm text-muted">{t("forum.otherLead")}</p>
+          <ul className="space-y-1.5">
+            {others.map((f) => (
+              <li key={f.id}>
+                <button type="button" disabled={busy} onClick={() => { setOpen(false); onChoose(f); }}
+                  className="flex w-full items-start gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-sand disabled:opacity-60">
+                  <Icon name={f.type === "court" ? "landmark" : f.type === "mediation" ? "handshake" : "building"} size={18} className="mt-0.5 shrink-0 text-muted" />
+                  <span>{f.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted hover:text-ink">{t("forum.keep")}</button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Kept only for a country whose pack has no forum_order yet: the KZ pack always names the recipient. */
 function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void }) {
   const t = useT();
   return (
