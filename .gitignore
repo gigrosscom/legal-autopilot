@@ -21,3 +21,4 @@ konsilier-mvp-*.bundle
 .claude/worktrees/
 qa-reports/2026-10-02/shots/*.png
 !qa-reports/2026-10-02/shots/key/
+/node_modules
