@@ -182,3 +182,75 @@ def fix_facts(case_id: str, body: FactsFix, session: Session = Depends(get_sessi
     rebuilt = engine.rebuild_documents(session, case) if body.rebuild else 0
     session.flush()
     return {"rebuilt": rebuilt, "facts": {k: str(v) for k, v in case.facts.items()}}
+
+
+# ------------------------------------------------------------------ «Документы» (owner 01.10)
+ALMATY = timezone(timedelta(hours=5))
+PAY_LABEL = {"paid": "оплачен", "awaiting_confirmation": "ждёт сверки"}
+
+
+def _mask(owner: User | None) -> str:
+    """Who the client is, without the full address: the name, else a masked e-mail or phone."""
+    if owner is None:
+        return ""
+    if owner.display_name:
+        return owner.display_name
+    from ..identity import normalize as norm
+
+    if owner.email:
+        return norm.mask_email(owner.email)
+    if owner.phone:
+        return norm.mask_phone(owner.phone)
+    return next((i.display for i in owner.identities if i.display), "")
+
+
+def _doc_bill(session: Session, action: Action) -> Invoice | None:
+    """The bill that paid for this document: the case's latest document / «Дело под ключ» bill made before it."""
+    return session.scalars(select(Invoice).where(
+        Invoice.case_id == action.case_id, Invoice.purpose.in_(("document", "case")),
+        Invoice.status != "cancelled").order_by(Invoice.created_at.desc())).first()
+
+
+@router.get("/documents")
+def documents(paid: bool = False, today: bool = False, q: str | None = None, limit: int = 50, offset: int = 0,
+              session: Session = Depends(get_session), container: Container = Depends(get_container)) -> dict[str, Any]:
+    """Every document made for an order, newest first: when, the case, the service, the client (masked), the bill and
+    its state; PDF / DOCX through /v1/admin/actions/{id}/document. Filters: paid, today (Almaty), q = case number or
+    bill code."""
+    limit = max(1, min(limit, 200))
+    stmt = select(Action).where(Action.kind == "document",
+                                (Action.docx_key.is_not(None)) | (Action.pdf_key.is_not(None)))
+    if today:
+        start = datetime.now(ALMATY).replace(hour=0, minute=0, second=0, microsecond=0)
+        stmt = stmt.where(Action.created_at >= start.astimezone(timezone.utc))
+    needle = (q or "").strip().lower()
+    rows: list[dict[str, Any]] = []
+    for a in session.scalars(stmt.order_by(Action.created_at.desc()).limit(2000)):
+        case = session.get(Case, a.case_id)
+        if case is None:
+            continue
+        bill = _doc_bill(session, a)
+        if paid and not (bill is not None and bill.status == "paid"):
+            continue
+        if needle and needle not in str(case.id) and not (bill and needle in bill.code.lower()):
+            continue
+        rows.append(_document_row(session, container, a, case, bill))
+    return {"total": len(rows), "items": rows[offset:offset + limit]}
+
+
+def _document_row(session: Session, container: Container, a: Action, case: Case, bill: Invoice | None) -> dict[str, Any]:
+    service = a.action_id
+    try:
+        pack = container.engine.pack_of(case)
+        sc = container.engine.scenario_of(case)
+        service = pack.localized(sc.action(a.action_id).title, "ru")
+    except Exception:  # noqa: BLE001 — a removed scenario must not hide the document
+        pass
+    owner = session.get(User, case.owner_id)
+    return {
+        "id": str(a.id), "created_at": a.created_at.isoformat(), "case_id": str(case.id), "case_short": str(case.id)[:8],
+        "service": service, "action_id": a.action_id, "client": _mask(owner), "test": is_test_owner(owner),
+        "bill": {"code": bill.code, "amount": float(bill.amount), "currency": bill.currency, "status": bill.status,
+                 "label": PAY_LABEL.get(bill.status, "не оплачен")} if bill else None,
+        "unlocked_by": a.unlocked_by, "pdf": bool(a.pdf_key), "docx": bool(a.docx_key),
+    }
