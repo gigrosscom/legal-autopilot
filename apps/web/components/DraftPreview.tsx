@@ -5,29 +5,11 @@ import { ApiError, api, errorText, type CaseView } from "@/lib/api";
 import { Alert, Button, Icon } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 import { DocSheet } from "@/components/DocSheet";
+import { dateMask, exampleKey as example } from "@/lib/fieldExample";
 
 const KNOWN = ["pattern", "address", "date", "date_future", "money", "email", "phone"];
 type Blank = { field: string; label: string; type: string; pattern: string | null };
 type Draft = { title: string; visible: string; hidden: string; paid: boolean; blanks: Blank[] };
-
-/** The example in an empty field («12.09.2026», «45 000 ₸», «ТОО «Магазин»») — by the field's type, else its name. */
-function example(b: Blank): string | null {
-  if (b.type === "date" || b.type === "date_future") return "date";
-  if (b.type === "money" || b.type === "email" || b.type === "phone") return b.type;
-  if (b.pattern) return "id";
-  if (/address/.test(b.field)) return "address";
-  if (/goods|item|product|service|subject|description/.test(b.field)) return "goods";
-  if (/applicant|full_name|fio/.test(b.field)) return "name";
-  if (/seller|respondent|employer|bank|company|organization|party|counterparty|_name$/.test(b.field)) return "party";
-  return null;
-}
-
-/** Digits only, the dots put in as they are typed: «12092026» → «12.09.2026» (the numeric keypad has no dot on iOS;
- *  a native date field is wider than the card there and shows no example). */
-function dateMask(raw: string): string {
-  const d = raw.replace(/\D/g, "").slice(0, 8);
-  return [d.slice(0, 2), d.slice(2, 4), d.slice(4)].filter(Boolean).join(".");
-}
 
 /** PM 01.10: the document's draft before payment — the start readable, the rest blurred, and the blanks the person
  * can fill right here (what the interview did not ask, «не помню», a foreign seller without a BIN). */
@@ -102,7 +84,7 @@ export function DraftPreview({ caseId, version, onCase }: { caseId: string; vers
                     type={b.type === "email" ? "email" : b.type === "phone" ? "tel" : "text"}
                     inputMode={date || money || b.pattern ? "numeric" : b.type === "phone" ? "tel" : b.type === "email" ? "email" : undefined}
                     autoComplete="off" enterKeyHint="next"
-                    onChange={(e) => setValues((v) => ({ ...v, [b.field]: date ? dateMask(e.target.value) : e.target.value }))}
+                    onChange={(e) => setValues((v) => ({ ...v, [b.field]: date ? dateMask(e.target.value, v[b.field]) : e.target.value }))}
                     onBlur={() => saveField(b.field)}
                     aria-invalid={!!errors[b.field]} />
                   {money && <span aria-hidden className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-base text-muted">₸</span>}
