@@ -9,7 +9,7 @@ const tr: Dict = {
     app: "Uygulama",
   },
   legal: {
-    disclaimer: "Konsiliér AI, hukuki sorular için yapay zekâ asistanıdır. Yapay zekânın yanıtları bilgi amaçlıdır, hazırlanan belgeler ise taslaktır: sunmadan önce kontrol edin.",
+    disclaimer: "Konsiliér AI, hukuki sorular için yapay zekâ asistanıdır. Yapay zekânın yanıtları bilgi amaçlıdır.",
     terms: "Kullanım Koşulları",
     accept: "Mesaj göndererek şunu kabul etmiş olursunuz:",
     version: "sürüm",

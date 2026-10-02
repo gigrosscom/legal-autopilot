@@ -9,7 +9,7 @@ const en: Dict = {
     app: "App",
   },
   legal: {
-    disclaimer: "Konsiliér AI is your AI assistant for legal questions. AI answers are for general information only, and documents are drafts: review them before filing.",
+    disclaimer: "Konsiliér AI is your AI assistant for legal questions. AI answers are for general information only.",
     terms: "Terms of Use",
     accept: "By sending a message you accept the",
     version: "version",
