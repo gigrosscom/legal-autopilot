@@ -1,0 +1,1538 @@
+[
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "light-390_cases.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "light-390_account.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "light-390_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "light-390_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "light-360_cases.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 68,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "light-360_account.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "light-360_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "light-360_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "light-768_cases.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "light-768_account.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "light-768_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "light-768_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "light-1440_cases.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Включить уведомления",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "light-1440_account.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "light-1440_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "light-1440_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-390_cases.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-390_account.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-390_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 844,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-390_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-360_cases.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 68,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-360_account.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-360_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 780,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-360_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-768_cases.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-768_account.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-768_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 1024,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-768_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/cases",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-1440_cases.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/account",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Включить уведомления",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-1440_account.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/case/145cd9d8-3efb-4da2-adbe-54f77c979c21",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   },
+   {
+    "t": "Подготовить документ",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px",
+    "disabled": false
+   },
+   {
+    "t": "Дело под ключ — 9 990 ₸",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "0px",
+    "disabled": false
+   },
+   {
+    "t": "Выбрать юриста",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-1440_case_145cd9d8-3efb-4da2-adbe-54f77c979c21.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px",
+    "disabled": false
+   }
+  ],
+  "small": 0,
+  "navFixed": false,
+  "bottomGap": 492,
+  "pay": false,
+  "errs": [],
+  "shot": "dark-1440_documents.png"
+ }
+]

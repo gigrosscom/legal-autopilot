@@ -22,3 +22,5 @@ konsilier-mvp-*.bundle
 qa-reports/2026-10-02/shots/*.png
 !qa-reports/2026-10-02/shots/key/
 /node_modules
+qa-reports/2026-10-02/shots-9c4c0c2/*.png
+!qa-reports/2026-10-02/shots-9c4c0c2/key/
