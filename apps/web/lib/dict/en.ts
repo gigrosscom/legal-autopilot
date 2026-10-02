@@ -651,7 +651,7 @@ const en: Dict = {
     colors: "Colors", type: "Typography", buttons: "Buttons", badges: "Level badges", notices: "Notices",
     noticesLead: "Emergency numbers, false-report warnings, the service's legal status and \"Please note\" are components, not fine print.",
     uplSample: "Konsiliér AI is a document preparation service and a technology intermediary with lawyers.",
-    draftSample: "This document was prepared by the Konsiliér AI IT service based on your data. Check the details before filing.",
+    draftSample: "This document was prepared by the Konsiliér AI IT service based on your data.",
     forms: "Input fields", progress: "Case stages", board: "Case board", icons: "Icons",
   },
   errors: {

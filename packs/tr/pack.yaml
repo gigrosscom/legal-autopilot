@@ -16,12 +16,11 @@ default_language: tr
 status: planned
 compliance:
   ai_label:
-    tr: Yapay zekâ ile hazırlandı (Konsiliér AI). Başvurmadan önce bilgileri kontrol
-      edin.
-    en: Prepared with AI (Konsiliér AI). Check the details before filing.
+    tr: Yapay zekâ ile hazırlandı (Konsiliér AI).
+    en: Prepared with AI (Konsiliér AI).
   draft_disclaimer:
-    tr: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır. Başvurmadan önce bilgileri kontrol edin."
-    en: "This document was prepared by the Konsiliér AI IT service based on your data. Check the details before filing."
+    tr: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır."
+    en: "This document was prepared by the Konsiliér AI IT service based on your data."
   service_disclaimer:
     tr: Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri
       takip eder. Dosyanın sonuca ulaştırılması gerekirse platformdaki
