@@ -63,6 +63,10 @@ _IIN = re.compile(r"(?<!\d)\d{12}(?!\d)")
 OUTCOME_RESULTS = ("won", "partial", "lost", "settled", "abandoned")
 
 
+# the details a document needs that the form before payment asks (ZANN, api/chat.py DOC_DETAIL)
+_DOC_DETAIL = re.compile(r"_(?:name|address|bin|iin|email|phone)$")
+
+
 class EngineError(Exception):
     """A request that is valid HTTP but not allowed in the current case state."""
 
@@ -120,7 +124,7 @@ class EngineConfig:
     # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap;
     # -1 = no questions on the site: the draft at once, filled from the story, the chat and the files (owner 01.10,
     # «3 клика»); the Telegram bot keeps the questions (it has no draft screen)
-    intake_max_questions: int = -1
+    intake_max_questions: int = 0  # owner 02.10 (decision 226): ask what is missing, documents first
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # owner 01.10: a Kaspi Pay link payment gives the document at «Оплатить»; the desk matches it afterwards
     trust_kaspi_link: bool = True
@@ -628,6 +632,20 @@ class CaseEngine:
         message = pack.t(lang, "routing.handed_to_lawyer", reasons=reasons)
         self.notifier.notify(session, case, "handoff", message)
         return Reply(message=message)
+
+    def facts_missing(self, case: Case) -> list[str]:
+        """R-29 (owner 02.10): the facts the case still lacks before a solution and a paid offer — what happened, when,
+        how much, and who the other side is (its name: «кому»). Not the parties' addresses and ID numbers, nor the
+        applicant's own data: those are asked in the form before payment (ZANN's rule in the chat's intake note).
+        One list for the chat's note and the offer's gate. [] when complete; ["scenario"] while not classified."""
+        if not case.scenario_id:
+            return ["scenario"]
+        sc = self.scenario_of(case)
+        their_names = {p.name_field for role, p in sc.parties.items() if role != "applicant" and p.name_field}
+        facts = case.facts or {}
+        return [f.name for f in sc.intake
+                if f.type != "evidence" and not f.optional and not f.pii and not facts.get(f.name)
+                and (f.name in their_names or not _DOC_DETAIL.search(f.name))]
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
         """Fields still to ask, in interview order: documents → what happened → identity document → personal data.

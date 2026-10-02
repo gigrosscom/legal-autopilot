@@ -280,6 +280,7 @@ const kk: Dict = {
     docPrice: "2 990 ₸-ден",
     docService: "Қызмет",
     docCost: "Құны",
+    ask: { photo: "Суретке түсіру", file: "Файл тіркеу", sent: "Құжаттарды тіркеймін." },
     ways: { title: "Шешу жолдары", document: "Құжат дайындау", case: "Іс толығымен", lawyer: "Заңгер жалдау", from: "{price} бастап" },
     docPay: "Төлеу",
     lawyer: "Заңгер немесе адвокат",

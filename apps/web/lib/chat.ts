@@ -11,6 +11,7 @@ export type ChatMessage = {
   attachments: { id: string; filename: string }[];
   norms: ChatNorm[];
   offer_document?: boolean;  // the reply offers to prepare the document: a button shows under it
+  ask_files?: boolean;  // the reply asks for documents: «Сфотографировать» / «Приложить файл» under it (owner 02.10)
 };
 export type ChatEvent =
   | { type: "text"; text: string }

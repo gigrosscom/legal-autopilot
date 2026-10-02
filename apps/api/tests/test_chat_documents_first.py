@@ -28,7 +28,10 @@ def test_note_for_a_refund_case(ctx):
         note = intake_note(ctx.container, case, "ru")
     assert "Чек или квитанция об оплате" in note["documents_to_ask"]
     assert not note["documents_received"]
-    assert not any(n.endswith(("_name", "_address", "_iin", "_phone")) for n in note["facts_missing"])
+    # the parties' details go to the form before payment — except the other side's name («кому», R-29: one list with
+    # the offer's gate, engine.facts_missing)
+    assert not any(n.endswith(("_name", "_address", "_iin", "_phone")) for n in note["facts_missing"] if n != "seller_name")
+    assert not any(n.startswith("applicant_") for n in note["facts_missing"])
     assert set(note["facts_missing"]).isdisjoint(note["facts_known"])
 
 
