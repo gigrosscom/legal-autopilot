@@ -367,6 +367,9 @@ export class NetworkError extends Error {
 
 const ERRORS = {
   ru: {
+    on_hold: "Документ по этому делу сначала посмотрит наша команда — напишем вам в течение часа. Делать ничего не нужно.",
+    email_required: "Подтвердите e-mail в профиле — копия придёт на него.",
+    copySent: "Копия отправлена на {email}.",
     offline: "Нет интернета. Проверьте связь и попробуйте ещё раз — введённый текст сохранён.",
     timeout: "Сервер не ответил вовремя — возможно, медленная связь. Попробуйте ещё раз.",
     server: "Сервер временно не отвечает. Попробуйте ещё раз через минуту — введённый текст сохранён.",
@@ -377,6 +380,9 @@ const ERRORS = {
     unknown: "Что-то пошло не так. Обновите страницу и попробуйте ещё раз.",
   },
   kk: {
+    on_hold: "Бұл іс бойынша құжатты алдымен біздің команда қарайды — бір сағат ішінде жазамыз. Ештеңе істеудің қажеті жоқ.",
+    email_required: "Профильде e-mail растаңыз — көшірме соған келеді.",
+    copySent: "Көшірме {email} адресіне жіберілді.",
     offline: "Интернет жоқ. Байланысты тексеріп, қайта көріңіз — мәтін сақталды.",
     timeout: "Сервер уақытында жауап бермеді — байланыс баяу болуы мүмкін. Қайта көріңіз.",
     server: "Сервер уақытша жауап бермей тұр. Бір минуттан соң қайта көріңіз — мәтін сақталды.",
@@ -387,6 +393,9 @@ const ERRORS = {
     unknown: "Бірдеңе дұрыс болмады. Бетті жаңартып, қайта көріңіз.",
   },
   en: {
+    on_hold: "Our team will look at this case's document first — we will write to you within an hour. Nothing to do on your side.",
+    email_required: "Confirm an e-mail in your profile — the copy will go there.",
+    copySent: "The copy was sent to {email}.",
     offline: "No internet. Check your connection and try again — your text is saved.",
     timeout: "The server did not answer in time — the connection may be slow. Try again.",
     server: "The server is temporarily unavailable. Try again in a minute — your text is saved.",
@@ -397,6 +406,9 @@ const ERRORS = {
     unknown: "Something went wrong. Refresh the page and try again.",
   },
   ar: {
+    on_hold: "سيراجع فريقنا مستند هذه القضية أولًا — سنكتب إليك خلال ساعة. لا يلزمك فعل شيء.",
+    email_required: "أكّد بريدك الإلكتروني في الملف الشخصي — ستصل النسخة إليه.",
+    copySent: "أُرسلت النسخة إلى {email}.",
     offline: "لا يوجد اتصال بالإنترنت. تحقّق من الاتصال وحاول مرة أخرى — تم حفظ النص.",
     timeout: "لم يستجب الخادم في الوقت المحدد — قد يكون الاتصال بطيئًا. حاول مرة أخرى.",
     server: "الخادم غير متاح مؤقتًا. حاول بعد دقيقة — تم حفظ النص.",
@@ -407,6 +419,9 @@ const ERRORS = {
     unknown: "حدث خطأ ما. حدّث الصفحة وحاول مرة أخرى.",
   },
   tr: {
+    on_hold: "Bu davanın belgesine önce ekibimiz bakacak — bir saat içinde size yazacağız. Sizin bir şey yapmanıza gerek yok.",
+    email_required: "Profilinizde bir e-posta onaylayın — kopya oraya gönderilir.",
+    copySent: "Kopya {email} adresine gönderildi.",
     offline: "İnternet yok. Bağlantınızı kontrol edip tekrar deneyin — metniniz kaydedildi.",
     timeout: "Sunucu zamanında yanıt vermedi — bağlantı yavaş olabilir. Tekrar deneyin.",
     server: "Sunucu geçici olarak yanıt vermiyor. Bir dakika sonra tekrar deneyin — metniniz kaydedildi.",
@@ -419,6 +434,12 @@ const ERRORS = {
 };
 
 /** A message a person can understand, for any error from the API helpers, in the page language. */
+/** «Копия отправлена на …» in the page's language. */
+export function copySentText(email: string): string {
+  const lang = typeof document !== "undefined" ? document.documentElement.lang : "ru";
+  return (ERRORS[lang as keyof typeof ERRORS] ?? ERRORS.ru).copySent.replace("{email}", email);
+}
+
 export function errorText(e: unknown): string {
   const lang = typeof document !== "undefined" ? document.documentElement.lang : "ru";
   const m = ERRORS[lang as keyof typeof ERRORS] ?? ERRORS.ru;
@@ -428,6 +449,9 @@ export function errorText(e: unknown): string {
     if (e.status === 401 || e.status === 403) return m.denied;
     if (e.status === 404) return m.notFound;
     if (e.status === 429) return m.tooMany;
+    // a known code says what happens next (owner 02.10: «on_hold» was shown as it is)
+    if (e.code && e.code in m && !["offline", "timeout", "server", "denied", "notFound", "tooMany", "invalid", "unknown"].includes(e.code))
+      return m[e.code as keyof typeof m];
     const msg = e.message;
     if (msg && !msg.startsWith("[") && !msg.startsWith("{") && !msg.startsWith("<") && msg !== "[object Object]") return msg;
     return m.invalid;

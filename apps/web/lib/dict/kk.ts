@@ -177,6 +177,7 @@ const kk: Dict = {
     doc_fmtWord: "Word — өңдеу үшін",
     doc_toWhatsapp: "WhatsApp",
     doc_toTelegram: "Telegram",
+    doc_copyToMe: "Көшірмені маған e-mail-ге",
     doc_toMail: "Электрондық пошта",
     doc_toOther: "Басқа қолданба",
     doc_fileReady: "Файл жүктеп алынды — ашылған терезеде оны тіркеңіз.",

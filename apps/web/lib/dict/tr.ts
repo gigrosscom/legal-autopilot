@@ -176,6 +176,7 @@ const tr: Dict = {
     doc_fmtWord: "Word — düzenlemek için",
     doc_toWhatsapp: "WhatsApp",
     doc_toTelegram: "Telegram",
+    doc_copyToMe: "Kopyayı e-postama gönder",
     doc_toMail: "E-posta",
     doc_toOther: "Başka uygulama",
     doc_fileReady: "Dosya indirildi — açılan pencerede ekleyin.",

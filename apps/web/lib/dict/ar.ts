@@ -176,6 +176,7 @@ const ar: Dict = {
     doc_fmtWord: "Word — للتعديل",
     doc_toWhatsapp: "واتساب",
     doc_toTelegram: "تيليجرام",
+    doc_copyToMe: "أرسل لي نسخة بالبريد",
     doc_toMail: "البريد الإلكتروني",
     doc_toOther: "تطبيق آخر",
     doc_fileReady: "تم تنزيل الملف — أرفقه في النافذة التي فُتحت.",
