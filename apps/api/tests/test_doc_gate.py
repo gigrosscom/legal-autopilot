@@ -167,3 +167,33 @@ def test_the_draft_shows_the_sign_not_the_code(ctx):
     d = api.get(f"/v1/cases/{cid}/draft").json()
     text = d.get("visible", "") + d.get("hidden", "") + d.get("text", "")
     assert "KZT" not in text
+
+
+def test_a_value_nobody_told_is_asked_not_printed():
+    """PM 02.10 (R-29): a sum, a date or the other side's name that is neither typed by the person nor found in their
+    story, chat or files is a made-up value — the person is asked that field."""
+    said = "Купил телевизор в Техномире 12.08.2026 за 250 000 тенге"
+    ok = {"amount": ("money", "250000"), "purchase_date": ("date", "12.08.2026"), "seller_name": ("name", "ТОО «Техномир»")}
+    assert docgate.invented(ok, said, set()) == []
+    made_up = {"amount": ("money", "99000"), "purchase_date": ("date", "01.09.2026"), "seller_name": ("name", "ТОО «Ромашка»")}
+    found = docgate.invented(made_up, said, set())
+    assert {p.field for p in found} == {"amount", "purchase_date", "seller_name"} and all(p.client_can_fix for p in found)
+    assert docgate.invented(made_up, said, {"amount", "purchase_date", "seller_name"}) == []  # typed: the person's word
+    assert [p.kind for p in docgate.markers("Требования по сути обращения.", ("по сути обращения",))] == ["marker"]
+
+
+def test_a_made_up_sum_stops_the_document(ctx):
+    api, cid = qualified_case(ctx)
+    with ctx.container.session_factory() as s:  # a sum the model wrote in, not told anywhere
+        c = s.get(Case, uuid.UUID(cid))
+        c.facts = {**c.facts, "amount": "987654"}
+        s.commit()
+    from sqlalchemy import select
+    from konsilier.core.models import AuditLog
+    with ctx.container.session_factory() as s:  # and never typed by the person
+        for row in s.scalars(select(AuditLog).where(AuditLog.case_id == uuid.UUID(cid), AuditLog.event == "answered")):
+            if (row.data or {}).get("field") == "amount":
+                s.delete(row)
+        s.commit()
+    r = api.c.post(f"/v1/cases/{cid}/actions/next", headers=api.h)
+    assert r.status_code == 422 and [f["field"] for f in r.json()["detail"]["fields"]] == ["amount"]

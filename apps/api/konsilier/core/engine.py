@@ -896,6 +896,7 @@ class CaseEngine:
             self._save_vault(case, llm)
             if pending not in errors:
                 self._count_question(case, f)
+                self.audit(session, case, "user", "answered", field=pending)  # typed by the person (the check's source)
             if pending in errors:
                 q = self.question_for(sc, pack, lang, pending)
                 msg = pack.t(lang, f"errors.{errors[pending]}", default=pack.t(lang, "errors.generic"))
@@ -1794,6 +1795,28 @@ class CaseEngine:
         return self._finish_action(session, case, sc, pack, spec, action, actor, addressee, ctx, bool(pdf),
                                    checked=lawyer_only)
 
+    def _told(self, case: Case, sc: Scenario) -> tuple[dict[str, tuple[str, Any]], str, set[str]]:
+        """What the check holds the document's names, sums and dates against (PM 02.10: nothing made up): the values,
+        everything the person said or uploaded, and the fields they typed themselves."""
+        from sqlalchemy.orm import object_session
+
+        session = object_session(case)
+        parties = {p.name_field for role, p in sc.parties.items() if role != "applicant" and p.name_field}
+        values = {f.name: (f.type if f.type in ("money", "date") else "name", case.facts.get(f.name)) for f in sc.intake
+                  if (f.type in ("money", "date") or f.name in parties) and not f.pii}
+        said = [case.initial_text or ""]
+        typed: set[str] = set()
+        if session is not None:
+            said += [m for m in session.scalars(select(ChatMessage.text).where(
+                ChatMessage.case_id == case.id, ChatMessage.role == "user")).all() if m]
+            for row in session.scalars(select(AuditLog).where(
+                    AuditLog.case_id == case.id, AuditLog.event.in_(("answered", "draft_filled", "facts_corrected")))):
+                data = row.data or {}
+                typed |= set(data.get("fields") or []) | ({data["field"]} if data.get("field") else set())
+        for e in case.evidence:
+            said += [e.text or "", " ".join(str(v) for v in (e.extracted_facts or {}).values())]
+        return values, "\n".join(said), typed
+
     @staticmethod
     def _drop_empty(pack: JurisdictionPack, lang: str) -> tuple[str, ...]:
         routing = pack.coverage.routing if pack.coverage else None
@@ -1809,7 +1832,8 @@ class CaseEngine:
         roles = {role: ctx.get(role) or {} for role in ("applicant", "respondent") if role in sc.parties}
         fields = {role: {"name": p.name_field} for role, p in sc.parties.items() if p.name_field}
         required = {f.name: case.facts.get(f.name) for f in sc.intake if f.type in ("money", "date") and not f.optional}
-        return docgate.check(docx_text(docx), words=words, norm_words=norms, addressee=addressee, parties=roles, fields=fields,
+        told = self._told(case, sc)
+        return docgate.check(docx_text(docx), words=words, norm_words=norms, told=told, addressee=addressee, parties=roles, fields=fields,
                              required=required)
 
     def _ensure_text(self, case: Case, sc: Scenario, pack: JurisdictionPack, title: str) -> None:
