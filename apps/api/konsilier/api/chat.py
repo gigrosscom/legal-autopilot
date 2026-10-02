@@ -299,6 +299,10 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                                   "sources": result.sources, "unchecked": result.unchecked,
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
                                   "usage": result.usage, "first_ms": first_ms,
+                                  # P0 01.10: rounds cut before their end ("provider:reason") — continued, or the
+                                  # reply ended at its last whole sentence (trimmed); counted hourly (chatspeed)
+                                  "truncated": getattr(result, "truncated", "") or None,
+                                  "trimmed": bool(getattr(result, "trimmed", False)),
                                   "total_ms": int((time.perf_counter() - t_request) * 1000), "timing": timing})
             s.add(m)
             c = s.get(Case, case_pk)

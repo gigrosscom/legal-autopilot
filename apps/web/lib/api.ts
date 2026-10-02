@@ -29,6 +29,7 @@ export type CaseAction = {
   has_docx: boolean;
   has_pdf: boolean;
   signatures?: DocSignature[];
+  paid?: boolean;
   downloadable: boolean;
   submitted_at: string | null;
   response_class: string | null;
@@ -202,6 +203,8 @@ export type Payment = {
   buyer?: { name: string; bin: string | null; address: string | null } | null;
   options: { purpose: "document" | "case"; amount: number }[];
   case_paid: boolean;
+  /** The last paid bill of the case (status is about the next document). */
+  last_paid?: { code: string; amount: number; purpose: string; paid_at: string | null } | null;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
   subscription: Subscription | null;
@@ -466,10 +469,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /** Dictated audio → text (POST /v1/transcribe, free Gemini on the server; the audio is not stored). */
-export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm"): Promise<string> {
+/** `partial`: the recording so far while the person is still speaking — the live text in the box. */
+export async function transcribeAudio(audio: Blob, lang: string, filename = "voice.webm", partial = false): Promise<string> {
   const form = new FormData();
   form.append("file", audio, filename);
   form.append("lang", lang);
+  if (partial) form.append("partial", "true");
   const r = await api<{ text: string }>("/v1/transcribe", { method: "POST", body: form });
   return r.text ?? "";
 }

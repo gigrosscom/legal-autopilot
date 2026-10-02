@@ -93,8 +93,22 @@ class Usage:
 @dataclass
 class Message:
     content: list[Block]
-    stop_reason: str
+    stop_reason: str  # tool_use | end_turn | max_tokens | cut (any other end: safety, recitation, no finish at all)
     usage: Usage
+    finish: str = ""  # the provider's own finish reason as sent (STOP, MAX_TOKENS, SAFETY, length …; NONE: none sent)
+
+
+# Gemini finish reasons of a complete answer; anything else (SAFETY, RECITATION, OTHER, a stream that ended without
+# one) means the text stopped before its end (P0 01.10: an answer cut mid-word) and the chat continues it.
+_GEMINI_DONE = ("STOP",)
+
+
+def gemini_stop(finish: str, has_tool: bool) -> str:
+    if has_tool:
+        return "tool_use"
+    if finish in _GEMINI_DONE:
+        return "end_turn"
+    return "max_tokens" if finish == "MAX_TOKENS" else "cut"
 
 
 class EmptyReply(RuntimeError):
@@ -187,9 +201,11 @@ class _Stream:
             self._r.close()
 
     def _body_for(self, url: str) -> dict[str, Any]:
-        """The request for one model: Gemini 3 models get the chat's thinking level (least thinking → first words
-        sooner); older models do not know the setting and get the body as it is."""
-        if not self._thinking or "/models/gemini-3" not in url:
+        """The request for one model: Gemini 3 models (and the "-latest" aliases, which point at them) get the chat's
+        thinking level (least thinking → first words sooner, and no thinking tokens out of maxOutputTokens); older
+        models do not know the setting and get the body as it is (one that refuses it is asked again without it)."""
+        model = url.split("/models/", 1)[-1].split(":", 1)[0]
+        if not self._thinking or not (model.startswith("gemini-3") or model.endswith("-latest")):
             return self._body
         gen = {**self._body["generationConfig"], "thinkingConfig": {"thinkingLevel": self._thinking}}
         return {**self._body, "generationConfig": gen}
@@ -211,7 +227,7 @@ class _Stream:
     def text_stream(self) -> Iterator[str]:
         blocks: list[Block] = []
         usage = Usage()
-        finish = "STOP"
+        finish = "NONE"  # a stream that ends without a finish reason was cut (dropped connection, proxy timeout)
         r = self._r = self._open()
         if self._closed:
             r.close()
@@ -240,9 +256,8 @@ class _Stream:
                             yield part["text"]
         finally:
             r.close()
-        stop = "tool_use" if any(b.type == "tool_use" for b in blocks) else (
-            "max_tokens" if finish == "MAX_TOKENS" else "end_turn")
-        self._final = Message(blocks, stop, usage)
+        stop = gemini_stop(finish, any(b.type == "tool_use" for b in blocks))
+        self._final = Message(blocks, stop, usage, finish)
 
     def _open(self) -> httpx.Response:
         """First model that answers. On 429/5xx or a dropped connection a model is retried once after a short pause

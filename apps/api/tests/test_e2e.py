@@ -13,7 +13,7 @@ from sqlalchemy import select
 from konsilier.core.documents import docx_text
 from konsilier.core.models import AuditLog, Case, Deadline, Outcome
 
-from .test_pilot_drafts import NEUTRAL_NOTE_RU
+from .test_pilot_drafts import AI_LINE_RU
 
 ADMIN = {"X-Admin-Token": "adm"}
 
@@ -109,7 +109,7 @@ def test_consumer_refund_full_path(ctx):
     facts = {f["field"]: f["value"] for f in case["facts"]}
     assert facts["purchase_date"] == "12.08.2026"
     assert facts["amount"] == "150 000"
-    # order: documents → what happened → identity document → personal data
+    # order: documents → what happened → personal data
     assert created["reply"]["question"]["field"] == "evidence"
     assert created["case"]["status"] == "intake"
 
@@ -127,15 +127,12 @@ def test_consumer_refund_full_path(ctx):
     # «пропустить» on a required answer: a blank for the draft, never asked again (QA BUG-08, PM 01.10)
     out = api.answer(cid, "пропустить")
     assert "черновике" in out["reply"]["message"] and out["case"]["question"]["field"] != "seller_name"
-    body = run_intake(api, cid, {
+    body = run_intake(api, cid, {  # no ID copy is asked for a claim to a seller (lawyer 01.10, D-18)
         "seller_bin": "123456789012",
         "goods_description": "Смартфон Nova 9",
         "seller_email": "пропустить",
         "seller_address": "г. Алматы, пр. Достык, 10",
-    })
-    assert body["question"]["field"] == "identity_document"
-    body = run_intake(api, cid, {
-        "identity_document": "пропустить", "applicant_name": "Иванов Иван Иванович",
+        "applicant_name": "Иванов Иван Иванович",
         "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67",
         "applicant_iin": "900101300123"})
     # the draft shows the blank in brackets; the person fills it there
@@ -170,8 +167,8 @@ def test_consumer_refund_full_path(ctx):
     docx = api.get(f"/v1/cases/{cid}/actions/{a1['id']}/document?format=docx").content
     text = docx_text(docx)
     for expected in ("ПРЕТЕНЗИЯ", "ТОО «Техномир»", "БИН: 123456789012", "Иванов Иван Иванович",
-                     "ИИН: 900101300123", "150 000", "Смартфон Nova 9", "Подготовлено с помощью ИИ",
-                     NEUTRAL_NOTE_RU, "Закон Республики Казахстан «О защите прав потребителей», статья 42-4",
+                     "150 000", "Смартфон Nova 9", "Подготовлено с помощью ИИ",
+                     AI_LINE_RU, "Закон Республики Казахстан «О защите прав потребителей», статья 42-4",
                      "Адрес: г. Алматы, пр. Достык, 10", "Адрес: г. Алматы, ул. Абая, 1",
                      "1. Чек или квитанция об оплате (receipt.txt)"):
         assert expected in text.replace(" ", " "), expected
@@ -377,7 +374,7 @@ def test_packs_and_waitlist(ctx):
         "kz.consumer.refund", "kz.money.credit_fraud", "kz.labor.unpaid_wages", "kz.administrative.fine_appeal",
         "kz.gov.inaction_complaint",
         "kz.family.alimony", "kz.consumer.non_delivery", "kz.consumer.poor_service", "kz.consumer.air_ticket",
-        "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
+        "kz.consumer.paid_medical", "kz.consumer.education_refund", "kz.consumer.service_refund", "kz.labor.final_settlement", "kz.labor.dismissal",
         "kz.housing.deposit_return", "kz.housing.management_company", "kz.housing.utility_billing",
         "kz.finance.debt_collectors", "kz.finance.imposed_insurance", "kz.finance.loan_restructuring",
         "kz.finance.unauthorized_debit", "kz.civil.road_accident"}

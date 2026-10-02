@@ -13,8 +13,10 @@ A failed delivery never breaks the case flow: it is logged and written to the ro
 from __future__ import annotations
 
 import logging
+import threading
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,6 +26,7 @@ from .models import Case, Identity, Notification, PushSubscription, User, utcnow
 from .push import MAX_FAILURES, PushGone, payload
 
 log = logging.getLogger(__name__)
+_deferred = threading.local()  # Notifier.deferred: the sending collected while a fast request runs
 
 # kinds worth an e-mail besides the inbox (case reports mail themselves, see konsilier.reports)
 EMAIL_KINDS = frozenset({"payment", "document", "approval", "deadline_reminder", "deadline_expired", "handoff",
@@ -73,6 +76,38 @@ class Notifier:
         channel = self.channels.get(user.channel) or self.channels["web"]
         n = Notification(user_id=user.id, case_id=case.id if case is not None else None, channel=channel.name,
                          kind=kind, text=text)
+        later = getattr(_deferred, "jobs", None)
+        if later is not None:  # the inbox row now, the sending after the commit (see deferred)
+            session.add(n)
+            session.flush()
+            nid, uid, cid = n.id, user.id, case.id if case is not None else None
+
+            def deliver(s: Session) -> None:
+                row = s.get(Notification, nid)
+                self._deliver(s, row, s.get(User, uid), s.get(Case, cid) if cid is not None else None,
+                              kind, text, sms)
+            later.append(deliver)
+            return n
+        self._deliver(session, n, user, case, kind, text, sms)
+        session.add(n)
+        return n
+
+    @contextmanager
+    def deferred(self) -> Iterator[list[Callable[[Session], None]]]:
+        """Within the block a notification is written at once (the inbox row: the chat and the bell show it) and
+        its sending — the channel, e-mail, SMS, push — is collected in the yielded list, to run after the commit
+        with a new session. For a request that must answer fast (the Kaspi Pay push: konsilier/kaspi_parse.py)."""
+        prev = getattr(_deferred, "jobs", None)
+        jobs: list[Callable[[Session], None]] = []
+        _deferred.jobs = jobs
+        try:
+            yield jobs
+        finally:
+            _deferred.jobs = prev
+
+    def _deliver(self, session: Session, n: Notification, user: User, case: Case | None, kind: str, text: str,
+                 sms: str | None) -> None:
+        channel = self.channels.get(user.channel) or self.channels["web"]
         via: list[str] = []
         errors: list[str] = []
         try:
@@ -97,8 +132,6 @@ class Notifier:
             errors.append(f"push: {e}")
         n.sent_via = ",".join(via) or None
         n.error = "; ".join(errors) or None
-        session.add(n)
-        return n
 
     # ---- web push -----------------------------------------------------
     def _push(self, session: Session, user: User, text: str, case: Case | None) -> bool:

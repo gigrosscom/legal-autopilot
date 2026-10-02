@@ -19,6 +19,11 @@ One answer per reply: after a tool call the model is told to continue the text a
 starts over anyway (the short answer again, a second [[MORE]]) is cut (RepeatGuard); a look-up note written just
 before a tool call is not kept in the stored reply; a turn without any words raises EmptyReply (the endpoint then
 says «busy»), it never ends as an empty reply.
+
+Whole answers (P0 01.10, «…если оплата была бе»): a round that stops before the end of its text — the token limit,
+a safety / recitation / other stop, a stream without a finish reason, a dropped connection — is continued from the
+word it stopped at (at most MAX_CONTINUE times); a reply still cut ends at its last whole sentence. Each cut is kept
+in the reply's meta (``truncated``, ``trimmed``) and counted in the hourly ``chatspeed`` line.
 """
 
 from __future__ import annotations
@@ -56,24 +61,27 @@ answer in one or two friendly sentences that you help with legal questions — r
 state services — and invite the person to describe such a situation. Do not answer the unrelated question itself
 and do not write the {more_marker} marker then.
 
-Reply shape — short first, details on request
-Start every reply with the SHORT ANSWER: 1–3 plain sentences, at most about 50 words, that answer exactly what was
-asked: the person's rights in one line and the key action in **bold**. If the answer depends on a fact, end the short
-answer with ONE short question (never more than one question in the whole reply; the details contain none).
-Then write {more_marker} on its own line, and after it the DETAILS: the numbered steps, what to prepare, the
-official sources («По данным …» with links) and caveats. The app shows only the short answer and a «Подробнее»
-link that opens the details, so the short answer must make sense on its own and never say "see below".
-If there is nothing to add (a greeting, a one-line fact), write only the short answer, without the marker.
+Reply shape — always in this order: short answer, details, then at most one question
+1. Start every reply with the SHORT ANSWER: 1–3 plain sentences, at most about 50 words, that answer exactly what
+   was asked: the person's rights in one line and the key action in **bold**. No question here.
+2. Then write {more_marker} on its own line, and after it the DETAILS: the numbered steps, what to prepare, the
+   official sources («По данным …» with links) and caveats. No question here either, not between the steps.
+3. Last, only if the answer depends on a fact you do not know yet: ONE short question to the person, as the very
+   last line of the whole reply, after the details (the app shows it under the details link). Never two questions.
+The app shows the short answer, a «Подробнее» link that opens the details, and the closing question under it, so the
+short answer must make sense on its own and never say "see below". If there is nothing to add (a greeting, a
+one-line fact), write only the short answer, without the marker.
+Always finish the reply: every sentence and every step complete.
 Never write the words "SHORT ANSWER", "DETAILS" or any other label — just the text.
 Speed matters: the person is waiting. Write the short answer FIRST, before calling any tool, from what you already
 know and the excerpts given below; call tools only afterwards, for the details (an article, a deadline, a body).
 
 How to work
 1. Help at once, then ask. Every reply first gives something useful: what the person's rights most likely are and
-   what to do now; the steps as a short numbered list go into the details. Only if the answer depends on it, ask
-   ONE short question about the fact that matters most (when it happened, how much money, which documents the
-   person has). Never reply with questions alone, do not interrogate, and do not ask for anything that is already
-   in the case context or in the files the person attached.
+   what to do now; the steps as a short numbered list go into the details. Only if the answer depends on it, end
+   the reply with one short question about the fact that matters most (when it happened, how much money, which
+   documents the person has). Never reply with questions alone, do not interrogate, and do not ask for anything that
+   is already in the case context or in the files the person attached.
    Format: short paragraphs, numbered steps, **bold** for the main action; no tables, no headings.
 2. First decide WHAT was paid for or what the dispute is about, then pick the rules — never the other way round:
    a thing (goods); a job with a result (repair, tailoring); a service, including digital ones (a subscription,
@@ -110,10 +118,18 @@ How to work
 6. Offer a document as soon as it is the next step. In the first reply of the conversation offer it only when the
    person asks for a document themselves or attached documents (a receipt, a contract, a statement). Offer it once the
    situation is clear (what happened and with whom; the missing details are filled in the draft, never asked one by
-   one) and a written claim, complaint, lawsuit or application is really the next step. Offer it softly, as a
-   question in one sentence, e.g. «Могу подготовить претензию продавцу — показать?», and end the reply (after the
-   details) with the marker {offer_marker} on its own line (the app shows a button there). Never offer a document for
-   a question that only needs an explanation, never twice in a row, and never write about buttons or prices yourself.
+   one) and a written claim, complaint, lawsuit or application is really the next step. Offer it in one sentence
+   that says what the person gets, e.g. «Составлю претензию продавцу с вашими данными и ссылками на нормы — готовый
+   документ в PDF и Word.», and end the reply (after the details) with the marker {offer_marker} on its own line (the
+   app shows the «Составить документ» button and the price there). Never offer a document for a question that only
+   needs an explanation; never state the price yourself.
+   NEVER write the text of a document in the chat — not a claim, complaint, lawsuit, application or letter, not a
+   draft, a template, a sample, an outline of its paragraphs or its demands with blanks like «(ваши ФИО)» or
+   «(дата)». The document is made only by the button, with the person's data and the checked rules. If the person
+   agrees («да», «покажите», «давайте», «составьте») or asks for the text, answer in one sentence that the document
+   will be ready after «Составить документ» below, and write {offer_marker} again on its own line — this is the
+   only time the marker may follow another offer. Do not ask «Все ли данные понятны?» and do not offer a second
+   document in the same reply.
 7. Applications, not disputes. Many people ask how to get something from the state: a social benefit (at the birth
    of a child, childcare, disability, loss of a breadwinner, targeted social assistance, loss of a job), a grant or
    non-repayable funding for a business, an education grant or a scholarship, or how to take part in a public
@@ -173,6 +189,8 @@ class ChatResult:
     # where the time went (ms): library search, each model round (with the providers tried), each tool call and
     # where its text came from, the first words; logged as "chat timing:" and kept in the reply's meta
     timing: dict[str, Any] = field(default_factory=dict)
+    truncated: str = ""  # rounds cut before their end ("provider:reason", comma-separated); continued or trimmed
+    trimmed: bool = False  # still cut after the continuations: the reply was ended at its last whole sentence
 
 
 OFFER_MARKER = "[[DOCUMENT]]"
@@ -190,6 +208,17 @@ _MORE = re.compile(r"\[\[\s*MORE\s*\]\]", re.IGNORECASE)
 CONTINUE_NOTE = ("The person already sees what you wrote above in this reply. Continue right after it: do not repeat "
                  "the short answer or anything already written. Write the " + MORE_MARKER + " marker only if you have "
                  "not written it yet. Do not announce another look-up; just write the rest.")
+# P0 01.10 (an answer cut mid-word «…если оплата была бе»): a round that stops before the end of its text — the token
+# limit, a safety/recitation/other stop, a stream that ended without a finish reason or broke — is continued from
+# where it stopped, at most this many times; a reply still cut then ends at its last whole sentence.
+MAX_CONTINUE = 2
+CUT_STOPS = ("max_tokens", "cut", "error")
+CUT_NOTE = ("Your reply above was cut off before its end. Continue it exactly where it stopped — in the middle of the "
+            "word or the sentence if it stopped there — without repeating anything already written and without "
+            "starting over, then finish the reply in the reply shape asked for.")
+SEAM_NOTE = (" It stopped at «{word}»: begin with that word written again in full (completed if it was cut), then go "
+             "on.")
+TOOLS_OVER ="No more look-ups are possible in this reply: answer from what you already have."
 # Added when the model has used up its tool rounds: the answer is written now.
 FINAL_NOTE = ("No more tool calls are possible in this reply. Write the answer to the person now from what you "
               "already have, in the reply shape asked for.")
@@ -220,6 +249,21 @@ def trailing_filler(text: str) -> str:
     first = drop[0]
     at = text.rstrip().rfind(first)
     return text.rstrip()[at:] if at >= 0 else ""
+
+
+_WHOLE_END = re.compile(r"[.!?…][*_»\"')\]]*(?=\s|$)|\n")
+
+
+def whole_sentences(text: str) -> str:
+    """The text up to the end of its last complete sentence or line (a reply still cut after its continuations)."""
+    for m in reversed(list(_WHOLE_END.finditer(text))):
+        line = text[text.rfind("\n", 0, m.start()) + 1:m.end()].strip()
+        if re.fullmatch(r"\d+[.)]", line):
+            continue  # «1.» opens a step, it does not end a sentence
+        out = re.sub(r"\s*\[\[\s*MORE\s*\]\]\s*$", "", text[:m.end()].rstrip())
+        if has_words(out):
+            return out
+    return text
 
 
 def _words(text: str) -> set[str]:
@@ -386,60 +430,131 @@ class ChatAgent:
             len(m["content"]) for m in messages if isinstance(m["content"], str))
         timing["setup_ms"] = _ms(t0)
         usage = {"input_tokens": 0, "output_tokens": 0}
-        reply = ""  # what the person was sent in this reply (look-up notes before a tool call are taken out)
+        reply = ""  # what the person was sent in this reply
+        fillers: list[tuple[int, int]] = []  # look-up notes shown before a tool call: (start, end) in ``reply``
         calls = 0
         served = ""  # the provider of a chain that answered keeps the rest of the turn (its own tool calls)
-        # up to max_turns rounds with tools; a turn that still ends in a tool call gets one more round to write
-        for n in range(self.max_turns + 1):
+        tool_rounds = 0
+        cuts: list[str] = []  # rounds that stopped before the end of their text: "provider:reason" (P0 01.10)
+        cut_open = False  # the last round was cut and nothing has completed it yet
+        next_seam: str | None = None  # the word a cut round stopped at: its continuation writes it again first
+        n = -1
+        # up to max_turns rounds with tools; a turn that still ends in a tool call gets one more round to write;
+        # a round cut before its end (token limit, safety stop, dropped stream) is continued up to MAX_CONTINUE times
+        while True:
+            n += 1
+            last_round = tool_rounds >= self.max_turns  # tools are no longer run: the answer is written now
             t_round = time.perf_counter()
             first_ms = None
-            round_text = ""
+            round_text = ""  # what this round added to the reply (after the repeat guard)
+            raw_text = ""  # what the model wrote in this round
+            final: Any = None
+            error = ""
+            s: Any = None
+            seam, held, next_seam = next_seam, "", None
+            round_seam = seam
             # after a tool call with part of the reply already shown: the model must continue, not start over
             guard = RepeatGuard(reply) if n and reply.strip() else None
             kw: dict[str, Any] = {"prefer": served} if served and getattr(self.client, "accepts_prefer", False) else {}
-            with self.client.messages.stream(model=self.model, max_tokens=self.max_tokens, system=system,
-                                             tools=tools, messages=messages, **kw) as s:
-                chunks = iter(s.text_stream)
-                while True:
-                    raw = next(chunks, None)
-                    if raw is None:
-                        final = s.get_final_message()
-                        out = guard.flush() if guard else ""
-                    else:
-                        raw = strip_foreign_script(raw, language)
-                        out = guard.feed(raw) if guard and raw else raw
-                    if out and (reply.strip() or out.strip()):  # never open a reply with blank lines
-                        if first_ms is None:
-                            first_ms = _ms(t_round)
-                            if "ttft_ms" not in timing:
-                                timing["ttft_ms"] = _ms(t0)
-                                log.info("chat timing: case=%s phase=first_token ms=%d round=%d", case_id,
-                                         timing["ttft_ms"], n + 1)
-                        reply += out
-                        round_text += out
-                        yield {"type": "text", "text": out}
-                    if raw is None:
-                        break
-            served = getattr(s, "provider", "") or served
-            rnd: dict[str, Any] = {"n": n + 1, "provider": getattr(s, "provider", "") or getattr(self.client, "name", ""),
-                                   "first_ms": first_ms, "ms": _ms(t_round), "stop": final.stop_reason}
+            try:
+                with self.client.messages.stream(model=self.model, max_tokens=self.max_tokens, system=system,
+                                                 tools=tools, messages=messages, **kw) as s:
+                    chunks = iter(s.text_stream)
+                    while True:
+                        raw = next(chunks, None)
+                        if raw is not None:
+                            raw = strip_foreign_script(raw, language)
+                            raw_text += raw
+                        if seam is not None:  # a continuation repeats the cut word first: it is written once
+                            held += raw or ""
+                            if raw is not None and len(held) <= len(seam):
+                                continue
+                            text_in = held[len(seam):] if held.startswith(seam) else held
+                            seam = None
+                        else:
+                            text_in = raw or ""
+                        out = guard.feed(text_in) if guard and text_in else text_in
+                        if raw is None:
+                            final = s.get_final_message()
+                            out += guard.flush() if guard else ""
+                        if out and (reply.strip() or out.strip()):  # never open a reply with blank lines
+                            if first_ms is None:
+                                first_ms = _ms(t_round)
+                                if "ttft_ms" not in timing:
+                                    timing["ttft_ms"] = _ms(t0)
+                                    log.info("chat timing: case=%s phase=first_token ms=%d round=%d", case_id,
+                                             timing["ttft_ms"], n + 1)
+                            reply += out
+                            round_text += out
+                            yield {"type": "text", "text": out}
+                        if raw is None:
+                            break
+            except Exception as e:
+                if not reply.strip():
+                    raise  # nothing shown yet: the caller tries the fallback or says «busy», as before
+                # the stream broke after the person started reading (a dropped connection, every provider failed
+                # on a continuation): never leave the answer cut there — continue it below, else end it cleanly
+                error = f"{type(e).__name__}: {str(e)[:120]}"
+                log.warning("chat round %d broke after %d characters: %s", n + 1, len(round_text), error)
+            provider = getattr(s, "provider", "") or getattr(self.client, "name", "")
+            if final is not None:
+                served = getattr(s, "provider", "") or served
+            stop = final.stop_reason if final is not None else "error"
+            finish = getattr(final, "finish", "") or ""
+            rnd: dict[str, Any] = {"n": n + 1, "provider": provider, "first_ms": first_ms, "ms": _ms(t_round),
+                                   "stop": stop}
+            if finish:
+                rnd["finish"] = finish
+            if error:
+                rnd["error"] = error
             if attempts := getattr(s, "attempts", None):
                 rnd["attempts"] = attempts
             timing["rounds"].append(rnd)
             log.info("chat timing: case=%s phase=round %s", case_id, json.dumps(rnd, ensure_ascii=False))
-            usage["input_tokens"] += final.usage.input_tokens
-            usage["output_tokens"] += final.usage.output_tokens
-            searches = getattr(getattr(final.usage, "server_tool_use", None), "web_search_requests", 0) or 0
-            if searches:  # Claude's server web search is billed per search
-                usage["web_search_requests"] = usage.get("web_search_requests", 0) + int(searches)
-            if n == self.max_turns:  # the extra round: its words are the answer, a further tool call is not run
+            if final is not None:
+                usage["input_tokens"] += final.usage.input_tokens
+                usage["output_tokens"] += final.usage.output_tokens
+                searches = getattr(getattr(final.usage, "server_tool_use", None), "web_search_requests", 0) or 0
+                if searches:  # Claude's server web search is billed per search
+                    usage["web_search_requests"] = usage.get("web_search_requests", 0) + int(searches)
+            if stop in CUT_STOPS or (last_round and stop == "tool_use"):
+                cuts.append(f"{provider}:{finish or stop}")
+                cut_open = True
+                log.warning("chat=truncated case=%s round=%d reason=%s chars=%d", case_id, n + 1, cuts[-1],
+                            len(round_text))
+                if len(cuts) > MAX_CONTINUE:
+                    break  # still cut: the reply is ended at its last whole sentence below
+                if stop == "tool_use":  # tools are over: the calls are answered with «not possible», then write
+                    messages.append({"role": "assistant", "content": final.content})
+                    results = [{"type": "tool_result", "tool_use_id": b.id, "content": TOOLS_OVER}
+                               for b in final.content if b.type == "tool_use"]
+                    results.append({"type": "text", "text": FINAL_NOTE})
+                    if reply.strip():
+                        results.append({"type": "text", "text": CONTINUE_NOTE})
+                    messages.append({"role": "user", "content": results})
+                    if reply.strip() and not reply.endswith("\n"):
+                        reply += "\n\n"
+                        yield {"type": "text", "text": "\n\n"}
+                elif raw_text.strip():  # the model's own words so far, and «continue exactly there»
+                    messages.append({"role": "assistant", "content": [{"type": "text", "text": raw_text}]})
+                    word = re.search(r"\w+$", reply)
+                    next_seam = word.group(0) if word else None
+                    messages.append({"role": "user", "content": CUT_NOTE + (
+                        SEAM_NOTE.format(word=next_seam) if next_seam else "")})
+                else:  # nothing written in this round: the same request once more
+                    next_seam = round_seam
+                continue
+            if has_words(round_text) or stop == "tool_use":
+                cut_open = False
+            if last_round:  # the extra round: its words are the answer
                 break
             messages.append({"role": "assistant", "content": final.content})
-            if final.stop_reason == "tool_use":
-                # a look-up note at the end of this round ("Сейчас уточняю…") is shown while the tool runs, but the
-                # stored reply does not keep it (the app replaces the streamed text with the stored one)
-                if filler := trailing_filler(round_text):
-                    reply = reply.rstrip()[:-len(filler)].rstrip() if reply.rstrip().endswith(filler) else reply
+            if stop == "tool_use":
+                tool_rounds += 1
+                # a look-up note at the end of this round ("Сейчас уточняю…") is shown while the tool runs; the
+                # stored reply drops it only if more words follow (never leaving the answer ending before it)
+                if (filler := trailing_filler(round_text)) and reply.rstrip().endswith(filler):
+                    fillers.append((len(reply.rstrip()) - len(filler), len(reply.rstrip())))
                 results: list[dict[str, Any]] = []
                 for b in final.content:
                     if b.type == "tool_use":
@@ -461,20 +576,31 @@ class ChatAgent:
                         timing["tools"].append(tool)
                         log.info("chat timing: case=%s phase=tool %s", case_id, json.dumps(tool))
                         results.append({"type": "tool_result", "tool_use_id": b.id, "content": content})
-                if n + 1 == self.max_turns:
+                if tool_rounds == self.max_turns:
                     results.append({"type": "text", "text": FINAL_NOTE})
                 if reply.strip():
                     results.append({"type": "text", "text": CONTINUE_NOTE})
                 messages.append({"role": "user", "content": results})
-                if reply.strip() and not reply.endswith("\n"):
+                if reply.strip() and not reply.endswith("\n"):  # the next words start a new paragraph
                     reply += "\n\n"
-                if round_text.strip() and not round_text.endswith("\n"):  # the next words start a new paragraph
                     yield {"type": "text", "text": "\n\n"}
                 continue
-            if final.stop_reason == "pause_turn" and n + 1 < self.max_turns:
+            if stop == "pause_turn" and tool_rounds + 1 < self.max_turns:
+                tool_rounds += 1
                 continue
             break
+        for a, b in reversed(fillers):
+            if has_words(take_offer(reply[b:])[0]):  # words follow the note: it is taken out
+                reply = reply[:a].rstrip() + reply[b:]
         text = reply.strip()
+        if cut_open:
+            # still cut after the continuations: the stored reply ends at its last whole sentence, never mid-word
+            text = whole_sentences(text)
+            timing["trimmed"] = True
+        if cuts:
+            timing["truncated"] = cuts
+            log.warning("chat=truncated case=%s reasons=%s repaired=%s", case_id, ",".join(cuts),
+                        "trimmed" if cut_open else "continued")
         if not has_words(take_offer(text)[0]):  # blank or only a marker is no answer either
             # nothing to show (the model only called tools, or wrote nothing): a failure, never an empty reply —
             # the caller tries the fallback or tells the person to try again in a minute
@@ -482,6 +608,8 @@ class ChatAgent:
             log.warning("chat timing: case=%s empty reply %s", case_id, json.dumps(timing, ensure_ascii=False))
             raise EmptyReply("the model wrote no answer")
         result = self._check(text, got, calls, usage)
+        result.truncated = ",".join(cuts)
+        result.trimmed = cut_open
         result.sources = [{"url": h.url, "title": h.title, "domain": h.domain} for h in found.values()
                           if h.url in text or h.domain in text]
         timing["total_ms"] = _ms(t0)

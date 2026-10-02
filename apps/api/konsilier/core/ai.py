@@ -215,7 +215,11 @@ def write_narrative(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPac
         "'applicant_gender' — 'male' or 'female' forms of verbs and adjectives accordingly; if it is 'unknown', "
         "build sentences that need no gendered form (e.g. 'мною было подано обращение'). Never write alternatives "
         "in brackets such as 'состою (состоял)' or 'обратился(ась)': choose the one form the facts support. Every "
-        "amount of money is followed by the currency word ('900 000 тенге'), the currency is 'currency'."
+        "amount of money is followed by the currency word ('900 000 тенге'), the currency is 'currency'. What was "
+        "bought (owner 01.10): a service or digital content (a subscription, tokens or credits, access to an online "
+        "service, a course, an app) is never called a 'товар' and never 'бракованный': write that the service was "
+        "not provided or was provided improperly ('услуга не оказана' / 'оказана ненадлежащим образом'); 'брак' "
+        "only for a physical item with a defect."
     )
     try:
         out = llm.complete_json(task="narrative", system=system, schema=schema,
