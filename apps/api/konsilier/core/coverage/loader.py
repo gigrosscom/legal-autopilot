@@ -218,6 +218,11 @@ def load_coverage(root: Path, packs_root: Path, country: str, languages: tuple[s
     routing = Routing()
     if routing_path.is_file():
         routing = _validate(Routing, _read(routing_path) or {}, str(routing_path), errors) or Routing()
+        for rule in routing.direct:
+            if rule.dispute not in disputes:
+                errors.append(f"{routing_path}: direct rule refers to unknown dispute {rule.dispute}")
+            elif rule.role not in disputes[rule.dispute].applicant_roles:
+                errors.append(f"{routing_path}: direct rule role {rule.role} not allowed for {rule.dispute}")
         for ref in routing.lawyer_only:
             if ref not in branches and ref not in disputes:
                 errors.append(f"{routing_path}: lawyer_only refers to unknown {ref}")

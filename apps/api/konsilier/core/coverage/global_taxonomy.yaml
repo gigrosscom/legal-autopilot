@@ -163,6 +163,12 @@ branches:
         examples: {ru: ["Дал знакомому в долг по расписке, он не возвращает", "Друг занял деньги и перестал отвечать"], kk: ["Танысыма қолхатпен қарыз бердім, қайтармайды"], en: ["I lent money against a receipt and it isn't paid back"]}
         applicant_roles: [claimant]
         counterparty_kinds: [person]
+      - id: civil.honor
+        title: {ru: "Защита чести, достоинства и деловой репутации", kk: "Ар-намысты, қадір-қасиетті және іскерлік беделді қорғау", en: "Protection of honour, dignity and business reputation"}
+        keywords: {ru: [клевет, оклеветал, оклеветала, порочащ, опровержени, честь и достоинств, деловую репутаци, деловой репутаци, ложные сведения, распространил ложь, распространила ложь, оскорбил в соцсет, написал обо мне ложь], kk: [жала жап, ар-намыс, теріске шығар, жалған мәлімет], en: [defamation, libel, slander, retraction]}
+        examples: {ru: ["Коллега написал обо мне ложь в соцсетях, хочу опровержение", "В газете опубликовали порочащие сведения о моей компании"], kk: ["Әлеуметтік желіде мен туралы жалған мәлімет таратты, теріске шығаруды талап еткім келеді"], en: ["Someone posted lies about me online and I want a retraction"]}
+        applicant_roles: [claimant]
+        counterparty_kinds: [person, business]
       - id: civil.damages
         title: {ru: Возмещение ущерба, kk: Зиянды өтеу, en: Compensation for damage}
         keywords: {ru: [ущерб, затопили, дтп, повредили], kk: [зиян, су басты], en: [damage, flooded]}

@@ -31,3 +31,14 @@ def test_labor_first_step_has_terms_and_headed_steps():
             steps = spec.instructions[lang]
             assert all(s.startswith("**") for s in steps), (sid, lang)
             assert not any("уточнит юрист" in s or "можно подать и туда" in s for s in steps), sid
+
+
+def test_demand_goes_to_the_head_for_the_commission_or_himself(ctx):
+    """Owner 02.10: the person cannot know whether a conciliation commission exists — the demand is addressed to the
+    head: for the commission, or for the head himself if there is none. No question about the commission."""
+    pack = PackRegistry.load(REPO / "packs").pack("KZ")
+    for sid in ("kz.labor.unpaid_wages", "kz.labor.final_settlement", "kz.labor.dismissal"):
+        spec = pack.scenarios[sid].actions[0]
+        assert "{name}" in spec.addressee.heading["ru"] and "согласительной комиссии" in spec.addressee.heading["ru"]
+        assert pack.localized(spec.demands, "ru").startswith("рассмотреть настоящее")
+    assert "head of the employer" in pack.manifest.chat_rules

@@ -122,6 +122,9 @@ class AddresseeSpec(_Strict):
     forum: str | None = None  # forum id in the pack's coverage registry (universal path)
     name: Localized | None = None  # a named recipient kept in the scenario itself
     url: str | None = None  # with ``name``: the official page where the package is filed
+    # the «Кому» line of the document when it is not just the party's name, «{name}» stands for it — e.g. the head of
+    # the employer «for the conciliation commission, or for the head himself if there is none» (owner 02.10)
+    heading: Localized | None = None
 
     @model_validator(mode="after")
     def _one_of(self) -> "AddresseeSpec":
