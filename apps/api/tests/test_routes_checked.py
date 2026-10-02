@@ -17,6 +17,7 @@ def test_new_routes_and_their_norms():
         "criminal.police_inaction": ("kz.prosecutor", "УПК РК, ст. 105 ч. 1"),
         "family.divorce": ("kz.court.district", "КоБС РК, ст. 17 п. 1"),
         "tax.assessment_dispute": ("kz.gov.superior", "Налоговый кодекс РК 2025, ст. 191"),
+        "inheritance.acceptance": ("kz.notary", "ГК РК (Особенная часть), ст. 1072-1"),
     }
     for dispute, (forum, norm) in expect.items():
         first = COV.routes[dispute].steps[0]

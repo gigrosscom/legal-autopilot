@@ -193,6 +193,23 @@ forums:
     legal_effect: binding
     source: "TODO: УПК РК — ссылки проставит юрист"
 
+  - id: kz.notary
+    type: private_org
+    instance: first
+    name:
+      ru: "Нотариус по месту открытия наследства (последнему месту жительства наследодателя)"
+      kk: "Мұра ашылған жердегі (мұра қалдырушының соңғы тұрғылықты жері бойынша) нотариус"
+    accepts:
+      - dispute_types: [inheritance.acceptance]
+        applicant_roles: [heir]
+    document_types: [statement]
+    submission:
+      - kind: in_person
+        note: {ru: "Лично; заявление, переданное другим лицом или по почте, — с засвидетельствованной подписью", kk: "Жеке өзі; басқа адам арқылы не поштамен берілген өтініште қол куәландырылуы тиіс"}
+    languages: [ru, kk]
+    legal_effect: binding
+    source: "ГК РК (Особенная часть), ст. 1072-1 п. 1, 1072-2 п. 1, 1073 — old.adilet.zan.kz, сверено ZANN 03.10.2026"
+
   - id: kz.prosecutor
     type: prosecutor
     instance: any
