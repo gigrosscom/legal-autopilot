@@ -240,6 +240,30 @@ class CaseEngine:
         if said:
             self.facts_from_chat(session, case.id, "\n".join(said))
 
+    def requalify_from_chat(self, session: Session, case_id: Any) -> bool:
+        """A chat case whose first message said too little to classify («Здравствуйте, нужна помощь»): its taxonomy
+        stayed empty and nothing ever looked again, so «Дела» showed «Новое дело · Определяем путь» for good (PM 02.10).
+        Each new message in the chat tries again with everything the person has told so far."""
+        case = session.get(Case, case_id)
+        if case is None or case.scenario_id or case.status != S.INTAKE.value \
+                or case.coverage_level != qualifier.LEVEL_VERIFIED or (case.taxonomy or {}).get("dispute_id"):
+            return False  # classified, waiting for a forum, or handed to a lawyer
+        said = [m.text.strip() for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+            if m.text and m.text.strip()]
+        first = (case.initial_text or "").strip()
+        told = [t for t in said if t != first]
+        if not told or (case.taxonomy or {}).get("chat_messages", 0) >= len(told):
+            return False  # nothing new since the last try
+        text = "\n".join([first, *told]).strip()[:8000]
+        case.taxonomy, case.qualification_confidence = {}, None
+        self.audit(session, case, "system", "requalify_from_chat", messages=len(told))
+        self._qualify_and_continue(session, case, text)
+        if case.scenario_id or (case.taxonomy or {}).get("dispute_id"):
+            return True
+        case.taxonomy = {**(case.taxonomy or {}), "chat_messages": len(told)}  # still unclear: try on the next one
+        return False
+
     def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
                    channel: str | None = None, country: str | None = None,
                    defer_qualification: bool = False) -> tuple[Case, Reply]:

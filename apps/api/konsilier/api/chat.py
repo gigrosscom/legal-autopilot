@@ -296,6 +296,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     # can be measured from outside without the server logs; never for a real person
     diagnostics = bool(user.is_test)
     first_reply = not any(m.role == "assistant" for m in rows)
+    if not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        # the first message said too little to classify: try again with what the person tells now (PM 02.10)
+        after_commit(session, container, lambda s: container.engine.requalify_from_chat(s, case_pk), "requalify")
     session.commit()  # the user's message is saved even if the reply fails
 
     agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
