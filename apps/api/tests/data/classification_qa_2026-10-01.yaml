@@ -1,0 +1,11 @@
+# QA batch50 (01.10.2026), BUG-17 (no scenario) and BUG-18 (a neighbouring scenario): the person's first message and
+# the scenario it must get. Source: qa-reports/2026-10-01/batch50/cases50.py (branch claude/vibrant-hypatia-q3njhb).
+- {id: K19, lang: ru, expect: kz.finance.imposed_insurance, text: "При автокредите в «Тест-Банк» навязали страховку жизни за 240 000 тенге без права отказа. Хочу вернуть страховую премию."}
+- {id: K20, lang: ru, expect: kz.finance.loan_restructuring, text: "Потерял работу, не тяну платёж по кредиту в «Тест-Банк», хочу официально попросить реструктуризацию. Остаток долга 1 800 000 тенге."}
+- {id: K24, lang: ru, expect: kz.social.benefit_refusal_appeal, text: "Отказали в пособии по уходу за ребёнком до 1,5 лет, причина — «нет отчислений», хотя работала по договору ГПХ. Отказ от 20.09.2026. Хочу обжаловать."}
+- {id: K28, lang: ru, expect: kz.business.debt_claim, text: "Мой ИП поставил товар ТОО «Тест-Опт» по договору на 1 200 000 тенге, оплату задерживают 2 месяца. Хочу досудебную претензию."}
+- {id: K31, lang: ru, expect: kz.business.procurement_complaint, text: "Нашу заявку на госзакупках (конкурс №QA-12345) отклонили необоснованно 26.09.2026 — якобы нет лицензии, хотя она есть. Хочу жалобу."}
+- {id: K32, lang: ru, expect: kz.business.state_grant, text: "Хочу подать заявку на государственный грант для малого бизнеса, проект — пекарня. Нужна помощь с документами."}
+- {id: K37, lang: kk, expect: kz.housing.deposit_return, text: "Пәтерді жалдадым, 12.09.2026 көшіп шықтым, кепіл 150 000 теңгені қайтармайды. Шағым дайындағым келеді."}
+- {id: K38, lang: ru, expect: kz.labor.dismissal, text: "Беременную сотрудницу (меня) вынуждают уволиться «по соглашению», угрожают. Хочу защитить права и обжаловать."}
+- {id: K49, lang: ru, expect: kz.labor.unpaid_wages, text: "Бригаде строителей (8 человек) не выплатили за объект 2 400 000 тенге, работали по устной договорённости с ТОО «Тест-Девелопмент»."}
