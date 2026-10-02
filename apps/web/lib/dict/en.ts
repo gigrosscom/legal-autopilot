@@ -1095,7 +1095,7 @@ const en: Dict = {
     locked: "Full text after payment",
     blanks: "Fill in the empty fields — they go into the document",
     save: "Save to the document",
-    error: { pattern: "Wrong format. A BIN or IIN has 12 digits.", address: "Enter the city, street and building number.", date: "The date was not recognised.", date_future: "The date cannot be in the future.", money: "Enter the amount as a number.", email: "The e-mail looks wrong.", phone: "Check the phone number.", generic: "Check the value." },
+    error: { own: "This needs the other side's details, not yours.", pattern: "Wrong format. A BIN or IIN has 12 digits.", address: "Enter the city, street and building number.", date: "The date was not recognised.", date_future: "The date cannot be in the future.", money: "Enter the amount as a number.", email: "The e-mail looks wrong.", phone: "Check the phone number.", generic: "Check the value." },
   },
   pilot: {
     inviteChecking: "Checking the link…",

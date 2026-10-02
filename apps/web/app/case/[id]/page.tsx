@@ -202,9 +202,20 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   async function post(path: string, body: unknown = {}) {
     await run(async () => {
-      const out = await api<{ case: CaseView; proposal?: Proposal; payment?: unknown }>(`/v1/cases/${id}${path}`, {
-        method: "POST", body: JSON.stringify(body),
-      });
+      let out: { case: CaseView; proposal?: Proposal; payment?: unknown };
+      try {
+        out = await api<{ case: CaseView; proposal?: Proposal; payment?: unknown }>(`/v1/cases/${id}${path}`, {
+          method: "POST", body: JSON.stringify(body),
+        });
+      } catch (e) {
+        // PM 02.10: the document did not pass the check before it is given — one field to fix, then it is made
+        const fields = e instanceof ApiError && e.code === "applicant_data_required" && path === "/actions/next"
+          ? (e.detail as { fields?: ApplicantField[] }).fields : null;
+        if (!fields?.length) throw e;
+        setPayOpen(false);
+        setApplicant({ fields, purpose: "" });
+        return;
+      }
       setCase(out.case);
       if (out.payment) setPayOpen(true);  // the document needs paying first: the payment window opens at once
       if (path === "/actions/next" && !out.payment) setPayOpen(false);
@@ -428,6 +439,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {/* PM 01.10: the draft first (part blurred, blanks to fill), then payment */}
       {c.status === "qualified" && (
         <DraftPreview caseId={c.id} version={`${c.facts.length}:${c.payment?.status ?? ""}`} onCase={setCase} />
+      )}
+
+      {applicant && !payOpen && !applicant.purpose && (
+        <section className="card space-y-2" aria-live="polite">
+          <ApplicantForm caseId={c.id} fields={applicant.fields}
+            onDone={async () => { setApplicant(null); await post("/actions/next"); }} />
+        </section>
       )}
 
       {chooseOpen && <ChooseLawyer caseId={c.id} onClose={() => setChooseOpen(false)} onChange={setPilotStatus} />}
@@ -673,7 +691,7 @@ function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: App
       setErrors(f ?? { _: "generic" });
     } finally { setBusy(false); }
   }
-  const known = ["pattern", "address", "date", "date_future", "money", "email", "phone"];
+  const known = ["own", "pattern", "address", "date", "date_future", "money", "email", "phone"];
   return (
     <form onSubmit={save} className="space-y-3">
       {/* the other side's details too (PM 02.10): then the title is about the document, not «Ваши данные» */}

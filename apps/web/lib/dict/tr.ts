@@ -967,7 +967,7 @@ const tr: Dict = {
     locked: "Tam metin ödemeden sonra",
     blanks: "Boş alanları doldurun — belgeye eklenecek",
     save: "Belgeye kaydet",
-    error: { pattern: "Biçim uygun değil. BIN ve IIN 12 hanelidir.", address: "Şehir, sokak ve bina numarasını yazın.", date: "Tarih anlaşılamadı.", date_future: "Tarih gelecekte olamaz.", money: "Tutarı rakamla yazın.", email: "E-posta hatalı görünüyor.", phone: "Telefon numarasını kontrol edin.", generic: "Değeri kontrol edin." },
+    error: { own: "Burada sizin değil, karşı tarafın bilgileri gerekiyor.", pattern: "Biçim uygun değil. BIN ve IIN 12 hanelidir.", address: "Şehir, sokak ve bina numarasını yazın.", date: "Tarih anlaşılamadı.", date_future: "Tarih gelecekte olamaz.", money: "Tutarı rakamla yazın.", email: "E-posta hatalı görünüyor.", phone: "Telefon numarasını kontrol edin.", generic: "Değeri kontrol edin." },
   },
   pilot: {
     inviteChecking: "Bağlantı kontrol ediliyor…",

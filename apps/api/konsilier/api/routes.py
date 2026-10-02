@@ -636,6 +636,15 @@ def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session
             session.flush()
             view = case_view(container.engine, session, case)
             return {"action_id": None, "payment": view["payment"], "case": view}
+        if e.code == "document_check" and e.fields:
+            # PM 02.10: the document did not pass the check (the applicant's name as the seller's, an empty sum):
+            # nothing is given; the client is asked that one field, in the same form as before paying
+            engine = container.engine
+            sc, pack = engine.scenario_of(case), engine.pack_of(case)
+            fields = [{"field": n, "label": ai.field_label(sc, pack, case.language, n), "type": sc.field(n).type,
+                       "pattern": sc.field(n).pattern, "own": bool(sc.field(n).pii)} for n in e.fields]
+            raise HTTPException(422, {"code": "applicant_data_required", "message": "document_check",
+                                      "fields": fields}) from e
         raise engine_error(e) from e
     session.flush()
     if not action.pdf_key and action.docx_key:
