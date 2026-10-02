@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errorText, type CaseView } from "@/lib/api";
 import { Alert, Button, Icon } from "@/components/ui";
 import { useT } from "@/lib/i18n";
+import { DocSheet } from "@/components/DocSheet";
 
 const KNOWN = ["pattern", "address", "date", "date_future", "money", "email", "phone"];
 type Blank = { field: string; label: string; type: string; pattern: string | null };
@@ -85,17 +86,7 @@ export function DraftPreview({ caseId, version, onCase }: { caseId: string; vers
         <Icon name="document" className="text-brand" />{t("draft.title")}: {d.title}
       </h2>
       {!d.paid && <p className="text-sm text-muted">{t("draft.lead")}</p>}
-      <div className="relative max-h-[28rem] overflow-hidden rounded-xl bg-sand p-4 text-[15px] leading-relaxed">
-        <p className="whitespace-pre-wrap">{d.visible}</p>
-        {d.hidden && (
-          <>
-            <p aria-hidden className="select-none whitespace-pre-wrap blur-[5px]">{d.hidden}</p>
-            <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-sand via-sand/90 to-transparent pt-16 pb-4 text-sm font-semibold">
-              <Icon name="lock" size={18} />{t("draft.locked")}
-            </p>
-          </>
-        )}
-      </div>
+      <DocSheet visible={d.visible} hidden={d.hidden} locked={t("draft.locked")} />
       {d.blanks.length > 0 && (
         <div className="space-y-2">
           <p className="font-semibold">{t("draft.blanks")}</p>
