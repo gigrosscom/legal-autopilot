@@ -229,6 +229,18 @@ _DOC_SIGNS = [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in (
 FILES_MARK = re.compile(r"\[\[\s*FILES\s*\]\]")
 
 
+# a sentence pointing at a button («…после нажатия кнопки „Составить документ“ ниже»)
+_BUTTON_SENTENCE = re.compile(r"[^.!?\n]*(?:кнопк|түйме|\bbutton\b|«Составить документ»|«Оплатить»|\"Составить документ\")"
+                              r"[^.!?\n]*[.!?]?", re.IGNORECASE)
+
+
+def without_button_talk(text: str) -> str:
+    """PM 02.10: when no card is shown, a sentence about a button that is not there is taken out."""
+    out = _BUTTON_SENTENCE.sub("", text or "")
+    out = re.sub(r"[ \t]+\n", "\n", out)
+    return re.sub(r"\n{3,}", "\n\n", out).strip()
+
+
 def document_kinds(text: str, kinds: dict[str, tuple[str, ...]]) -> set[str]:
     """The kinds of document a text names («исковое заявление» → lawsuit), by the pack's word stems."""
     low = (text or "").lower()
@@ -473,7 +485,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 if cut:
                     text = re.split(r"\[\[\s*MORE\s*\]\]", text)[0].strip()
                     text = "" if looks_like_document(text) else text
-                if missing != ["scenario"] and not text.rstrip().endswith("?"):
+                asked = "?" in (text.rstrip().splitlines() or [""])[-1]  # «Когда? (ДД.ММ.ГГГГ)» is a question too
+                if missing != ["scenario"] and not asked:
                     eng = container.engine
                     sc_cc, pack_cc = eng.scenario_of(cc), eng.pack_of(cc)
                     q = eng.question_for(sc_cc, pack_cc, pack_cc.lang(reply_lang), missing[0]).text
@@ -517,6 +530,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 elif (cc.taxonomy or {}).get("doc_mismatch"):
                     cc.taxonomy = {k: v for k, v in cc.taxonomy.items() if k != "doc_mismatch"}  # they agree again
                     s.commit()
+        if not result.offer_document:
+            text = without_button_talk(text)  # no card under this reply: no word about its button
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)
         timing = {**(getattr(result, "timing", None) or {}), "queue_ms": queue_ms}
         served_by = timing.get("provider") or used  # inside the free chain: cerebras, gemini …
