@@ -12,16 +12,11 @@ import { useT } from "@/lib/i18n";
 export function DemoCase() {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const bar = (
-    <div className="space-y-2">
-      <Button className="min-h-12 w-full" icon="document" disabled>{t("choose.demoPrepare")}</Button>
-      <Button className="min-h-12 w-full" variant="secondary" icon="lawyer" onClick={() => setOpen(true)}>{t("choose.button")}</Button>
-    </div>
-  );
+  // UX audit 02.10: no inactive «Подготовить документ» under a ready document, one «Выбрать юриста» (in the card)
   return (
-    <AppShell title={t("choose.demoCase")} subtitle={t("choose.demoStatus")} back="/" bar={bar} wallpaper avatar tabs={false}>
+    <AppShell title={t("choose.demoCase")} subtitle={t("choose.demoStatus")} back="/" wallpaper avatar tabs={false}>
       <Alert tone="warning" icon="info" title={t("choose.demoTitle")}>{t("choose.demoText")}</Alert>
-      <Bubble mine><p>Купил телевизор в магазине за 189 000 ₸, через неделю перестал включаться. Магазин отказывается вернуть деньги.</p></Bubble>
+      <Bubble mine><p>{t("choose.demoClient")}</p></Bubble>
       <Bubble mine={false}><p className="whitespace-pre-line">{t("choose.demoBot")}</p></Bubble>
       <section className="card space-y-2">
         <p className="flex items-center gap-2 font-semibold"><Icon name="document" className="text-brand" />{t("choose.demoDoc")}</p>

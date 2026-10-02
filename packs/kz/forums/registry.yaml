@@ -11,7 +11,7 @@ forums:
     instance: first
     name:
       ru: "Организация или человек, с которым спор (досудебная претензия)"
-      kk: "Дау туындаған ұйым немесе адам (сотқа дейінгі талап-арыз)"
+      kk: "Дау туындаған ұйым немесе адам (сотқа дейінгі наразылық)"
     accepts:
       - branches: [consumer, finance, housing, labor, civil]
         applicant_roles: [consumer, borrower, tenant, landlord, employee, claimant]

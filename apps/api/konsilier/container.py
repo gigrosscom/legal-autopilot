@@ -153,6 +153,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                                    "bizpro": (settings.plan_bizpro_price, settings.plan_bizpro_documents)},
                             plan_days=settings.plan_period_days, plan_currency=settings.plan_currency,
                             lawyer_commission_pct=settings.lawyer_commission_pct,
+                            lawyer_pay_direct=settings.lawyer_pay_direct,
                             lawyer_pay_link=getattr(settings, "payment_kaspi_pay_link", "") or "",
                             lawyer_pay_account=settings.lawyer_payment_account or "",
                             company_name=getattr(settings, "payment_llp_name", "") or "",
