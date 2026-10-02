@@ -49,6 +49,12 @@ forums:
     accepts:
       - dispute_types: [administrative.state_body_inaction, social.benefit_refusal]
         applicant_roles: [complainant]
+      # ZANN 03.10 (old.adilet.zan.kz): a fine — to the higher body through the one that ruled (КоАП ст. 826-1, 826-2);
+      # a tax audit notice — to the authorized tax body (Налоговый кодекс 2025, ст. 191, 192)
+      - dispute_types: [administrative.fine_appeal]
+        applicant_roles: [complainant]
+      - dispute_types: [tax.assessment_dispute]
+        applicant_roles: [taxpayer, business]
     document_types: [complaint]
     submission:
       - kind: portal
