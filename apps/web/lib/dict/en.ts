@@ -855,7 +855,7 @@ const en: Dict = {
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    shareText: "Any legal situation — from getting your money back to a dispute with a state body. Konsiliér explains your rights in plain words and prepares the claim, complaint or application. Through my link you get 1,000 bonuses right away — use them to pay part of a document:",
+    shareText: "Konsiliér is an AI assistant for legal matters. It helps when:\n— you can't get your money back for goods or a service;\n— your wages are unpaid or you were dismissed unlawfully;\n— there are problems with rent, a deposit or utilities;\n— alimony, fines, loans, fraudsters;\n— a state body refused you, or you need a benefit, a sole proprietorship or public procurement.\nDescribe your situation — it tells you what to do and prepares the document. Through my link you get 1,000 bonuses right away — use them to pay part of a document:",
   },
   send: {
     open: "Show the contacts found and all ways",

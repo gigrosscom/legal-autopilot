@@ -855,7 +855,7 @@ const tr: Dict = {
     share: "Bağlantıyı paylaş",
     copied: "Bağlantı kopyalandı",
     invited: "Bağlantınızla gelenler: {n}",
-    shareText: "Her türlü hukuki durum — paranızı geri almaktan bir devlet kurumuyla anlaşmazlığa kadar. Konsiliér haklarınızı sade bir dille açıklar ve talep, şikâyet ya da dilekçe hazırlar. Bağlantım üzerinden hesabınıza hemen 1.000 bonus yüklenir — bunlarla bir belgenin bir kısmını ödeyebilirsiniz:",
+    shareText: "Konsiliér, hukuki konularda bir yapay zekâ asistanıdır. Şu durumlarda yardımcı olur:\n— bir ürün veya hizmetin parası iade edilmiyorsa;\n— maaş ödenmiyorsa ya da haksız yere işten çıkarıldıysanız;\n— kira, depozito veya aidat/faturalarla sorun varsa;\n— nafaka, cezalar, krediler, dolandırıcılar;\n— bir devlet kurumu reddettiyse, yardım, şahıs şirketi ya da kamu ihalesi gerekiyorsa.\nDurumunuzu anlatın — ne yapmanız gerektiğini söyler ve belgeyi hazırlar. Bağlantım üzerinden hesabınıza hemen 1.000 bonus yüklenir — bunlarla bir belgenin bir kısmını ödeyebilirsiniz:",
   },
   submit: {
     courtName: "Yargı Kabineti",
