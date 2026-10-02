@@ -19,3 +19,11 @@ def test_notary_line_dropped():
 def test_clean_reply_unchanged():
     text = "Что делать:\n1. Направьте претензию продавцу.\n2. Если откажет — в суд."
     assert drop_extra_steps(text) == text
+
+
+def test_lawful_expert_lines_stay():
+    """ZANN 02.10 (ГПК ст. 82 п. 3; Закон об ОГПО ВТС ст. 22 п. 3-1): these name an expert or appraiser lawfully."""
+    text = ("Что делать:\n1. Направьте претензию соседу.\n2. Если сосед оспорит сумму, заявите ходатайство о "
+            "назначении экспертизы.\n3. Если страховая не оценила ущерб за 5 рабочих дней, пригласите оценщика за "
+            "счёт страховщика.")
+    assert drop_extra_steps(text) == text
