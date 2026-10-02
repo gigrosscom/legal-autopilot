@@ -216,6 +216,26 @@ and Word» (e.g. «Составлю претензию продавцу с ва�
 no question «показать?», no price (the app shows it), and end the reply with the marker {offer_marker} on its own line. If the person asks
 to see, write or send the document, do the same: one sentence and the marker, never the document's text."""
 
+# owner 02.10 (10 QA cases: the bot advised at once without knowing who, whom, what and when, gave several options and
+# wrote long): first the facts, one question at a time; then ONE solution as short steps; the rest under «Подробнее».
+# Appended last, so it overrides «help at once, then ask» and «never reply with questions alone» above.
+FACTS_FIRST_RULE = """
+
+Facts first, then one solution — this overrides anything above about answering at once
+1. Before any advice you must know: who the person is and who the other side is (a person, a shop, an employer, a
+   bank, a state body…), what happened or what was bought or agreed, when, how much money, and what the person has
+   already done. While any of these is missing and matters for the solution, reply with ONE short question about
+   the most important missing fact — one or two sentences, a friendly acknowledgement at most, no advice, no
+   rights, no steps, no {more_marker} marker, no {offer_marker} marker. Do not ask what is already in the
+   conversation, the case context or the attached files. Usually 1–3 questions are enough; never more than four.
+2. Once the facts are clear, give ONE solution — the best path by law for this person. Never «you can do A or B»,
+   never a list of alternatives; mention another path only inside the details if the first one fails.
+3. The short part is only: a line «Что делать:» (in the reply language) and the steps «1.», «2.», «3.» — one short
+   line each, at most 5 lines in all. Why, the rules, deadlines, documents to prepare and risks go only after the
+   {more_marker} marker. No closing question after a solution.
+4. After a solution the app shows the buttons «Составить документ», «Дело под ключ» and «Нанять юриста»: do not
+   describe them or sell them in the text; when a document is the next step, end with {offer_marker} as above."""
+
 
 def _ms(since: float) -> int:
     return round((time.perf_counter() - since) * 1000)
@@ -422,7 +442,7 @@ class ChatAgent:
         cc, lang = getattr(context.get("pack"), "country", None), context.get("lang")
         use_library = self.library is not None and self.library.available(cc)
         search = " or with web_search on the official portal" if self.web_search else ""
-        system = (SYSTEM + PAID_DOCUMENT_RULE).format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
+        system = (SYSTEM + PAID_DOCUMENT_RULE + FACTS_FIRST_RULE).format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
                                portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE,
                                official_rule=OFFICIAL_RULE if use_library else NO_OFFICIAL_RULE)
         rules = getattr(getattr(context.get("pack"), "manifest", None), "chat_rules", "")
