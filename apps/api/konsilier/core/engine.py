@@ -653,9 +653,19 @@ class CaseEngine:
         requisites = {getattr(p, a) for p in sc.parties.values()
                       for a in ("name_field", "id_field", "address_field", "email_field") if getattr(p, a, None)}
         facts = case.facts or {}
-        return [f.name for f in sc.intake
-                if f.type != "evidence" and not f.optional and not f.pii and not facts.get(f.name)
-                and f.name not in requisites and not _DOC_DETAIL.search(f.name) and f.name not in _STORY_FIELDS]
+        out = [f.name for f in sc.intake
+               if f.type != "evidence" and not f.optional and not f.pii and not facts.get(f.name)
+               and f.name not in requisites and not _DOC_DETAIL.search(f.name) and f.name not in _STORY_FIELDS]
+        if ".generic." in (case.scenario_id or ""):
+            # PM 02.10 P0 (flooding on the universal path): its date and sums are optional for the document, yet the
+            # solution needs when and how much (R-29) — asked before it, «сосед, 25.09» alone is not enough
+            names = {f.name: f for f in sc.intake}
+            if "event_date" in names and not facts.get("event_date"):
+                out.append("event_date")
+            sums = [n for n in ("claim_amount", "amount") if n in names]
+            if sums and not any(facts.get(n) for n in sums):
+                out.append(sums[0])
+        return out
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
         """Fields still to ask, in interview order: documents → what happened → identity document → personal data.
