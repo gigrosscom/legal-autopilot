@@ -149,6 +149,7 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
                             case_price=settings.plan_case_price,
                             trust_kaspi_link=settings.payment_trust_kaspi_link,
                             trust_all=settings.payment_trust_all,
+                            auto_recipient=settings.auto_recipient,
                             plans={"biz": (settings.plan_biz_price, settings.plan_biz_documents),
                                    "bizpro": (settings.plan_bizpro_price, settings.plan_bizpro_documents)},
                             plan_days=settings.plan_period_days, plan_currency=settings.plan_currency,

@@ -18,6 +18,8 @@ from .schema import (
     Forum,
     GlobalTaxonomy,
     PackTaxonomy,
+    RecipientRoute,
+    RecipientRoutes,
     Routing,
 )
 
@@ -46,10 +48,21 @@ class Coverage:
     documents: dict[str, DocumentType]
     routing: Routing
     has_registry: bool = field(default=False)
+    # who each step of a dispute's or scenario's documents goes to (routes.yaml); the first step of a dispute is
+    # chosen by the system instead of a «Куда обратиться» list
+    routes: dict[str, RecipientRoute] = field(default_factory=dict)
 
     # ---- lookups -------------------------------------------------------
     def dispute(self, dispute_id: str) -> DisputeType:
         return self.disputes[dispute_id]
+
+    def first_forum(self, dispute_id: str | None, candidates: list[Forum]) -> Forum | None:
+        """The forum the route's first step names, when it is one of the candidates."""
+        route = self.routes.get(dispute_id or "")
+        if route is None:
+            return None
+        first = route.steps[0].forum
+        return next((f for f in candidates if f.id == first), None)
 
     def candidate_forums(self, dispute: DisputeType, role: str, pending: bool = False) -> list[Forum]:
         """First-instance forums that accept this dispute and role, in the pack's order; forums where proceedings
@@ -191,10 +204,25 @@ def load_coverage(root: Path, packs_root: Path, country: str, languages: tuple[s
             if ref not in branches and ref not in disputes:
                 errors.append(f"{routing_path}: lawyer_only refers to unknown {ref}")
 
+    routes: dict[str, RecipientRoute] = {}
+    routes_path = root / "routes.yaml"
+    if routes_path.is_file() and forums:  # routes name forums: without a registry there is nothing to route to
+        data = _validate(RecipientRoutes, _read(routes_path) or {}, str(routes_path), errors)
+        routes = dict(data.routes) if data else {}
+        for key, route in routes.items():
+            for i, step in enumerate(route.steps):
+                if step.forum is not None and step.forum not in forums:
+                    errors.append(f"{routes_path}: {key} step {i + 1}: unknown forum {step.forum}")
+                for what, text in (("label", step.label), ("why", step.why)):
+                    if languages and languages[0] not in text:
+                        errors.append(f"{routes_path}: {key} step {i + 1}: {what} missing {languages[0]}")
+            if key in disputes and route.steps[0].forum is None:
+                errors.append(f"{routes_path}: {key}: the first step of a dispute route must name a forum")
+
     if errors:
         raise CoverageValidationError(errors)
     return Coverage(country=country, branches=branches, disputes=disputes, forums=forums,
-                    documents=documents, routing=routing, has_registry=bool(forums))
+                    documents=documents, routing=routing, has_registry=bool(forums), routes=routes)
 
 
 def _cycles(forums: dict[str, Forum]) -> list[str]:

@@ -37,6 +37,31 @@ forums:
     # проверено 28.09.2026). Для остальных споров — TODO(lawyer).
     source: "Закон РК «О защите прав потребителей», ст. 42-4 (потребительские споры); ГК РК, ТК РК — ссылки проставит юрист"
 
+  # Жалоба на решение или бездействие госоргана — вышестоящему органу, подаётся через орган, который принял решение
+  # (АППК РК ст. 91–93; досудебное обжалование обязательно, если закон не говорит иное — ст. 91 ч. 5; срок
+  # рассмотрения жалобы — 20 рабочих дней). Нормы — по правилам разбора ZANN (old.adilet, 01–02.10.2026).
+  - id: kz.gov.superior
+    type: local_authority
+    instance: first
+    name:
+      ru: "Вышестоящий орган — жалоба через орган, который принял решение или не ответил"
+      kk: "Жоғары тұрған орган — шешім қабылдаған немесе жауап бермеген орган арқылы шағым"
+    accepts:
+      - dispute_types: [administrative.state_body_inaction, social.benefit_refusal]
+        applicant_roles: [complainant]
+    document_types: [complaint]
+    submission:
+      - kind: portal
+        url: https://eotinish.kz
+        note: {ru: "Портал обращений (вход по ЭЦП или SMS)", kk: "Өтініштер порталы (ЭЦҚ не SMS арқылы)"}
+      - kind: in_person
+    languages: [ru, kk]
+    appeals_to: [kz.prosecutor]
+    legal_effect: binding
+    order: 20
+    mandatory_for: [administrative.state_body_inaction]
+    source: "АППК РК, ст. 91–93 (жалоба через орган; ст. 91 ч. 5 — досудебное обжалование)"
+
   - id: kz.court.economic
     type: court
     instance: first

@@ -55,3 +55,37 @@ def test_forum_option_shows_pretrial_label_and_hint(ctx):
     assert claim["pretrial"] == "voluntary" and claim["deadline_known"] and "30 дней" in claim["hint"]
     court = engine.forum_option(pack, cov.forums["kz.court.district"], "ru", debt)
     assert court["pretrial"] is None and court["deadline_known"] and "уточнит юрист" not in court["name"]
+
+
+def test_routes_cover_every_dispute_scenario_and_name_known_addressees():
+    """Owner 02.10: the system chooses the addressee. Every scenario with a dispute chain has a route; every route
+    key, forum and authority exists; the first step of a dispute route is one of its candidate forums."""
+    pack = PackRegistry.load(REPO / "packs").pack("KZ")
+    cov = pack.coverage
+    for key, route in cov.routes.items():
+        assert key in cov.disputes or key in pack.scenarios, key
+        for step in route.steps:
+            assert step.norm and {"ru", "kk"} <= set(step.label) and {"ru", "kk"} <= set(step.why), key
+            if step.authority:
+                assert step.authority in pack.manifest.authorities, key
+        if key in cov.disputes:
+            d = cov.dispute(key)
+            assert cov.first_forum(key, cov.candidate_forums(d, d.applicant_roles[0])) is not None, key
+    for sid, sc in pack.scenarios.items():
+        if any(a.kind == "handoff" for a in sc.actions):
+            assert sid in cov.routes, sid
+
+
+def test_private_debt_case_gets_its_addressee_without_a_list(ctx):
+    from .test_e2e import web_user
+
+    ctx.container.engine.config.auto_recipient = True
+    api = web_user(ctx)
+    case = api.post("/v1/cases", expect=201, json={
+        "text": "Дал знакомому в долг 300000 тенге по расписке, он не возвращает", "country": "KZ"})["case"]
+    assert case["coverage"]["level"] == "universal" and case["scenario"]["ontology"] == "civil.debt"
+    assert case["coverage"]["forum"]["id"] == "kz.counterparty.claim"  # chosen by the system
+    assert case["coverage"]["options"] == []
+    route = case["recipients"]
+    assert [s["kind"] for s in route] == ["forum", "forum"] and route[0]["key"] == "kz.counterparty.claim"
+    assert "ст. 722" in route[0]["norm"] and route[1]["when"]

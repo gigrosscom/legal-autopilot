@@ -244,6 +244,37 @@ class Forum(_Strict):
         return False
 
 
+# ---------------------------------------------------------------- recipient routes
+class RouteStep(_Strict):
+    """One step of a recipient route (owner 02.10: the system, not the person, chooses who a document goes to).
+    Exactly one of: a forum of the registry, an authority of the pack manifest, or the other side itself (party)."""
+
+    forum: str | None = None
+    authority: str | None = None
+    party: bool = False
+    label: Localized  # who, in plain words: «Продавец — досудебная претензия»
+    when: Localized = Field(default_factory=dict)  # condition for a later step: «если не ответили за 10 дней»
+    why: Localized  # one line: why this addressee
+    norm: str  # the norm behind it, as checked (act, article); "не подтверждено" when not opened
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "RouteStep":
+        if sum((self.forum is not None, self.authority is not None, self.party)) != 1:
+            raise ValueError("a route step needs exactly one of forum, authority, party")
+        return self
+
+
+class RecipientRoute(_Strict):
+    steps: tuple[RouteStep, ...] = Field(min_length=1)
+    note: Localized = Field(default_factory=dict)  # what the route does not cover («с несовершеннолетними детьми — …»)
+
+
+class RecipientRoutes(_Strict):
+    """routes.yaml: key = a dispute type id (universal path) or a scenario id of the pack."""
+
+    routes: dict[str, RecipientRoute] = Field(default_factory=dict)
+
+
 # ---------------------------------------------------------------- document types
 class DocumentType(_Strict):
     id: str

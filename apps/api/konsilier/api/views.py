@@ -94,6 +94,8 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "deadline": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
+        # owner 02.10: who each step's document goes to and why — chosen by the system (routes.yaml)
+        "recipients": engine.recipient_route(case),
         "safety": {"hold_reason": case.hold_reason,
                    "hold_message": pack.t(lang, "safety.hold") if case.hold_reason else None,
                    "pending_ack": ack.ack_required if ack else None},
