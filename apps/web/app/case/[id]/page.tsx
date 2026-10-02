@@ -19,7 +19,7 @@ import { EotinishBridge, EotinishFiled } from "@/components/EotinishBridge";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
-import { PaymentWays, type WayBody } from "@/components/PaymentWays";
+import { KaspiOneTap, kaspiOneTap, PaymentWays, type WayBody } from "@/components/PaymentWays";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
@@ -235,6 +235,12 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       if (then === "claim") {
         const claimed = await api<{ case: CaseView }>(`/v1/cases/${id}/payment/claim`, { method: "POST", body: "{}" });
         setCase(claimed.case);
+        // the Kaspi Pay link is paid on trust (owner 01.10): the document is made at once, waiting on their return
+        if (claimed.case.payment?.trusted && claimed.case.payment.status === "paid") {
+          const next = await api<{ case: CaseView }>(`/v1/cases/${id}/actions/next`, { method: "POST", body: "{}" });
+          setCase(next.case);
+          setPayOpen(false);
+        }
       }
       if (then === "bill") {
         const blob = await fetchFile(`/v1/invoices/${invoice}/bill?format=pdf`);
@@ -264,6 +270,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
   // confirmed, so it simply appears; if it has not after a few checks, the page asks for it itself.
+  // from the chat's card «Оплатить» (?pay=1, P0 02.10): the payment window opens as soon as the case is ready for it
+  const askedToPay = useRef(false);
+  useEffect(() => {
+    if (!c || askedToPay.current || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
+    if (c.status !== "qualified" || c.payment?.status === "paid") return;
+    askedToPay.current = true;
+    setPayOpen(true);
+    if (!c.payment?.code && c.payment?.status === "none") choosePayment("document");
+  }, [c]);  // eslint-disable-line react-hooks/exhaustive-deps
   const payStatus = c?.payment?.status;
   const prepareRef = useRef(post);
   prepareRef.current = post;
@@ -698,6 +714,11 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
                 </Button>
               ))}
               <p className="text-xs text-muted">{t("payment.caseHint")}</p>
+            </>
+          ) : kaspiOneTap(pay) ? (
+            <>
+              {pay.owed && <Alert tone="warning" role="status">{t("payment.owed")}</Alert>}
+              <KaspiOneTap pay={pay} busy={busy} price={money(pay.amount, pay.currency)} onWay={onWay} />
             </>
           ) : (
             <>

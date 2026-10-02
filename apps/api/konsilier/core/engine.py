@@ -121,6 +121,10 @@ class EngineConfig:
     # «3 клика»); the Telegram bot keeps the questions (it has no draft screen)
     intake_max_questions: int = -1
     case_price: int = 9990  # «Дело под ключ»: every document of one case
+    # owner 01.10: a Kaspi Pay link payment gives the document at «Оплатить»; the desk matches it afterwards
+    trust_kaspi_link: bool = True
+    # owner 02.10: until the payment is set up, «Я оплатил(а)» gives the document on trust for every way to pay
+    trust_all: bool = False
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
     plan_days: int = 30
@@ -1103,6 +1107,8 @@ class CaseEngine:
         """What will pay for the next document of the case, or None when payment is needed first."""
         if self.price(case) is None:
             return "free"
+        if self.in_debt(session, case.owner_id):
+            return None  # a payment given on trust was not found: no new document until it is paid
         if case.paid:
             return "case"
         active = self.active_subscription(session, case.owner_id)
@@ -1235,7 +1241,30 @@ class CaseEngine:
             inv.status, inv.claimed_at = "awaiting_confirmation", utcnow()
             if inv.case_id is not None:
                 self.audit(session, session.get(Case, inv.case_id), actor, "payment_claimed", invoice=inv.code)
+            self._trust(session, inv, actor)
         return inv
+
+    def in_debt(self, session: Session, user_id: uuid.UUID) -> bool:
+        """A document was given on trust and the desk did not find its payment."""
+        return session.scalar(select(Invoice.id).where(Invoice.user_id == user_id, Invoice.trusted_at.is_not(None),
+                                                       Invoice.status == "not_found").limit(1)) is not None
+
+    def _trust(self, session: Session, inv: Invoice, actor: str) -> None:
+        """Owner 01.10 «вернулся — сразу получил документ»: «Оплатить» with the Kaspi Pay link gives the document at
+        once; the bill stays «ждёт сверки» in /ops and the desk matches it by amount and time. Once per bill, never
+        for a person who owes a document already, never for a subscription or a lawyer bill."""
+        trusted_way = self.config.trust_all or (self.config.trust_kaspi_link and inv.pay_way == "kaspi_link")
+        if (not trusted_way or inv.trusted_at is not None
+                or inv.purpose not in ("document", "case") or inv.case_id is None
+                or self.in_debt(session, inv.user_id)):
+            return
+        inv.trusted_at = utcnow()
+        case = session.get(Case, inv.case_id)
+        if inv.purpose == "document":
+            case.doc_credits += 1
+        else:
+            case.paid = True
+        self.audit(session, case, actor, "payment_trusted", invoice=inv.code)
 
     def billing_pack(self, session: Session, inv: Invoice) -> JurisdictionPack | None:
         """The pack whose country words a bill uses: the case's, else the one pack plans are sold in."""
@@ -1300,8 +1329,17 @@ class CaseEngine:
         inv.decided_at, inv.decided_by = utcnow(), operator
         if note is not None:
             inv.desk_note = note
-        if received:
+        if received and inv.trusted_at is not None:
+            self._referral_bonus(session, inv)  # the document was given at «Оплатить»
+        elif received:
             self._apply_paid(session, inv)
+        elif inv.trusted_at is not None and inv.case_id is not None:
+            # not found: what the bill gave and is not used yet goes back; the person owes it (in_debt)
+            owed = session.get(Case, inv.case_id)
+            if inv.purpose == "case":
+                owed.paid = False
+            elif owed.doc_credits > 0:
+                owed.doc_credits -= 1
         if inv.case_id is None:  # a subscription: the desk's e-mail tells the person
             return
         case = session.get(Case, inv.case_id)
@@ -1313,6 +1351,10 @@ class CaseEngine:
         if received:
             text = pack.t(lang, "notifications.payment_confirmed",
                           default="Оплата получена. Документ можно подготовить и скачать в карточке дела.")
+        elif inv.trusted_at is not None:
+            text = pack.t(lang, "notifications.payment_owed",
+                          default="Мы не нашли вашу оплату документа в Kaspi. Пожалуйста, оплатите документ в карточке дела — "
+                                  "новые документы будут доступны после оплаты.")
         else:
             text = pack.t(lang, "notifications.payment_not_found", code=inv.code,
                           default=f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу "
@@ -1410,6 +1452,7 @@ class CaseEngine:
                 {"purpose": "document", "amount": float(price[0])},
                 {"purpose": "case", "amount": float(self.config.case_price)}],
             "case_paid": case.paid, "credits": case.doc_credits,
+            "trusted": inv is not None and inv.trusted_at is not None, "owed": self.in_debt(session, case.owner_id),
             "bonus": self.bonus_documents(session, case.owner_id),
             "subscription": self.subscription_view(session, case.owner_id)}
         if inv is not None and status != "paid":

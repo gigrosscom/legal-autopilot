@@ -225,12 +225,34 @@ def egov_service(challenge_id: uuid.UUID, session: Session = Depends(get_session
     return {
         "description": "Вход в Konsiliér AI / Konsiliér AI жүйесіне кіру" if ch.kind == "egov"
         else "Подписание документа в Konsiliér AI / Konsiliér AI құжатына қол қою",
-        "expiry_date": ch.expires_at.isoformat(),
+        "expiry_date": _mgov_date(ch.expires_at),
         "organisation": {"nameRu": s.egov_org_name, "nameKz": s.egov_org_name, "nameEn": s.egov_org_name,
                          "bin": s.egov_org_bin},
+        # the one-time unguessable link is the protection, so no token: auth_type None with an empty auth_token
         "document": {"uri": f"{s.public_api_url.rstrip('/')}/v1/auth/egov/mgov/{ch.id}/document",
-                     "auth_type": "None"},
+                     "auth_type": "None", "auth_token": ""},
     }
+
+
+def _mgov_date(dt: datetime) -> str:
+    """ISO 8601 with milliseconds and an explicit offset, e.g. 2026-10-01T18:44:00.000+00:00."""
+    dt = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat(timespec="milliseconds")
+
+
+def _mgov_doc(names: tuple[str, str, str], meta: list[dict], data: bytes, mime: str) -> dict:
+    """One entry of documentsToSign for CMS_WITH_DATA: the data itself goes in document.file.data as base64
+    (eGov Mobile wraps it into the CMS); mime "@file/pdf" lets the app show a PDF."""
+    return {"id": 1, "nameRu": names[0], "nameKz": names[1], "nameEn": names[2], "meta": meta,
+            "document": {"file": {"mime": mime, "data": base64.b64encode(data).decode()}}}
+
+
+def _mgov_signed_cms(payload: dict) -> str | None:
+    """The CMS eGov Mobile sends back in document.file.data (documentCms kept for older app builds)."""
+    docs = payload.get("documentsToSign") or []
+    doc = docs[0] if docs and isinstance(docs[0], dict) else {}
+    file = (doc.get("document") or {}).get("file") if isinstance(doc.get("document"), dict) else None
+    return (file or {}).get("data") or doc.get("documentCms")
 
 
 @router.get("/auth/egov/mgov/{challenge_id}/document")
@@ -242,28 +264,31 @@ def egov_document(challenge_id: uuid.UUID, session: Session = Depends(get_sessio
         from .signing import resolve_target
 
         target = resolve_target(session, container, ch.result or {})
-        return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [{
-            "id": 1, "nameRu": target.name, "nameKz": target.name, "nameEn": target.name,
-            "meta": [{"name": "SHA-256", "value": (ch.result or {}).get("sha256", "")}],
-            "documentCms": base64.b64encode(target.data).decode(),
-        }]}
-    return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [{
-        "id": 1, "nameRu": "Вход в Konsiliér AI", "nameKz": "Konsiliér AI жүйесіне кіру",
-        "nameEn": "Sign in to Konsiliér AI",
-        "meta": [{"name": "Назначение", "value": "Подтверждение личности для входа"}],
-        "documentCms": (ch.result or {}).get("nonce"),
-    }]}
+        mime = "@file/pdf" if target.fmt == "pdf" else \
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [_mgov_doc(
+            (target.name,) * 3, [{"name": "SHA-256", "value": (ch.result or {}).get("sha256", "")}],
+            target.data, mime)]}
+    nonce = base64.b64decode((ch.result or {}).get("nonce", ""))
+    return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [_mgov_doc(
+        ("Вход в Konsiliér AI", "Konsiliér AI жүйесіне кіру", "Sign in to Konsiliér AI"),
+        [{"name": "Назначение", "value": "Подтверждение личности для входа"}], nonce, "text/plain")]}
 
 
 @router.api_route("/auth/egov/mgov/{challenge_id}/document", methods=["PUT", "POST"])
 def egov_signed(challenge_id: uuid.UUID, payload: dict = Body(...), session: Session = Depends(get_session),
                 container: Container = Depends(get_container)) -> list:
-    """eGov Mobile returns the same structure with documentCms replaced by the signed CMS."""
+    """eGov Mobile sends back the same structure with document.file.data replaced by the signed CMS, or with
+    status CANCELED and the unsigned original when the person declined."""
     ch = _egov_challenge(session, challenge_id)
     if ch.consumed_at is not None or (ch.result or {}).get("subject_hash"):
         raise HTTPException(409, "already signed")
-    docs = payload.get("documentsToSign") or []
-    cms = docs[0].get("documentCms") if docs and isinstance(docs[0], dict) else None
+    if str(payload.get("status") or "").upper() == "CANCELED":
+        if ch.kind == "sign":
+            ch.result = {**(ch.result or {}), "error": "canceled"}
+            session.commit()
+        raise HTTPException(400, {"code": "canceled", "message": "canceled"})
+    cms = _mgov_signed_cms(payload)
     if not cms:
         raise HTTPException(400, {"code": "no_signature", "message": "no_signature"})
     if ch.kind == "sign":
