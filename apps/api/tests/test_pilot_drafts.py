@@ -18,9 +18,9 @@ PACKS = Path(__file__).resolve().parents[3] / "packs"
 LEGACY_PLACEHOLDER_DEADLINES: set[str] = set()
 # fields the generic templates read (see scripts/build_kz_templates.py)
 # owner's decision 28.09.2026: documents of unsigned scenarios carry this neutral note, never the word "draft"
-NEUTRAL_NOTE_RU = "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным. Проверьте сведения перед подачей."
+NEUTRAL_NOTE_RU = "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным."
 # owner 01.10: the document carries ONE closing line — the AI label (footer); the note above stays in the pack only
-AI_LINE_RU = "Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей."
+AI_LINE_RU = "Подготовлено с помощью ИИ (Konsiliér AI)."
 DRAFT_WORDS = re.compile(r"черновик|draft|жоба|taslak|مسود", re.IGNORECASE)
 TEMPLATE_FIELDS = {"respondent_name", "applicant_name", "applicant_address", "applicant_phone", "problem_description"}
 

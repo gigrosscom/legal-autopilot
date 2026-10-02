@@ -652,7 +652,7 @@ const tr: Dict = {
     colors: "Renkler", type: "Tipografi", buttons: "Düğmeler", badges: "Seviye rozetleri", notices: "Bildirimler",
     noticesLead: "Acil numaralar, gerçeğe aykırı ihbar, hizmetin hukuki statüsü ve “Önemli” küçük yazı değil, bileşendir.",
     uplSample: "Konsiliér AI, bir belge hazırlama hizmeti ve avukatlarla bağlantı kuran teknolojik bir aracıdır.",
-    draftSample: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır. Başvurmadan önce bilgileri kontrol edin.",
+    draftSample: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır.",
     forms: "Giriş alanları", progress: "Dosya aşamaları", board: "Dosya panosu", icons: "İkonlar",
   },
   errors: {

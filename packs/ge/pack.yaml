@@ -16,11 +16,11 @@ default_language: ru
 status: planned
 compliance:
   ai_label:
-    ru: Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей.
-    en: Prepared with AI (Konsiliér AI). Check the details before filing.
+    ru: Подготовлено с помощью ИИ (Konsiliér AI).
+    en: Prepared with AI (Konsiliér AI).
   draft_disclaimer:
-    ru: "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным. Проверьте сведения перед подачей."
-    en: "This document was prepared by the Konsiliér AI IT service based on your data. Check the details before filing."
+    ru: "Документ подготовлен IT-сервисом Konsiliér AI по вашим данным."
+    en: "This document was prepared by the Konsiliér AI IT service based on your data."
   service_disclaimer:
     ru: Konsiliér AI помогает подготовить и подать документы и следит за сроками.
       Если нужно довести дело до результата — подключим профессионального юриста платформы.

@@ -54,7 +54,7 @@ def test_claim_text_is_clean(ctx):
     assert "Кому: Антропик" in text and "Адрес: Алматы, ул. Сейдимбек, 222" in text  # 3
     assert "(а)" not in text and "мною была совершена покупка" in text  # 5 (the template line is neutral)
     assert text.count("gold_statement.pdf") == 1  # 7
-    assert text.count("Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей.") == 1  # 8
+    assert text.count("Подготовлено с помощью ИИ (Konsiliér AI).") == 1 and "Проверьте данные" not in text  # 8
     assert "IT-сервисом" not in text
     assert "KZT" not in text  # 9
     assert "10\u00a0352 ₸ (десять тысяч триста пятьдесят два тенге)".replace("\u00a0", " ") in text.replace("\u00a0", " ")
