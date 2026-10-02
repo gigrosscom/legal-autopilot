@@ -450,6 +450,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
       {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
 
+      {/* what «Документ подан» below does: said here, so the fixed bar stays compact */}
+      {c.status === "action_ready" && last && last.approval_status !== "pending" && last.approval_status !== "rejected" && (
+        <p className="flex items-start gap-2 px-1 text-xs leading-snug text-muted text-pretty">
+          <Icon name="info" size={16} className="mt-px shrink-0" /><span>{t("case.submittedHint")}</span>
+        </p>
+      )}
+
       {c.status === "awaiting_response" && proposal?.message && (
         <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
       )}
@@ -535,12 +542,10 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
         {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
     }
     return (
-      <div className="space-y-2">
-      <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
+      // the hint («Нажмите, когда вручите…») is in the conversation above the bar: the bar stays one button tall (owner 02.10)
       <div className="flex gap-2">
         {/* sending itself (WhatsApp, Telegram, e-mail through us…) is the «Мастер отправки» in the document card */}
         <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
-      </div>
       </div>
     );
   }
