@@ -855,7 +855,7 @@ const en: Dict = {
     share: "Share link",
     copied: "Link copied",
     invited: "People who came by your link: {n}",
-    shareText: "Konsiliér AI is a free AI assistant for legal questions. Describe your situation and it will tell you what to do. If you pay for a document through my link, we both get one more document free:",
+    shareText: "Any legal situation — from getting your money back to a dispute with a state body. Konsiliér explains your rights in plain words and prepares the claim, complaint or application. Through my link we both get a document as a gift once you prepare your first document:",
   },
   send: {
     open: "Show the contacts found and all ways",

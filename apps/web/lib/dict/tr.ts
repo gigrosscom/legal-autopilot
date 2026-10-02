@@ -855,7 +855,7 @@ const tr: Dict = {
     share: "Bağlantıyı paylaş",
     copied: "Bağlantı kopyalandı",
     invited: "Bağlantınızla gelenler: {n}",
-    shareText: "Konsiliér AI — hukuki sorular için ücretsiz yapay zekâ asistanı. Durumunuzu anlatın, ne yapmanız gerektiğini söylesin. Bağlantım üzerinden bir belge için ödeme yaparsanız, ikimiz de bir belgeyi daha ücretsiz alırız:",
+    shareText: "Her türlü hukuki durum — paranızı geri almaktan bir devlet kurumuyla anlaşmazlığa kadar. Konsiliér haklarınızı sade bir dille açıklar ve talep, şikâyet ya da dilekçe hazırlar. Bağlantım üzerinden ilk belgenizi hazırladığınızda ikimiz de birer belgeyi hediye alırız:",
   },
   submit: {
     courtName: "Yargı Kabineti",
