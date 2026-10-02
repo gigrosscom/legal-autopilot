@@ -408,6 +408,6 @@ chat_documents:
   any: "чек или договор, гарантийный талон или акт, переписка, уведомление или решение"
 chat_offer:
   # P0 02.10: the chat's paid offer, in place of a document's text; the title as it is (no declension)
-  document: "Документ: {title} — готовый PDF и Word, {price}. Нажмите «Оплатить» ниже."
-  untitled: "Подготовлю документ по вашему делу — готовый PDF и Word, {price}. Нажмите «Оплатить» ниже."
+  document: "Документ: {title} — готовый PDF и Word, {price}. Нажмите «Составить документ» ниже."
+  untitled: "Подготовлю документ по вашему делу — готовый PDF и Word, {price}. Нажмите «Составить документ» ниже."
   price_from: "от {price}"
