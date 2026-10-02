@@ -330,6 +330,16 @@ class AbuseLimits(_Strict):
     max_cases_per_applicant: int = 10
 
 
+class DirectRule(_Strict):
+    """A dispute the words alone decide (QA BUG-24: «долг по расписке» went to a consumer refund one time in two):
+    any of `markers` (word starts) and none of `unless` → this dispute and role, no model guess."""
+
+    dispute: str
+    role: str
+    markers: dict[str, tuple[str, ...]]
+    unless: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+
+
 class Routing(_Strict):
     lawyer_only: tuple[str, ...] = ()  # branch ids or dispute type ids → always level 3
     high_amount_threshold: float | None = None  # None → rule not applied, "a lawyer will confirm"
@@ -353,6 +363,8 @@ class Routing(_Strict):
     # the matter is already in a court or with the police (case number, hearing, investigator): only then the forums
     # marked pending_only are offered; lang → phrases, matched on whole words
     pending_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # disputes decided by the words alone, before any model call (QA BUG-24)
+    direct: tuple[DirectRule, ...] = ()
     # owner 02.10: the client does not choose where to file — the first forum of this order among the candidates is
     # the step's recipient; forums left out (mediation, a court or police already dealing with the case) are never
     # chosen by the system, only by «Другой адресат». forum id → the one line «почему» shown under «Кому».

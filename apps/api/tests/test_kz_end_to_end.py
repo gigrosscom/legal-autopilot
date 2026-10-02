@@ -100,7 +100,7 @@ def _check_document(sid: str, spec, a: dict, text: str, previous: list[str]) -> 
     assert "None" not in t and "TODO" not in t, (where, t)
     assert not re.search(r"^\s*(Кому|От|ИИН|БИН|Адрес|Тел\.|Ответчик):\s*$", t, re.M), (where, t)
     # addressee — the exact name of the body / organisation
-    assert a["addressee"]["name"] and f"Кому: {a['addressee']['name']}" in t, where
+    assert a["addressee"]["name"] and f"Кому: {a['addressee'].get('heading') or a['addressee']['name']}" in t, where
     # applicant (АППК ст. 63 п. 2 пп. 1); ГПК ст. 148 ч. 2 пп. 2))
     # the lawyer's D-18: the ИИН only where the law asks for it (a state body, a court, a bank) — not in a claim to a
     # company or a person, and never asked when the scenario does not need it
