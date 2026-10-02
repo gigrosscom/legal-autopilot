@@ -218,6 +218,9 @@ export type Payment = {
   last_paid?: { code: string; amount: number; purpose: string; paid_at: string | null } | null;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
+  /** Bonus account points of the owner (owner 02.10) and the points the open bill took (its amount is less by them). */
+  bonus_balance?: number;
+  bonus_used?: number;
   subscription: Subscription | null;
 };
 
@@ -273,6 +276,7 @@ export type ForumOption = {
   pretrial?: "mandatory" | "voluntary" | null;
   /** What to know for this dispute: term, competent court, norm. */
   hint?: string | null;
+  why?: string | null;  // the system chose this recipient (owner 02.10): one line «почему»
 };
 
 export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };
@@ -293,6 +297,7 @@ export type Coverage = {
   forum: ForumOption | null;
   reasons: { code: string; label: string }[];
   options: ForumOption[];
+  other_forums: ForumOption[];  // «Другой адресат» until the document is made
   upl_notice: string | null;
 };
 
@@ -312,7 +317,8 @@ export type CaseLawyer = {
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
 export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[];
-  bonus_documents: number };  // free documents for inviting a friend who paid (any case)
+  bonus_documents: number;  // free documents for inviting a friend who paid (any case)
+  bonus_balance?: number };  // bonus account points: they pay part of a document bill
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean; google?: boolean; apple?: boolean };
 export type SignedIn = { token: string; me: Me };
 

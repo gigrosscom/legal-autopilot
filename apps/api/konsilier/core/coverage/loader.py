@@ -71,6 +71,24 @@ class Coverage:
                  and (pending or not f.pending_only)]
         return sorted(found, key=lambda f: f.order)
 
+    def route_step(self, dispute_id: str | None, forum_id: str | None):
+        """The step of the dispute's route (routes.yaml) that names this forum, if any."""
+        route = self.routes.get(dispute_id or "")
+        return next((s for s in route.steps if s.forum == forum_id), None) if route and forum_id else None
+
+    def auto_forum(self, forums: list[Forum], dispute_id: str | None = None) -> Forum | None:
+        """The step's recipient chosen by the system (owner 02.10): the first step of the dispute's own route
+        (routes.yaml), else the first candidate in the pack's forum_order; none when neither names a candidate (then
+        the person is asked one question, not shown a list)."""
+        first = self.first_forum(dispute_id, forums)
+        if first is not None:
+            return first
+        order = self.routing.forum_order
+        if not order:
+            return forums[0] if len(forums) == 1 else None
+        ranked = sorted((f for f in forums if f.id in order), key=lambda f: order.index(f.id))
+        return ranked[0] if ranked else (forums[0] if len(forums) == 1 else None)
+
     def escalation_chain(self, forum_id: str, dispute: DisputeType, role: str) -> list[Forum]:
         """Forums reached by following appeals_to from forum_id (first accepting target each step)."""
         chain: list[Forum] = []

@@ -62,7 +62,6 @@ def ctx(tmp_path: Path, packs_dir: Path):
         approval_required_first_n=50, scheduler_interval_seconds=0, qualify_min_confidence=0.6,
         smtp_host=None, payment_mode="stub", background_jobs="off",
         resend_api_key=None,  # never real e-mail from a test run, whatever the environment has (it did send — 02.10)
-        auto_recipient=False,  # the person's own choice of forum; the system's choice has its own tests
         payment_trust_all=False,  # the desk's path; trust for every way has its own test (test_payment_ways.py)
         intake_max_questions=0, extract_images_with_llm=False, payment_requires_contact=True,  # the full interview; the cap has its own tests
     )

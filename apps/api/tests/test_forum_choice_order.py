@@ -79,7 +79,6 @@ def test_routes_cover_every_dispute_scenario_and_name_known_addressees():
 def test_private_debt_case_gets_its_addressee_without_a_list(ctx):
     from .test_e2e import web_user
 
-    ctx.container.engine.config.auto_recipient = True
     api = web_user(ctx)
     case = api.post("/v1/cases", expect=201, json={
         "text": "Дал знакомому в долг 300000 тенге по расписке, он не возвращает", "country": "KZ"})["case"]

@@ -347,3 +347,8 @@ class Routing(_Strict):
     # the matter is already in a court or with the police (case number, hearing, investigator): only then the forums
     # marked pending_only are offered; lang → phrases, matched on whole words
     pending_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # owner 02.10: the client does not choose where to file — the first forum of this order among the candidates is
+    # the step's recipient; forums left out (mediation, a court or police already dealing with the case) are never
+    # chosen by the system, only by «Другой адресат». forum id → the one line «почему» shown under «Кому».
+    forum_order: tuple[str, ...] = ()
+    forum_why: dict[str, Localized] = Field(default_factory=dict)

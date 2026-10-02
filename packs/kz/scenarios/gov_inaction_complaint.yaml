@@ -84,4 +84,4 @@ actions:
     kind: handoff
     when: complaint_gov_inaction.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (прокуратура или административный иск в суд), kk: Істі заңгерге беру (прокуратура не сотқа әкімшілік талап)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

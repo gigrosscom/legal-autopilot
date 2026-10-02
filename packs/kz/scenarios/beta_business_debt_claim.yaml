@@ -91,4 +91,4 @@ actions:
     kind: handoff
     when: claim_to_debtor.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (иск о взыскании), kk: Істі заңгерге беру (өндіріп алу туралы талап)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

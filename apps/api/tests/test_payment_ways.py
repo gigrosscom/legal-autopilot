@@ -198,7 +198,7 @@ def test_receipt_letter_after_confirmation(ctx):
         api.post(f"/v1/cases/{cid}/payment/claim")
         desk_confirms(ctx, pay["code"])
         to, _, text = next(m[:3] for m in reversed(outbox.sent) if m[0] == "client@mail.kz")
-        for want in ("Оплата получена", "Сумма: 1 990,00 ₸", "Дата: ", "За что: Подготовка юридического документа",
+        for want in ("Оплата получена", "Сумма: 2 990,00 ₸", "Дата: ", "За что: Подготовка юридического документа",
                      f"Код платежа: {pay['code']}", "Способ: Kaspi QR", f"Продавец: {REQ.name}", f"/case/{cid}",
                      "не фискальный чек", "Фискальный чек за оплату через Kaspi Pay приходит в приложение Kaspi.kz"):
             assert want in text, want
@@ -211,7 +211,7 @@ def test_kaspi_webhook_is_off_until_switched_on_and_checks_the_signature(ctx):
     st = ctx.container.settings
     client = ctx.client
     api, cid, pay = open_bill(ctx)
-    body = json.dumps({"code": pay["code"], "status": "paid", "amount": 1990, "txn_id": "T-1"}).encode()
+    body = json.dumps({"code": pay["code"], "status": "paid", "amount": 2990, "txn_id": "T-1"}).encode()
     assert client.post("/v1/payments/kaspi/webhook", content=body).status_code == 404  # off
     st.payment_kaspi_webhook, st.payment_kaspi_webhook_secret = True, "test-secret"
     try:

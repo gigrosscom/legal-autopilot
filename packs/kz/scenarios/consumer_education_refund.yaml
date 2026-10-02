@@ -99,4 +99,4 @@ actions:
     kind: handoff
     when: complaint_consumer_authority.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (иск в суд), kk: Істі заңгерге беру (сотқа талап қою)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

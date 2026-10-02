@@ -190,7 +190,7 @@ def looks_like_document(text: str) -> bool:
 
 def document_offer(session: Session, container: Container, case: Case, lang: str) -> dict[str, Any]:
     """What the paid document is: its title, price and whether it is paid — for the card in the chat. Before the
-    scenario is known the price is the lowest document price of the country («от 1 990 ₸»)."""
+    scenario is known the price is the lowest document price of the country («от 2 990 ₸»)."""
     from ..core.bill import BillWords
 
     eng = container.engine
@@ -296,6 +296,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     # can be measured from outside without the server logs; never for a real person
     diagnostics = bool(user.is_test)
     first_reply = not any(m.role == "assistant" for m in rows)
+    if not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        # the first message said too little to classify: try again with what the person tells now (PM 02.10)
+        after_commit(session, container, lambda s: container.engine.requalify_from_chat(s, case_pk), "requalify")
     session.commit()  # the user's message is saved even if the reply fails
 
     agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]

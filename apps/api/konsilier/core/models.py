@@ -71,6 +71,10 @@ class User(TimestampMixin, Base):
     # referral bonus: free documents for any case of the person; referral_rewarded_at is set once the invited
     # person's first payment has credited one to them and one to the inviter (it never repeats)
     bonus_documents: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # bonus account (owner 02.10, «Бонусный счёт»): points, 1 point = 1 unit of the bill currency. An invited person
+    # gets REFERRAL_BONUS_POINTS on joining by the link, the inviter as much once that person first pays; points pay
+    # part of a document bill (CaseEngine.bonus_for)
+    bonus_balance: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     referral_rewarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     cases: Mapped[list["Case"]] = relationship(back_populates="owner", foreign_keys="Case.owner_id")
@@ -631,6 +635,9 @@ class Invoice(Base):
     pay_way: Mapped[str | None] = mapped_column(String(24))
     # Kaspi Pay link paid «on trust» (0031): the document was given at «Оплатить», the desk still matches the payment
     trusted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # bonus points taken from the person's bonus account for this bill (amount is already less by them); a bill
+    # cancelled before it was paid gives them back
+    bonus_used: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     payer_phone: Mapped[str | None] = mapped_column(String(20))  # kaspi_invoice: the Kaspi number to bill
     buyer_name: Mapped[str | None] = mapped_column(String(300))  # bank_invoice: the paying company / ИП
     buyer_bin: Mapped[str | None] = mapped_column(String(12))

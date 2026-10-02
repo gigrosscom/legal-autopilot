@@ -394,6 +394,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
       {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
 
+      {/* owner 02.10: the system chose the recipient — «Кому: … — почему», switched only by «Другой адресат» */}
+      {cov.forum && (c.status === "intake" || c.status === "qualified") && (
+        <RecipientCard forum={cov.forum} others={cov.other_forums ?? []} busy={busy} onChoose={chooseForum} />
+      )}
+
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
         <PlanCard plan={c.plan} />
       )}
@@ -449,6 +454,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
+
+      {/* what «Документ подан» below does: said here, so the fixed bar stays compact */}
+      {c.status === "action_ready" && last && last.approval_status !== "pending" && last.approval_status !== "rejected" && (
+        <p className="flex items-start gap-2 px-1 text-xs leading-snug text-muted text-pretty">
+          <Icon name="info" size={16} className="mt-px shrink-0" /><span>{t("case.submittedHint")}</span>
+        </p>
+      )}
 
       {c.status === "awaiting_response" && proposal?.message && (
         <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
@@ -535,12 +547,10 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
         {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
     }
     return (
-      <div className="space-y-2">
-      <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
+      // the hint («Нажмите, когда вручите…») is in the conversation above the bar: the bar stays one button tall (owner 02.10)
       <div className="flex gap-2">
         {/* sending itself (WhatsApp, Telegram, e-mail through us…) is the «Мастер отправки» in the document card */}
         <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
-      </div>
       </div>
     );
   }
@@ -729,16 +739,19 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
                 </Button>
               ))}
               <p className="text-xs text-muted">{t("payment.caseHint")}</p>
+              {(pay.bonus_balance ?? 0) > 0 && <p className="text-xs text-muted">{t("payment.bonusHint", { n: pay.bonus_balance ?? 0 })}</p>}
             </>
           ) : kaspiOneTap(pay) ? (
             <>
               {pay.owed && <Alert tone="warning" role="status">{t("payment.owed")}</Alert>}
+              {(pay.bonus_used ?? 0) > 0 && <p className="text-sm text-muted">{t("payment.bonusUsed", { n: pay.bonus_used ?? 0 })} {money(pay.amount, pay.currency)}</p>}
               <KaspiOneTap pay={pay} busy={busy} price={money(pay.amount, pay.currency)} onWay={onWay} />
             </>
           ) : (
             <>
               {waiting && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
               {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
+              {(pay.bonus_used ?? 0) > 0 && <p className="text-sm text-muted">{t("payment.bonusUsed", { n: pay.bonus_used ?? 0 })}</p>}
               <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
               {pay.ways?.length ? (
                 <PaymentWays pay={pay} busy={busy} amount={String(pay.amount)} onWay={onWay}
@@ -911,6 +924,45 @@ function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
   );
 }
 
+function RecipientCard({ forum, others, busy, onChoose }: {
+  forum: ForumOption; others: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="card space-y-2" aria-label={t("forum.to")}>
+      <p className="flex items-start gap-2">
+        <Icon name={forum.type === "court" ? "landmark" : "building"} size={20} className="mt-0.5 shrink-0 text-brand" />
+        <span className="min-w-0"><span className="text-muted">{t("forum.to")}: </span><span className="font-semibold">{forum.name}</span></span>
+      </p>
+      {forum.why && <p className="text-sm text-muted">{forum.why}</p>}
+      {others.length > 0 && !open && (
+        <button type="button" onClick={() => setOpen(true)} className="text-sm text-brand-dark underline-offset-2 hover:underline">
+          {t("forum.other")}
+        </button>
+      )}
+      {open && (
+        <div className="space-y-2 border-t border-line pt-2">
+          <p className="text-sm text-muted">{t("forum.otherLead")}</p>
+          <ul className="space-y-1.5">
+            {others.map((f) => (
+              <li key={f.id}>
+                <button type="button" disabled={busy} onClick={() => { setOpen(false); onChoose(f); }}
+                  className="flex w-full items-start gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-sand disabled:opacity-60">
+                  <Icon name={f.type === "court" ? "landmark" : f.type === "mediation" ? "handshake" : "building"} size={18} className="mt-0.5 shrink-0 text-muted" />
+                  <span>{f.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted hover:text-ink">{t("forum.keep")}</button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Kept only for a country whose pack has no forum_order yet: the KZ pack always names the recipient. */
 function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void }) {
   const t = useT();
   return (

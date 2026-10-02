@@ -141,7 +141,7 @@ def test_gov_inaction_complaint_is_a_paid_document_and_asks_applicant_data_befor
         "applicant_name": "Иванов Иван Иванович", "applicant_iin": "900101300123",
         "applicant_address": "г. Алматы, ул. Абая, 1", "applicant_phone": "+7 701 123 45 67"}})
     pay = api.post(f"/v1/cases/{cid}/payment", json={"purpose": "document"})["case"]["payment"]
-    assert pay["amount"] == 1990 and pay["code"]
+    assert pay["amount"] == 2990 and pay["code"]
 
 
 def test_grammatical_gender_from_the_patronymic():
