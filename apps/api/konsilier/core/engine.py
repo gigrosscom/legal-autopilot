@@ -1965,7 +1965,8 @@ class CaseEngine:
                 addressee[key] = f"[{ai.field_label(sc, pack, lang, name)}]"
         ctx = self.document_context(case, sc, pack, spec, addressee, placeholders=True)
         data = render_docx(pack.packs_root / spec.template, ctx, ai_label="", draft_disclaimer=None,
-                           drop_empty=self._drop_empty(pack, lang))
+                           drop_empty=self._drop_empty(pack, lang),
+                           finish=self._finishing(case, sc, pack))  # QA BUG-22: the draft shows «₸ (… тенге)» too
         blanks = [{"field": n, "label": ai.field_label(sc, pack, lang, n), "type": sc.field(n).type,
                    "pattern": sc.field(n).pattern} for n in self.draft_blanks(case, sc)]
         return {"title": pack.localized(spec.title, lang), "text": docx_text(data).strip(), "blanks": blanks}

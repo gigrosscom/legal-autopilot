@@ -152,3 +152,18 @@ def test_the_document_has_no_service_line_and_no_uncounted_penalty(ctx):
     case = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ"})["case"]
     text = _doc_text(ctx, _fill_and_prepare(api, case["id"], case)["id"])
     assert "Дата события:" not in text and "пен" not in text.lower().replace("пенсион", "")
+
+
+def test_the_draft_shows_the_sign_not_the_code(ctx):
+    """QA BUG-22: the draft on the case page read «… KZT»; it is made with the same last pass as the document."""
+    from .test_draft_prefill import to_draft
+
+    api, case = to_draft(ctx)
+    cid = case["id"]
+    with ctx.container.session_factory() as s:
+        c = s.get(Case, uuid.UUID(cid))
+        c.facts = {**c.facts, "amount": "150000"}
+        s.commit()
+    d = api.get(f"/v1/cases/{cid}/draft").json()
+    text = d.get("visible", "") + d.get("hidden", "") + d.get("text", "")
+    assert "KZT" not in text
