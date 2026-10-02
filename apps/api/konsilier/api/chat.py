@@ -163,10 +163,74 @@ ASKS_FOR_DOCUMENT = re.compile(
     r"مستند|شكوى|دعوى|مطالبة", re.IGNORECASE)
 
 
+# P0 02.10: «да, покажите», «составьте», «нужен документ» right after a document was offered — the person wants the
+# document: the reply is the paid offer (card «Услуга / Стоимость / Оплатить»), never its text written in the chat
+YES_AFTER_OFFER = re.compile(
+    r"^\s*(да|ага|угу|давай|давайте|хочу|покажи|покажите|показать|составь|составьте|сделай|сделайте|подготовь|"
+    r"подготовьте|нужен|нужна|нужно|конечно|ок|окей|ok|yes|sure|иә|ия|иа|керек|жасаңыз|көрсетіңіз|evet|نعم)\b",
+    re.IGNORECASE)
+WANTS_DOCUMENT = re.compile(
+    r"\b(покажи|покажите|составь|составьте|составить|напиши|напишите|подготовь|подготовьте|сделай|сделайте|пришли|"
+    r"пришлите|дай|дайте|хочу|нужен|нужна)\b[^?.!\n]{0,25}\b(документ|претензи|жалоб|иск|заявлени|текст)|"
+    r"\bқұжат\w*\s+(жасаңыз|көрсетіңіз|керек)", re.IGNORECASE)
+# the text of a document written in the chat: a header, placeholders for the person's data, a signature line
+_DOC_SIGNS = [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in (
+    r"^\s*\**\s*(ПРЕТЕНЗИЯ|ЖАЛОБА|ИСКОВОЕ\s+ЗАЯВЛЕНИЕ|ЗАЯВЛЕНИЕ|НАРАЗЫЛЫҚ|ШАҒЫМ|ТАЛАП\s+АРЫЗ)\b",
+    r"^\s*\**\s*(Кому|От кого|От|Кімге|Кімнен)\s*:",
+    r"[\(\[]\s*(ваш[аие]?|укажите|ФИО|дата|адрес|подпись|сумма|наименование)[^\)\]]{0,40}[\)\]]",
+    r"^\s*(Подпись|Дата)\s*[:_]",
+    r"^\s*(Прошу|Требую)\b",
+)]
+
+
+def looks_like_document(text: str) -> bool:
+    """The reply writes out a claim, complaint or lawsuit (P0 02.10: the chat gave the whole claim away for free)."""
+    return sum(1 for r in _DOC_SIGNS if r.search(text or "")) >= 2
+
+
+def document_offer(session: Session, container: Container, case: Case, lang: str) -> dict[str, Any]:
+    """What the paid document is: its title, price and whether it is paid — for the card in the chat."""
+    eng = container.engine
+    title, price, currency = None, None, None
+    if case.scenario_id:
+        try:
+            sc, pack = eng.scenario_of(case), eng.pack_of(case)
+            spec = eng.next_action_spec(case, sc)
+            if spec is not None:
+                title = pack.localized(spec.title, pack.lang(lang))
+            p = eng.price(case)
+            if p is not None:
+                from ..core.bill import BillWords
+                price, currency = float(p[0]), BillWords.of(pack, p[1]).sign or p[1]  # «₸» from the pack
+        except Exception:  # noqa: BLE001 — the card works without them
+            log.warning("document offer for case %s", case.id, exc_info=True)
+    paid = bool(case.paid) or any(a.unlocked_by is not None for a in case.actions)
+    return {"title": title, "price": price, "currency": currency, "paid": paid}
+
+
+def offer_text(offer: dict[str, Any], lang: str) -> str:
+    """The paid offer, in place of the document's text (the price is the case's own)."""
+    price = f" — {offer['price']:,.0f} {offer.get('currency') or ''}".replace(",", " ").rstrip() if offer.get("price") else ""
+    title = (offer.get("title") or "").strip()
+    if lang == "kk":
+        what = title.lower() if title else "құжатты"
+        return f"Сіздің деректеріңізбен {what} дайындаймын: дайын PDF және Word{price}. Төмендегі батырманы басыңыз."
+    what = title[:1].lower() + title[1:] if title else "документ"
+    return f"Составлю {what} с вашими данными: готовый PDF и Word{price}. Нажмите кнопку ниже."
+
+
 class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
     attachments: list[str] = Field(default_factory=list, max_length=10)  # evidence ids uploaded with this message
     language: str | None = Field(default=None, max_length=5)  # the interface language: the reply is written in it
+
+
+@router.get("/cases/{case_id}/chat/document")
+def chat_document(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
+                  container: Container = Depends(get_container)) -> dict[str, Any]:
+    """The card under the chat's last reply: the document, its price and whether it is paid (P0 02.10)."""
+    case = _case_for(session, case_id, user)
+    return document_offer(session, container, case, case.language or "ru")
 
 
 def _sse(event: dict[str, Any]) -> str:
@@ -245,6 +309,27 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         yield _sse(ev)
 
     t_request = time.perf_counter()
+    last_reply = next((m for m in reversed(rows[:-1]) if m.role == "assistant"), None)
+    offered = bool(last_reply is not None and (last_reply.meta or {}).get("offer_document"))
+    if (offered and YES_AFTER_OFFER.search(body.text)) or WANTS_DOCUMENT.search(body.text):
+        # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
+        with container.session_factory() as s:
+            c = s.get(Case, case_pk)
+            offer = document_offer(s, container, c, reply_lang)
+            if not offer["paid"]:
+                m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=offer_text(offer, reply_lang),
+                                meta={"provider": "offer", "offer_document": True, "pay_now": True})
+                s.add(m)
+                container.engine.audit(s, c, f"user:{user_pk}", "chat_document_offer")
+                s.commit()
+                view = _view(m)
+
+                def offered_now() -> Iterator[str]:
+                    yield _sse({"type": "text", "text": view["text"]})
+                    yield _sse({"type": "done", "message": view, "limit": daily_limit,
+                                "remaining": max(daily_limit - sent - 1, 0), "window_hours": 24})
+                return StreamingResponse(offered_now(), media_type="text/event-stream",
+                                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     def events() -> Iterator[str]:
         # waiting for a worker thread between the response and its first chunk (a busy server shows here)
@@ -283,9 +368,21 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             return
         text = vault.restore(result.text) if result else ""
         text = one_more_marker(text)  # QA BUG-05: a second [[MORE]] (after a tool call) never reaches the client
+        cut = looks_like_document(text)
+        if cut:
+            # P0 02.10: the model wrote the document out — keep the short answer, the document is the paid offer
+            with container.session_factory() as s:
+                offer = document_offer(s, container, s.get(Case, case_pk), reply_lang)
+            short = re.split(r"\[\[\s*MORE\s*\]\]", text)[0].strip()
+            short = "" if looks_like_document(short) else short
+            text = f"{short}\n\n{offer_text(offer, reply_lang)}".strip()
+            result.offer_document = True
+            log.warning("chat=document_text_cut case=%s", case_pk)
         # owner 30.09: not in the first reply — unless the person asks for a document or attached documents (01.10)
         if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text) and not body.attachments:
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
+        if cut:  # the document's text was taken out: its place is the paid offer, even in the first reply
+            result.offer_document = True
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)
         timing = {**(getattr(result, "timing", None) or {}), "queue_ms": queue_ms}
         served_by = timing.get("provider") or used  # inside the free chain: cerebras, gemini …

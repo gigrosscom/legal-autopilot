@@ -162,6 +162,18 @@ class ChatResult:
 
 
 OFFER_MARKER = "[[DOCUMENT]]"
+# P0 02.10: the chat gave a whole claim away for free («вот проект претензии…» with «(ваши ФИО)»). The document is the
+# paid service, made in the case with the person's data: the chat never writes it out. Appended to SYSTEM, so it
+# holds whatever the rules above say about offering a document.
+PAID_DOCUMENT_RULE = """
+
+The document is a paid service — this overrides anything above about offering a document
+Never write the text of a claim, complaint, lawsuit, application or letter in the chat: not a template, not a draft,
+not «what to write», not a sample with blanks such as «(ваши ФИО)» or «(дата)». Konsiliér AI prepares the document
+in the case with the person's own data (a finished PDF and Word). When the document is the next step, say so in one
+sentence like «Составлю претензию продавцу с вашими данными — готовый PDF и Word.» (no question «показать?», no
+price — the app shows the price) and end the reply with the marker {offer_marker} on its own line. If the person asks
+to see, write or send the document, do the same: one sentence and the marker, never the document's text."""
 
 
 def _ms(since: float) -> int:
@@ -369,7 +381,7 @@ class ChatAgent:
         cc, lang = getattr(context.get("pack"), "country", None), context.get("lang")
         use_library = self.library is not None and self.library.available(cc)
         search = " or with web_search on the official portal" if self.web_search else ""
-        system = SYSTEM.format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
+        system = (SYSTEM + PAID_DOCUMENT_RULE).format(country=country, language=language, offer_marker=OFFER_MARKER, more_marker=MORE_MARKER,
                                portal_rule=PORTAL_RULE.format(search=search) if use_portal else NO_PORTAL_RULE,
                                official_rule=OFFICIAL_RULE if use_library else NO_OFFICIAL_RULE)
         if use_portal and context.get("key_acts"):

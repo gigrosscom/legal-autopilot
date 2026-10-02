@@ -264,6 +264,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
   // confirmed, so it simply appears; if it has not after a few checks, the page asks for it itself.
+  // from the chat's card «Оплатить» (?pay=1, P0 02.10): the payment window opens as soon as the case is ready for it
+  const askedToPay = useRef(false);
+  useEffect(() => {
+    if (!c || askedToPay.current || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
+    if (c.status !== "qualified" || c.payment?.status === "paid") return;
+    askedToPay.current = true;
+    setPayOpen(true);
+    if (!c.payment?.code && c.payment?.status === "none") choosePayment("document");
+  }, [c]);  // eslint-disable-line react-hooks/exhaustive-deps
   const payStatus = c?.payment?.status;
   const prepareRef = useRef(post);
   prepareRef.current = post;
