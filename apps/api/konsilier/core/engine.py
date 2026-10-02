@@ -1227,6 +1227,10 @@ class CaseEngine:
         self.lock(session, case)
         sc, pack = self.scenario_of(case), self.pack_of(case)
         self.check_subject(case)
+        if case.hold_reason == "too_many_cases" and safety.abuse_reason(session, pack.coverage, case) is None:
+            # owner 02.10: held when every chat counted as a case — looked at again under today's rule
+            case.hold_reason = None
+            self.audit(session, case, "system", "hold_released", reason="too_many_cases")
         if case.hold_reason is None and not case.actions:
             reason = safety.abuse_reason(session, pack.coverage, case)
             if reason:
