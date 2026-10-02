@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Badge, Button, Icon } from "@/components/ui";
+import { LawyerCard } from "@/components/LawyerCard";
 import { ApiError, api, errorText } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -134,22 +135,13 @@ export function LawyerPilot({ caseId, onChange }: { caseId: string; onChange?: (
           {s.last?.status === "declined" && (
             <Alert tone="warning" role="status">{t("pilot.declined", { name: s.last.lawyer?.name ?? "" })}</Alert>
           )}
-          {s.lawyers.length === 0 && <p className="card text-sm text-muted">{t("pilot.empty")}</p>}
+          {s.lawyers.length === 0 && <ComingSoon caseId={caseId} />}
           <ul className="space-y-3">
             {s.lawyers.map((l) => (
-              <li key={l.id} className="card space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold">{l.name}</p>
-                    <p className="text-sm text-muted">{[l.kind_label, l.organization, l.city].filter(Boolean).join(" · ")}</p>
-                  </div>
-                  <p className="text-lg font-semibold tabular-nums">{money(l.price, l.currency)}</p>
-                </div>
-                {l.price_note && <p className="text-sm">{l.price_note}</p>}
-                {l.specializations.length > 0 && (
-                  <ul className="flex flex-wrap gap-2">{l.specializations.map((x) => <li key={x.key}><Badge tone="brand">{x.label}</Badge></li>)}</ul>
-                )}
-                {open === l.id ? (
+              <LawyerCard key={l.id} l={{ id: String(l.id), name: l.name, kind: l.kind_label, organization: l.organization, city: l.city,
+                specializations: l.specializations.map((x) => x.label), price: l.price, priceNote: l.price_note,
+                response: t("choose.workday"), rating: null }} action={
+                open === l.id ? (
                   <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); send(l.id); }}>
                     <p className="text-sm text-muted">{t("pilot.contactsHint")}</p>
                     <label className="block space-y-1 text-sm">
@@ -171,13 +163,45 @@ export function LawyerPilot({ caseId, onChange }: { caseId: string; onChange?: (
                     </div>
                   </form>
                 ) : (
-                  <Button variant="secondary" className="w-full" icon="send" onClick={() => { setOpen(l.id); setError(null); }}>{t("pilot.choose")}</Button>
-                )}
-              </li>
+                  <Button className="min-h-12 w-full" icon="check" onClick={() => { setOpen(l.id); setError(null); }}>{t("choose.choose")}</Button>
+                )} />
             ))}
           </ul>
         </>
       )}
     </section>
+  );
+}
+
+/** No pilot lawyer yet: say so plainly and take a request — the team calls back when one is connected. */
+function ComingSoon({ caseId }: { caseId: string }) {
+  const t = useT();
+  const [contact, setContact] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try {
+      await api("/v1/waitlist", { method: "POST", body: JSON.stringify({ country: "KZ", contact: contact.trim(), problem: `Юрист по делу ${caseId}` }) });
+      setSent(true);
+    } catch (err) { setError(errorText(err)); } finally { setBusy(false); }
+  }
+  return (
+    <div className="card space-y-3">
+      <p className="flex items-center gap-2 font-semibold"><Icon name="hourglass" size={20} className="text-brand" />{t("choose.soonTitle")}</p>
+      <p className="text-sm text-muted">{t("choose.soonText")}</p>
+      {sent ? <Alert tone="info" icon="checkCircle" role="status">{t("choose.soonSent")}</Alert> : (
+        <form className="space-y-2" onSubmit={send}>
+          <label className="block space-y-1 text-sm">
+            <span>{t("choose.soonContact")}</span>
+            <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="+7 701 123 45 67" required minLength={5} autoComplete="tel" />
+          </label>
+          <Button type="submit" className="min-h-12 w-full" icon="send" disabled={busy}>{t("choose.soonButton")}</Button>
+        </form>
+      )}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+    </div>
   );
 }
