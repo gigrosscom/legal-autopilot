@@ -69,7 +69,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   }, []);
 
   return (
-    <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-dvh flex-col bg-surface lg:start-64">
+    <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-[var(--app-h,100dvh)] flex-col bg-surface lg:start-64">
       <header className="border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex min-h-14 max-w-3xl items-center gap-1 px-2 py-1 lg:h-16 lg:px-6">
           <Link href={back} aria-label={t("app.back")}

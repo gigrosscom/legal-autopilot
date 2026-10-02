@@ -364,7 +364,7 @@ export function AppBanner({ above = false }: { above?: boolean }) {
   };
   return (
     <div role="region" aria-label={t(kind === "push" ? "push.title" : "pwa.bannerTitle")}
-      className={`fixed inset-x-3 z-30 lg:hidden ${above ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"}`}>
+      className={`fixed inset-x-3 z-30 lg:hidden ${above ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom)+var(--app-gap,0px))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"}`}>
       <div className="mx-auto flex max-w-lg items-center gap-3 rounded-2xl bg-surface p-3 shadow-[0_8px_30px_rgb(0_0_0/0.16)] ring-1 ring-ink/[0.06]">
         <Icon name={kind === "push" ? "bell" : "smartphone"} size={22} className="shrink-0 text-brand" />
         <p className="min-w-0 flex-1 text-sm leading-snug">
