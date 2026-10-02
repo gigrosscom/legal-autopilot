@@ -36,8 +36,12 @@ services:
   ncanode:
     image: malikzh/ncanode:3.5.0
     restart: unless-stopped
-    mem_limit: 1g
+    # The CRL of «НУЦ РК (ГОСТ) 2022» is ~20 MB; NCANode parses it on every check. With 1g the JVM got a 256 MB heap
+    # (25% by default) and failed with OutOfMemoryError → HTTP 500 → «verifier_unavailable» on ЭЦП sign-in (02.10).
+    # 2g and 75% for the heap (~1.5 GB) fit it; it settles at ~1.3 GB. The VM has 8 GB, ~2 GB in use.
+    mem_limit: 2g
     environment:
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
       # The CAs NCANode trusts (downloaded at start). Its built-in list lacks «ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (RSA) 2022»,
       # the CA of every RSA key issued since 2022 — such keys failed with «Подпись не прошла проверку» (01.10).
       # This is the current list from pki.gov.kz/cert («Корневые сертификаты»); the old nca_rsa/nca_gost
