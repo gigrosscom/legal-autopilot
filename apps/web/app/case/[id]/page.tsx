@@ -12,6 +12,7 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { SendWizard } from "@/components/SendWizard";
+import { ChooseLawyer } from "@/components/ChooseLawyer";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
 import { DraftPreview } from "@/components/DraftPreview";
@@ -98,6 +99,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [emergency, setEmergency] = useState<Emergency | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
+  const [chooseOpen, setChooseOpen] = useState(false);  // «Выбрать юриста» (owner 02.10)
   // the server asks for a confirmed contact before the first bill: the payment window shows that step first
   const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
   // PM 01.10: the applicant's own data (name, IIN, address, phone) on one screen right before paying
@@ -363,10 +365,20 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
     // owner 01.10 («3 клика»): one document by default — the bill is made at once; «Дело под ключ» is a link
-    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
-      setPayOpen(true);
-      if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
-    }} />;
+    bar = (
+      <>
+        <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
+          setPayOpen(true);
+          if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
+        }} />
+        {LAWYER_PILOT && c.status !== "handed_to_lawyer" && (
+          <button type="button" onClick={() => setChooseOpen(true)}
+            className="mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-[15px] font-medium text-brand hover:bg-sand">
+            <Icon name="lawyer" size={18} />{t("choose.button")}
+          </button>
+        )}
+      </>
+    );
   }
 
   return (
@@ -409,6 +421,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.status === "qualified" && (
         <DraftPreview caseId={c.id} version={`${c.facts.length}:${c.payment?.status ?? ""}`} onCase={setCase} />
       )}
+
+      {chooseOpen && <ChooseLawyer caseId={c.id} onClose={() => setChooseOpen(false)} onChange={setPilotStatus} />}
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
