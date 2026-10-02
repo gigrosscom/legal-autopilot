@@ -1,0 +1,3326 @@
+[
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-390_.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Access to fetch at 'https://api.konsilier.com/v1/users' from origin 'https://konsilier.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "shot": "light-390_start.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 844,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-390_account_signin_1.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-390_app.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-390_ops.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-390_terms.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-390_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 390,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "light-390_nonexistent-qa.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_start.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 68,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 780,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 52,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_account_signin_1.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_app.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_ops.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_terms.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-360_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 360,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "light-360_nonexistent-qa.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_start.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 1024,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_account_signin_1.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_app.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_ops.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_terms.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-768_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 768,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "light-768_nonexistent-qa.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_start.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px"
+   },
+   {
+    "t": "Включить уведомления",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 900,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_account_signin_1.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_app.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_ops.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_terms.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "light-1440_documents.png"
+ },
+ {
+  "scheme": "light",
+  "w": 1440,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "light-1440_nonexistent-qa.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_start.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 106,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 844,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_account_signin_1.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_app.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_ops.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_terms.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-390_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 390,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "dark-390_nonexistent-qa.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 74,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_start.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 68,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 100,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 780,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 52,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_account_signin_1.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_app.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_ops.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_terms.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-360_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 360,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "dark-360_nonexistent-qa.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_start.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 1024,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_account_signin_1.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_app.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_ops.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_terms.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AI Войти Язык RU KK EN AR TR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-768_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 768,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Язык RU KK EN AR TR Вход Начать Меню",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "dark-768_nonexistent-qa.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Отправить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 48,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "16px",
+    "h": 64,
+    "r": "18px"
+   },
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/start",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Ещё",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Вернуть деньги за бракованный ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Взыскать невыплаченную зарплат",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Обжаловать штраф за нарушение ",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Вернуть залог за квартиру от а",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 56,
+    "r": "18px"
+   },
+   {
+    "t": "Сказать голосом",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_start.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/account?signin=1",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти или зарегистрироваться",
+    "f": "-apple-system",
+    "fs": "18px",
+    "h": 56,
+    "r": "980px"
+   },
+   {
+    "t": "Включить уведомления",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 44,
+    "r": "980px"
+   },
+   {
+    "t": "Поделиться ссылкой",
+    "f": "-apple-system",
+    "fs": "15px",
+    "h": 48,
+    "r": "980px"
+   },
+   {
+    "t": "Светлая",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Тёмная",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "Как в системе",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 146,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 900,
+    "r": "0px"
+   },
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 40,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Google",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через Apple\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Продолжить с e-mail",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти с ЭЦП (ключ)",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Войти через eGov Mobile\nскоро",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_account_signin_1.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/app",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "980px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_app.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/ops",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "",
+  "btns": [
+   {
+    "t": "Войти",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   },
+   {
+    "t": "Установить на рабочий стол",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 48,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_ops.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/terms",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_terms.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/documents",
+  "status": 200,
+  "overflow": false,
+  "bad": [],
+  "header": "Konsiliér AIВойтиЯзыкRUKKENARTR",
+  "btns": [
+   {
+    "t": "",
+    "f": "-apple-system",
+    "fs": "17px",
+    "h": 44,
+    "r": "3.35544e+07px"
+   }
+  ],
+  "small": 0,
+  "errs": [],
+  "shot": "dark-1440_documents.png"
+ },
+ {
+  "scheme": "dark",
+  "w": 1440,
+  "p": "/nonexistent-qa",
+  "status": 404,
+  "overflow": false,
+  "bad": [],
+  "header": "Перейти к содержанию Konsiliér AI Как это работает Услуги Мои дела Приложение Язык RU KK EN AR TR Вход Начать",
+  "btns": [
+   {
+    "t": "Установить",
+    "f": "-apple-system",
+    "fs": "14px",
+    "h": 44,
+    "r": "12px"
+   }
+  ],
+  "small": 0,
+  "errs": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "shot": "dark-1440_nonexistent-qa.png"
+ }
+]

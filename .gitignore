@@ -19,3 +19,5 @@ konsilier-mvp-*.zip
 konsilier-mvp-*.bundle
 *.tsbuildinfo
 .claude/worktrees/
+qa-reports/2026-10-02/shots/*.png
+!qa-reports/2026-10-02/shots/key/
