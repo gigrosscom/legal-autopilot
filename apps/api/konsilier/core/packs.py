@@ -98,6 +98,9 @@ class PackManifest(BaseModel):
     id_number_sex: IdSexRule | None = None  # the applicant's grammatical gender from their id number, if it tells
     # the official layout of the documents (core/docstyle.DocStyle fields: font, size, margins…); empty → defaults
     document_style: dict[str, Any] = Field(default_factory=dict)
+    # the country's rules for the chat model, in English (chat.py appends them to the system prompt): compulsory
+    # pre-trial steps, replaced acts not to cite, the emergency number…; empty → the chat's general rules only
+    chat_rules: str = ""
 
     @field_validator("legal_sources")
     @classmethod

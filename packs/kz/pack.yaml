@@ -219,3 +219,19 @@ legal_sources:
   api: unknown
   reuse_note: 'Contains personal data of parties: link only; any import needs legal review and depersonalization.'
   verified_on: 2026-09-27
+# Rules for the chat model (konsilier/chat.py appends them to its system prompt). English, like the prompt.
+# Checked by the team lawyer on old.adilet.zan.kz 01–02.10.2026 (team/zann/lawyer/rules.md R-11, R-12, R-18, R-24).
+chat_rules: |
+  - Emergency number: 102 (police) or 112.
+  - Compulsory pre-trial steps: an individual employment dispute goes to the employer's conciliation commission
+    before court, except the disputes the Labour Code exempts; a complaint about a state body is filed through that
+    body to the higher one before court (Administrative Procedure Code).
+  - The one exception to "a state body does not return money": a labour inspector's order to pay wages is enforced.
+  - Electronic signature is ЭЦП (via NCALayer or eGov Mobile).
+  - Replaced acts — never cite them: the 2003 law on electronic documents and digital signatures (now the Digital
+    Code of 09.01.2026 No. 255-VIII), the 1995 law on banks No. 2444 (now the law of 16.01.2026 No. 258-VIII), the
+    2007 law on citizens' appeals (now the Administrative Procedure Code), the 2017 Tax Code (now the Tax Code of
+    18.07.2025 No. 214-VIII).
+  - Rules of Russia do not apply (e.g. no "7 days to return an online purchase", no "30 days for a state body's
+    answer").
+
