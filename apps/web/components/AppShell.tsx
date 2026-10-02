@@ -16,12 +16,16 @@ export type MoreLink = { href: string; icon: IconName; label: string };
  * sheet, so the screen never grows panels under the conversation.
  */
 export function AppShell({ title, subtitle, back = "/cases", sections = [], links = [], children, bar, scrollKey,
-  wallpaper = false, avatar = false, tabs = true }: {
+  wallpaper = false, avatar = false, tabs = true, stick = true }: {
   title: string; subtitle?: string; back?: string; sections?: MoreSection[]; links?: MoreLink[];
   children: ReactNode; bar?: ReactNode; scrollKey?: unknown;
   wallpaper?: boolean;  // the chat's messenger background
   avatar?: boolean;     // Konsiliér's icon beside the title, as a contact in a messenger
   tabs?: boolean;       // the app's tab bar under the screen (a conversation hides it, as the messengers do)
+  // a live chat (interview) stays pinned to the newest message, like a messenger; a finished case (the ready
+  // document with «Отправьте другу» at the very end) opens at the top, on the document — not scrolled down to the
+  // referral block (owner 02.10, iPhone P0). Default true: the chat and demo keep the messenger behaviour.
+  stick?: boolean;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -33,6 +37,9 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   // a field in the conversation (the draft's blanks, a form in a card) is being typed in: the keyboard must not
   // carry the page to its end, and the bottom bar must not cover the field (owner 01.10, iPhone)
   const [field, setField] = useState(false);
+  // the viewport / resize listeners live for the screen's whole life; this ref lets them read the latest `stick`
+  const stickRef = useRef(stick);
+  stickRef.current = stick;
 
   // Scroll only the conversation itself. `scrollIntoView` also scrolls every ancestor, the page included: on iPhone the
   // page under this fixed screen then moved, Safari's toolbars collapsed and 100dvh changed, so the whole screen with
@@ -41,6 +48,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
     const box = scroller.current;
     if (box) box.scrollTo({ top: box.scrollHeight, behavior: smooth ? "smooth" : "auto" });
   };
+  const toTop = () => { scroller.current?.scrollTo({ top: 0, behavior: "auto" }); };
   const centre = (el: HTMLElement) => {
     const box = scroller.current;
     if (!box) return;
@@ -48,7 +56,15 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
     box.scrollTo({ top: box.scrollTop + r.top - b.top - Math.max(0, (b.height - r.height) / 2) });
   };
 
-  useEffect(() => { pinned.current = true; toEnd(); }, [scrollKey]);
+  // Where the screen rests when it opens and after each change: a live chat follows its newest message (toEnd);
+  // a finished case opens at the top, on the document (toTop on the first render and when the chat has just ended),
+  // and then keeps the place the person scrolled to, so it never lands on «Отправьте другу» at the very bottom.
+  const wasStick = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (stick) { pinned.current = true; toEnd(); }
+    else { pinned.current = false; if (wasStick.current !== false) toTop(); }
+    wasStick.current = stick;
+  }, [scrollKey, stick]);
 
   // Cards load their parts after the jump to the end (the document card, «Отправьте другу»…): while the person is at
   // the end, the conversation stays at the end as it grows, as in a messenger, instead of the end sliding away.
@@ -57,7 +73,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   useEffect(() => {
     const el = content.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => { if (pinned.current && !contentField(scroller.current)) toEnd(); });
+    const ro = new ResizeObserver(() => { if (stickRef.current && pinned.current && !contentField(scroller.current)) toEnd(); });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -88,7 +104,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
       setKeyboard(open);  // the tab bar gives its room to the keyboard
       const typing = contentField(scroller.current);
       if (typing) centre(typing);  // the field stays in sight above the keyboard
-      else toEnd();
+      else if (stickRef.current) toEnd();  // only a live chat follows its end; a finished case keeps its place
     };
     // the keyboard closing is not always followed by a resize event: look again once the field has let go
     const later = () => { [100, 400].forEach((ms) => setTimeout(fit, ms)); };

@@ -332,6 +332,10 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const ack = c.status === "intake" ? c.safety.pending_ack : null;
   const title = c.scenario?.title ?? cov.dispute?.title ?? t("case.untitled");
   const interviewing = c.status === "intake" && !choosingForum && !ack;
+  // the ready document (with «Отправьте другу» at the very end) is on screen: the page must open at the top, on the
+  // document, not pinned to the referral block at the bottom; the chat/interview keeps the messenger pin-to-end
+  // (owner 02.10, iPhone P0). This mirrors the condition that renders <Invite big /> below.
+  const docReady = !!c.outcome || (c.status !== "intake" && (!!last?.downloadable || c.payment?.status === "paid"));
 
   const sections: MoreSection[] = [
     ...(c.roadmap ? [{ key: "roadmap", icon: "map" as IconName, label: t("app.roadmap"), render: () => <RoadmapView roadmap={c.roadmap!} /> }] : []),
@@ -403,6 +407,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar} wallpaper avatar tabs={false}
+      stick={!docReady}
       scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${c.payment?.code ?? ""}-${c.payment?.status ?? ""}`}>
       {c.scenario?.beta && <BetaNotice disclaimer={c.scenario.disclaimer} />}
       {c.scenario?.draft_disclaimer && (
