@@ -1,0 +1,36 @@
+[
+ {
+  "q": "Купил холодильник за 380000 тг в «Мечта»",
+  "chars": 1701,
+  "doc_markers": [
+   "ПРЕТЕНЗИЯ",
+   "На основании изложенного",
+   "Дата:",
+   "Подпись"
+  ],
+  "dump_full_doc": false,
+  "offer_document": false,
+  "ok": false
+ },
+ {
+  "q": "Работодатель не выплатил зарплату за 2 м",
+  "chars": 1547,
+  "doc_markers": [
+   "ПРЕТЕНЗИЯ"
+  ],
+  "dump_full_doc": false,
+  "offer_document": true,
+  "ok": true
+ },
+ {
+  "q": "Арендодатель не возвращает депозит 180 0",
+  "chars": 1137,
+  "doc_markers": [
+   "ПРЕТЕНЗИЯ",
+   "Кому:"
+  ],
+  "dump_full_doc": false,
+  "offer_document": true,
+  "ok": true
+ }
+]
