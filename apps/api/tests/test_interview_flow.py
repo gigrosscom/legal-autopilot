@@ -82,7 +82,8 @@ def test_identity_document_never_reaches_the_llm_and_fills_the_iin(ctx):
 
 def _motion_case(api, text):
     created = api.post("/v1/cases", expect=201, json={"text": text, "country": "KZ"})
-    return created["case"]["id"], {o["id"] for o in created["case"]["coverage"]["options"]}, created["case"]
+    cov = created["case"]["coverage"]  # the system's recipient and «Другой адресат» (owner 02.10)
+    return created["case"]["id"], {o["id"] for o in cov["options"] + cov["other_forums"]}, created["case"]
 
 
 ANSWERS = {"applicant_name": "Иванов Иван Иванович", "applicant_iin": "пропустить",
@@ -113,7 +114,7 @@ def test_motion_in_court_waits_for_a_lawyer(ctx):
     created = api.post("/v1/cases", expect=201, json={
         "text": "Работодатель не платит зарплату три месяца, задолженность 450000 тенге", "country": "KZ"})
     cid = created["case"]["id"]
-    assert "kz.court.pending" in {o["id"] for o in created["case"]["coverage"]["options"]}
+    assert "kz.court.pending" in {o["id"] for o in created["case"]["coverage"]["other_forums"]}  # never by the system
     case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.court.pending"})["case"]
     answers = {**ANSWERS, "respondent_name": "ТОО «Ромашка»", "amount": "450000"}
     q = case["question"]

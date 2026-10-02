@@ -262,6 +262,7 @@ export type ForumOption = {
   verified: boolean;
   channels: string[];
   deadline_known: boolean;
+  why?: string | null;  // the system chose this recipient (owner 02.10): one line «почему»
 };
 
 export type Emergency = { message: string; numbers: { label: string; number: string; verified?: boolean }[] };
@@ -282,6 +283,7 @@ export type Coverage = {
   forum: ForumOption | null;
   reasons: { code: string; label: string }[];
   options: ForumOption[];
+  other_forums: ForumOption[];  // «Другой адресат» until the document is made
   upl_notice: string | null;
 };
 

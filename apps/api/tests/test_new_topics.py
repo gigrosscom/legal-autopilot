@@ -155,7 +155,8 @@ def test_production_routing_of_a_benefit_refusal(ctx):
     created = api.post("/v1/cases", expect=201, json={
         "text": "Отказали в назначении пособия по инвалидности, хочу обжаловать отказ", "country": "KZ"})
     case = created["case"]
-    assert case["scenario"] is None
     assert case["coverage"]["dispute"]["id"] == "social.benefit_refusal"
     assert case["coverage"]["level"] == "universal"
-    assert {o["id"] for o in created["reply"]["options"]} == {"kz.prosecutor", "kz.ombudsman"}
+    # the system takes the prosecutor's office; the ombudsman is «Другой адресат» (owner 02.10)
+    assert case["coverage"]["forum"]["id"] == "kz.prosecutor"
+    assert {o["id"] for o in case["coverage"]["other_forums"]} == {"kz.ombudsman"}

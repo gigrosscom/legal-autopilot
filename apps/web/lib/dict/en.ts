@@ -397,6 +397,7 @@ const en: Dict = {
     special_category: { title: "Consent to process sensitive data", button: "I consent", text: "Your case may include data about health, religion or criminal record. We keep the minimum and use it only for your document." },
   },
   forum: {
+    to: "To", other: "Another recipient", otherLead: "We will prepare the document for the recipient you pick:", keep: "Keep as is",
     chooseTitle: "Where to file",
     chooseLead: "Choose a recipient. The list comes only from this country's registry of authorities; the differences are shown below.",
     type: { court: "Court", prosecutor: "Prosecutor's office", police: "Police", regulator: "Regulator", ministry: "Ministry",

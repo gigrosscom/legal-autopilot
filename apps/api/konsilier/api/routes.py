@@ -282,6 +282,12 @@ def get_case(case_id: uuid.UUID, user: User = Depends(current_user), session: Se
                 container.engine.qualify_later(session, case.id)
         except Exception:  # noqa: BLE001 — the model is still down: the case opens as it is, tried again next time
             log.exception("deferred classification of case %s failed", case.id)
+    if case.status == "intake" and not case.scenario_id and case.taxonomy:
+        try:  # left at the old «Выберите адресата» list: the system chooses the recipient now (owner 02.10)
+            with session.begin_nested():
+                container.engine.auto_choose_forum(session, case)
+        except Exception:  # noqa: BLE001 — the case opens as it is
+            log.exception("auto recipient for case %s failed", case.id)
     return case_view(container.engine, session, case)
 
 
@@ -526,7 +532,7 @@ class ForumIn(BaseModel):
 @router.post("/cases/{case_id}/forum")
 def choose_forum(case_id: uuid.UUID, body: ForumIn, user: User = Depends(current_user),
                  session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    """Universal path: the user picks where to file from the pack's registry candidates."""
+    """Universal path: «Другой адресат» — the person changes the recipient the system chose (owner 02.10)."""
     case = load_case(case_id, session, user)
     try:
         reply = container.engine.choose_forum(session, case, body.forum_id, actor=f"user:{user.id}")

@@ -391,8 +391,10 @@ class CaseEngine:
         case.coverage_level = qualifier.LEVEL_UNIVERSAL
         # low confidence already routes to a lawyer (level 3); what is left is a clear case
         case.needs_review = not self.config.self_service
-        if len(route.forums) == 1:
-            return self.choose_forum(session, case, route.forums[0].id, actor="system")
+        # owner 02.10: the system picks the recipient (pack rule forum_order), the client only sees «Кому: …»
+        picked = cov.auto_forum(route.forums)
+        if picked is not None:
+            return self.choose_forum(session, case, picked.id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
                                     dispute=pack.localized(cov.dispute(route.dispute_id).title, lang)),
                      options=[self.forum_option(pack, f, lang) for f in route.forums])
@@ -416,8 +418,52 @@ class CaseEngine:
         return [self.forum_option(pack, f, case.language)
                 for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])]
 
+    def other_forums(self, case: Case) -> list[dict[str, Any]]:
+        """«Другой адресат»: the forums the person may switch to while the document is not made yet."""
+        if case.coverage_level != qualifier.LEVEL_UNIVERSAL or not case.forum_id or case.paid or case.actions \
+                or case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.taxonomy:
+            return []
+        pack = self.pack_of(case)
+        cov = pack.coverage
+        if cov is None or not case.taxonomy.get("dispute_id"):
+            return []
+        dispute = cov.dispute(case.taxonomy["dispute_id"])
+        return [self.forum_option(pack, f, case.language)
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])
+                if f.id != case.forum_id]
+
+    def auto_choose_forum(self, session: Session, case: Case) -> bool:
+        """A case left waiting at the old «Выберите адресата» list (before 02.10): the system chooses now."""
+        if case.status != S.INTAKE.value or case.scenario_id or case.coverage_level != qualifier.LEVEL_UNIVERSAL \
+                or not (case.taxonomy or {}).get("dispute_id"):
+            return False
+        cov = self.pack_of(case).coverage
+        options = {o["id"] for o in self.forum_options(case)}
+        picked = cov.auto_forum([cov.forums[i] for i in cov.forums if i in options]) if cov else None
+        if picked is None:
+            return False
+        self.choose_forum(session, case, picked.id, actor="system")
+        return True
+
+    def change_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
+        """«Другой адресат»: before any document is made the step's recipient may be changed; facts already given stay."""
+        if forum_id == case.forum_id:
+            raise EngineError("forum_already_chosen")
+        if forum_id not in {o["id"] for o in self.other_forums(case)}:
+            raise EngineError("forum_not_allowed")
+        self.audit(session, case, actor, "forum_changed", before=case.forum_id, forum=forum_id)
+        if case.status == S.QUALIFIED.value:
+            # nothing made or paid yet: back to filling in, so the new recipient's questions can be asked
+            case.status = S.INTAKE.value
+            self.audit(session, case, actor, "status_changed", S.QUALIFIED.value, S.INTAKE.value, reason="forum_changed")
+        case.scenario_id, case.scenario_version, case.forum_id, case.pending_field = None, None, None, None
+        session.flush()
+        return self.choose_forum(session, case, forum_id, actor)
+
     def choose_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
         if case.status != S.INTAKE.value or case.scenario_id:
+            if case.forum_id and forum_id != case.forum_id and case.status in (S.INTAKE.value, S.QUALIFIED.value):
+                return self.change_forum(session, case, forum_id, actor)
             raise EngineError("forum_already_chosen")
         if forum_id not in {o["id"] for o in self.forum_options(case)}:
             raise EngineError("forum_not_allowed")
