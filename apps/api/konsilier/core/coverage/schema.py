@@ -357,6 +357,8 @@ class Routing(_Strict):
     # the person writes as a business (sole trader, company) about a dispute with a business: consumer law does not
     # apply; lang → phrases, matched on whole words
     business_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # PM 02.10: the chat and the card name the same document — kind → word stems that name it (any language)
+    document_kinds: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     # words that must never reach a document given to a client (core/docgate.py): lang (or "*") → phrases
     document_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     # words that make a sentence a citation of a norm (статья, закон, кодекс): one cited twice in a row is stopped

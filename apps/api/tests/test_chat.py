@@ -448,13 +448,10 @@ def test_document_is_not_offered_in_the_first_reply(ctx):
     cid = api.post("/v1/cases", expect=201, json={"text": "Сломался телефон", "country": "KZ", "defer": True})["case"]["id"]
     first = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Сломался телефон"}))[-1]
     assert first["message"]["offer_document"] is False
+    # owner 02.10 (R-29): still no offer while the case lacks its facts — «сломался телефон» says neither the seller
+    # nor the sum; the offer itself, once the facts are there, is tested in test_intake_r29.py
     second = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Чек есть, 200 000 тенге"}))[-1]
-    assert second["message"]["offer_document"] is True
-
-    client.turns = [([offer], "end_turn", [])]
-    cid2 = api.post("/v1/cases", expect=201, json={"text": "Нужна претензия", "country": "KZ", "defer": True})["case"]["id"]
-    asked = _sse(ctx.client.post(f"/v1/cases/{cid2}/chat", headers=api.h, json={"text": "Составьте претензию продавцу"}))[-1]
-    assert asked["message"]["offer_document"] is True
+    assert second["message"]["offer_document"] is False
 
 
 def test_only_the_first_more_marker_is_kept():
@@ -497,4 +494,5 @@ def test_document_offered_in_the_first_reply_when_files_are_attached(ctx):
                   files={"file": ("check.txt", "Чек 150000".encode(), "text/plain")})["evidence"]["id"]
     first = _sse(ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h,
                                  json={"text": "Сломался телефон", "attachments": [ev]}))[-1]
-    assert first["message"]["offer_document"] is True
+    # owner 02.10 (R-29): files alone do not make the case complete — no offer until its facts are known
+    assert first["message"]["offer_document"] is False

@@ -244,7 +244,10 @@ class Settings(BaseSettings):
 
     qualify_min_confidence: float = 0.6
     # PM 01.10: the draft after at most this many interview questions (the rest are blanks); 0 = no cap
-    intake_max_questions: int = -1  # -1: the draft at once on the site (owner 01.10, «3 клика»)
+    # owner 02.10 (decision 226 replaces «3 клика»): documents first, then a question for each fact neither the story
+    # nor the documents hold, and only then the scenario's draft. 0 = no cap; N = at most N questions; -1 = the old
+    # «draft at once» (no longer the product's rule)
+    intake_max_questions: int = 0
     approval_required_first_n: int = 50
     # Self-service: documents a person can file without a lawyer (pre-trial claim, complaint, statement, motion outside court) are
     # released at once; court documents and flagged cases still wait for a lawyer. False → the old rule
