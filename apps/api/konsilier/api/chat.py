@@ -129,7 +129,8 @@ def _reason(provider: str, e: Exception) -> str:
 def _view(m: ChatMessage) -> dict[str, Any]:
     return {"id": str(m.id), "role": m.role, "text": m.text, "created_at": m.created_at.isoformat(),
             "attachments": m.meta.get("attachments", []), "norms": m.meta.get("norms", []),
-            "sources": m.meta.get("sources", []), "offer_document": bool(m.meta.get("offer_document"))}
+            "sources": m.meta.get("sources", []), "offer_document": bool(m.meta.get("offer_document")),
+            "ask_files": bool(m.meta.get("ask_files"))}
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -183,6 +184,29 @@ _DOC_SIGNS = [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in (
 )]
 
 
+# owner 02.10: the bot asks for the documents first — under such an answer the chat shows «Сфотографировать» and
+# «Приложить файл». ZANN's prompt marks it with [[FILES]]; until then the request is read from the words.
+FILES_MARK = re.compile(r"\[\[\s*FILES\s*\]\]")
+ASKS_FILES = re.compile(r"(?i)\b(прилож(ите|ить)|сфотографируйте|загрузите|пришлите\s+(фото|скан|копи)|"
+                        r"отправьте\s+(фото|скан|копи)|жүктеңіз|суретке\s+түсіріңіз|тіркеңіз)")
+
+
+def document_kinds(text: str, kinds: dict[str, tuple[str, ...]]) -> set[str]:
+    """The kinds of document a text names («исковое заявление» → lawsuit), by the pack's word stems."""
+    low = (text or "").lower()
+    found = {k for k, stems in kinds.items() if any(s.lower() in low for s in stems)}
+    if "lawsuit" in found:  # «исковое заявление» names a lawsuit, not a statement
+        found.discard("statement")
+    return found
+
+
+def asks_for_files(text: str) -> tuple[str, bool]:
+    """The reply without the [[FILES]] mark, and whether it asks the person for documents."""
+    marked = bool(FILES_MARK.search(text or ""))
+    clean = FILES_MARK.sub("", text or "").strip()
+    return clean, marked or bool(ASKS_FILES.search(re.split(r"\[\[\s*MORE\s*\]\]", clean)[0]))
+
+
 def looks_like_document(text: str) -> bool:
     """The reply writes out a claim, complaint or lawsuit (P0 02.10: the chat gave the whole claim away for free)."""
     return sum(1 for r in _DOC_SIGNS if r.search(text or "")) >= 2
@@ -215,6 +239,8 @@ def document_offer(session: Session, container: Container, case: Case, lang: str
     paid = bool(case.paid) or any(a.unlocked_by is not None for a in case.actions)
     # owner 02.10: the ways to solve it under the answer — «Дело под ключ» shows its price too
     return {"title": title, "price": price, "currency": currency, "price_from": from_, "paid": paid,
+            # R-29: the ways to solve it only once the facts are there, and never under a chat naming another document
+            "ready": not eng.facts_missing(case) and not (case.taxonomy or {}).get("doc_mismatch"),
             "case_price": None if case.paid else float(eng.config.case_price), "case_paid": bool(case.paid)}
 
 
@@ -326,7 +352,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     t_request = time.perf_counter()
     last_reply = next((m for m in reversed(rows[:-1]) if m.role == "assistant"), None)
     offered = bool(last_reply is not None and (last_reply.meta or {}).get("offer_document"))
-    if (offered and YES_AFTER_OFFER.search(body.text)) or WANTS_DOCUMENT.search(body.text):
+    complete = not container.engine.facts_missing(case)  # R-29: no offer while the case lacks its facts
+    if complete and ((offered and YES_AFTER_OFFER.search(body.text)) or WANTS_DOCUMENT.search(body.text)):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
             c = s.get(Case, case_pk)
@@ -404,6 +431,44 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         if cut:  # the document's text was taken out: its place is the paid offer, even in the first reply
             result.offer_document = True
+        with container.session_factory() as s:
+            cc = s.get(Case, case_pk)
+            missing = container.engine.facts_missing(cc) if cc is not None else []
+            if result.offer_document and missing:
+                # R-29 (owner 02.10): no solution buttons and no paid offer while who, whom, what, when, how much is
+                # not known — the next missing fact is asked instead
+                result.offer_document = False
+                if missing != ["scenario"]:
+                    eng = container.engine
+                    sc_cc, pack_cc = eng.scenario_of(cc), eng.pack_of(cc)
+                    q = eng.question_for(sc_cc, pack_cc, pack_cc.lang(reply_lang), missing[0]).text
+                    if cut:
+                        text = re.split(r"\[\[\s*MORE\s*\]\]", text)[0].strip()
+                        text = "" if looks_like_document(text) else text
+                    if q and q not in text:
+                        text = f"{text}\n\n{q}".strip()
+        text, ask_files = asks_for_files(text)
+        if result.offer_document:
+            # PM 02.10: the chat and the card name the same document — «Составлю исковое заявление» over a card
+            # «Досудебная претензия» is a contradiction: the card is withheld and the case goes to a second look
+            with container.session_factory() as s:
+                cc = s.get(Case, case_pk)
+                pack_cc = container.engine.pack_of(cc)
+                kinds = pack_cc.coverage.routing.document_kinds if pack_cc.coverage else {}
+                title = (document_offer(s, container, cc, reply_lang).get("title") or "") if kinds else ""
+                said = document_kinds(text, kinds)  # anywhere in the reply, «Подробнее» too
+                card = document_kinds(title, kinds)
+                if said and card and not said & card:
+                    result.offer_document = False
+                    cc.needs_review = True
+                    cc.taxonomy = {**(cc.taxonomy or {}), "doc_mismatch": True}  # the card stays hidden
+                    container.engine.audit(s, cc, "system", "chat_document_mismatch", chat=sorted(said),
+                                           card=sorted(card), title=title)
+                    s.commit()
+                    log.warning("chat=document_mismatch case=%s chat=%s card=%s", case_pk, sorted(said), sorted(card))
+                elif (cc.taxonomy or {}).get("doc_mismatch"):
+                    cc.taxonomy = {k: v for k, v in cc.taxonomy.items() if k != "doc_mismatch"}  # they agree again
+                    s.commit()
         # the agent's phases (library, each model round with the providers tried, each tool call and its source)
         timing = {**(getattr(result, "timing", None) or {}), "queue_ms": queue_ms}
         served_by = timing.get("provider") or used  # inside the free chain: cerebras, gemini …
@@ -416,6 +481,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                             meta={"provider": used, "served_by": served_by, "norms": result.norms,
                                   "sources": result.sources, "unchecked": result.unchecked,
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
+                                  "ask_files": ask_files and not result.offer_document,
                                   "usage": result.usage, "first_ms": first_ms,
                                   # P0 01.10: rounds cut before their end ("provider:reason") — continued, or the
                                   # reply ended at its last whole sentence (trimmed); counted hourly (chatspeed)

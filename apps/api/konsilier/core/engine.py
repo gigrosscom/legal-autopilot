@@ -119,7 +119,7 @@ class EngineConfig:
     # at most this many interview questions, then the draft (the rest are blanks filled in the draft); 0 = no cap;
     # -1 = no questions on the site: the draft at once, filled from the story, the chat and the files (owner 01.10,
     # «3 клика»); the Telegram bot keeps the questions (it has no draft screen)
-    intake_max_questions: int = -1
+    intake_max_questions: int = 0  # owner 02.10 (decision 226): ask what is missing, documents first
     case_price: int = 9990  # «Дело под ключ»: every document of one case
     # owner 01.10: a Kaspi Pay link payment gives the document at «Оплатить»; the desk matches it afterwards
     trust_kaspi_link: bool = True
@@ -627,6 +627,20 @@ class CaseEngine:
         message = pack.t(lang, "routing.handed_to_lawyer", reasons=reasons)
         self.notifier.notify(session, case, "handoff", message)
         return Reply(message=message)
+
+    def facts_missing(self, case: Case) -> list[str]:
+        """R-29 (owner 02.10): the facts the case still lacks before a solution and a document are offered — who the
+        other side is and where, when, how much (not the applicant's own data: that is asked before paying, and not
+        free text, which is written from the story). [] when the case is complete; ["scenario"] while not classified."""
+        if not case.scenario_id:
+            return ["scenario"]
+        sc = self.scenario_of(case)
+        their_ids = {p.id_field for role, p in sc.parties.items() if role != "applicant" and p.id_field}
+        parties = {getattr(p, a) for role, p in sc.parties.items() if role != "applicant"
+                   for a in ("name_field", "address_field") if getattr(p, a, None)}
+        return [f.name for f in sc.intake
+                if f.type != "evidence" and not f.optional and not f.pii and f.name not in their_ids
+                and (f.name in parties or f.type not in ("text", "longtext")) and not case.facts.get(f.name)]
 
     def missing_fields(self, case: Case, sc: Scenario) -> list[str]:
         """Fields still to ask, in interview order: documents → what happened → identity document → personal data.

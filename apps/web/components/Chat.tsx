@@ -123,7 +123,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // P0 02.10: the paid document of the case — the card «Услуга / Стоимость / Оплатить» under the last reply
   const [docOffer, setDocOffer] = useState<{ title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean;
-    case_price?: number | null; case_paid?: boolean } | null>(null);
+    case_price?: number | null; case_paid?: boolean; ready?: boolean } | null>(null);
   const [streaming, setStreaming] = useState<string | null>(null);
   // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
   const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[] } | null>(null);
@@ -423,7 +423,12 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                   ))}
                 </ul>
               )}
-              {m.id === offerId && caseId && (
+              {m.ask_files && m.id === last?.id && streaming === null && (
+                // owner 02.10: documents first — a photo or a file goes into the case at once and fills the draft
+                <AskFiles busy={busy} onFiles={(fs) => send(t("chat.ask.sent"), false,
+                  fs.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, filename: f.name, file: f })))} />
+              )}
+              {m.id === offerId && caseId && docOffer?.ready !== false && (
                 // owner 02.10: the ways to solve it, under the answer that gave the solution (none while facts are
                 // collected): «Составить документ» → the existing payment, «Дело под ключ», «Нанять юриста»
                 <SolveWays caseId={caseId} offer={docOffer} lawyer={LAWYER_PILOT} />
@@ -502,5 +507,27 @@ function SolveWays({ caseId, offer, lawyer }: {
         </Link>
       ))}
     </nav>
+  );
+}
+
+function AskFiles({ busy, onFiles }: { busy: boolean; onFiles: (fs: File[]) => void }) {
+  const t = useT();
+  const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fs = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (fs.length) onFiles(fs);
+  };
+  const cls = "relative flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-surface px-4 text-[15px] font-semibold text-ink ring-1 ring-line hover:bg-sand";
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className={`${cls} ${busy ? "pointer-events-none opacity-60" : ""}`}>
+        <Icon name="camera" size={19} />{t("chat.ask.photo")}
+        <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy} onChange={pick} />
+      </label>
+      <label className={`${cls} ${busy ? "pointer-events-none opacity-60" : ""}`}>
+        <Icon name="paperclip" size={19} />{t("chat.ask.file")}
+        <input type="file" multiple accept="image/*,application/pdf,text/plain,.doc,.docx" className="sr-only" disabled={busy} onChange={pick} />
+      </label>
+    </div>
   );
 }

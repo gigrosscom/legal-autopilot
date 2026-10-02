@@ -357,6 +357,8 @@ class Routing(_Strict):
     # the person writes as a business (sole trader, company) about a dispute with a business: consumer law does not
     # apply; lang → phrases, matched on whole words
     business_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # PM 02.10: the chat and the card name the same document — kind → word stems that name it (any language)
+    document_kinds: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     # the matter is already in a court or with the police (case number, hearing, investigator): only then the forums
     # marked pending_only are offered; lang → phrases, matched on whole words
     pending_markers: dict[str, tuple[str, ...]] = Field(default_factory=dict)
