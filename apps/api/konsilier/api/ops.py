@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import EngineError
-from ..core.models import (Case, Invoice, LawyerApplication, LawyerRequest, Notification, SupportTicket,
+from ..core.models import (AuditLog, Case, Invoice, LawyerApplication, LawyerRequest, Notification, SupportTicket,
                            TicketMessage, User)
 from ..team import Desk, desks_of
 from .background import after_commit
@@ -269,7 +269,8 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
         title = f"Тариф «{PLAN_RU.get(inv.plan or '', inv.plan)}»"
     from .pilot import lawyer_invoice_line
 
-    return {"id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
+    return {"kaspi_opened_at": _kaspi_opened_at(session, inv),
+            "trusted_at": inv.trusted_at.isoformat() if inv.trusted_at else None, "id": inv.id, "code": inv.code, "amount": float(inv.amount), "currency": inv.currency,
             "status": inv.status, "method": inv.method, "purpose": inv.purpose, "plan": inv.plan,
             "case_id": str(inv.case_id) if inv.case_id else None, "case_title": title,
             "client_email": owner.email if owner else None, "client_phone": owner.phone if owner else None,
@@ -277,6 +278,18 @@ def invoice_view(session: Session, container: Container, inv: Invoice) -> dict[s
             "decided_at": inv.decided_at.isoformat() if inv.decided_at else None, "decided_by": inv.decided_by,
             "note": inv.desk_note, "way": inv.pay_way, "payer_phone": inv.payer_phone,
             "buyer_name": inv.buyer_name, "buyer_bin": inv.buyer_bin, "lawyer": lawyer_invoice_line(session, inv)}
+
+
+def _kaspi_opened_at(session: Session, inv: Invoice) -> str | None:
+    """When the person last tapped «Оплатить в Kaspi» for this bill (the «payment_way» audit entry): the desk matches a
+    Kaspi Pay payment by its amount and this time — the client is not asked to type the payment code (owner 01.10)."""
+    if inv.case_id is None:
+        return None
+    rows = session.scalars(select(AuditLog).where(AuditLog.case_id == inv.case_id, AuditLog.event == "payment_way")
+                           .order_by(AuditLog.created_at.desc()).limit(20)).all()
+    hit = next((r for r in rows if (r.data or {}).get("invoice") == inv.code
+                and (r.data or {}).get("way") in ("kaspi_link", "kaspi_qr")), None)
+    return hit.created_at.isoformat() if hit else None
 
 
 @router.get("/clients/payments")
@@ -346,9 +359,10 @@ def receipt_text(session: Session, container: Container, inv: Invoice, where: st
 
 
 def decide_invoice(session: Session, container: Container, invoice_id: int, decided_by: str, paid: bool,
-                   note: str | None) -> dict[str, Any]:
+                   note: str | None, later: list | None = None) -> dict[str, Any]:
     """Payment found (the document is made right away) or not found; the client is told by e-mail. Used by the
-    clients desk and by the owner's command centre (konsilier/api/command.py)."""
+    clients desk, by the owner's command centre (konsilier/api/command.py) and by the Kaspi Pay push
+    (konsilier/kaspi_parse.py), which passes ``later``: the client's e-mail is then sent after the commit, not now."""
     inv = session.get(Invoice, invoice_id)
     if inv is None:
         raise HTTPException(404, "invoice not found")
@@ -377,9 +391,16 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
         else:
             text = (f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
                     f"«Оплатить» ещё раз: {where}")
-        try:
-            container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}", text)
-        except Exception:  # noqa: BLE001
-            log.warning("payment e-mail to a client failed", exc_info=True)
+        to, subject, sender = owner.email, f"Konsiliér AI: оплата {inv.code}", container.email_sender
+
+        def send(_s: Session | None = None) -> None:
+            try:
+                sender.send(to, subject, text)
+            except Exception:  # noqa: BLE001
+                log.warning("payment e-mail to a client failed", exc_info=True)
+        if later is not None:
+            later.append(send)
+        else:
+            send()
     session.flush()
     return invoice_view(session, container, inv)

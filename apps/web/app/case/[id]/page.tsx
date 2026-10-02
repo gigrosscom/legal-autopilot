@@ -12,6 +12,7 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { SendWizard } from "@/components/SendWizard";
+import { ChooseLawyer } from "@/components/ChooseLawyer";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
 import { DraftPreview } from "@/components/DraftPreview";
@@ -19,7 +20,7 @@ import { EotinishBridge, EotinishFiled } from "@/components/EotinishBridge";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
-import { PaymentWays, type WayBody } from "@/components/PaymentWays";
+import { KaspiOneTap, kaspiOneTap, PaymentWays, type WayBody } from "@/components/PaymentWays";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
@@ -98,6 +99,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [emergency, setEmergency] = useState<Emergency | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
+  const [chooseOpen, setChooseOpen] = useState(false);  // «Выбрать юриста» (owner 02.10)
   // the server asks for a confirmed contact before the first bill: the payment window shows that step first
   const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
   // PM 01.10: the applicant's own data (name, IIN, address, phone) on one screen right before paying
@@ -235,6 +237,12 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       if (then === "claim") {
         const claimed = await api<{ case: CaseView }>(`/v1/cases/${id}/payment/claim`, { method: "POST", body: "{}" });
         setCase(claimed.case);
+        // the Kaspi Pay link is paid on trust (owner 01.10): the document is made at once, waiting on their return
+        if (claimed.case.payment?.trusted && claimed.case.payment.status === "paid") {
+          const next = await api<{ case: CaseView }>(`/v1/cases/${id}/actions/next`, { method: "POST", body: "{}" });
+          setCase(next.case);
+          setPayOpen(false);
+        }
       }
       if (then === "bill") {
         const blob = await fetchFile(`/v1/invoices/${invoice}/bill?format=pdf`);
@@ -264,6 +272,16 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
 
   // While the transfer is being checked, look every 2 s. The server makes the document the moment the payment is
   // confirmed, so it simply appears; if it has not after a few checks, the page asks for it itself.
+  // from the chat's card «Оплатить» (?pay=1, P0 02.10): the payment window opens as soon as the case is ready for it
+  const askedToPay = useRef(false);
+  useEffect(() => {
+    if (!c || askedToPay.current || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("pay") !== "1") return;
+    if (c.status !== "qualified" || c.payment?.status === "paid") return;
+    askedToPay.current = true;
+    setPayOpen(true);
+    if (!c.payment?.code && c.payment?.status === "none") choosePayment("document");
+  }, [c]);  // eslint-disable-line react-hooks/exhaustive-deps
   const payStatus = c?.payment?.status;
   const prepareRef = useRef(post);
   prepareRef.current = post;
@@ -347,10 +365,20 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
     // owner 01.10 («3 клика»): one document by default — the bill is made at once; «Дело под ключ» is a link
-    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
-      setPayOpen(true);
-      if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
-    }} />;
+    bar = (
+      <>
+        <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
+          setPayOpen(true);
+          if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
+        }} />
+        {LAWYER_PILOT && c.status !== "handed_to_lawyer" && (
+          <button type="button" onClick={() => setChooseOpen(true)}
+            className="mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-[15px] font-medium text-brand hover:bg-sand">
+            <Icon name="lawyer" size={18} />{t("choose.button")}
+          </button>
+        )}
+      </>
+    );
   }
 
   return (
@@ -393,6 +421,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       {c.status === "qualified" && (
         <DraftPreview caseId={c.id} version={`${c.facts.length}:${c.payment?.status ?? ""}`} onCase={setCase} />
       )}
+
+      {chooseOpen && <ChooseLawyer caseId={c.id} onClose={() => setChooseOpen(false)} onChange={setPilotStatus} />}
 
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
@@ -699,6 +729,11 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
               ))}
               <p className="text-xs text-muted">{t("payment.caseHint")}</p>
             </>
+          ) : kaspiOneTap(pay) ? (
+            <>
+              {pay.owed && <Alert tone="warning" role="status">{t("payment.owed")}</Alert>}
+              <KaspiOneTap pay={pay} busy={busy} price={money(pay.amount, pay.currency)} onWay={onWay} />
+            </>
           ) : (
             <>
               {waiting && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
@@ -984,6 +1019,7 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
     <div className="card space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">{a.sequence}. {a.title}</h3>
+        {a.paid && !a.response_label && <Badge tone="brand" icon="checkCircle">{t("case.paid")}</Badge>}
         {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
       </div>
       {a.downloadable && a.filing

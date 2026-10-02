@@ -41,6 +41,14 @@ class ComplianceSpec(BaseModel):
     service_disclaimer: Localized
 
 
+class IdSexRule(BaseModel):
+    """The national id number's digit that tells the person's sex (for the document's grammar only)."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    position: int = Field(ge=1, le=20)  # 1-based digit position
+    male: str  # the digits meaning male, e.g. "135"
+    female: str
+
+
 class KeyAct(BaseModel):
     """A frequently needed act on a legislation source: the chat is told these codes instead of searching."""
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -87,6 +95,9 @@ class PackManifest(BaseModel):
     compliance: ComplianceSpec
     status: Literal["live", "test", "planned"] = "live"  # planned: skeleton, no cases accepted
     legal_sources: tuple[LegalSource, ...] = ()  # official legislation / case-law databases (docs/legal-sources.md)
+    id_number_sex: IdSexRule | None = None  # the applicant's grammatical gender from their id number, if it tells
+    # the official layout of the documents (core/docstyle.DocStyle fields: font, size, margins…); empty → defaults
+    document_style: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("legal_sources")
     @classmethod

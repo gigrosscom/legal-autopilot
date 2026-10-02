@@ -103,6 +103,9 @@ def test_other_users_cannot_use_the_session(ready):
     assert r.status_code == 404
 
 
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
 def test_egov_mobile_signs_the_document(ready):
     ctx, api, cid, aid = ready
     start = api.post(f"/v1/cases/{cid}/actions/{aid}/sign/start", json={"method": "egov"})
@@ -116,7 +119,8 @@ def test_egov_mobile_signs_the_document(ready):
     api2 = ctx.client.get(doc_path).json()
     doc = api2["documentsToSign"][0]
     assert doc["meta"][0]["value"] == start["sha256"]
-    doc["documentCms"] = sign(doc["documentCms"])
+    assert "documentCms" not in doc and doc["document"]["file"]["mime"] in ("@file/pdf", DOCX_MIME)
+    doc["document"]["file"]["data"] = sign(doc["document"]["file"]["data"])
     assert ctx.client.put(doc_path, json=api2).json() == []
     done = api.get(status).json()
     assert done["status"] == "done" and done["signature"]["method"] == "egov"
@@ -129,10 +133,22 @@ def test_egov_failure_is_reported_to_the_page(ready):
     sid = start["session_id"]
     doc_path = f"/v1/auth/egov/mgov/{sid}/document"
     api2 = ctx.client.get(doc_path).json()
-    api2["documentsToSign"][0]["documentCms"] = sign(api2["documentsToSign"][0]["documentCms"])
+    file = api2["documentsToSign"][0]["document"]["file"]
+    file["data"] = sign(file["data"])
     assert ctx.client.put(doc_path, json=api2).status_code == 400
     assert api.get(f"/v1/cases/{cid}/actions/{aid}/sign/status/{sid}").json() == {"status": "failed",
                                                                                  "code": "use_sign_key"}
+
+
+def test_egov_cancel_is_reported_to_the_page(ready):
+    ctx, api, cid, aid = ready
+    start = api.post(f"/v1/cases/{cid}/actions/{aid}/sign/start", json={"method": "egov"})
+    sid = start["session_id"]
+    doc_path = f"/v1/auth/egov/mgov/{sid}/document"
+    api2 = ctx.client.get(doc_path).json()
+    assert ctx.client.put(doc_path, json={**api2, "status": "CANCELED"}).status_code == 400
+    assert api.get(f"/v1/cases/{cid}/actions/{aid}/sign/status/{sid}").json() == {"status": "failed",
+                                                                                 "code": "canceled"}
 
 
 def test_signing_is_off_without_a_verifier(ready):

@@ -39,7 +39,8 @@ ANSWERS = {
     "respondent_name": RESP_NAME, "seller_name": RESP_NAME, "lender_name": RESP_NAME,
     "respondent_address": RESP_ADDRESS, "seller_address": RESP_ADDRESS, "lender_address": RESP_ADDRESS,
     "respondent_bin": RESP_BIN, "seller_bin": RESP_BIN, "lender_bin": RESP_BIN, "respondent_iin": "пропустить",
-    "seller_email": "пропустить", "lender_email": "пропустить", "applicant_email": "ivanov@example.kz",
+    "seller_email": "пропустить", "lender_email": "пропустить", "respondent_email": "пропустить",
+    "applicant_email": "ivanov@example.kz",
     "appeal_date": "01.08.2026", "appeal_number": "пропустить", "appeal_subject": "Ремонт дороги",
     "higher_authority": "пропустить",
     "contract_number": "ZF-2026/001", "police_report_number": "пропустить", "goods_description": "Смартфон Nova 9",
@@ -100,8 +101,12 @@ def _check_document(sid: str, spec, a: dict, text: str, previous: list[str]) -> 
     # addressee — the exact name of the body / organisation
     assert a["addressee"]["name"] and f"Кому: {a['addressee']['name']}" in t, where
     # applicant (АППК ст. 63 п. 2 пп. 1); ГПК ст. 148 ч. 2 пп. 2))
-    for req in (f"От: {NAME}", f"ИИН: {IIN}", f"Адрес: {ADDRESS}", f"Тел.: {PHONE}"):
+    # the lawyer's D-18: the ИИН only where the law asks for it (a state body, a court, a bank) — not in a claim to a
+    # company or a person, and never asked when the scenario does not need it
+    for req in (f"От: {NAME}", f"Адрес: {ADDRESS}", f"Тел.: {PHONE}"):
         assert req in t, (where, req)
+    if where in ("kz.consumer.refund.claim_to_seller", "kz.consumer.service_refund.claim_to_provider"):
+        assert IIN not in t, (where, "ИИН in a claim to a seller")  # the lawyer's D-18 for these claims
     assert any(w in t for w in TITLE_WORDS), where
     # substance, what is asked, legal basis
     assert "Описание ситуации" in t or "ситуац" in t.lower() or len(t) > 400, where
@@ -114,11 +119,12 @@ def _check_document(sid: str, spec, a: dict, text: str, previous: list[str]) -> 
         else:
             assert "[норма" in t, where
     # attachments: the uploaded file and, from the second step on, the earlier documents
-    assert "Приложения:" in t and "(dokument.txt)" in t, where
+    assert "Приложение:" in t and "(dokument.txt)" in t, where  # D-30
     for title in previous:
         assert f"Копия документа «{title}»" in t, (where, title)
     # date and signature
-    assert re.search(r"Дата: \d{2}\.\d{2}\.\d{4}", t) and f"Подпись: ______________ / {NAME}" in t, where
+    # D-29: the date in words on the left, «И. Фамилия» on the right
+    assert re.search(r"\d{1,2} [а-я]+ \d{4} года\t______________ И\. Иванов", t), where
 
     kind = a["addressee"].get("type") or a["addressee"]["kind"]
     if kind == "court":  # ГПК РК ст. 148, 149

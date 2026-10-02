@@ -11,7 +11,7 @@ from konsilier.core.models import Action, DemandSignal
 
 from .conftest import hide_scenarios
 from .test_e2e import ADMIN, admin_approve, statuses, web_user
-from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU
+from .test_pilot_drafts import AI_LINE_RU, DRAFT_WORDS
 
 WAGES = "Работодатель не платит зарплату три месяца, задолженность 450000 тенге"
 
@@ -82,7 +82,7 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
     # the labour inspection's term comes from the registry (АППК ст. 76, verified on adilet), not from the model
     assert "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76" in text
     assert "Выплатить долг по зарплате" in text
-    assert NEUTRAL_NOTE_RU in text and not DRAFT_WORDS.search(text)
+    assert text.count(AI_LINE_RU) == 1 and not DRAFT_WORDS.search(text)
 
     case = api.get(f"/v1/cases/{cid}").json()
     assert case["stage"] == "action_ready"

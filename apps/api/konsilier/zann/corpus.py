@@ -25,6 +25,13 @@ the run. At the end of a run that changed anything the manifest ``zann/corpus/ma
 Refresh. Listings are walked again every ``refresh_days``; an act whose status, title or listing line changed goes
 back to the queue, and when the queue is empty the oldest texts (older than ``refresh_days``) are re-read. A text
 whose sha256 did not change is not uploaded again.
+
+Nightly changes. Once a day after ``recent_hour`` (local time, 02:00 Almaty by default) the first run walks the
+index sorted by the date of change, newest first (``sort_field=dl&sort_desc=true``, every status), page by page
+until a page holds only acts already read since the last such pass (at most ``recent_pages`` pages). New acts and
+acts not read since then go to the head of the queue (priority ``RECENT_PRIORITY``) and are read before the rest;
+the 30-day walk stays as the safety net. The listing does not show the date of change, hence the «read since the
+last pass» rule. Progress and the time of the last completed pass live in the ``zann_listings`` row ``#recent``.
 """
 
 from __future__ import annotations
@@ -43,7 +50,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Callable
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx
 from sqlalchemy import func, or_, select, update
@@ -75,6 +82,12 @@ IDLE_WAIT = 0.2  # a worker with nothing to do waits while another one may still
 # Listings walked before this marker row was written were parsed with a pattern that dropped every code ending in
 # letters (P260000007S — the Supreme Court, H19EK000237 …): they are walked once more, from page 1.
 LISTINGS_MARKER = "#codes-with-letters"
+# The nightly pass over recently changed acts: the index sorted by the date of change («по дате изменения»), newest
+# first, every status. Its progress row in zann_listings; acts it queues are read before everything else.
+RECENT_KEY = "#recent"
+RECENT_FILTER = "sort_field=dl&sort_desc=true"
+RECENT_PRIORITY = -1
+RECENT_FRESH = timedelta(hours=1)  # an act read less than this before the pass is not read again
 
 # Priority tiers of act types (the portal's «вид акта» codes; НПВС is ours). Lower is collected first.
 TIERS: tuple[tuple[str, ...], ...] = (
@@ -108,6 +121,12 @@ Fetch = Callable[[str], str]
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def describe(e: BaseException) -> str:
+    """«Type: the first line of the message» — httpx adds a second line with a link to the docs."""
+    text = str(e).strip()
+    return f"{type(e).__name__}: {text.splitlines()[0]}" if text else type(e).__name__
 
 
 def _aware(d: datetime | None) -> datetime | None:
@@ -209,6 +228,11 @@ def listing_plan(statuses: list[str]) -> list[tuple[str, str, int]]:
 
 def listing_url(key: str, page: int) -> str:
     return f"{BASE}/rus/index/docs/{key}&pagesize={PAGE_SIZE}&page={page}"
+
+
+def recent_url(page: int) -> str:
+    """A page of the index of every act sorted by the date of change, newest first."""
+    return listing_url(RECENT_FILTER, page)
 
 
 # ---------------------------------------------------------------------------------------------------- network
@@ -333,6 +357,8 @@ class RunStats:
     listing_pages: int = 0
     discovered: int = 0     # acts seen for the first time
     requeued: int = 0       # known acts whose listing entry changed
+    recent_pages: int = 0   # pages of the «recently changed» index read by the nightly pass
+    recent_queued: int = 0  # acts it put at the head of the queue (new, changed, or not read since the last pass)
     acts: int = 0           # acts read (every language tried)
     saved: int = 0          # files uploaded (new or changed text)
     unchanged: int = 0      # files re-read with the same sha256: not uploaded
@@ -344,10 +370,11 @@ class RunStats:
     requests_per_hour: int = 0
     workers: int = 1
     stopped: str = ""       # why the run ended: budget | limit | idle | robots | errors (the portal is failing)
+    error: str = ""         # the last error of the run, if any
 
     def add(self, other: RunStats) -> None:
-        for f in ("listing_pages", "discovered", "requeued", "acts", "saved", "unchanged", "missing", "errors",
-                  "bytes"):
+        for f in ("listing_pages", "discovered", "requeued", "recent_pages", "recent_queued", "acts", "saved",
+                  "unchanged", "missing", "errors", "bytes"):
             setattr(self, f, getattr(self, f) + getattr(other, f))
 
 
@@ -363,7 +390,8 @@ class Collector:
     def __init__(self, session_factory: sessionmaker[Session], storage: Any, fetch: Fetch, *,
                  langs: tuple[str, ...] = ("ru", "kk"), statuses: tuple[str, ...] = ("in_force",),
                  refresh_days: int = 30, clock: Callable[[], float] = time.monotonic,
-                 now: Callable[[], datetime] = utcnow, concurrency: int = 1):
+                 now: Callable[[], datetime] = utcnow, concurrency: int = 1, recent_hour: int = -1,
+                 recent_pages: int = 20, tz: Any = timezone.utc):
         bad = [x for x in langs if x not in LANGS] + [x for x in statuses if x not in STATUSES]
         if bad or not langs or not statuses:
             raise ValueError(f"zann corpus: unknown languages or statuses {bad or (langs, statuses)}")
@@ -372,6 +400,9 @@ class Collector:
         self.refresh = timedelta(days=refresh_days) if refresh_days > 0 else None
         self.clock, self.now = clock, now
         self.concurrency = max(1, int(concurrency))
+        self.statuses = statuses
+        # the nightly pass over recently changed acts: local hour (tz) after which it runs once a day, -1 = never
+        self.recent_hour, self.recent_pages, self.tz = recent_hour, max(1, int(recent_pages)), tz
         self._robots: Any = None
         self._robots_lock = threading.Lock()
         self._mu = threading.Lock()  # the run's shared state below
@@ -387,6 +418,7 @@ class Collector:
         self._listing_busy = False
         self._active = 0
         self._requests = 0
+        self._last_error = ""
 
     # ---- requests to the portal, counted
     def _get(self, url: str) -> str:
@@ -424,6 +456,15 @@ class Collector:
         started = time.monotonic()
         try:
             self._prepare()
+            if not discover_only and self.recent_due():
+                try:
+                    self._recent_pass(stats, deadline)  # first: what changed on the portal since the last night
+                except Exception as e:  # robots.txt or the database failed: the pass is tried by the next run
+                    log.exception("zann corpus: recent changes pass failed")
+                    self._last_error = f"recent: {describe(e)}"[:300]
+                    stats.errors += 1
+            if self._stop:
+                return stats  # the finally below fills in why
             if workers == 1:
                 self._work(stats, deadline, discover_only)
             else:
@@ -435,6 +476,7 @@ class Collector:
                     t.join()
         finally:
             stats.stopped = self._stop or "idle"
+            stats.error = self._last_error
             stats.requests = self._requests
             stats.seconds = round(time.monotonic() - started, 1)
             stats.requests_per_hour = round(stats.requests * 3600 / stats.seconds) if stats.seconds >= 1 else 0
@@ -473,12 +515,14 @@ class Collector:
                             ok = self._act(arg, st)
                         except Exception as e:  # the storage or the database failed: the act goes back to retry
                             log.exception("zann corpus: act %s failed", arg)
-                            self._fail(arg, f"{type(e).__name__}: {e}"[:500])
+                            self._last_error = f"{arg}: {describe(e)}"[:300]
+                            self._fail(arg, f"{describe(e)}"[:500])
                             st.errors += 1
                         if not ok:
                             self._release(arg)
-            except Exception:
+            except Exception as e:
                 log.exception("zann corpus: step failed")
+                self._last_error = f"{describe(e)}"[:300]
                 st.errors += 1
             finally:
                 with self._mu:
@@ -627,6 +671,125 @@ class Collector:
                 act.state, act.attempts, act.error = "error", (act.attempts or 0) + 1, error
                 s.commit()
 
+    # ---- the nightly pass over recently changed acts
+    def _collected_statuses(self) -> set[str]:
+        return {st for name in self.statuses for st in STATUSES[name].split("|")}
+
+    def recent_slot(self, now: datetime) -> datetime | None:
+        """The last local ``recent_hour`` o'clock at or before ``now`` (UTC), None when the pass is off."""
+        if self.recent_hour < 0:
+            return None
+        local = now.astimezone(self.tz)
+        slot = local.replace(hour=self.recent_hour, minute=0, second=0, microsecond=0)
+        if slot > local:
+            slot -= timedelta(days=1)
+        return slot.astimezone(timezone.utc)
+
+    def recent_due(self) -> bool:
+        """An unfinished pass continues; else one pass a day, the first run after ``recent_hour`` local time."""
+        slot = self.recent_slot(self.now())
+        if slot is None:
+            return False
+        with self.sf() as s:
+            row = s.get(ZannListing, RECENT_KEY)
+            if row is None or row.done_at is None:
+                return True
+            return (row.next_page or 1) > 1 or _aware(row.done_at) < slot
+
+    def _recent_pass(self, stats: RunStats, deadline: float | None) -> None:
+        started = self.now()
+        while not self._stop:
+            if deadline is not None and self.clock() >= deadline:
+                self._stop = "budget"
+                return
+            more = self._recent_page(stats, started)
+            if not more:
+                return
+
+    def _recent_page(self, stats: RunStats, started: datetime) -> bool:
+        """Read one page of the «recently changed» index; queue what was not read since the last pass. True while
+        the pass goes on (the next page is due)."""
+        with self.sf() as s:
+            row = s.get(ZannListing, RECENT_KEY)
+            if row is None:
+                row = ZannListing(key=RECENT_KEY, act_type="", priority=RECENT_PRIORITY, next_page=1, errors=0)
+                s.add(row)
+                s.commit()
+            page, since = row.next_page or 1, _aware(row.done_at)  # since: the start of the last completed pass
+
+        def finish(row: ZannListing) -> None:
+            row.done_at, row.next_page, row.errors = started, 1, 0
+
+        url = recent_url(page)
+        if not self.allowed(url):
+            log.warning("zann corpus: robots.txt closes %s", url)
+            self._stop = "robots"
+            return False
+        try:
+            total, items = parse_listing(self._get(url))
+        except Exception as e:  # tried again by the next run; after three failures the pass waits for tomorrow
+            log.warning("zann corpus: recent changes page %s failed: %s", page, e)
+            self._last_error = f"recent p{page}: {describe(e)}"[:300]
+            stats.errors += 1
+            with self.sf() as s:
+                row = s.get(ZannListing, RECENT_KEY)
+                row.errors = (row.errors or 0) + 1
+                if row.errors >= MAX_ATTEMPTS:
+                    finish(row)
+                s.commit()
+            return False
+        stats.recent_pages += 1
+        now = self.now()
+        collected = self._collected_statuses()
+        unseen = 0
+        with self.sf() as s:
+            codes = [it.code for it in items]
+            known = {a.code: a for a in s.scalars(select(ZannAct).where(ZannAct.code.in_(codes)))} if codes else {}
+            for it in items:
+                act = known.get(it.code)
+                if act is None:
+                    if it.status not in collected:  # e.g. an act that lost force, when only acts in force are kept
+                        continue
+                    act = ZannAct(code=it.code, title=it.title, act_type="", status=it.status, info=it.info,
+                                  priority=RECENT_PRIORITY, state="pending", attempts=0, discovered_at=now,
+                                  listed_at=now)
+                    s.add(act)
+                    known[it.code] = act
+                    stats.discovered += 1
+                    stats.recent_queued += 1
+                    unseen += 1
+                    continue
+                changed = (act.status, act.title, act.info) != (it.status, it.title, it.info)
+                act.status, act.title, act.info, act.listed_at = it.status, it.title, it.info, now
+                read_at = _aware(act.fetched_at) if act.state in ("done", "missing") else None
+                if not changed and read_at is not None and since is not None and read_at >= since:
+                    continue  # read since the last pass: below this, the last pass has seen everything
+                unseen += 1
+                if act.state == BUSY or (not changed and read_at is not None and read_at >= started - RECENT_FRESH):
+                    continue  # being read now, or read a moment ago
+                if act.state != "pending" or act.priority != RECENT_PRIORITY:
+                    act.state, act.attempts, act.priority = "pending", 0, RECENT_PRIORITY
+                    stats.recent_queued += 1
+                    if changed:
+                        stats.requeued += 1
+            row = s.get(ZannListing, RECENT_KEY)
+            row.errors = 0
+            if total is not None:
+                row.total = total
+            last = total is not None and page >= math.ceil(total / PAGE_SIZE)
+            if not items or unseen == 0 or last or page >= self.recent_pages:
+                finish(row)
+                more = False
+            else:
+                row.next_page = page + 1
+                more = True
+            try:
+                s.commit()
+            except IntegrityError:  # another container added the same act a moment ago: the page is read again
+                s.rollback()
+                return False
+        return more
+
     def _restart_stale_listings(self) -> None:
         """Walk a listing again once it is older than refresh_days: new acts, and changed ones back to the queue."""
         if self.refresh is None:
@@ -634,7 +797,7 @@ class Collector:
         old = self.now() - self.refresh
         with self.sf() as s:
             for row in s.scalars(select(ZannListing).where(ZannListing.done_at.is_not(None),
-                                                           ZannListing.key != LISTINGS_MARKER)):
+                                                           ZannListing.key.not_in((LISTINGS_MARKER, RECENT_KEY)))):
                 if _aware(row.done_at) < old:
                     row.done_at, row.next_page = None, 1
             s.commit()
@@ -652,6 +815,7 @@ class Collector:
             total, items = parse_listing(self._get(url))
         except Exception as e:  # the listing is retried on the next step or the next run
             log.warning("zann corpus: listing %s page %s failed: %s", key, page, e)
+            self._last_error = f"listing {unquote(key)} p{page}: {describe(e)}"[:300]
             stats.errors += 1
             with self.sf() as s:  # count the failure so a broken listing does not stall the run forever
                 row = s.get(ZannListing, key) or ZannListing(key=key, act_type=va, priority=prio, next_page=page)
@@ -718,7 +882,7 @@ class Collector:
                 results[lang] = None
                 continue
             except Exception as e:  # keep going: one bad act must not stop the run
-                error = f"{lang}: {type(e).__name__}: {e}"[:500]
+                error = f"{lang}: {describe(e)}"[:500]
                 continue
             ok = len(text) >= MIN_CHARS and (lang != "kk" or looks_kazakh(text))
             results[lang] = (url, title, text) if ok else None
@@ -752,8 +916,11 @@ class Collector:
                 f.chars, f.bytes, f.fetched_at, f.changed_at = len(text), len(data), now, now
                 stats.saved += 1
                 stats.bytes += len(data)
+            if act.priority == RECENT_PRIORITY:  # queued by the nightly pass: back to the tier of its type
+                act.priority = desired_priority(act.act_type, act.status)
             if error and not any(results.values()):
                 act.state, act.attempts, act.error = "error", (act.attempts or 0) + 1, error
+                self._last_error = f"{code}: {error}"[:300]
                 stats.errors += 1
                 with self._mu:
                     self._failed.add(code)
@@ -796,7 +963,8 @@ def corpus_metrics(session: Session, now: datetime | None = None) -> dict[str, A
     done_types = dict(session.execute(select(ZannAct.act_type, func.count()).where(ZannAct.state == "done")
                                       .group_by(ZannAct.act_type)).all())
     listings = session.execute(select(func.count(), func.count(ZannListing.done_at))
-                               .where(ZannListing.key != LISTINGS_MARKER)).one()
+                               .where(ZannListing.key.not_in((LISTINGS_MARKER, RECENT_KEY)))).one()
+    recent = session.get(ZannListing, RECENT_KEY)
     last = session.scalar(select(func.max(ZannFile.fetched_at)))
     acts_hour = session.scalar(select(func.count()).select_from(ZannAct).where(
         ZannAct.state.in_(("done", "missing", "error")), ZannAct.fetched_at >= hour_ago))
@@ -814,6 +982,10 @@ def corpus_metrics(session: Session, now: datetime | None = None) -> dict[str, A
         "bytes": int(gz),
         "chars": int(chars),
         "listings": {"started": listings[0], "done": listings[1]},
+        # the nightly pass over recently changed acts: when the last one completed, acts it queued and not read yet
+        "recent_pass_at": _aware(recent.done_at).isoformat(timespec="seconds") if recent and recent.done_at else None,
+        "recent_pending": session.scalar(select(func.count()).select_from(ZannAct).where(
+            ZannAct.priority == RECENT_PRIORITY, ZannAct.state == "pending")) or 0,
         "last_fetched_at": _aware(last).isoformat(timespec="seconds") if last else None,
         "acts_last_hour": int(acts_hour or 0),
         "files_last_hour": int(files_hour or 0),
@@ -829,17 +1001,42 @@ class ZannCorpusJob:
     hour < 0: continuous — a new time-boxed run starts on the first tick after the last one ended, so the corpus
     fills around the clock (the pause between requests still applies). When a run finds nothing to do, the job
     rests for an hour. Discovery and the queue live in the database, so every run continues the last one.
+
+    ``on_status(state, stats, error, next_run)`` (optional) hears «running» when a run starts and the outcome when it
+    ends (``run_state``): the court collector keeps it in the database for the serial console line.
     """
 
     def __init__(self, make_collector: Callable[[], Collector], tz: Any, *, hour: int = 2, minutes: int = 50,
-                 start: Callable[[Callable[[], None]], None] | None = None):
+                 start: Callable[[Callable[[], None]], None] | None = None, name: str = "zann corpus",
+                 on_status: Callable[[str, Any, str, datetime | None], None] | None = None):
         self.make_collector, self.tz, self.hour, self.minutes = make_collector, tz, hour, max(1, minutes)
         self.start = start or (lambda fn: threading.Thread(target=fn, name="zann-corpus", daemon=True).start())
+        self.name, self.on_status = name, on_status
         self._done_day: Any = None
         self._rest_until: datetime | None = None
         self._running = False
         self._lock = threading.Lock()
-        self.last: RunStats | None = None
+        self.last: Any = None
+
+    def next_run(self, now: datetime) -> datetime:
+        """When the job starts its next run (UTC), as far as it knows now."""
+        if self.hour >= 0:
+            local = now.astimezone(self.tz)
+            if local.hour == self.hour and self._done_day != local.date():
+                return now  # the next tick
+            slot = local.replace(hour=self.hour, minute=0, second=0, microsecond=0)
+            if slot <= local:
+                slot += timedelta(days=1)
+            return slot.astimezone(timezone.utc)
+        return max(now, self._rest_until) if self._rest_until else now
+
+    def _status(self, state: str, stats: Any = None, error: str = "", now: datetime | None = None) -> None:
+        if self.on_status is None:
+            return
+        try:
+            self.on_status(state, stats, error, self.next_run(now or utcnow()))
+        except Exception:  # the status line must never stop the collector
+            log.exception("%s: status not saved", self.name)
 
     def __call__(self, session: Session, now: datetime | None) -> int:
         now = now or utcnow()
@@ -854,6 +1051,7 @@ class ZannCorpusJob:
             elif self._rest_until and now < self._rest_until:
                 return 0
             self._running = True
+        self._status("running", now=now)
         self.start(lambda: self._run(now))
         return 0  # no messages sent
 
@@ -873,18 +1071,23 @@ class ZannCorpusJob:
             self.last = stats
             if stats.stopped in ("idle", "robots"):
                 rest(timedelta(hours=1))
-            elif stats.stopped == "errors":
+            elif stats.stopped in ("errors", "unreachable"):
                 rest(timedelta(minutes=15))
-            log.info("zann corpus: run done %s", asdict(stats))
-        except Exception:
-            log.exception("zann corpus: run failed")
+            log.info("%s: run done %s", self.name, asdict(stats))
+            self._status(stats.stopped, stats, getattr(stats, "error", ""),
+                         started + timedelta(seconds=time.monotonic() - t0))
+        except Exception as e:
+            log.exception("%s: run failed", self.name)
             rest(timedelta(minutes=15))
+            self._status("failed", None, f"{describe(e)}", started + timedelta(seconds=time.monotonic() - t0))
         finally:
             self._running = False
 
 
 def build_collector(settings: Any, session_factory: sessionmaker[Session], storage: Any,
                     fetch: Fetch | None = None) -> Collector:
+    from zoneinfo import ZoneInfo
+
     langs = tuple(x.strip() for x in settings.zann_corpus_langs.split(",") if x.strip())
     statuses = tuple(x.strip() for x in settings.zann_corpus_statuses.split(",") if x.strip())
     concurrency = max(1, int(getattr(settings, "zann_corpus_concurrency", 1)))
@@ -892,4 +1095,7 @@ def build_collector(settings: Any, session_factory: sessionmaker[Session], stora
         limiter = RateLimiter(min(float(getattr(settings, "zann_corpus_rate", 0.5)), MAX_RATE))
         fetch = PoliteFetcher(delay=max(2.0, settings.zann_corpus_pause), limiter=limiter)
     return Collector(session_factory, storage, fetch, langs=langs, statuses=statuses,
-                     refresh_days=settings.zann_corpus_refresh_days, concurrency=concurrency)
+                     refresh_days=settings.zann_corpus_refresh_days, concurrency=concurrency,
+                     recent_hour=int(getattr(settings, "zann_corpus_recent_hour", -1)),
+                     recent_pages=int(getattr(settings, "zann_corpus_recent_pages", 20)),
+                     tz=ZoneInfo(getattr(settings, "zann_corpus_tz", "Asia/Almaty")))

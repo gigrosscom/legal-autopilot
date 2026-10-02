@@ -19,7 +19,7 @@ from konsilier.core.packs import load_pack
 from konsilier.core.pii import PiiVault
 
 from .test_e2e import web_user
-from .test_pilot_drafts import DRAFT_WORDS, NEUTRAL_NOTE_RU, PACKS
+from .test_pilot_drafts import AI_LINE_RU, DRAFT_WORDS, PACKS
 
 KZ = load_pack(PACKS / "kz", PACKS)
 BETA = sorted(s.id for s in KZ.scenarios.values() if s.beta)
@@ -87,7 +87,7 @@ def test_beta_scenario_story_to_documents(ctx, sid):
     sc = KZ.scenarios[sid]
     assert not _UNFILLED.search(text), _UNFILLED.findall(text)
     assert "{{" not in text and "{%" not in text
-    assert NEUTRAL_NOTE_RU in text and not DRAFT_WORDS.search(text)
+    assert text.count(AI_LINE_RU) == 1 and not DRAFT_WORDS.search(text)
     assert sc.disclaimer["ru"] in text or sc.kind == "dispute"
     for src in sc.sources:
         assert src.url in text or sc.kind == "dispute"

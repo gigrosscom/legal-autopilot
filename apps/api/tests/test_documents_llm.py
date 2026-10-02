@@ -16,12 +16,12 @@ CTX = {"f": {"purchase_date": "12.08.2026", "goods_description": "Чайник <
        "norm_refs": ["TODO"], "evidence": [], "currency": "KZT", "date": "25.09.2026"}
 
 
-def test_render_adds_ai_label_and_draft_and_escapes():
+def test_render_adds_one_ai_line_and_escapes():
     data = render_docx(TEMPLATE, CTX, ai_label="AI-LABEL", draft_disclaimer="DRAFT-NOTE")
     text = docx_text(data)
     assert "Чайник <A&B>" in text  # autoescaped in XML, intact in text
-    assert text.count("AI-LABEL") == 1  # footer only: with the draft note the body has one closing line (QA BUG-14)
-    assert "DRAFT-NOTE" in text
+    # owner 01.10: one closing line — the AI label in the footer; the unsigned-scenario note is not printed
+    assert text.count("AI-LABEL") == 1 and "DRAFT-NOTE" not in text
     assert "БИН" not in text  # optional line suppressed
     assert "Приложения" not in text  # empty list → section suppressed
 

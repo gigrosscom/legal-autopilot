@@ -313,11 +313,12 @@ def test_robots_closing_the_site_stops_the_run(db, tmp_path):
     assert all(r.endswith("/robots.txt") for r in site.requests)
 
 
-def test_unreachable_robots_stops_the_run_as_errors(db, tmp_path):
+def test_unreachable_robots_stops_the_run_as_unreachable(db, tmp_path):
     site = Site()
     site.busy["/robots.txt"] = 99
     stats = make(db, tmp_path, site).run()
-    assert stats.stopped == "errors" and stats.pages == 0 and stats.errors == 1
+    assert stats.stopped == "unreachable" and stats.pages == 0 and stats.errors == 1
+    assert stats.error.startswith("robots.txt sud.kz: HTTPStatusError") and "\n" not in stats.error
 
 
 def test_back_off_on_busy_server_and_size_cap(db, tmp_path):
@@ -396,3 +397,93 @@ def test_settings_and_build(db, tmp_path):
     assert col.sources == ("np", "review", "bulletin") and col.fetch.delay >= 0.5
     with pytest.raises(ValueError):
         Collector(db, None, None, SITE, RULES, sources=("office",))
+
+
+# ------------------------------------------------------------------ what sud.kz lets through, and the status line
+class Picky(Site):
+    """sud.kz as it answered on 01.10.2026: the connection is dropped without a response when the User-Agent has
+    «collector», «spider», «bot» or «httpx» (robots.txt included); the file service of sud.gov.kz (JBoss) answers
+    404 to a User-Agent without a platform token such as «(Windows NT 10.0; …)»."""
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        ua = request.headers.get("User-Agent", "").lower()
+        if any(w in ua for w in ("collector", "spider", "bot", "httpx")):
+            self.requests.append(f"dropped {request.url.host}{request.url.path}")
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.", request=request)
+        if request.url.host == "sud.gov.kz" and request.url.path.startswith("/library/") and "(windows nt" not in ua:
+            return httpx.Response(404, text="<html>JBWEB000065: HTTP Status 404</html>")
+        return super().__call__(request)
+
+
+def picky_collector(db, tmp_path, site, user_agent: str) -> Collector:
+    headers = CourtFetcher().client.headers  # what the collector really sends
+    headers["User-Agent"] = user_agent
+    client = httpx.Client(transport=httpx.MockTransport(site), follow_redirects=True, headers=headers)
+    fetch = CourtFetcher(delay=0, retries=1, sleep=lambda s: None, client=client)
+    return Collector(db, LocalStorage(tmp_path / "files"), fetch, SITE, RULES)
+
+
+def test_honest_user_agent_blocked_robot_filter_is_reported_not_bypassed(db, tmp_path):
+    """We name ourselves honestly; a site that drops robots by User-Agent stops the run as «unreachable» (shown as
+    state=blocked(robots_unreachable)) — the collector never disguises itself as a browser."""
+    fetcher = CourtFetcher()
+    assert fetcher.client.headers["User-Agent"] == court.USER_AGENT == SITE.user_agent
+    assert "Mozilla" not in court.USER_AGENT and "Konsilier.AI" in court.USER_AGENT
+    assert fetcher.client.headers["From"] == court.FROM
+    site = Picky()
+    stats = picky_collector(db, tmp_path, site, court.USER_AGENT).run()
+    assert stats.stopped == "unreachable" and stats.pages == 0
+    assert court.Site({"sources": {}, "user_agent": "X/1"}).user_agent == "X/1"
+
+
+def test_job_keeps_its_state_for_the_status_line(db, tmp_path):
+    site = Site()
+    site.busy["/robots.txt"] = 99
+    started: list = []
+    job = court.make_job(lambda: make(db, tmp_path, site), ZoneInfo("Asia/Almaty"), hour=-1, minutes=50,
+                         session_factory=db)
+    job.start = started.append
+    with db() as s:
+        assert court_metrics(s)["status"]["state"] == "never_run"
+    t = datetime(2026, 10, 1, 19, 0, tzinfo=timezone.utc)
+    job(None, t)
+    with db() as s:
+        assert court.court_status(s)["state"] == "running"
+    started[0]()
+    with db() as s:
+        st = court_metrics(s)
+    assert st["status"]["state"] == "blocked(robots_unreachable)"
+    assert "robots.txt sud.kz" in st["status"]["last_error"] and st["status"]["last_run"]
+    nxt = datetime.fromisoformat(st["status"]["next_run"])
+    assert timedelta(minutes=14) < nxt - t < timedelta(minutes=16)  # tried again in 15 minutes
+    assert st["pages"] == {"done": 0, "pending": 4, "error": 0}  # the status row is not a page
+    # the site answers again: the next run collects and the line says «waiting»
+    site.busy.clear()
+    job(None, t + timedelta(minutes=16))
+    with db() as s:
+        assert court.court_status(s)["last_error"]  # the last error stays visible while a run is going
+    started[1]()
+    with db() as s:
+        st = court.court_status(s)
+    assert st["state"] == "waiting" and st["last_error"] is None and st["run"]["saved"] == 6
+
+    def no_sources():
+        raise court.NoSources("set ZANN_COURT_COUNTRY, packs with court sources: []")
+    job2 = court.make_job(no_sources, ZoneInfo("Asia/Almaty"), hour=-1, session_factory=db)
+    job2.start = started.append
+    job2(None, t + timedelta(hours=3))
+    started[-1]()
+    with db() as s:
+        assert court.court_status(s)["state"] == "no_sources"
+    assert court.run_state("failed", "OperationalError: db") == "error(OperationalError)"
+    assert court.run_state("robots") == "blocked(robots_closed)"
+    assert court.run_state("errors") == "error(errors_in_a_row)"
+
+
+def test_no_sources_is_its_own_error(tmp_path):
+    with pytest.raises(court.NoSources):
+        court.pick_country(tmp_path)  # no pack has court sources
+    with pytest.raises(court.NoSources):
+        court.load_site(tmp_path, "uz")
+    with pytest.raises(court.NoSources):
+        Collector(None, None, None, SITE, RULES, sources=("nope",))
