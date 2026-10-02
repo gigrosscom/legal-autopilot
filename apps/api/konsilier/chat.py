@@ -435,6 +435,84 @@ def strip_foreign_script(text: str, language: str) -> str:
     return _CJK.sub("", text)
 
 
+# Owner 02.10 / ZANN: the chat model states deadlines and article numbers from memory (QA run: «10 рабочих дней» for the
+# motor insurer, the law says 5; «ст. 157 — приостановить работу», a Russian rule). A term of days or an article number
+# reaches the person only if it is checked: in the country rules (packs/<cc>/pack.yaml chat_rules, checked on
+# adilet) or in an article opened in this reply. Anything else is taken out before the reply is stored and sent.
+_RULE_DAYS = re.compile(r"(\d+)\s*(calendar|working|business|banking)?\s*days?\b", re.IGNORECASE)
+_RULE_ARTS = re.compile(r"\barts?\.\s*((?:\d+(?:-\d+)?(?:\s*p\.\s*\d+(?:-\d+)?)?(?:,\s*|\s+and\s+)?)+)", re.IGNORECASE)
+_TERM = re.compile(
+    r"(?:\s*(?:в\s+течение|через|за|не\s+позднее|не\s+позже|до|в\s+срок\s+до|в\s+срок)\s+)?"
+    r"(\d+)(?:-?(?:х|и|ти|ми|ть|ух|ёх|ех))?\s*(?:\(\w+\)\s*)?(календарн\w*|рабоч\w*|банковск\w*)?\s*"
+    r"(?:дн(?:я|ей|ю|ям|ями)\b|день\b|сут(?:ок|ки)\b)", re.IGNORECASE)
+_ART = re.compile(r"(\(\s*)?(?:(стать[яеиюй]\w*)|ст\.)\s*(\d+(?:-\d+)?)((?:\s*(?:,|и)?\s*(?:п(?:ункт\w*|п?\.)|ч(?:аст\w*|\.)|подпункт\w*)\s*\d+(?:-\d+)?\)?)*)(\s*\))?",
+                  re.IGNORECASE)
+_NORM_WORD = {"статья": "норма", "статье": "норме", "статьи": "нормы", "статью": "норму", "статьей": "нормой",
+              "статьёй": "нормой"}
+_STEP_LINE = re.compile(r"^\s*(?:\d+[.)]|[-•*]|\*\*)")
+
+
+_NEGATED = re.compile(r"«[^»]*$|\"[^\"\n]*$")  # inside a quoted wrong example: «3 days», "7 days to return"
+
+
+def _kind(word: str | None) -> str:
+    w = (word or "").lower()
+    return "working" if w.startswith(("working", "business", "рабоч", "banking", "банков")) else \
+        "calendar" if w.startswith(("calendar", "календар")) else ""
+
+
+def checked_terms(rules: str) -> tuple[set[tuple[int, str]], set[str]]:
+    """Terms of days and article numbers the country rules state as checked; a number in a «never …», «no …» or a
+    quoted wrong example («3 days», «7 days to return») is not one of them."""
+    rules = rules or ""
+    days = {(int(m.group(1)), _kind(m.group(2))) for m in _RULE_DAYS.finditer(rules)
+            if not _NEGATED.search(rules[:m.start()])}
+    arts: set[str] = set()
+    for m in _RULE_ARTS.finditer(rules):
+        group = re.sub(r"p\.\s*\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?(?=[^\d-]|$))*", "", m.group(1))
+        arts |= set(re.findall(r"\b(\d+(?:-\d+)?)\b", group))
+    return days, arts
+
+
+def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = False) -> tuple[str, list[str]]:
+    """The reply without terms of days and article numbers that nobody checked; returns what was taken out."""
+    days, arts = checked_terms(rules)
+    arts |= set(opened)
+    removed: list[str] = []
+
+    def ok(m: re.Match) -> bool:  # «10 рабочих дней» is not «10 calendar days»; «10 дней» may be either
+        n, kind = int(m.group(1)), _kind(m.group(2))
+        return (n, kind) in days if kind else any(d == n for d, _ in days)
+
+    def art(m: re.Match) -> str:
+        if m.group(3) in arts:
+            return m.group(0)
+        removed.append(m.group(0).strip())
+        if m.group(1) or m.group(5):  # «(ст. 157 ТК)» → nothing
+            return ""
+        word = (m.group(2) or "").lower()
+        return _NORM_WORD.get(word, "нормы") + ("" if m.group(0).endswith(" ") else "")
+
+    out = []
+    for line in text.split("\n"):
+        if not opened_any:
+            bad = [m for m in _TERM.finditer(line) if not ok(m)]
+            if bad:
+                if _STEP_LINE.match(line):
+                    for m in reversed(bad):
+                        removed.append(m.group(0).strip())
+                        line = line[:m.start()] + line[m.end():]
+                else:
+                    parts = re.split(r"(?<=[.!?])\s+", line)
+                    keep = [p for p in parts if all(ok(m) for m in _TERM.finditer(p))]
+                    removed += [p for p in parts if p not in keep]
+                    line = " ".join(keep)
+        line = _ART.sub(art, line)
+        line = re.sub(r"\s+([,.;:])", r"\1", re.sub(r"[ \t]{2,}", " ", line)).rstrip()
+        out.append(line)
+    return "\n".join(out), removed
+
+
 def mentioned_articles(text: str) -> set[str]:
     return {m.group(1) or m.group(2) for m in ARTICLE_MENTION.finditer(text)}
 
@@ -696,7 +774,7 @@ class ChatAgent:
             timing["total_ms"] = _ms(t0)
             log.warning("chat timing: case=%s empty reply %s", case_id, json.dumps(timing, ensure_ascii=False))
             raise EmptyReply("the model wrote no answer")
-        result = self._check(text, got, calls, usage)
+        result = self._check(text, got, calls, usage, rules)
         result.truncated = ",".join(cuts)
         result.trimmed = cut_open
         result.sources = [{"url": h.url, "title": h.title, "domain": h.domain} for h in found.values()
@@ -722,11 +800,16 @@ class ChatAgent:
                 for h in hits]
 
     @staticmethod
-    def _check(text: str, got: dict[tuple[str, str], Any], calls: int, usage: dict[str, int]) -> ChatResult:
+    def _check(text: str, got: dict[tuple[str, str], Any], calls: int, usage: dict[str, int],
+               rules: str = "") -> ChatResult:
         read = {num: r for (_, num), r in got.items()}
+        said = mentioned_articles(text)  # what the model wrote: the «unchecked» metric counts it before the cleaning
+        text, removed = keep_checked(text, rules, set(read), opened_any=bool(read))
+        if removed:
+            log.warning("chat=unchecked_removed %s", json.dumps(removed, ensure_ascii=False)[:500])
         mentioned = mentioned_articles(text)
         norms = [{"act": r.act_title, "act_code": r.code, "article": r.number, "title": r.title, "url": r.url}
                  for num, r in read.items() if num in mentioned]
         text, offer = take_offer(drop_extra_steps(strip_labels(text)))
-        return ChatResult(text, norms, unchecked=bool(mentioned - set(read)), tool_calls=calls, usage=usage,
+        return ChatResult(text, norms, unchecked=bool(said - set(read)), tool_calls=calls, usage=usage,
                           offer_document=offer)

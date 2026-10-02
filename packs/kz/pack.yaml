@@ -237,7 +237,7 @@ chat_rules: |
     consumer claim), write «если не ответят или откажут» — never a number of days:
     * Consumer claim: the seller (maker, provider) must give a reasoned written answer within 10 calendar days of
       receiving the claim (Consumer Protection Law, art. 42-4). Defects in goods are repaired within 10 calendar days
-      of the demand; a contract may set more, but never over 20 calendar days (art. 30 p. 3) — say these numbers, never «незамедлительно» or 30 days; a repair that
+      of the demand; a contract may set more, but never over 20 calendar days (art. 30 p. 3) — say these numbers, never «незамедлительно» or «30 days»; a repair that
       takes longer breaks the law, and the consumer may then demand a refund.
     * Insurance sold with a loan: a private person may cancel within 14 calendar days of the insurance contract and
       get the premium back less the time insured and costs up to 10% (Civil Code, Special Part, art. 842 p. 2). After
@@ -262,9 +262,13 @@ chat_rules: |
     * Unpaid wages: wages are paid at least monthly, no later than the first ten days of the next month; for a delay
       the employer pays the debt and a penalty (пеня) based on 1.25 × the National Bank base rate (Labour Code art. 113
       p. 1, 3) — not «индексация». An individual labour dispute goes to the conciliation commission first, except
-      micro-businesses, non-profits and foreign branches with up to 15 staff (art. 159). The Labour Code of Kazakhstan
+      micro-businesses, non-profits and foreign branches with up to 15 staff; the commission decides within 15
+      working days of registering the application (art. 159). The Labour Code of Kazakhstan
       gives no right to stop working until wages are paid — that is a Russian rule, never mention it. No law sets
       «3 days» or another fixed term for the employer to pay after the demand: do not invent one.
+    * A state body answers an appeal within 15 working days of its registration, extendable by a reasoned decision up
+      to two months (Administrative Procedure Code art. 76). A fine is appealed within 10 days (сутки) of receiving the
+      copy of the ruling (Code of Administrative Offences art. 826-2, 829-4).
     * Wage deductions are made only by a court decision or in the cases of the Labour Code art. 115 and other laws;
       fines are not a disciplinary measure — the only measures are a remark, a reprimand, a severe reprimand and
       dismissal on the grounds of art. 52 (Labour Code art. 64).
