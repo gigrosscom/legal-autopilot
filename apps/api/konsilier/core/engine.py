@@ -125,6 +125,8 @@ class EngineConfig:
     trust_kaspi_link: bool = True
     # owner 02.10: until the payment is set up, «Я оплатил(а)» gives the document on trust for every way to pay
     trust_all: bool = False
+    # owner 02.10: the system chooses the addressee by the pack's routes.yaml (no «Куда обратиться» list)
+    auto_recipient: bool = True
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
     plan_days: int = 30
@@ -379,7 +381,8 @@ class CaseEngine:
             result = {**result, "dispute_id": fallback, "role": "business",
                       "confidence": max(float(result.get("confidence") or 0), cov.routing.min_confidence)}
         self._save_vault(case, llm)
-        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake)
+        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake,
+                                          pending=safety.matter_pending(cov, text))
         case.jurisdiction = case.jurisdiction or pack.country
         case.taxonomy = route.to_taxonomy()
         case.route_reasons = route.reasons
@@ -401,15 +404,60 @@ class CaseEngine:
         case.needs_review = not self.config.self_service
         if len(route.forums) == 1:
             return self.choose_forum(session, case, route.forums[0].id, actor="system")
+        # owner 02.10: the system chooses the addressee (routes.yaml), the person does not pick from a list — unless
+        # the matter is already in court, where the person's own proceedings decide
+        first = (None if "pending" in route.flags or not self.config.auto_recipient
+                 else cov.first_forum(route.dispute_id, route.forums))
+        if first is not None:
+            return self.choose_forum(session, case, first.id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
                                     dispute=pack.localized(cov.dispute(route.dispute_id).title, lang)),
-                     options=[self.forum_option(pack, f, lang) for f in route.forums])
+                     options=[self.forum_option(pack, f, lang, cov.dispute(route.dispute_id))
+                              for f in route.forums])
 
-    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str) -> dict[str, Any]:
+    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str, dispute: Any = None) -> dict[str, Any]:
+        keys = (dispute.id, dispute.branch) if dispute is not None else ()
+        hint = next((pack.localized(forum.hints[k], lang) for k in keys if k in forum.hints), None)
+        pretrial = None
+        if forum.legal_effect == "none":  # a step to the other side itself, not a body that decides
+            pretrial = "mandatory" if any(k in forum.mandatory_for for k in keys) else "voluntary"
         out = {"id": forum.id, "name": pack.localized(forum.name, lang), "type": forum.type,
                "legal_effect": forum.legal_effect, "verified": forum.verified,
                "channels": [ch.kind for ch in forum.submission],
-               "deadline_known": forum.response_deadline is not None}
+               # a court sets its own terms; elsewhere the term comes from the forum or from the hint
+               "deadline_known": forum.response_deadline is not None or hint is not None or forum.type == "court",
+               "pretrial": pretrial, "hint": hint}
+        return out
+
+    def recipient_route(self, case: Case) -> list[dict[str, Any]]:
+        """Who each step's document goes to and why (routes.yaml): by the case's scenario, else its dispute type."""
+        if not case.jurisdiction and not case.scenario_id:
+            return []
+        try:
+            pack = self.pack_of(case)
+        except Exception:  # noqa: BLE001 — no pack, no route
+            return []
+        cov = pack.coverage
+        if cov is None:
+            return []
+        keys = [case.scenario_id, (case.taxonomy or {}).get("dispute_id")]
+        route = next((cov.routes[k] for k in keys if k and k in cov.routes), None)
+        if route is None:
+            return []
+        lang = case.language
+        out = []
+        for i, step in enumerate(route.steps, start=1):
+            if step.forum is not None:
+                kind, key, name = "forum", step.forum, pack.localized(cov.forums[step.forum].name, lang)
+            elif step.authority is not None:
+                auth = pack.manifest.authorities.get(step.authority)
+                kind, key = "authority", step.authority
+                name = pack.localized(auth.name, lang) if auth is not None else step.authority
+            else:
+                kind, key, name = "party", None, None
+            out.append({"step": i, "kind": kind, "key": key, "name": name,
+                        "label": pack.localized(step.label, lang), "when": pack.localized(step.when, lang) or None,
+                        "why": pack.localized(step.why, lang), "norm": step.norm})
         return out
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
@@ -421,8 +469,10 @@ class CaseEngine:
         if cov is None or not case.taxonomy.get("dispute_id"):
             return []
         dispute = cov.dispute(case.taxonomy["dispute_id"])
-        return [self.forum_option(pack, f, case.language)
-                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])]
+        pending = "pending" in (case.taxonomy.get("flags") or [])
+        return [self.forum_option(pack, f, case.language, dispute)
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0],
+                                              pending)]
 
     def choose_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
         if case.status != S.INTAKE.value or case.scenario_id:

@@ -930,14 +930,13 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Badge tone={f.legal_effect === "binding" ? "brand" : f.legal_effect === "advisory" ? "info" : "warning"}>
-                {t(`forum.effect.${f.legal_effect}`)}
+              <Badge tone={f.legal_effect === "binding" ? "brand" : f.legal_effect === "advisory" ? "info" : f.pretrial === "mandatory" ? "warning" : "neutral"}>
+                {f.pretrial ? t(`forum.pretrial.${f.pretrial}`) : t(`forum.effect.${f.legal_effect}`)}
               </Badge>
-              <Badge tone={f.verified ? "brand" : "neutral"} icon={f.verified ? "shieldCheck" : "hourglass"}>
-                {f.verified ? t("forum.verified") : t("forum.unverified")}
-              </Badge>
+              {f.verified && <Badge tone="brand" icon="shieldCheck">{t("forum.verified")}</Badge>}
               {!f.deadline_known && <Badge>{t("forum.deadlineByLawyer")}</Badge>}
             </div>
+            {f.hint && <p className="text-sm">{f.hint}</p>}
             <p className="text-xs text-muted">{t("forum.channels")}: {f.channels.map((ch) => t(`forum.channel.${ch}`)).join(", ")}</p>
             <Button className="mt-auto" disabled={busy} onClick={() => onChoose(f)} iconEnd="arrowRight">{t("forum.choose")}</Button>
           </li>

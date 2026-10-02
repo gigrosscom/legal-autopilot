@@ -178,6 +178,9 @@ class Settings(BaseSettings):
     # for EVERY way to pay (transfer, Kaspi QR, Kaspi bill, company bill), not only the Kaspi Pay link; the desk still
     # matches each bill in /ops. false → only the Kaspi Pay link is trusted (PAYMENT_TRUST_KASPI_LINK)
     payment_trust_all: bool = True
+    # owner 02.10: the addressee of the first document is chosen by packs/<cc>/routes.yaml, not by the person from a
+    # «Куда обратиться» list; false → the list, as before
+    auto_recipient: bool = True
     plan_biz_price: int = 29990
     plan_biz_documents: int = 20
     plan_bizpro_price: int = 59990

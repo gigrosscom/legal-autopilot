@@ -158,4 +158,5 @@ def test_production_routing_of_a_benefit_refusal(ctx):
     assert case["scenario"] is None
     assert case["coverage"]["dispute"]["id"] == "social.benefit_refusal"
     assert case["coverage"]["level"] == "universal"
-    assert {o["id"] for o in created["reply"]["options"]} == {"kz.prosecutor", "kz.ombudsman"}
+    # ZANN 02.10: first the superior body (complaint through the body that refused), then the prosecutor
+    assert {o["id"] for o in created["reply"]["options"]} == {"kz.gov.superior", "kz.prosecutor", "kz.ombudsman"}
