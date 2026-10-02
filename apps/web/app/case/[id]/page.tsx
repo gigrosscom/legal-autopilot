@@ -19,7 +19,7 @@ import { EotinishBridge, EotinishFiled } from "@/components/EotinishBridge";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
 import { LawQuestions } from "@/components/LawQuestions";
-import { PaymentWays, type WayBody } from "@/components/PaymentWays";
+import { KaspiOneTap, kaspiOneTap, PaymentWays, type WayBody } from "@/components/PaymentWays";
 import { StageProgress } from "@/components/StageProgress";
 import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
 import {
@@ -235,6 +235,12 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       if (then === "claim") {
         const claimed = await api<{ case: CaseView }>(`/v1/cases/${id}/payment/claim`, { method: "POST", body: "{}" });
         setCase(claimed.case);
+        // the Kaspi Pay link is paid on trust (owner 01.10): the document is made at once, waiting on their return
+        if (claimed.case.payment?.trusted && claimed.case.payment.status === "paid") {
+          const next = await api<{ case: CaseView }>(`/v1/cases/${id}/actions/next`, { method: "POST", body: "{}" });
+          setCase(next.case);
+          setPayOpen(false);
+        }
       }
       if (then === "bill") {
         const blob = await fetchFile(`/v1/invoices/${invoice}/bill?format=pdf`);
@@ -698,6 +704,11 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
                 </Button>
               ))}
               <p className="text-xs text-muted">{t("payment.caseHint")}</p>
+            </>
+          ) : kaspiOneTap(pay) ? (
+            <>
+              {pay.owed && <Alert tone="warning" role="status">{t("payment.owed")}</Alert>}
+              <KaspiOneTap pay={pay} busy={busy} price={money(pay.amount, pay.currency)} onWay={onWay} />
             </>
           ) : (
             <>
