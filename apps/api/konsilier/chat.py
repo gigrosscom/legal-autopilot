@@ -456,6 +456,22 @@ _STEP_LINE = re.compile(r"^\s*(?:\d+[.)]|[-•*]|\*\*)")
 _NEGATED = re.compile(r"«[^»]*$|\"[^\"\n]*$")  # inside a quoted wrong example: «3 days», "7 days to return"
 
 
+# months and years: checked only where the reply states a time limit («в течение двух месяцев», «срок — один год»,
+# «есть один месяц на …»), never in the person's own facts («ноутбук держат уже два месяца»)
+_RULE_MONTHS = re.compile(r"\b(\d+|one|two|three|six)\s*(months?|years?)\b", re.IGNORECASE)
+_WORD_N = {"one": 1, "two": 2, "three": 3, "six": 6, "один": 1, "одного": 1, "одним": 1, "два": 2, "двух": 2,
+           "три": 3, "трёх": 3, "трех": 3, "шесть": 6, "шести": 6}
+_TERM_MONTHS = re.compile(
+    r"(?:в\s+течение|через|не\s+позднее|не\s+позже|срок\w*[^.\n]{0,25}?|есть|остаётся|остается|да[её]тся|"
+    r"составляет)\s+(\d+|один|одного|одним|два|двух|три|трёх|трех|шесть|шести)\s*(месяц\w*|год\w*|лет)\b",
+    re.IGNORECASE)
+
+
+def _months(n: str, unit: str) -> tuple[int, str]:
+    num = int(n) if n.isdigit() else _WORD_N.get(n.lower(), -1)
+    return num, "year" if unit.lower().startswith(("year", "год", "лет")) else "month"
+
+
 def _kind(word: str | None) -> str:
     w = (word or "").lower()
     return "working" if w.startswith(("working", "business", "рабоч", "banking", "банков")) else \
@@ -479,6 +495,8 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
     """The reply without terms of days and article numbers that nobody checked; returns what was taken out."""
     days, arts = checked_terms(rules)
     arts |= set(opened)
+    months = {_months(m.group(1), m.group(2)) for m in _RULE_MONTHS.finditer(rules or "")
+              if not _NEGATED.search((rules or "")[:m.start()])}
     removed: list[str] = []
 
     def ok(m: re.Match) -> bool:  # «10 рабочих дней» is not «10 calendar days»; «10 дней» may be either
@@ -505,6 +523,8 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
     for line in text.split("\n"):
         if not opened_any:
             bad = [m for m in _TERM.finditer(line) if not ok(m)]
+            bad += [m for m in _TERM_MONTHS.finditer(line) if _months(m.group(1), m.group(2)) not in months]
+            bad.sort(key=lambda m: m.start())
             if bad:
                 if _STEP_LINE.match(line):
                     for m in reversed(bad):
@@ -512,7 +532,8 @@ def keep_checked(text: str, rules: str, opened: set[str], opened_any: bool = Fal
                         line = line[:m.start()] + line[m.end():]
                 else:
                     parts = re.split(r"(?<=[.!?])\s+", line)
-                    keep = [p for p in parts if all(ok(m) for m in _TERM.finditer(p))]
+                    keep = [p for p in parts if all(ok(m) for m in _TERM.finditer(p))
+                            and all(_months(m.group(1), m.group(2)) in months for m in _TERM_MONTHS.finditer(p))]
                     removed += [p for p in parts if p not in keep]
                     line = " ".join(keep)
         line = _ART_PAREN.sub(paren, line)  # «(статья 53 Трудового кодекса)» goes whole, never half

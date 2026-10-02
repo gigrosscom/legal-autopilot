@@ -56,3 +56,13 @@ def test_unchecked_article_in_brackets_goes_whole():
     assert out == "Увольнение на больничном запрещено. Дальше." and removed == ["(статья 999 Трудового кодекса)"]
     text = "Претензия — ответ 10 календарных дней (ст. 42-4 ЗоЗПП)."
     assert keep_checked(text, RULES, set()) == (text, [])
+
+
+def test_months_checked_only_as_a_time_limit():
+    """ТК ст. 160 (with КС 81-НП, 88-НП): 1 and 2 months, 1 and 3 years are checked; «6 месяцев» is not."""
+    out, removed = keep_checked("В суд можно обратиться в течение шести месяцев.", RULES, set())
+    assert "шести месяцев" not in out and removed
+    text = "В суд — в течение двух месяцев со дня получения решения комиссии."
+    assert keep_checked(text, RULES, set()) == (text, [])
+    text = "Ноутбук держат уже пять месяцев, это нарушение."  # the person's fact, not a time limit
+    assert keep_checked(text, RULES, set()) == (text, [])
