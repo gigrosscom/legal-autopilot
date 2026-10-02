@@ -190,7 +190,7 @@ POST /v1/cases/{id}/close {result, amount_recovered}
      - id: handoff_lawyer
        kind: handoff
        when: complaint_regulator.response != full
-   pricing: {model: fixed, amount: 1990, currency: KZT}
+   pricing: {model: fixed, amount: 2990, currency: KZT}
    ```
 
    Условия `when`: `<action>.response ==|!= <класс>`, `in|not in [..]`, `and`, `or`.

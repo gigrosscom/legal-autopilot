@@ -92,4 +92,4 @@ actions:
     kind: handoff
     when: complaint_housing_inspection.response in [none, refusal, partial]
     title: {ru: Передача дела юристу, kk: Істі заңгерге беру}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

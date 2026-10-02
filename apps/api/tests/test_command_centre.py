@@ -185,4 +185,4 @@ def test_owner_confirms_payment_and_metrics_count_it(ctx):
 
     p = ctx.client.get("/v1/admin/metrics", headers=ADMIN).json()["payments"]
     assert p["paid"] == 1 and p["paid_clients"] == 1 and p["paid_today"] == 1
-    assert p["revenue"] == {"KZT": "1990.00"} and p["awaiting_confirmation"] == 0
+    assert p["revenue"] == {"KZT": "2990.00"} and p["awaiting_confirmation"] == 0

@@ -739,16 +739,19 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
                 </Button>
               ))}
               <p className="text-xs text-muted">{t("payment.caseHint")}</p>
+              {(pay.bonus_balance ?? 0) > 0 && <p className="text-xs text-muted">{t("payment.bonusHint", { n: pay.bonus_balance ?? 0 })}</p>}
             </>
           ) : kaspiOneTap(pay) ? (
             <>
               {pay.owed && <Alert tone="warning" role="status">{t("payment.owed")}</Alert>}
+              {(pay.bonus_used ?? 0) > 0 && <p className="text-sm text-muted">{t("payment.bonusUsed", { n: pay.bonus_used ?? 0 })} {money(pay.amount, pay.currency)}</p>}
               <KaspiOneTap pay={pay} busy={busy} price={money(pay.amount, pay.currency)} onWay={onWay} />
             </>
           ) : (
             <>
               {waiting && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
               {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
+              {(pay.bonus_used ?? 0) > 0 && <p className="text-sm text-muted">{t("payment.bonusUsed", { n: pay.bonus_used ?? 0 })}</p>}
               <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
               {pay.ways?.length ? (
                 <PaymentWays pay={pay} busy={busy} amount={String(pay.amount)} onWay={onWay}

@@ -43,10 +43,10 @@ def test_yes_after_the_offer_is_the_paid_offer_without_the_model(ctx):
     calls = len(agent.client.calls)
     reply = _say(ctx, api, cid, "Да, покажите")
     assert len(agent.client.calls) == calls  # no model call
-    assert reply["offer_document"] and "PDF и Word" in reply["text"] and "1 990 ₸" in reply["text"]
+    assert reply["offer_document"] and "PDF и Word" in reply["text"] and "2 990 ₸" in reply["text"]
     assert "Кому" not in reply["text"] and "(ваши" not in reply["text"]
     doc = api.get(f"/v1/cases/{cid}/chat/document").json()
-    assert doc["price"] == 1990 and doc["paid"] is False and doc["title"]
+    assert doc["price"] == 2990 and doc["paid"] is False and doc["title"]
 
 
 def test_asking_for_the_document_text_gets_the_offer(ctx):
@@ -103,4 +103,4 @@ def test_the_first_reply_keeps_the_offer_once_the_scenario_is_known(ctx):
     api, cid = _case(ctx)  # the case already has its scenario
     assert _say(ctx, api, cid, "Магазин не возвращает деньги за телевизор")["offer_document"]
     doc = api.get(f"/v1/cases/{cid}/chat/document").json()
-    assert doc["title"] and doc["price"] == 1990 and doc["price_from"] is False
+    assert doc["title"] and doc["price"] == 2990 and doc["price_from"] is False

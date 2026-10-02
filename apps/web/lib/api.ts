@@ -211,6 +211,9 @@ export type Payment = {
   last_paid?: { code: string; amount: number; purpose: string; paid_at: string | null } | null;
   credits: number;
   bonus: number;  // referral bonus documents of the owner: they pay for the next document of any case
+  /** Bonus account points of the owner (owner 02.10) and the points the open bill took (its amount is less by them). */
+  bonus_balance?: number;
+  bonus_used?: number;
   subscription: Subscription | null;
 };
 
@@ -303,7 +306,8 @@ export type CaseLawyer = {
 
 export type Identity = { kind: "email" | "phone" | "iin"; display: string; verified_at: string };
 export type Me = { id: string; display_name: string | null; language: string; notify_email: boolean; identities: Identity[];
-  bonus_documents: number };  // free documents for inviting a friend who paid (any case)
+  bonus_documents: number;  // free documents for inviting a friend who paid (any case)
+  bonus_balance?: number };  // bonus account points: they pay part of a document bill
 export type AuthMethods = { email: boolean; phone: boolean; ecp: boolean; egov: boolean; google?: boolean; apple?: boolean };
 export type SignedIn = { token: string; me: Me };
 

@@ -83,4 +83,4 @@ actions:
     kind: handoff
     when: complaint_benefit_refusal.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (административный иск в суд), kk: Істі заңгерге беру (сотқа әкімшілік талап)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

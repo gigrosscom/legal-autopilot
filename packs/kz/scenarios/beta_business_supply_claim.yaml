@@ -90,4 +90,4 @@ actions:
     kind: handoff
     when: claim_to_supplier.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (иск), kk: Істі заңгерге беру (талап қою)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

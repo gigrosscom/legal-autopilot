@@ -190,7 +190,7 @@ def looks_like_document(text: str) -> bool:
 
 def document_offer(session: Session, container: Container, case: Case, lang: str) -> dict[str, Any]:
     """What the paid document is: its title, price and whether it is paid — for the card in the chat. Before the
-    scenario is known the price is the lowest document price of the country («от 1 990 ₸»)."""
+    scenario is known the price is the lowest document price of the country («от 2 990 ₸»)."""
     from ..core.bill import BillWords
 
     eng = container.engine
