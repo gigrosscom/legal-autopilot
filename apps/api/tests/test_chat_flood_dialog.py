@@ -60,3 +60,13 @@ def test_model_steps_against_the_route_fall_back_to_the_route(ctx):
     text = _say(ctx, api, cid, "Ущерб 450 000 тенге, акт есть, 25.09.2026.")["text"]
     assert text.startswith("Что делать:\n1. **Тот, кто причинил ущерб, — претензия**.")
     assert "Подготовьте документы для суда" not in text
+
+
+def test_complete_facts_solution_without_a_question_before_it(ctx):
+    reply = ("Здравствуйте! Пришлите фото акта. Сосед — собственник?\n\n" + SOLUTION)
+    api, cid = _flood(ctx, reply)
+    from .conftest import complete_facts
+
+    complete_facts(ctx, cid)
+    text = _say(ctx, api, cid, "Ущерб 450 000 тенге, акт есть, 25.09.2026.")["text"]
+    assert text.startswith("Что делать:\n1. **Направьте соседу претензию**") and "Сосед — собственник?" not in text

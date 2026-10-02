@@ -550,7 +550,13 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 text = own[-1].strip() if own else q
                 result.offer_document = False
                 log.info("chat=solution_held case=%s missing=%s", case_pk, missing)
-            elif route:
+            else:
+                # the facts are in: the solution starts with «Что делать:» — no greeting, no question before it
+                # (QA gate 02.10: K3, K6, K9 asked and solved in one reply)
+                head = re.search(r"(?m)^\s*(?:Что делать:|Не істеу керек:)", text)
+                if head and head.start() > 0 and "[[MORE]]" not in text[:head.start()]:
+                    text = text[head.start():].lstrip()
+            if not q and route:
                 short = re.split(r"\[\[\s*MORE\s*\]\]", text, maxsplit=1)
                 first = next((ln for ln in short[0].splitlines() if re.match(r"\s*\**\s*1[.)]", ln)), "")
                 want = document_kinds(route[0].get("label") or "", kinds)
