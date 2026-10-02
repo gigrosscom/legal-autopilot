@@ -17,6 +17,7 @@ export type PilotRequest = {
   id: number; status: "new" | "accepted" | "declined" | "paid" | "closed"; application_id: number;
   lawyer: { name: string; kind: string } | null; price: number | null; created_at: string;
   invoice: LawyerBill | null; payment_available: boolean;
+  direct?: boolean;  // the client pays the lawyer directly, by the lawyer's contract and bill (owner 01.10)
 };
 type PilotState = {
   lawyers: PilotLawyer[]; currency: string; request: PilotRequest | null; last: PilotRequest | null;
@@ -90,8 +91,9 @@ export function LawyerPilot({ caseId, onChange }: { caseId: string; onChange?: (
 
       {req?.status === "accepted" && (
         <div className="card space-y-3">
-          <p className="flex items-start gap-2 text-sm"><Icon name="checkCircle" size={20} className="shrink-0 text-brand" />{t("pilot.accepted", { name: lawyerName })}</p>
-          {!bill && (s.payment_available ? (
+          <p className="flex items-start gap-2 text-sm"><Icon name="checkCircle" size={20} className="shrink-0 text-brand" />{t(req.direct ? "pilot.acceptedDirect" : "pilot.accepted", { name: lawyerName })}</p>
+          {req.direct && <p className="rounded-xl bg-sand p-3 text-sm">{t("pilot.directNext")}</p>}
+          {!req.direct && !bill && (s.payment_available ? (
             <Button className="min-h-12 w-full" disabled={busy} icon="coin" onClick={() => run(`/v1/cases/${caseId}/lawyer-payment`)}>
               {t("pilot.pay", { price: money(req.price ?? 0, s.currency) })}
             </Button>
