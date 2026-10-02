@@ -101,4 +101,4 @@ actions:
     kind: handoff
     when: complaint_arrf.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (иск к страховой или виновнику), kk: Істі заңгерге беру (сақтандыру компаниясына не кінәліге талап қою)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

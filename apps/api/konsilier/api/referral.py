@@ -1,7 +1,9 @@
 """Referral programme: every person has an invite link; new people who come by it are counted to the inviter.
 
-Attribution and counts live here. The reward: when an invited person pays for the first time, both they and the
-inviter get one free document (users.bonus_documents; credited in CaseEngine._referral_bonus).
+Attribution and counts live here. The reward (owner 02.10, «Бонусный счёт»): the invited person gets
+REFERRAL_BONUS_POINTS on their bonus account on joining by the link (here), the inviter as many when that person
+first pays (CaseEngine._referral_bonus); points pay part of a document bill. With REFERRAL_BONUS_POINTS=0 — the old
+reward: one free document to each on the first payment (users.bonus_documents).
 """
 
 from __future__ import annotations
@@ -29,14 +31,15 @@ def clean_source(src: str | None) -> str | None:
     return value or None
 
 
-def attribute(session: Session, user: User, ref: str | None, src: str | None) -> None:
-    """Record who invited a new person and the channel they came from."""
+def attribute(session: Session, user: User, ref: str | None, src: str | None, bonus_points: int = 0) -> None:
+    """Record who invited a new person and the channel they came from; an invited person gets `bonus_points`."""
     inviter = None
     code = (ref or "").strip().lower()
     if code:
         inviter = session.scalar(select(User).where(User.ref_code == code[:12]))
-    if inviter is not None:
+    if inviter is not None and user.referred_by is None and inviter is not user:
         user.referred_by = inviter.id
+        user.bonus_balance = (user.bonus_balance or 0) + max(0, bonus_points)
     user.source = clean_source(src) or ("referral" if inviter is not None else None)
 
 
@@ -56,7 +59,7 @@ def my_referral(user: User = Depends(current_user), session: Session = Depends(g
     active = session.scalar(select(func.count(func.distinct(Case.owner_id))).join(User, User.id == Case.owner_id)
                             .where(User.referred_by == user.id)) or 0
     return {"code": code, "link": f"{SITE}/?ref={code}", "invited": invited, "active": active,
-            "bonus_documents": user.bonus_documents}
+            "bonus_documents": user.bonus_documents, "bonus_balance": user.bonus_balance}
 
 
 def referral_metrics(session: Session) -> dict[str, Any]:

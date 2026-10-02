@@ -148,6 +148,8 @@ def merge_users(session: Session, src: User, dst: User) -> None:
                 session.execute(table.update().where(col == src.id).values({col.name: dst.id}))
     dst.bonus_documents += src.bonus_documents
     src.bonus_documents = 0
+    dst.bonus_balance += src.bonus_balance
+    src.bonus_balance = 0
     dst.email, dst.phone = dst.email or src.email, dst.phone or src.phone
     dst.display_name = dst.display_name or src.display_name
     session.flush()
@@ -156,6 +158,6 @@ def merge_users(session: Session, src: User, dst: User) -> None:
 
 def me_view(user: User) -> dict:
     return {"id": str(user.id), "display_name": user.display_name, "language": user.language,
-            "notify_email": user.notify_email, "bonus_documents": user.bonus_documents,
+            "notify_email": user.notify_email, "bonus_documents": user.bonus_documents, "bonus_balance": user.bonus_balance,
             "identities": [{"kind": i.kind, "display": i.display, "verified_at": i.verified_at.isoformat()}
                            for i in sorted(user.identities, key=lambda i: i.verified_at)]}

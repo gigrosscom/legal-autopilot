@@ -125,6 +125,10 @@ class EngineConfig:
     trust_kaspi_link: bool = True
     # owner 02.10: until the payment is set up, «Я оплатил(а)» gives the document on trust for every way to pay
     trust_all: bool = False
+    # owner 02.10 «Бонусный счёт»: points to the invited person (on joining) and to the inviter (on that person's
+    # first payment); 0 = the old reward, one free document each. At most referral_bonus_max_share of a bill.
+    referral_bonus_points: int = 0
+    referral_bonus_max_share: float = 0.5
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
     plan_days: int = 30
@@ -1166,22 +1170,45 @@ class CaseEngine:
             if open_inv.status == "awaiting_confirmation":
                 raise EngineError("invoice_awaiting_confirmation")
         self._stop_if_unpaid(session, user_id)
-        if open_inv is not None:
-            open_inv.status = "cancelled"
         if not self.payments.available():
             raise EngineError("payment_unavailable")
-        bill = self.payments.create_invoice(case_id=str(case.id) if case else "", amount=amount, currency=currency)
+        if open_inv is not None:
+            open_inv.status = "cancelled"
+            self._return_bonus(session, open_inv)
+        owner = session.get(User, user_id)
+        points = self.bonus_for(owner, amount) if purpose != "plan" else 0
+        bill = self.payments.create_invoice(case_id=str(case.id) if case else "", amount=amount - points,
+                                            currency=currency)
         inv = Invoice(case_id=case.id if case else None, user_id=user_id, purpose=purpose, plan=plan, code=bill.id,
-                      method=self.payments.method, amount=bill.amount, currency=bill.currency, status=bill.status)
+                      method=self.payments.method, amount=bill.amount, currency=bill.currency, status=bill.status,
+                      bonus_used=points)
+        if points:
+            owner.bonus_balance -= points
         session.add(inv)
         session.flush()
         if case is not None:
             self.audit(session, case, actor, "invoice_created", invoice=inv.code, purpose=purpose,
-                       status=inv.status, amount=str(inv.amount), currency=inv.currency)
+                       status=inv.status, amount=str(inv.amount), currency=inv.currency, bonus_used=points)
         if bill.status == "paid":
             inv.decided_at = utcnow()
             self._apply_paid(session, inv)
         return inv
+
+    def bonus_for(self, owner: User | None, amount: Decimal) -> int:
+        """Bonus points that pay part of a bill of `amount`: the whole balance, at most referral_bonus_max_share of
+        the bill (whole points). The rest is paid as usual."""
+        if owner is None or owner.bonus_balance <= 0:
+            return 0
+        cap = int(amount * Decimal(str(self.config.referral_bonus_max_share)))
+        return max(0, min(owner.bonus_balance, cap))
+
+    def _return_bonus(self, session: Session, inv: Invoice) -> None:
+        """A bill cancelled before it was paid gives its bonus points back."""
+        if inv.bonus_used:
+            owner = session.get(User, inv.user_id)
+            if owner is not None:
+                owner.bonus_balance += inv.bonus_used
+            inv.bonus_used = 0
 
     def _apply_paid(self, session: Session, inv: Invoice) -> None:
         """What a paid bill gives: a document credit, the whole case, or a subscription period (and, for an invited
@@ -1219,10 +1246,22 @@ class CaseEngine:
         inviter = session.get(User, payer.referred_by)
         if inviter is None or inviter.id == payer.id:
             return
-        payer.bonus_documents += 1
-        inviter.bonus_documents += 1
         case = session.get(Case, inv.case_id) if inv.case_id is not None else None
         pack = self.pack_of(case) if case is not None else next(iter(self.packs.packs.values()), None)
+        points = self.config.referral_bonus_points
+        if points > 0:  # the bonus account: the invited person got theirs on joining (referral.attribute)
+            inviter.bonus_balance += points
+            if case is not None:
+                self.audit(session, case, "system", "referral_bonus", invoice=inv.code, inviter=str(inviter.id),
+                           points=points)
+            default = (f"Человек, которого вы пригласили, оплатил документ. Спасибо! На ваш бонусный счёт начислено "
+                       f"{points} бонусов.")
+            text = (pack.t(pack.lang(inviter.language), "notifications.referral_points_inviter", default=default,
+                           n=points) if pack else default)
+            self.notifier.notify_user(session, inviter, "referral", text, case=None)
+            return
+        payer.bonus_documents += 1
+        inviter.bonus_documents += 1
         if case is not None:
             self.audit(session, case, "system", "referral_bonus", invoice=inv.code, inviter=str(inviter.id))
         for user, key, default in (
@@ -1455,6 +1494,8 @@ class CaseEngine:
             "case_paid": case.paid, "credits": case.doc_credits,
             "trusted": inv is not None and inv.trusted_at is not None, "owed": self.in_debt(session, case.owner_id),
             "bonus": self.bonus_documents(session, case.owner_id),
+            "bonus_balance": (owner.bonus_balance if (owner := session.get(User, case.owner_id)) else 0),
+            "bonus_used": inv.bonus_used if inv is not None else 0,
             "subscription": self.subscription_view(session, case.owner_id)}
         if inv is not None and status != "paid":
             view.update(self.payments.details())

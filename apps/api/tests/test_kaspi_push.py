@@ -101,14 +101,14 @@ def test_one_bill_is_paid_at_once_and_the_document_follows(ctx):
     api, cid, pay = pressed_pay(ctx, "+7 701 555 00 41")
     assert not any(m[0] == DESK for m in outbox.sent)  # «Оплатить» mails no one: the push will confirm it
     outbox.sent.clear()
-    r = push(ctx, "Поступила оплата 1 990 ₸ от Имя Ф.")
+    r = push(ctx, "Поступила оплата 2 990 ₸ от Имя Ф.")
     assert r["status"] == "matched" and r["invoice"] == pay["code"]
     assert status(ctx, pay["invoice_id"]) == "paid"
     with ctx.container.session_factory() as s:
         inv = s.get(Invoice, pay["invoice_id"])
         assert inv.decided_by == "kaspi:push"
         row = s.scalar(select(KaspiPush))
-        assert (row.amount, row.payer, row.invoice_id) == (Decimal("1990.00"), "Имя Ф.", inv.id)
+        assert (row.amount, row.payer, row.invoice_id) == (Decimal("2990.00"), "Имя Ф.", inv.id)
         assert s.scalar(select(Notification).where(Notification.kind == "payment")).text.startswith("Оплата получена")
     assert not any("проверьте" in m[1] for m in outbox.sent)  # nothing for the desk
     # the document was prepared right after the commit, as after the desk's «Оплата получена»
@@ -124,7 +124,7 @@ def test_confirmation_is_immediate(ctx):
     on(ctx, background="off")  # only what the request itself does
     api, cid, pay = pressed_pay(ctx, "+7 701 555 00 42")
     started = time.perf_counter()
-    r = push(ctx, "+1990 ₸")
+    r = push(ctx, "+2990 ₸")
     assert time.perf_counter() - started < 1.0
     assert r["status"] == "matched" and status(ctx, pay["invoice_id"]) == "paid"
     with ctx.container.session_factory() as s:
@@ -138,13 +138,13 @@ def test_duplicate_push_counts_once(ctx):
     on(ctx)
     _, _, a = pressed_pay(ctx, "+7 701 555 00 43")
     _, _, b = pressed_pay(ctx, "+7 701 555 00 44")
-    first = push(ctx, "1 990 ₸ от Имя Ф.", posted_at="1759300000000")
-    again = push(ctx, "1 990 ₸ от Имя Ф.", posted_at="1759300000000")
+    first = push(ctx, "2 990 ₸ от Имя Ф.", posted_at="1759300000000")
+    again = push(ctx, "2 990 ₸ от Имя Ф.", posted_at="1759300000000")
     assert first["status"] == "ambiguous" and again["status"] == "duplicate" and again["duplicate_of"] == first["id"]
     with ctx.container.session_factory() as s:
         assert len(s.scalars(select(KaspiPush)).all()) == 2  # both kept, for tuning
     # the same text at another time is another payment
-    assert push(ctx, "1 990 ₸ от Имя Ф.", posted_at="1759300090000")["status"] == "ambiguous"
+    assert push(ctx, "2 990 ₸ от Имя Ф.", posted_at="1759300090000")["status"] == "ambiguous"
     assert status(ctx, a["invoice_id"]) == status(ctx, b["invoice_id"]) == "awaiting_confirmation"
 
 
@@ -153,7 +153,7 @@ def test_two_candidates_go_to_the_desk(ctx):
     _, _, a = pressed_pay(ctx, "+7 701 555 00 45")
     _, _, b = pressed_pay(ctx, "+7 701 555 00 46")
     outbox.sent.clear()
-    r = push(ctx, "Поступила оплата 1 990 ₸ от Имя Ф.")
+    r = push(ctx, "Поступила оплата 2 990 ₸ от Имя Ф.")
     assert r["status"] == "ambiguous" and r["candidates"] == 2
     assert status(ctx, a["invoice_id"]) == status(ctx, b["invoice_id"]) == "awaiting_confirmation"  # «ждёт сверки»
     to, subject, text = next(m for m in outbox.sent if m[0] == DESK)
@@ -180,7 +180,7 @@ def test_zero_candidates_go_to_the_desk(ctx):
         s.execute(update(Invoice).values(claimed_at=utcnow() - timedelta(minutes=61),
                                          updated_at=utcnow() - timedelta(minutes=61)))
         s.commit()
-    assert push(ctx, "+1 990 ₸ от Имя Ф.")["status"] == "unmatched"
+    assert push(ctx, "+2 990 ₸ от Имя Ф.")["status"] == "unmatched"
     desk = operator(ctx, DESK)
     listed = desk.get("/v1/ops/clients/payments/kaspi").json()
     assert listed["enabled"] and {p["status"] for p in listed["pushes"]} == {"unmatched"}
@@ -192,7 +192,7 @@ def test_zero_candidates_go_to_the_desk(ctx):
 def test_push_before_the_claim_is_matched_on_the_claim(ctx):
     on(ctx)
     api, cid, pay = open_bill(ctx, phone="+7 701 555 00 48")
-    assert push(ctx, "+1990 ₸")["status"] == "unmatched"  # paid by the link before «Оплатить» on the site
+    assert push(ctx, "+2990 ₸")["status"] == "unmatched"  # paid by the link before «Оплатить» on the site
     api.post(f"/v1/invoices/{pay['invoice_id']}/way", json={"way": "kaspi_link"})
     assert status(ctx, pay["invoice_id"]) == "paid"
 
@@ -224,7 +224,7 @@ def test_reminder_once_after_15_minutes_and_no_new_bills_until_paid(ctx):
         assert job(s, utcnow() + timedelta(hours=3)) == 0  # one reminder only
         s.commit()
     notes = payment_notes()
-    assert len(notes) == 1 and "Мы пока не видим оплату 1 990 ₸" in notes[0]
+    assert len(notes) == 1 and "Мы пока не видим оплату 2 990 ₸" in notes[0]
     assert any(m[0] == "client@mail.kz" and "не видим оплату" in m[2] for m in outbox.sent)  # also by e-mail to the client
     # new documents are stopped: no bill for the other case, no plan
     r = ctx.client.post(f"/v1/cases/{cid2}/payment", json={"purpose": "document"}, headers=api.h)
@@ -232,5 +232,5 @@ def test_reminder_once_after_15_minutes_and_no_new_bills_until_paid(ctx):
     assert pay["code"] in r.json()["detail"]["message"]
     assert ctx.client.post("/v1/plans/biz/invoice", headers=api.h).json()["detail"]["code"] == "unpaid_invoice"
     # its push comes (still within the hour of «Оплатить»): paid, and the stop is lifted
-    assert push(ctx, "+1990 ₸")["status"] == "matched"
+    assert push(ctx, "+2990 ₸")["status"] == "matched"
     assert api.post(f"/v1/cases/{cid2}/payment", json={"purpose": "document"})["case"]["payment"]["status"] == "pending"

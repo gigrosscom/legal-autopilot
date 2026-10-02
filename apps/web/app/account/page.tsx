@@ -71,6 +71,9 @@ export default function AccountPage() {
       {me && me.bonus_documents > 0 && (
         <Alert tone="info" icon="checkCircle" role="status">{t("account.bonus", { n: me.bonus_documents })}</Alert>
       )}
+      {me && (me.bonus_balance ?? 0) > 0 && (
+        <Alert tone="info" icon="checkCircle" role="status">{t("account.bonusBalance", { n: me.bonus_balance ?? 0 })}</Alert>
+      )}
 
       {me && me.identities.length > 0 && (
         <section className="card space-y-3" aria-labelledby="verified">
