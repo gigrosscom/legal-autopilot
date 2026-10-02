@@ -80,6 +80,8 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
             "summary": pack.localized(sc.summary, lang) if sc.summary else "",
             "keywords": keywords,
             "examples": examples,
+            "not_when": list(sc.classification.not_when.get(lang, ())) or [
+                x for xs in sc.classification.not_when.values() for x in xs],
         })
     ids = [o["id"] for o in options]
     schema = {
@@ -99,7 +101,11 @@ def qualify(llm: RedactingLLM, scenarios: list[Scenario], packs: dict[str, Juris
         "transliteration, brand and local store or marketplace names (a laptop brand, "
         "a phone model, a chain store, a marketplace app). Work out what actually happened and what "
         "the person wants; judge by meaning, not by exact wording or the keyword list. The examples "
-        "show typical phrasing.\n"
+        "show typical phrasing; not_when lists situations that belong to another scenario — follow it.\n"
+        "Tell apart: applying for something (a benefit, a grant, a tender) from appealing a refusal or the results; "
+        "a loan someone else took in the person's name from a loan the person took themselves (an imposed "
+        "service, trouble paying); a person buying for themselves from a sole trader or company in a business "
+        "contract; not being paid from being dismissed.\n"
         "Return null only when the problem is clearly about something none of the scenarios cover. "
         "If a scenario plausibly fits but details are missing, choose it with a lower confidence — "
         "missing details are asked later. Confidence 0..1: >= 0.8 when the situation clearly matches "

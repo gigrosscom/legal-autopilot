@@ -233,6 +233,9 @@ class PricingSpec(_Strict):
 class ClassificationSpec(_Strict):
     keywords: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     examples: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    # situations that look like this scenario but belong to another one (QA BUG-18: applying ↔ appealing a refusal,
+    # a fraudulent loan ↔ a loan the person took, a consumer ↔ a business): lang → «… → другой сценарий»
+    not_when: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 
 
 class SourceRef(_Strict):
