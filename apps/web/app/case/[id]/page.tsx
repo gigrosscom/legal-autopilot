@@ -921,34 +921,70 @@ function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
     ...(a.has_pdf ? [{ key: "pdf", label: t("helper.doc_fmtPdf"), icon: "document" as IconName, run: () => run(pdf, `${a.action_id}.pdf`) }] : []),
     { key: "docx", label: t("helper.doc_fmtWord"), icon: "document", run: () => run(docx, `${a.action_id}.docx`) },
   ];
+  // owner 02.10: «Скачать · Копию мне на e-mail · Переслать» — for oneself, small, under the path's main button
   const tools: { key: string; icon: IconName; label: string; menu?: MenuItem[]; run?: () => Promise<unknown>; active?: boolean }[] = [
-    { key: "download", icon: "download", label: t("helper.doc_download"), menu: formats(downloadFile) },
-    ...(a.has_pdf ? [{ key: "print", icon: "printer" as IconName, label: t("helper.doc_print"), run: () => printFile(pdf) }] : []),
-    { key: "save", icon: "save", label: t("helper.doc_save"), menu: formats(saveFileAs) },
-    { key: "send", icon: "share", label: t("helper.doc_send"), menu: [
+    { key: "download", icon: "download", label: t("helper.doc_download"), menu: [
+      ...formats(downloadFile),
+      ...(a.has_pdf ? [{ key: "print", label: t("helper.doc_print"), icon: "printer" as IconName, run: () => printFile(pdf) }] : []),
+    ] },
+    // the document itself (PDF and Word) to the client's own confirmed e-mail
+    { key: "copy", icon: "mail", label: t("helper.doc_copyToMe"), run: async () => {
+      const out = await api<{ sent_to: string }>(`/v1/cases/${caseId}/actions/${a.id}/copy-to-me`, { method: "POST" });
+      setNote(copySentText(out.sent_to));
+    } },
+    { key: "forward", icon: "share", label: t("helper.doc_forward"), menu: [
       { key: "whatsapp", label: t("helper.doc_toWhatsapp"), icon: "send", run: sendTo("whatsapp") },
       { key: "telegram", label: t("helper.doc_toTelegram"), icon: "send", run: sendTo("telegram") },
       { key: "mail", label: t("helper.doc_toMail"), icon: "mail", run: sendTo("mail") },
-      // owner 02.10: the document itself (PDF and Word) to the client's own confirmed e-mail
-      { key: "copy", label: t("helper.doc_copyToMe"), icon: "mail", run: async () => {
-        const out = await api<{ sent_to: string }>(`/v1/cases/${caseId}/actions/${a.id}/copy-to-me`, { method: "POST" });
-        setNote(copySentText(out.sent_to));
-      } },
       { key: "other", label: t("helper.doc_toOther"), icon: "share", run: () => shareFile(main.path, main.name, a.title) },
     ] },
-    { key: "sign", icon: signed ? "shieldCheck" : "key", label: signed ? t("helper.doc_signed") : t("helper.doc_sign"),
-      run: async () => setSignOpen((x) => !x), active: signOpen || signed },
   ];
+  // the path: ① sign → ② send to the addressee (its channel is the system's) → ③ the answer by the term
+  const paperKey = `konsilier.paper.${a.id}`;
+  const [paper, setPaper] = useState(false);
+  useEffect(() => { try { setPaper(localStorage.getItem(paperKey) === "1"); } catch {} }, [paperKey]);
+  const sent = !!a.submitted_at || ["submitted", "responded"].includes(a.status);
+  const step = sent ? 3 : signed || paper ? 2 : 1;
+  const goSend = () => document.getElementById(`send-${a.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
-    <div className="space-y-2" ref={ref}>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" role="toolbar" aria-label={a.title}>
+    <div className="space-y-3" ref={ref}>
+      <ol className="grid grid-cols-3 gap-1 text-xs" aria-label={t("helper.doc_path")}>
+        {[t("helper.doc_stepSign"), t("helper.doc_stepSend"), a.deadline
+          ? t("helper.doc_stepWaitUntil", { date: new Date(a.deadline.due_date).toLocaleDateString("ru-RU") })
+          : t("helper.doc_stepWait")].map((label, i) => (
+          <li key={i} aria-current={step === i + 1 ? "step" : undefined}
+            className={`flex items-center gap-1.5 rounded-full px-2 py-1 ${step > i + 1 ? "text-brand" : step === i + 1 ? "bg-brand-50 font-semibold text-ink" : "text-muted"}`}>
+            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${step > i + 1 ? "bg-brand text-white" : "ring-1 ring-current"}`}>
+              {step > i + 1 ? <Icon name="check" size={12} /> : i + 1}
+            </span>
+            <span className="min-w-0 leading-tight">{label}</span>
+          </li>
+        ))}
+      </ol>
+      {step === 1 && (
+        <div className="space-y-1.5">
+          <button type="button" onClick={() => setSignOpen((x) => !x)}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-action px-4 text-base font-semibold text-white hover:bg-action-hover">
+            <Icon name="key" size={20} />{t("helper.doc_sign")}
+          </button>
+          <button type="button" onClick={() => { try { localStorage.setItem(paperKey, "1"); } catch {} setPaper(true); if (a.has_pdf) act("print", () => printFile(pdf)); }}
+            className="w-full text-center text-sm text-brand-dark underline-offset-2 hover:underline">{t("helper.doc_paper")}</button>
+        </div>
+      )}
+      {step === 2 && (
+        <button type="button" onClick={goSend}
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-action px-4 text-base font-semibold text-white hover:bg-action-hover">
+          <Icon name="send" size={20} />{a.addressee?.name ? t("helper.doc_sendTo", { to: a.addressee.name }) : t("helper.doc_send")}
+        </button>
+      )}
+      <div className="grid grid-cols-3 gap-2" role="toolbar" aria-label={a.title}>
         {tools.map((x) => (
           <div key={x.key} className="relative">
             <button type="button" disabled={busy !== null} aria-haspopup={x.menu ? "menu" : undefined}
               aria-expanded={x.menu ? open === x.key : undefined}
               onClick={() => (x.menu ? setOpen(open === x.key ? null : x.key) : act(x.key, x.run!))}
-              className={`flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-xs font-medium hover:border-brand hover:text-brand disabled:opacity-50 ${x.active ? "border-brand bg-brand-50 text-brand" : "border-line bg-surface"}`}>
+              className={`flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-center text-xs font-medium leading-tight hover:border-brand hover:text-brand disabled:opacity-50 ${x.active ? "border-brand bg-brand-50 text-brand" : "border-line bg-surface"}`}>
               <Icon name={busy === x.key ? "spinner" : x.icon} size={22} />
               <span className="flex items-center gap-0.5">{x.label}{x.menu && <Icon name="chevronDown" size={12} />}</span>
             </button>
@@ -1127,17 +1163,20 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
         {a.paid && !a.response_label && <Badge tone="brand" icon="checkCircle">{t("case.paid")}</Badge>}
         {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
       </div>
+      {/* owner 02.10: the path first — sign → send → the answer; how to file follows */}
+      {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
       {a.downloadable && a.filing
         ? <FilingCard id={a.id} f={a.filing} />
         : a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
-      {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
       {/* One sending block: the wizard plans the route (e-mail, a messenger, or the appeal portal for a state body
           — its step opens the portal bridge inside the wizard). Without the wizard (a free document) the portal
           bridge stands alone; the registered appeal is shown with its number and date. */}
+      <div id={`send-${a.id}`} className="scroll-mt-24 space-y-3">
       {wizard && <SendWizard caseId={caseId} a={a} onCase={onCase} />}
       {a.downloadable && !wizard && a.appeal_portal && !a.filed && notSubmitted && <EotinishBridge caseId={caseId} a={a} onCase={onCase} />}
       {a.filed && <EotinishFiled caseId={caseId} a={a} onCase={onCase} />}
       {a.downloadable && !a.appeal_portal && notSubmitted && <SubmitOnline caseId={caseId} a={a} />}
+      </div>
       {a.downloadable && a.instructions.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold">{a.filing ? t("filing.stepByStep") : t("case.instructions")}</p>
