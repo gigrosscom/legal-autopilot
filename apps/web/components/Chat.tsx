@@ -122,7 +122,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
   const [caseId, setCaseId] = useState(initialCase);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // P0 02.10: the paid document of the case — the card «Услуга / Стоимость / Оплатить» under the last reply
-  const [docOffer, setDocOffer] = useState<{ title: string | null; price: number | null; currency: string | null; paid: boolean } | null>(null);
+  const [docOffer, setDocOffer] = useState<{ title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean } | null>(null);
   const [streaming, setStreaming] = useState<string | null>(null);
   // an answer that broke off (or never came): what was shown stays, «Повторить» sends the same message again
   const [failed, setFailed] = useState<{ partial: string; text: string; files: Attached[] } | null>(null);
@@ -300,13 +300,19 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
 
   // once the document was offered, the card stays under the latest reply until the document is paid (P0 02.10)
   const last = messages[messages.length - 1];
-  const offered = messages.some((m) => m.role === "assistant" && m.offer_document);
+  // …and already under the first reply once the case's scenario is known (owner 01.10: the situation is clear)
+  const offered = messages.some((m) => m.role === "assistant" && m.offer_document) || !!docOffer?.title;
   const offerId = streaming === null && last?.role === "assistant" && offered && !docOffer?.paid ? last.id : null;
   const lastId = last?.id;
   useEffect(() => {
     if (!caseId || streaming !== null) return;
-    api<{ title: string | null; price: number | null; currency: string | null; paid: boolean }>(`/v1/cases/${caseId}/chat/document`)
-      .then(setDocOffer).catch(() => {});
+    type Offer = { title: string | null; price: number | null; currency: string | null; price_from?: boolean; paid: boolean };
+    let live = true;
+    const get = () => api<Offer>(`/v1/cases/${caseId}/chat/document`).then((o) => { if (live) setDocOffer(o); }).catch(() => {});
+    get();
+    // the scenario of a new chat is worked out in the background after the first reply: look again shortly
+    const again = setTimeout(get, 5000);
+    return () => { live = false; clearTimeout(again); };
   }, [caseId, lastId, streaming]);
 
   const links: MoreLink[] = [
@@ -421,7 +427,7 @@ export function Chat({ caseId: initialCase, draft: initialDraft = "", autoSend =
                     <dd className="text-end font-semibold">{docOffer?.title ?? t("chat.doc")}</dd>
                     <dt className="text-muted">{t("chat.docCost")}</dt>
                     <dd className="text-end font-semibold tabular-nums">
-                      {docOffer?.price ? `${docOffer.price.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${docOffer.currency ?? ""}`.trim() : t("chat.docPrice")}
+                      {docOffer?.price && !docOffer.price_from ? `${docOffer.price.toLocaleString("ru-RU").replace(/\u00a0/g, " ")} ${docOffer.currency ?? ""}`.trim() : t("chat.docPrice")}
                     </dd>
                   </dl>
                   <Link href={`/case/${caseId}?pay=1`}
