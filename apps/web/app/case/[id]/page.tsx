@@ -15,7 +15,7 @@ import { SendWizard } from "@/components/SendWizard";
 import { ChooseLawyer } from "@/components/ChooseLawyer";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
-import { DraftPreview } from "@/components/DraftPreview";
+import { DraftPreview, draftSaved } from "@/components/DraftPreview";
 import { EotinishBridge, EotinishFiled } from "@/components/EotinishBridge";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
@@ -210,6 +210,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   }
 
   async function choosePayment(purpose: string) {
+    await draftSaved();  // what was just typed in the draft's blanks is in the case first: never asked twice (PM 02.10)
     await run(async () => {
       try {
         const out = await api<{ case: CaseView }>(`/v1/cases/${id}/payment`, { method: "POST", body: JSON.stringify({ purpose }) });

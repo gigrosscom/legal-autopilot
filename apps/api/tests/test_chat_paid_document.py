@@ -53,7 +53,7 @@ def test_asking_for_the_document_text_gets_the_offer(ctx):
     ctx.container.chat_agent = _agent(CLAIM)
     api, cid = _case(ctx)
     reply = _say(ctx, api, cid, "Составьте мне претензию")
-    assert reply["offer_document"] and "Составлю" in reply["text"]
+    assert reply["offer_document"] and reply["text"].startswith("Документ: ")
 
 
 def test_a_written_out_document_is_cut(ctx):
@@ -76,3 +76,31 @@ def test_document_signs():
 def test_the_prompt_forbids_writing_the_document():
     from konsilier.chat import PAID_DOCUMENT_RULE
     assert "Never write the text of a claim" in PAID_DOCUMENT_RULE and "{offer_marker}" in PAID_DOCUMENT_RULE
+
+
+def test_the_offer_is_in_the_persons_language_with_the_price(ctx):
+    from konsilier.api.chat import offer_text
+    pack = ctx.container.packs.pack("KZ")
+    kk = offer_text({"title": "Сатушыға наразылық", "price": 1990.0, "currency": "₸"}, "kk", pack)
+    assert kk.startswith("Құжат: Сатушыға наразылық") and "1 990 ₸" in kk and "Документ" not in kk
+    ru = offer_text({"title": None, "price": 1990.0, "currency": "₸", "price_from": True}, "ru", pack)
+    assert "от 1 990 ₸" in ru
+
+
+def test_kazakh_yes_after_the_offer(ctx):
+    ctx.container.chat_agent = _agent("Ақшаны қайтаруға болады.\n[[MORE]]\nНаразылық дайындаймын.\n[[DOCUMENT]]",
+                                      "Ақшаны қайтаруға болады.\n[[MORE]]\nНаразылық дайындаймын.\n[[DOCUMENT]]")
+    api, cid = _case(ctx)
+    for text in ("Сатушы ақшаны қайтармайды", "Чек бар"):
+        ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": text, "language": "kk"})
+    r = ctx.client.post(f"/v1/cases/{cid}/chat", headers=api.h, json={"text": "Иә, көрсетіңіз", "language": "kk"})
+    reply = _sse(r)[-1]["message"]
+    assert reply["offer_document"] and reply["text"].startswith("Құжат:") and "₸" in reply["text"]
+
+
+def test_the_first_reply_keeps_the_offer_once_the_scenario_is_known(ctx):
+    ctx.container.chat_agent = _agent("Можно вернуть деньги.\n[[MORE]]\nСоставлю претензию продавцу.\n[[DOCUMENT]]")
+    api, cid = _case(ctx)  # the case already has its scenario
+    assert _say(ctx, api, cid, "Магазин не возвращает деньги за телевизор")["offer_document"]
+    doc = api.get(f"/v1/cases/{cid}/chat/document").json()
+    assert doc["title"] and doc["price"] == 1990 and doc["price_from"] is False
