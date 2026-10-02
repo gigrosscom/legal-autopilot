@@ -12,6 +12,8 @@ type Req = {
   summary: { title: string | null; category: string | null; city: string | null; amount_at_stake: string | null;
     currency: string | null };
   client: { name: string; phone: string; email: string | null } | null;
+  direct?: boolean;      // the client pays the lawyer directly (owner 01.10); 15 % to the platform monthly
+  commission?: number;   // direct, paid: the platform's commission for the month's bill
 };
 type Dossier = {
   case_id: string; title: string | null; status_label: string;
@@ -34,7 +36,7 @@ export function LawyerRequests() {
   const load = useCallback(() => api<Req[]>("/v1/lawyer/requests").then(setRows).catch((e) => setError(errorText(e))), []);
   useEffect(() => { load(); }, [load]);
 
-  async function answer(id: number, what: "accept" | "decline") {
+  async function answer(id: number, what: "accept" | "decline" | "client-paid") {
     setBusy(id);
     setError(null);
     try {
@@ -72,14 +74,25 @@ export function LawyerRequests() {
                   <Button variant="secondary" className="min-h-11" disabled={busy === r.id} onClick={() => answer(r.id, "decline")}>{t("lawyer.requests.decline")}</Button>
                 </div>
               )}
-              {r.status === "accepted" && <p className="text-sm text-muted">{t("lawyer.requests.waitPayment")}</p>}
+              {r.status === "accepted" && !r.direct && <p className="text-sm text-muted">{t("lawyer.requests.waitPayment")}</p>}
+              {r.status === "accepted" && r.direct && (
+                <div className="space-y-2">
+                  <p className="text-sm">{t("lawyer.requests.directNext")}</p>
+                  <Button className="min-h-11 w-full" disabled={busy === r.id} icon="check" onClick={() => answer(r.id, "client-paid")}>
+                    {t("lawyer.requests.clientPaid")}
+                  </Button>
+                </div>
+              )}
+              {r.status === "paid" && r.direct && r.commission != null && (
+                <p className="text-sm text-muted">{t("lawyer.requests.commissionDue", { amount: money(r.commission, r.currency) })}</p>
+              )}
               {r.client && (
                 <p className="rounded-xl bg-sand p-3 text-sm">
                   <span className="block text-xs text-muted">{t("lawyer.requests.client")}</span>
                   {r.client.name} · <span dir="ltr">{r.client.phone}</span>{r.client.email ? ` · ${r.client.email}` : ""}
                 </p>
               )}
-              {(r.status === "paid" || r.status === "closed") && <DossierView caseId={r.case_id} />}
+              {(r.status === "paid" || r.status === "closed" || (r.direct && r.status === "accepted")) && <DossierView caseId={r.case_id} />}
             </li>
           );
         })}

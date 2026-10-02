@@ -146,8 +146,18 @@ def filing_view(pack: "JurisdictionPack", sc: Scenario, spec: ActionSpec, *, lan
                       "phone_ok": bool(isinstance(devices, dict) and devices.get("phone_ok", True))}
 
     signature = filing.signature if filing else None
+    name = addressee.get("name") or None
+    if name is None and spec.addressee is not None and spec.addressee.party:
+        # the other side's name is not known yet: say who it is («Работодатель»), not «уточнит юрист»
+        party = sc.parties.get(spec.addressee.party)
+        field = getattr(party, "name_field", None)
+        if field:
+            try:
+                name = ai.field_label(sc, pack, lang, field)
+            except KeyError:
+                name = None
     return {
-        "to": {"name": addressee.get("name") or None, "address": addressee.get("address") or None,
+        "to": {"name": name, "address": addressee.get("address") or None,
                "email": email or None},
         "response": response,
         "file_by": file_by,

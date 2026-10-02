@@ -75,4 +75,4 @@ actions:
     kind: handoff
     when: complaint_superior.response in [none, refusal, partial]
     title: {ru: Передача дела юристу (обжалование в суде), kk: Істі заңгерге беру (сотта шағымдану)}
-pricing: {model: fixed, amount: 1990, currency: KZT}
+pricing: {model: fixed, amount: 2990, currency: KZT}

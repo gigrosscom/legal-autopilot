@@ -301,11 +301,11 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
 }
 
 /** The install button of the header menu and the footer. */
-export function InstallApp({ className = "" }: { className?: string }) {
+export function InstallApp({ className = "", full = false }: { className?: string; full?: boolean }) {
   return (
     <div className={className} onClickCapture={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}>
       <InstallButton icon="smartphone"
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand [&>svg]:text-brand" />
+        className={`${full ? "flex w-full justify-center" : "inline-flex"} min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm font-semibold hover:border-brand hover:text-brand [&>svg]:text-brand`} />
     </div>
   );
 }
@@ -364,7 +364,7 @@ export function AppBanner({ above = false }: { above?: boolean }) {
   };
   return (
     <div role="region" aria-label={t(kind === "push" ? "push.title" : "pwa.bannerTitle")}
-      className={`fixed inset-x-3 z-30 lg:hidden ${above ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"}`}>
+      className={`fixed inset-x-3 z-30 lg:hidden ${above ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom)+var(--app-gap,0px))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"}`}>
       <div className="mx-auto flex max-w-lg items-center gap-3 rounded-2xl bg-surface p-3 shadow-[0_8px_30px_rgb(0_0_0/0.16)] ring-1 ring-ink/[0.06]">
         <Icon name={kind === "push" ? "bell" : "smartphone"} size={22} className="shrink-0 text-brand" />
         <p className="min-w-0 flex-1 text-sm leading-snug">
@@ -372,10 +372,10 @@ export function AppBanner({ above = false }: { above?: boolean }) {
           {kind === "install" && <span className="block text-muted">{t("pwa.bannerText")}</span>}
         </p>
         {kind === "install"
-          ? <InstallButton onInstalled={dismiss} className="btn-primary min-h-9 shrink-0 px-3 text-sm" />
-          : <button type="button" onClick={enable} className="btn-primary min-h-9 shrink-0 px-3 text-sm">{t("push.enable")}</button>}
+          ? <InstallButton onInstalled={dismiss} className="btn-primary min-h-11 shrink-0 px-3 text-sm" />
+          : <button type="button" onClick={enable} className="btn-primary min-h-11 shrink-0 px-3 text-sm">{t("push.enable")}</button>}
         <button type="button" onClick={dismiss} aria-label={t("app.close")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={18} /></button>
+          className="-me-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-sand"><Icon name="x" size={18} /></button>
       </div>
     </div>
   );

@@ -189,34 +189,44 @@ def looks_like_document(text: str) -> bool:
 
 
 def document_offer(session: Session, container: Container, case: Case, lang: str) -> dict[str, Any]:
-    """What the paid document is: its title, price and whether it is paid — for the card in the chat."""
+    """What the paid document is: its title, price and whether it is paid — for the card in the chat. Before the
+    scenario is known the price is the lowest document price of the country («от 2 990 ₸»)."""
+    from ..core.bill import BillWords
+
     eng = container.engine
-    title, price, currency = None, None, None
-    if case.scenario_id:
-        try:
-            sc, pack = eng.scenario_of(case), eng.pack_of(case)
+    title, price, currency, from_ = None, None, None, False
+    try:
+        pack = eng.pack_of(case)
+        if case.scenario_id:
+            sc = eng.scenario_of(case)
             spec = eng.next_action_spec(case, sc)
             if spec is not None:
                 title = pack.localized(spec.title, pack.lang(lang))
             p = eng.price(case)
             if p is not None:
-                from ..core.bill import BillWords
-                price, currency = float(p[0]), BillWords.of(pack, p[1]).sign or p[1]  # «₸» from the pack
-        except Exception:  # noqa: BLE001 — the card works without them
-            log.warning("document offer for case %s", case.id, exc_info=True)
+                price, currency = float(p[0]), BillWords.of(pack, p[1]).sign or p[1]
+        if price is None:
+            prices = [s.pricing.amount for s in eng.packs.published(pack.country)
+                      if s.pricing.model == "fixed" and s.pricing.amount]
+            if prices:
+                price, currency, from_ = float(min(prices)), BillWords.of(pack, pack.currency).sign or pack.currency, True
+    except Exception:  # noqa: BLE001 — the card works without them
+        log.warning("document offer for case %s", case.id, exc_info=True)
     paid = bool(case.paid) or any(a.unlocked_by is not None for a in case.actions)
-    return {"title": title, "price": price, "currency": currency, "paid": paid}
+    return {"title": title, "price": price, "currency": currency, "price_from": from_, "paid": paid}
 
 
-def offer_text(offer: dict[str, Any], lang: str) -> str:
-    """The paid offer, in place of the document's text (the price is the case's own)."""
-    price = f" — {offer['price']:,.0f} {offer.get('currency') or ''}".replace(",", " ").rstrip() if offer.get("price") else ""
+def offer_text(offer: dict[str, Any], lang: str, pack: Any) -> str:
+    """The paid offer in the person's language, from the pack's texts (chat_offer), always with the price."""
+    lg = pack.lang(lang)
+    amount = f"{offer['price']:,.0f}".replace(",", " ") if offer.get("price") else ""
+    price = f"{amount} {offer.get('currency') or ''}".strip()
+    if offer.get("price_from"):
+        price = pack.t(lg, "chat_offer.price_from", price=price)
     title = (offer.get("title") or "").strip()
-    if lang == "kk":
-        what = title.lower() if title else "құжатты"
-        return f"Сіздің деректеріңізбен {what} дайындаймын: дайын PDF және Word{price}. Төмендегі батырманы басыңыз."
-    what = title[:1].lower() + title[1:] if title else "документ"
-    return f"Составлю {what} с вашими данными: готовый PDF и Word{price}. Нажмите кнопку ниже."
+    if title:
+        return pack.t(lg, "chat_offer.document", title=title, price=price)
+    return pack.t(lg, "chat_offer.untitled", price=price)
 
 
 class ChatIn(BaseModel):
@@ -286,6 +296,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     # can be measured from outside without the server logs; never for a real person
     diagnostics = bool(user.is_test)
     first_reply = not any(m.role == "assistant" for m in rows)
+    if not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        # the first message said too little to classify: try again with what the person tells now (PM 02.10)
+        after_commit(session, container, lambda s: container.engine.requalify_from_chat(s, case_pk), "requalify")
     session.commit()  # the user's message is saved even if the reply fails
 
     agents = [a for a in (agent, container.chat_fallback_agent) if a is not None]
@@ -317,7 +330,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
             c = s.get(Case, case_pk)
             offer = document_offer(s, container, c, reply_lang)
             if not offer["paid"]:
-                m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=offer_text(offer, reply_lang),
+                m = ChatMessage(case_id=case_pk, user_id=None, role="assistant", text=offer_text(offer, reply_lang, container.engine.pack_of(c)),
                                 meta={"provider": "offer", "offer_document": True, "pay_now": True})
                 s.add(m)
                 container.engine.audit(s, c, f"user:{user_pk}", "chat_document_offer")
@@ -372,14 +385,20 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         if cut:
             # P0 02.10: the model wrote the document out — keep the short answer, the document is the paid offer
             with container.session_factory() as s:
-                offer = document_offer(s, container, s.get(Case, case_pk), reply_lang)
+                cc = s.get(Case, case_pk)
+                offer = document_offer(s, container, cc, reply_lang)
+                pack_cc = container.engine.pack_of(cc)
             short = re.split(r"\[\[\s*MORE\s*\]\]", text)[0].strip()
             short = "" if looks_like_document(short) else short
-            text = f"{short}\n\n{offer_text(offer, reply_lang)}".strip()
+            text = f"{short}\n\n{offer_text(offer, reply_lang, pack_cc)}".strip()
             result.offer_document = True
             log.warning("chat=document_text_cut case=%s", case_pk)
         # owner 30.09: not in the first reply — unless the person asks for a document or attached documents (01.10)
-        if result.offer_document and first_reply and not ASKS_FOR_DOCUMENT.search(body.text) and not body.attachments:
+        # owner 01.10 (decision 167): in the first reply too when the situation is clear — the scenario is known
+        with container.session_factory() as s:
+            clear = bool(getattr(s.get(Case, case_pk), "scenario_id", None))
+        if result.offer_document and first_reply and not clear and not ASKS_FOR_DOCUMENT.search(body.text) \
+                and not body.attachments:
             result.offer_document = False  # owner 30.09: never in the first reply — it scares people off
         if cut:  # the document's text was taken out: its place is the paid offer, even in the first reply
             result.offer_document = True

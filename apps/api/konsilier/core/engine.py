@@ -125,18 +125,31 @@ class EngineConfig:
     trust_kaspi_link: bool = True
     # owner 02.10: until the payment is set up, «Я оплатил(а)» gives the document on trust for every way to pay
     trust_all: bool = False
+    # owner 02.10 «Бонусный счёт»: points to the invited person (on joining) and to the inviter (on that person's
+    # first payment); 0 = the old reward, one free document each. At most referral_bonus_max_share of a bill.
+    referral_bonus_points: int = 0
+    referral_bonus_max_share: float = 0.5
     # subscriptions: plan → (price, documents per period)
     plans: dict[str, tuple[int, int]] = field(default_factory=lambda: {"biz": (29990, 20), "bizpro": (59990, 60)})
     plan_days: int = 30
     plan_currency: str = ""  # empty: the currency of the jurisdiction pack
     # «Юрист по кнопке» (core/lawyer_pilot.py): the company's payment channel only (never the personal Kaspi Gold)
     lawyer_commission_pct: float = 15.0
+    lawyer_pay_direct: bool = False  # the client pays the lawyer directly (core/lawyer_pilot.py)
     lawyer_pay_link: str = ""  # the ТОО's Kaspi Pay link (https://…)
     lawyer_pay_account: str = ""  # the ТОО's requisites as text (tax number, IBAN, bank)
     company_name: str = ""  # ТОО «…», shown as the recipient
     # Kaspi Pay pushes are on (PAYMENT_KASPI_PUSH_TOKEN, konsilier/kaspi_parse.py): a Kaspi link / QR bill whose
     # «Оплатить» no push matched within UNPAID_AFTER stops the person's new bills until it is paid (owner 01.10)
     kaspi_push: bool = False
+
+
+_EMPTY_BRACKETS = re.compile(r"\s*\(\s*\)")
+
+
+def _tidy(text: str) -> str:
+    """An instruction whose placeholder is still unknown (no addressee name yet) loses the empty «()» around it."""
+    return _EMPTY_BRACKETS.sub("", text)
 
 
 class CaseEngine:
@@ -238,6 +251,30 @@ class CaseEngine:
             if m.text and m.text.strip() != (case.initial_text or "").strip()]
         if said:
             self.facts_from_chat(session, case.id, "\n".join(said))
+
+    def requalify_from_chat(self, session: Session, case_id: Any) -> bool:
+        """A chat case whose first message said too little to classify («Здравствуйте, нужна помощь»): its taxonomy
+        stayed empty and nothing ever looked again, so «Дела» showed «Новое дело · Определяем путь» for good (PM 02.10).
+        Each new message in the chat tries again with everything the person has told so far."""
+        case = session.get(Case, case_id)
+        if case is None or case.scenario_id or case.status != S.INTAKE.value \
+                or case.coverage_level != qualifier.LEVEL_VERIFIED or (case.taxonomy or {}).get("dispute_id"):
+            return False  # classified, waiting for a forum, or handed to a lawyer
+        said = [m.text.strip() for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+            if m.text and m.text.strip()]
+        first = (case.initial_text or "").strip()
+        told = [t for t in said if t != first]
+        if not told or (case.taxonomy or {}).get("chat_messages", 0) >= len(told):
+            return False  # nothing new since the last try
+        text = "\n".join([first, *told]).strip()[:8000]
+        case.taxonomy, case.qualification_confidence = {}, None
+        self.audit(session, case, "system", "requalify_from_chat", messages=len(told))
+        self._qualify_and_continue(session, case, text)
+        if case.scenario_id or (case.taxonomy or {}).get("dispute_id"):
+            return True
+        case.taxonomy = {**(case.taxonomy or {}), "chat_messages": len(told)}  # still unclear: try on the next one
+        return False
 
     def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
                    channel: str | None = None, country: str | None = None,
@@ -370,7 +407,8 @@ class CaseEngine:
             result = {**result, "dispute_id": fallback, "role": "business",
                       "confidence": max(float(result.get("confidence") or 0), cov.routing.min_confidence)}
         self._save_vault(case, llm)
-        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake)
+        route = qualifier.route_universal(cov, result, amount=case.amount_at_stake,
+                                          pending=safety.matter_pending(cov, text))
         case.jurisdiction = case.jurisdiction or pack.country
         case.taxonomy = route.to_taxonomy()
         case.route_reasons = route.reasons
@@ -390,17 +428,59 @@ class CaseEngine:
         case.coverage_level = qualifier.LEVEL_UNIVERSAL
         # low confidence already routes to a lawyer (level 3); what is left is a clear case
         case.needs_review = not self.config.self_service
-        if len(route.forums) == 1:
-            return self.choose_forum(session, case, route.forums[0].id, actor="system")
+        # owner 02.10: the system picks the recipient — the dispute's own route (routes.yaml), else the pack rule
+        # forum_order; the client only sees «Кому: …»
+        picked = cov.auto_forum(route.forums, route.dispute_id)
+        if picked is not None:
+            return self.choose_forum(session, case, picked.id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
                                     dispute=pack.localized(cov.dispute(route.dispute_id).title, lang)),
-                     options=[self.forum_option(pack, f, lang) for f in route.forums])
+                     options=[self.forum_option(pack, f, lang, cov.dispute(route.dispute_id))
+                              for f in route.forums])
 
-    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str) -> dict[str, Any]:
+    def forum_option(self, pack: JurisdictionPack, forum: Any, lang: str, dispute: Any = None) -> dict[str, Any]:
+        keys = (dispute.id, dispute.branch) if dispute is not None else ()
+        hint = next((pack.localized(forum.hints[k], lang) for k in keys if k in forum.hints), None)
+        pretrial = None
+        if forum.legal_effect == "none":  # a step to the other side itself, not a body that decides
+            pretrial = "mandatory" if any(k in forum.mandatory_for for k in keys) else "voluntary"
         out = {"id": forum.id, "name": pack.localized(forum.name, lang), "type": forum.type,
                "legal_effect": forum.legal_effect, "verified": forum.verified,
                "channels": [ch.kind for ch in forum.submission],
-               "deadline_known": forum.response_deadline is not None}
+               # a court sets its own terms; elsewhere the term comes from the forum or from the hint
+               "deadline_known": forum.response_deadline is not None or hint is not None or forum.type == "court",
+               "pretrial": pretrial, "hint": hint}
+        return out
+
+    def recipient_route(self, case: Case) -> list[dict[str, Any]]:
+        """Who each step's document goes to and why (routes.yaml): by the case's scenario, else its dispute type."""
+        if not case.jurisdiction and not case.scenario_id:
+            return []
+        try:
+            pack = self.pack_of(case)
+        except Exception:  # noqa: BLE001 — no pack, no route
+            return []
+        cov = pack.coverage
+        if cov is None:
+            return []
+        keys = [case.scenario_id, (case.taxonomy or {}).get("dispute_id")]
+        route = next((cov.routes[k] for k in keys if k and k in cov.routes), None)
+        if route is None:
+            return []
+        lang = case.language
+        out = []
+        for i, step in enumerate(route.steps, start=1):
+            if step.forum is not None:
+                kind, key, name = "forum", step.forum, pack.localized(cov.forums[step.forum].name, lang)
+            elif step.authority is not None:
+                auth = pack.manifest.authorities.get(step.authority)
+                kind, key = "authority", step.authority
+                name = pack.localized(auth.name, lang) if auth is not None else step.authority
+            else:
+                kind, key, name = "party", None, None
+            out.append({"step": i, "kind": kind, "key": key, "name": name,
+                        "label": pack.localized(step.label, lang), "when": pack.localized(step.when, lang) or None,
+                        "why": pack.localized(step.why, lang), "norm": step.norm})
         return out
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
@@ -412,11 +492,59 @@ class CaseEngine:
         if cov is None or not case.taxonomy.get("dispute_id"):
             return []
         dispute = cov.dispute(case.taxonomy["dispute_id"])
-        return [self.forum_option(pack, f, case.language)
-                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0])]
+        pending = "pending" in (case.taxonomy.get("flags") or [])
+        return [self.forum_option(pack, f, case.language, dispute)
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0],
+                                              pending)]
+
+    def other_forums(self, case: Case) -> list[dict[str, Any]]:
+        """«Другой адресат»: the forums the person may switch to while the document is not made yet."""
+        if case.coverage_level != qualifier.LEVEL_UNIVERSAL or not case.forum_id or case.paid or case.actions \
+                or case.status not in (S.INTAKE.value, S.QUALIFIED.value) or not case.taxonomy:
+            return []
+        pack = self.pack_of(case)
+        cov = pack.coverage
+        if cov is None or not case.taxonomy.get("dispute_id"):
+            return []
+        dispute = cov.dispute(case.taxonomy["dispute_id"])
+        pending = "pending" in (case.taxonomy.get("flags") or [])
+        return [self.forum_option(pack, f, case.language, dispute)
+                for f in cov.candidate_forums(dispute, case.taxonomy.get("role") or dispute.applicant_roles[0], pending)
+                if f.id != case.forum_id]
+
+    def auto_choose_forum(self, session: Session, case: Case) -> bool:
+        """A case left waiting at the old «Выберите адресата» list (before 02.10): the system chooses now."""
+        if case.status != S.INTAKE.value or case.scenario_id or case.coverage_level != qualifier.LEVEL_UNIVERSAL \
+                or not (case.taxonomy or {}).get("dispute_id"):
+            return False
+        cov = self.pack_of(case).coverage
+        options = {o["id"] for o in self.forum_options(case)}
+        picked = (cov.auto_forum([cov.forums[i] for i in cov.forums if i in options], case.taxonomy["dispute_id"])
+                  if cov else None)
+        if picked is None:
+            return False
+        self.choose_forum(session, case, picked.id, actor="system")
+        return True
+
+    def change_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
+        """«Другой адресат»: before any document is made the step's recipient may be changed; facts already given stay."""
+        if forum_id == case.forum_id:
+            raise EngineError("forum_already_chosen")
+        if forum_id not in {o["id"] for o in self.other_forums(case)}:
+            raise EngineError("forum_not_allowed")
+        self.audit(session, case, actor, "forum_changed", before=case.forum_id, forum=forum_id)
+        if case.status == S.QUALIFIED.value:
+            # nothing made or paid yet: back to filling in, so the new recipient's questions can be asked
+            case.status = S.INTAKE.value
+            self.audit(session, case, actor, "status_changed", S.QUALIFIED.value, S.INTAKE.value, reason="forum_changed")
+        case.scenario_id, case.scenario_version, case.forum_id, case.pending_field = None, None, None, None
+        session.flush()
+        return self.choose_forum(session, case, forum_id, actor)
 
     def choose_forum(self, session: Session, case: Case, forum_id: str, actor: str) -> Reply:
         if case.status != S.INTAKE.value or case.scenario_id:
+            if case.forum_id and forum_id != case.forum_id and case.status in (S.INTAKE.value, S.QUALIFIED.value):
+                return self.change_forum(session, case, forum_id, actor)
             raise EngineError("forum_already_chosen")
         if forum_id not in {o["id"] for o in self.forum_options(case)}:
             raise EngineError("forum_not_allowed")
@@ -1165,22 +1293,45 @@ class CaseEngine:
             if open_inv.status == "awaiting_confirmation":
                 raise EngineError("invoice_awaiting_confirmation")
         self._stop_if_unpaid(session, user_id)
-        if open_inv is not None:
-            open_inv.status = "cancelled"
         if not self.payments.available():
             raise EngineError("payment_unavailable")
-        bill = self.payments.create_invoice(case_id=str(case.id) if case else "", amount=amount, currency=currency)
+        if open_inv is not None:
+            open_inv.status = "cancelled"
+            self._return_bonus(session, open_inv)
+        owner = session.get(User, user_id)
+        points = self.bonus_for(owner, amount) if purpose != "plan" else 0
+        bill = self.payments.create_invoice(case_id=str(case.id) if case else "", amount=amount - points,
+                                            currency=currency)
         inv = Invoice(case_id=case.id if case else None, user_id=user_id, purpose=purpose, plan=plan, code=bill.id,
-                      method=self.payments.method, amount=bill.amount, currency=bill.currency, status=bill.status)
+                      method=self.payments.method, amount=bill.amount, currency=bill.currency, status=bill.status,
+                      bonus_used=points)
+        if points:
+            owner.bonus_balance -= points
         session.add(inv)
         session.flush()
         if case is not None:
             self.audit(session, case, actor, "invoice_created", invoice=inv.code, purpose=purpose,
-                       status=inv.status, amount=str(inv.amount), currency=inv.currency)
+                       status=inv.status, amount=str(inv.amount), currency=inv.currency, bonus_used=points)
         if bill.status == "paid":
             inv.decided_at = utcnow()
             self._apply_paid(session, inv)
         return inv
+
+    def bonus_for(self, owner: User | None, amount: Decimal) -> int:
+        """Bonus points that pay part of a bill of `amount`: the whole balance, at most referral_bonus_max_share of
+        the bill (whole points). The rest is paid as usual."""
+        if owner is None or owner.bonus_balance <= 0:
+            return 0
+        cap = int(amount * Decimal(str(self.config.referral_bonus_max_share)))
+        return max(0, min(owner.bonus_balance, cap))
+
+    def _return_bonus(self, session: Session, inv: Invoice) -> None:
+        """A bill cancelled before it was paid gives its bonus points back."""
+        if inv.bonus_used:
+            owner = session.get(User, inv.user_id)
+            if owner is not None:
+                owner.bonus_balance += inv.bonus_used
+            inv.bonus_used = 0
 
     def _apply_paid(self, session: Session, inv: Invoice) -> None:
         """What a paid bill gives: a document credit, the whole case, or a subscription period (and, for an invited
@@ -1218,10 +1369,22 @@ class CaseEngine:
         inviter = session.get(User, payer.referred_by)
         if inviter is None or inviter.id == payer.id:
             return
-        payer.bonus_documents += 1
-        inviter.bonus_documents += 1
         case = session.get(Case, inv.case_id) if inv.case_id is not None else None
         pack = self.pack_of(case) if case is not None else next(iter(self.packs.packs.values()), None)
+        points = self.config.referral_bonus_points
+        if points > 0:  # the bonus account: the invited person got theirs on joining (referral.attribute)
+            inviter.bonus_balance += points
+            if case is not None:
+                self.audit(session, case, "system", "referral_bonus", invoice=inv.code, inviter=str(inviter.id),
+                           points=points)
+            default = (f"Человек, которого вы пригласили, оплатил документ. Спасибо! На ваш бонусный счёт начислено "
+                       f"{points} бонусов.")
+            text = (pack.t(pack.lang(inviter.language), "notifications.referral_points_inviter", default=default,
+                           n=points) if pack else default)
+            self.notifier.notify_user(session, inviter, "referral", text, case=None)
+            return
+        payer.bonus_documents += 1
+        inviter.bonus_documents += 1
         if case is not None:
             self.audit(session, case, "system", "referral_bonus", invoice=inv.code, inviter=str(inviter.id))
         for user, key, default in (
@@ -1454,6 +1617,8 @@ class CaseEngine:
             "case_paid": case.paid, "credits": case.doc_credits,
             "trusted": inv is not None and inv.trusted_at is not None, "owed": self.in_debt(session, case.owner_id),
             "bonus": self.bonus_documents(session, case.owner_id),
+            "bonus_balance": (owner.bonus_balance if (owner := session.get(User, case.owner_id)) else 0),
+            "bonus_used": inv.bonus_used if inv is not None else 0,
             "subscription": self.subscription_view(session, case.owner_id)}
         if inv is not None and status != "paid":
             view.update(self.payments.details())
@@ -1601,8 +1766,8 @@ class CaseEngine:
         lang = case.language
         action.addressee = addressee
         action.instructions = [
-            s.format_map(_Fmt(ctx["fmt"])) for s in (spec.instructions.get(lang) or
-                                                      spec.instructions.get(pack.manifest.default_language) or ())
+            _tidy(s.format_map(_Fmt(ctx["fmt"]))) for s in (spec.instructions.get(lang) or
+                                                             spec.instructions.get(pack.manifest.default_language) or ())
         ]
         if self.approval_required(session, case, spec):
             action.approval_status, action.status = "pending", "pending_approval"

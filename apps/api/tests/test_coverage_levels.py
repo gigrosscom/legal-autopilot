@@ -20,13 +20,16 @@ def _universal_case(api):
     hide_scenarios(api.ctx, "kz.labor.")  # the universal path: no published scenario fits the story
     created = api.post("/v1/cases", expect=201, json={"text": WAGES, "country": "KZ"})
     case = created["case"]
-    assert case["scenario"] is None
+    # owner 02.10: no «Выберите адресата» list — the system takes the step's recipient (pack rule forum_order)
+    assert not created["reply"]["options"] and case["coverage"]["options"] == []
     assert case["coverage"]["level"] == "universal"
     assert case["coverage"]["dispute"]["id"] == "labor.unpaid_wages"
-    options = {o["id"]: o for o in created["reply"]["options"]}
-    assert "kz.labor_inspection" in options and "kz.court.district" in options
+    forum = case["coverage"]["forum"]
+    assert forum["id"] == "kz.counterparty.claim" and forum["why"].startswith("Индивидуальный трудовой спор сначала рассматривает согласительная комиссия")
+    assert case["scenario"]["id"].endswith("kz__counterparty__claim")
+    options = {o["id"]: o for o in case["coverage"]["other_forums"]}  # «Другой адресат»
+    assert "kz.labor_inspection" in options and "kz.court.district" in options and forum["id"] not in options
     assert all(not o["verified"] for o in options.values())  # nothing in the KZ registry is signed off yet
-    assert case["coverage"]["options"] == created["reply"]["options"]
     return case["id"], options
 
 
@@ -45,9 +48,6 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
     api = web_user(ctx)
     cid, _ = _universal_case(api)
 
-    # a message before choosing a forum only repeats the choice
-    out = api.answer(cid, "что дальше?")
-    assert out["reply"]["options"]
     api.post(f"/v1/cases/{cid}/forum", expect=409, json={"forum_id": "kz.police"})  # not a candidate
 
     out = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.labor_inspection"})
@@ -81,7 +81,7 @@ def test_level2_universal_path_needs_lawyer_approval(ctx):
         text = docx_text(ctx.container.storage.get(a.docx_key))
     # the labour inspection's term comes from the registry (АППК ст. 76, verified on adilet), not from the model
     assert "Административный процедурно-процессуальный кодекс Республики Казахстан, статья 76" in text
-    assert "Выплатить долг по зарплате" in text
+    assert "Работодатель не платит зарплату" in text  # the story (the test model copies it into the request too)
     assert text.count(AI_LINE_RU) == 1 and not DRAFT_WORDS.search(text)
 
     case = api.get(f"/v1/cases/{cid}").json()
@@ -261,9 +261,8 @@ def test_self_service_complaint_is_released_with_step_by_step_filing(ctx):
 
 def test_pre_trial_claim_goes_to_the_other_party(ctx):
     api = web_user(ctx)
-    cid, options = _universal_case(api)
-    assert "kz.counterparty.claim" in options  # a pre-trial claim is offered next to the bodies
-    case = api.post(f"/v1/cases/{cid}/forum", json={"forum_id": "kz.counterparty.claim"})["case"]
+    cid, options = _universal_case(api)  # the system took the pre-trial claim to the other party first (owner 02.10)
+    case = api.get(f"/v1/cases/{cid}").json()
     action = _fill_and_prepare(api, cid, case)
     assert action["approval_status"] == "not_required"
     assert action["addressee"]["name"] == "ТОО «Ромашка»"  # the claim is addressed to the employer itself
@@ -293,13 +292,13 @@ def test_business_dispute_is_never_a_consumer_case(ctx):
     api = web_user(ctx)
     created = api.post("/v1/cases", expect=201, json={"text": B2B, "country": "KZ"})
     case = created["case"]
-    assert case["scenario"] is None  # not kz.consumer.refund
+    assert "consumer" not in case["scenario"]["id"]  # not kz.consumer.refund
     assert case["coverage"]["dispute"]["id"] == "commercial.contract_breach"
     assert case["coverage"]["level"] == "universal"
-    options = {o["id"] for o in created["reply"]["options"]}
-    assert options == {"kz.counterparty.claim", "kz.court.economic"}
-    out = api.post(f"/v1/cases/{case['id']}/forum", json={"forum_id": "kz.counterparty.claim"})
-    assert "commercial__contract_breach.business" in out["case"]["scenario"]["id"]
+    # the claim to the counterparty is chosen by the system; the economic court only by «Другой адресат»
+    assert case["coverage"]["forum"]["id"] == "kz.counterparty.claim"
+    assert {o["id"] for o in case["coverage"]["other_forums"]} == {"kz.court.economic"}
+    assert "commercial__contract_breach.business" in case["scenario"]["id"]
     # the same words from a shopper stay a consumer case
     shop = api.post("/v1/cases", expect=201, json={
         "text": "Купил телефон в магазине ТОО Мечта, сломался, продавец не возвращает деньги", "country": "KZ"})

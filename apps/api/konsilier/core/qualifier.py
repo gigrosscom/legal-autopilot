@@ -60,7 +60,8 @@ def taxonomy_options(cov: Coverage, lang: str) -> list[dict[str, Any]]:
     return out
 
 
-def route_universal(cov: Coverage, result: dict[str, Any], *, amount: Decimal | None = None) -> Route:
+def route_universal(cov: Coverage, result: dict[str, Any], *, amount: Decimal | None = None,
+                    pending: bool = False) -> Route:
     dispute_id, role = result.get("dispute_id"), result.get("role")
     confidence = float(result.get("confidence") or 0.0)
     route = Route(level=None, dispute_id=dispute_id, role=role, confidence=confidence,
@@ -83,7 +84,9 @@ def route_universal(cov: Coverage, result: dict[str, Any], *, amount: Decimal | 
     threshold = cov.routing.high_amount_threshold
     if threshold is not None and amount is not None and amount > Decimal(str(threshold)):
         reasons.append("high_amount")
-    forums = [] if reasons else cov.candidate_forums(dispute, role)
+    forums = [] if reasons else cov.candidate_forums(dispute, role, pending)
+    if pending:
+        route.flags.append("pending")
     if not reasons and not forums:
         reasons.append("no_forum")
     route.reasons, route.forums = reasons, forums

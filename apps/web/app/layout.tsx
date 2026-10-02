@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import type { ReactNode } from "react";
 import { PwaRegister } from "@/components/InstallApp";
 import { VersionWatch } from "@/components/VersionWatch";
+import { ViewportWatch } from "@/components/ViewportWatch";
 import { ThemeWatch } from "@/components/ThemeWatch";
 import { SiteChrome } from "@/components/SiteChrome";
 import { LangProvider } from "@/lib/i18n";
@@ -65,11 +66,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE }} />
       </head>
-      <body className="flex min-h-screen flex-col antialiased">
+      <body className="flex min-h-[var(--app-h,100dvh)] flex-col antialiased">
         <LangProvider>
           <SiteChrome>{children}</SiteChrome>
           <PwaRegister />
           <VersionWatch />
+          <ViewportWatch />
           <ThemeWatch />
         </LangProvider>
       </body>

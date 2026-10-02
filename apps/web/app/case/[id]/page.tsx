@@ -12,9 +12,10 @@ import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
 import RoadmapView from "@/components/Roadmap";
 import { SignDocument } from "@/components/SignDocument";
 import { SendWizard } from "@/components/SendWizard";
+import { ChooseLawyer } from "@/components/ChooseLawyer";
 import { Agreements } from "@/components/Agreements";
 import { Bubble } from "@/components/Bubble";
-import { DraftPreview } from "@/components/DraftPreview";
+import { DraftPreview, draftSaved } from "@/components/DraftPreview";
 import { EotinishBridge, EotinishFiled } from "@/components/EotinishBridge";
 import { FilePicker } from "@/components/FilePicker";
 import { GovServices } from "@/components/GovServices";
@@ -98,6 +99,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   const [emergency, setEmergency] = useState<Emergency | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
+  const [chooseOpen, setChooseOpen] = useState(false);  // «Выбрать юриста» (owner 02.10)
   // the server asks for a confirmed contact before the first bill: the payment window shows that step first
   const [contact, setContact] = useState<{ kind: "phone" | "email"; purpose: string } | null>(null);
   // PM 01.10: the applicant's own data (name, IIN, address, phone) on one screen right before paying
@@ -208,6 +210,7 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
   }
 
   async function choosePayment(purpose: string) {
+    await draftSaved();  // what was just typed in the draft's blanks is in the case first: never asked twice (PM 02.10)
     await run(async () => {
       try {
         const out = await api<{ case: CaseView }>(`/v1/cases/${id}/payment`, { method: "POST", body: JSON.stringify({ purpose }) });
@@ -363,10 +366,20 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
   } else if (c.status !== "intake") {
     // owner 01.10 («3 клика»): one document by default — the bill is made at once; «Дело под ключ» is a link
-    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
-      setPayOpen(true);
-      if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
-    }} />;
+    bar = (
+      <>
+        <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} openPay={(purpose?: string) => {
+          setPayOpen(true);
+          if (!c.payment?.code && c.payment?.status === "none") choosePayment(purpose ?? "document");
+        }} />
+        {LAWYER_PILOT && c.status !== "handed_to_lawyer" && (
+          <button type="button" onClick={() => setChooseOpen(true)}
+            className="mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-[15px] font-medium text-brand hover:bg-sand">
+            <Icon name="lawyer" size={18} />{t("choose.button")}
+          </button>
+        )}
+      </>
+    );
   }
 
   return (
@@ -380,6 +393,11 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       )}
       {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
       {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
+
+      {/* owner 02.10: the system chose the recipient — «Кому: … — почему», switched only by «Другой адресат» */}
+      {cov.forum && (c.status === "intake" || c.status === "qualified") && (
+        <RecipientCard forum={cov.forum} others={cov.other_forums ?? []} busy={busy} onChoose={chooseForum} />
+      )}
 
       {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
         <PlanCard plan={c.plan} />
@@ -410,6 +428,8 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
         <DraftPreview caseId={c.id} version={`${c.facts.length}:${c.payment?.status ?? ""}`} onCase={setCase} />
       )}
 
+      {chooseOpen && <ChooseLawyer caseId={c.id} onClose={() => setChooseOpen(false)} onChange={setPilotStatus} />}
+
       {payOpen && c.payment && c.payment.status !== "paid" && (c.status === "qualified" || proposal?.type === "prepare_action") && (
         <PaymentDialog pay={c.payment} busy={busy} onClose={() => setPayOpen(false)} contact={contact?.kind ?? null}
           applicant={applicant?.fields ?? null} caseId={c.id}
@@ -434,6 +454,13 @@ export default function CasePage({ params }: { params: Promise<{ id: string }> }
       )}
 
       {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} onCase={setCase} />}
+
+      {/* what «Документ подан» below does: said here, so the fixed bar stays compact */}
+      {c.status === "action_ready" && last && last.approval_status !== "pending" && last.approval_status !== "rejected" && (
+        <p className="flex items-start gap-2 px-1 text-xs leading-snug text-muted text-pretty">
+          <Icon name="info" size={16} className="mt-px shrink-0" /><span>{t("case.submittedHint")}</span>
+        </p>
+      )}
 
       {c.status === "awaiting_response" && proposal?.message && (
         <Bubble mine={false}><p className="whitespace-pre-line">{proposal.message}</p></Bubble>
@@ -507,7 +534,7 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
         {prepareOrPay(t("case.prepare"))}
         {needsPay && pay!.available && pay!.status === "none" && whole && (
           <button type="button" disabled={busy} onClick={() => openPay("case")}
-            className="w-full py-1 text-center text-sm text-muted underline">
+            className="flex min-h-11 w-full items-center justify-center text-center text-sm text-muted underline">
             {t("payment.option.case", { price: money(whole.amount, pay!.currency) })}
           </button>
         )}
@@ -520,12 +547,10 @@ function NextStepBar({ c, busy, post, openPay, run, setCase }: {
         {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
     }
     return (
-      <div className="space-y-2">
-      <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
+      // the hint («Нажмите, когда вручите…») is in the conversation above the bar: the bar stays one button tall (owner 02.10)
       <div className="flex gap-2">
         {/* sending itself (WhatsApp, Telegram, e-mail through us…) is the «Мастер отправки» in the document card */}
         <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
-      </div>
       </div>
     );
   }
@@ -655,7 +680,7 @@ function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: App
         <label key={f.field} className="block text-sm">{f.label}
           <input className={`input mt-1 ${errors[f.field] ? "border-danger" : ""}`} required value={values[f.field] ?? ""}
             type={f.type === "phone" ? "tel" : f.type === "email" ? "email" : "text"}
-            inputMode={f.pattern || f.type === "phone" ? "numeric" : undefined}
+            inputMode={f.type === "phone" ? "tel" : f.pattern ? "numeric" : undefined}
             autoComplete={f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
             onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))} aria-invalid={!!errors[f.field]} />
           {errors[f.field] && <span className="text-danger">{t(`draft.error.${known.includes(errors[f.field]) ? errors[f.field] : "generic"}`)}</span>}
@@ -714,16 +739,19 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
                 </Button>
               ))}
               <p className="text-xs text-muted">{t("payment.caseHint")}</p>
+              {(pay.bonus_balance ?? 0) > 0 && <p className="text-xs text-muted">{t("payment.bonusHint", { n: pay.bonus_balance ?? 0 })}</p>}
             </>
           ) : kaspiOneTap(pay) ? (
             <>
               {pay.owed && <Alert tone="warning" role="status">{t("payment.owed")}</Alert>}
+              {(pay.bonus_used ?? 0) > 0 && <p className="text-sm text-muted">{t("payment.bonusUsed", { n: pay.bonus_used ?? 0 })} {money(pay.amount, pay.currency)}</p>}
               <KaspiOneTap pay={pay} busy={busy} price={money(pay.amount, pay.currency)} onWay={onWay} />
             </>
           ) : (
             <>
               {waiting && <Alert tone="info" icon="hourglass" role="status">{t("payment.waiting")}</Alert>}
               {pay.status === "not_found" && <Alert tone="warning" role="status">{t("payment.notFound")}</Alert>}
+              {(pay.bonus_used ?? 0) > 0 && <p className="text-sm text-muted">{t("payment.bonusUsed", { n: pay.bonus_used ?? 0 })}</p>}
               <p className="text-2xl font-semibold tabular-nums">{money(pay.amount, pay.currency)}</p>
               {pay.ways?.length ? (
                 <PaymentWays pay={pay} busy={busy} amount={String(pay.amount)} onWay={onWay}
@@ -896,6 +924,45 @@ function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
   );
 }
 
+function RecipientCard({ forum, others, busy, onChoose }: {
+  forum: ForumOption; others: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="card space-y-2" aria-label={t("forum.to")}>
+      <p className="flex items-start gap-2">
+        <Icon name={forum.type === "court" ? "landmark" : "building"} size={20} className="mt-0.5 shrink-0 text-brand" />
+        <span className="min-w-0"><span className="text-muted">{t("forum.to")}: </span><span className="font-semibold">{forum.name}</span></span>
+      </p>
+      {forum.why && <p className="text-sm text-muted">{forum.why}</p>}
+      {others.length > 0 && !open && (
+        <button type="button" onClick={() => setOpen(true)} className="text-sm text-brand-dark underline-offset-2 hover:underline">
+          {t("forum.other")}
+        </button>
+      )}
+      {open && (
+        <div className="space-y-2 border-t border-line pt-2">
+          <p className="text-sm text-muted">{t("forum.otherLead")}</p>
+          <ul className="space-y-1.5">
+            {others.map((f) => (
+              <li key={f.id}>
+                <button type="button" disabled={busy} onClick={() => { setOpen(false); onChoose(f); }}
+                  className="flex w-full items-start gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-sand disabled:opacity-60">
+                  <Icon name={f.type === "court" ? "landmark" : f.type === "mediation" ? "handshake" : "building"} size={18} className="mt-0.5 shrink-0 text-muted" />
+                  <span>{f.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted hover:text-ink">{t("forum.keep")}</button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Kept only for a country whose pack has no forum_order yet: the KZ pack always names the recipient. */
 function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void }) {
   const t = useT();
   return (
@@ -915,14 +982,13 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Badge tone={f.legal_effect === "binding" ? "brand" : f.legal_effect === "advisory" ? "info" : "warning"}>
-                {t(`forum.effect.${f.legal_effect}`)}
+              <Badge tone={f.legal_effect === "binding" ? "brand" : f.legal_effect === "advisory" ? "info" : f.pretrial === "mandatory" ? "warning" : "neutral"}>
+                {f.pretrial ? t(`forum.pretrial.${f.pretrial}`) : t(`forum.effect.${f.legal_effect}`)}
               </Badge>
-              <Badge tone={f.verified ? "brand" : "neutral"} icon={f.verified ? "shieldCheck" : "hourglass"}>
-                {f.verified ? t("forum.verified") : t("forum.unverified")}
-              </Badge>
+              {f.verified && <Badge tone="brand" icon="shieldCheck">{t("forum.verified")}</Badge>}
               {!f.deadline_known && <Badge>{t("forum.deadlineByLawyer")}</Badge>}
             </div>
+            {f.hint && <p className="text-sm">{f.hint}</p>}
             <p className="text-xs text-muted">{t("forum.channels")}: {f.channels.map((ch) => t(`forum.channel.${ch}`)).join(", ")}</p>
             <Button className="mt-auto" disabled={busy} onClick={() => onChoose(f)} iconEnd="arrowRight">{t("forum.choose")}</Button>
           </li>
@@ -1026,7 +1092,7 @@ function ActionCard({ caseId, a, onCase }: { caseId: string; a: CaseAction; onCa
             {a.instructions.map((s, i) => (
               <li key={i} className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
-                <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+                <span className="min-w-0 break-words pt-0.5"><Step text={s} /></span>
               </li>
             ))}
           </ol>
@@ -1059,7 +1125,7 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
   };
   const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "ar" ? "ar" : "ru-RU");
   const norm = (d: { norm_ref: string | null; verified: boolean }) => (
-    <span className="block text-xs text-muted">{d.norm_ref && d.verified ? t("filing.norm", { ref: d.norm_ref }) : <>{t("filing.norm", { ref: "" }).trim()} {t("filing.lawyer")}</>}</span>
+    d.norm_ref && d.verified ? <span className="block text-xs text-muted">{t("filing.norm", { ref: d.norm_ref })}</span> : null
   );
   const row = (icon: IconName, label: string, body: ReactNode) => (
     <div className="flex gap-3">
@@ -1082,7 +1148,7 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
             {f.to.email && <a href={`mailto:${f.to.email}`} className="link block">{f.to.email}</a>}
           </>
         ))}
-        {row("calendar", t("filing.fileBy"), f.file_by ? (
+        {f.file_by && row("calendar", t("filing.fileBy"), (
           <>
             {f.file_by.date
               ? <b className="tabular-nums">{date(f.file_by.date)}</b>
@@ -1091,14 +1157,14 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
             {norm(f.file_by)}
             {f.file_by.overdue && <span className="block text-xs text-danger">{t("filing.overdue")}</span>}
           </>
-        ) : lawyer)}
-        {row("clock", t("case.deadline"), f.response ? (
+        ))}
+        {f.response && row("clock", t("case.deadline"), (
           <>
             <span>{t("filing.respond", { term: within(f.response) })}</span>
             {norm(f.response)}
           </>
-        ) : lawyer)}
-        {row("key", t("filing.signature"), f.signature_text ?? lawyer)}
+        ))}
+        {f.signature_text && row("key", t("filing.signature"), f.signature_text)}
       </dl>
       {f.ways.length > 0 && (
         <div className="space-y-2">
@@ -1130,7 +1196,7 @@ function FilingCard({ id, f }: { id: string; f: Filing }) {
                 {steps.map((s, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand">{i + 1}</span>
-                    <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+                    <span className="min-w-0 break-words pt-0.5"><Step text={s} /></span>
                   </li>
                 ))}
               </ol>
@@ -1210,6 +1276,19 @@ function SubmitOnline({ caseId, a }: { caseId: string; a: CaseAction }) {
         {step(3, t("submit.s3"), <p className="text-xs text-muted">{t("submit.s3hint", { btn: t("case.submitted") })}</p>)}
       </ol>
     </section>
+  );
+}
+
+/** One step: «**Что сделать.** Как это сделать» — the heading on its own line in bold, so the person sees at a glance
+ *  whether to read on (owner 02.10); a step without a heading stays plain text. */
+function Step({ text }: { text: string }) {
+  const m = /^\*\*(.+?)\*\*\s*([\s\S]*)$/.exec(text);
+  if (!m) return <Linkified text={text} />;
+  return (
+    <>
+      <span className="block font-semibold text-ink">{m[1]}</span>
+      {m[2] && <span className="block text-muted"><Linkified text={m[2]} /></span>}
+    </>
   );
 }
 

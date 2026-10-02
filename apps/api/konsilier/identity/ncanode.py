@@ -121,7 +121,7 @@ class NcaNode:
 
     def _version(self) -> str:
         try:
-            m = re.search(r"v(\d+\.\d+\.\d+\S*)", httpx.get(self.base_url + "/", timeout=self.timeout).text)
+            m = re.search(r"v(\d+\.\d+\.\d+[\w.-]*)", httpx.get(self.base_url + "/", timeout=self.timeout).text)
         except httpx.HTTPError:
             return "?"
         return m.group(1) if m else "?"

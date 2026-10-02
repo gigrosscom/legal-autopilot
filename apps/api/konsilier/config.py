@@ -158,13 +158,17 @@ class Settings(BaseSettings):
     # The platform keeps LAWYER_COMMISSION_PCT of the price; payouts to lawyers are manual in the pilot.
     lawyer_payment_account: str = ""
     lawyer_commission_pct: float = 15.0
+    # «Юрист по кнопке», owner 01.10 «15 % по счёту ТОО раз в месяц»: the client pays the lawyer directly (the lawyer
+    # sends the contract and the bill); the lawyer marks «оплачено клиентом» and pays the platform 15 % monthly by the
+    # company's bill. Off — the client pays the lawyer's price to the company's account (PR #105).
+    lawyer_pay_direct: bool = False
     # Before a document / «Дело под ключ» bill: the case owner confirms a phone by SMS code (an e-mail code when SMS
     # sign-in is not configured), so the case is never lost with the browser and the document and reminders reach
     # them. Telegram users are reachable in the bot and are not asked.
     # owner 01.10 («3 клика»): no separate contact code before paying — the person is identified by the ЭЦП /
     # eGov Mobile signature of the document; true brings the code back
     payment_requires_contact: bool = False
-    # Plans. A document costs the scenario price (1 990 ₸) and unlocks one document; «Дело под ключ» unlocks every
+    # Plans. A document costs the scenario price (2 990 ₸, owner 02.10) and unlocks one document; «Дело под ключ» unlocks every
     # document of one case; «Бизнес» / «Бизнес Про» are subscriptions of PLAN_PERIOD_DAYS with a document limit.
     plan_case_price: int = 9990
     # owner 01.10: with the Kaspi Pay link «Оплатить» gives the document at once; the desk matches the payment in /ops
@@ -174,6 +178,11 @@ class Settings(BaseSettings):
     # for EVERY way to pay (transfer, Kaspi QR, Kaspi bill, company bill), not only the Kaspi Pay link; the desk still
     # matches each bill in /ops. false → only the Kaspi Pay link is trusted (PAYMENT_TRUST_KASPI_LINK)
     payment_trust_all: bool = True
+    # owner 02.10 «Бонусный счёт»: an invited person gets REFERRAL_BONUS_POINTS on joining by the link, the inviter as
+    # many once that person first pays; points pay at most REFERRAL_BONUS_MAX_SHARE of a document bill. 0 → the old
+    # reward (one free document to each)
+    referral_bonus_points: int = 1000
+    referral_bonus_max_share: float = 0.5
     plan_biz_price: int = 29990
     plan_biz_documents: int = 20
     plan_bizpro_price: int = 59990

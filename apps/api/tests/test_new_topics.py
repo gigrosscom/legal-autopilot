@@ -155,7 +155,9 @@ def test_production_routing_of_a_benefit_refusal(ctx):
     created = api.post("/v1/cases", expect=201, json={
         "text": "Отказали в назначении пособия по инвалидности, хочу обжаловать отказ", "country": "KZ"})
     case = created["case"]
-    assert case["scenario"] is None
     assert case["coverage"]["dispute"]["id"] == "social.benefit_refusal"
     assert case["coverage"]["level"] == "universal"
-    assert {o["id"] for o in created["reply"]["options"]} == {"kz.prosecutor", "kz.ombudsman"}
+    # ZANN 02.10 (routes.yaml): first the superior body — a complaint through the body that refused; the prosecutor and
+    # the ombudsman are «Другой адресат»
+    assert case["coverage"]["forum"]["id"] == "kz.gov.superior"
+    assert {o["id"] for o in case["coverage"]["other_forums"]} == {"kz.prosecutor", "kz.ombudsman"}

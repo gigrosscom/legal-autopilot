@@ -51,10 +51,11 @@ class NewUser(BaseModel):
 
 
 @router.post("/users")
-def create_user(body: NewUser, session: Session = Depends(get_session)) -> dict[str, Any]:
+def create_user(body: NewUser, session: Session = Depends(get_session),
+                container: Container = Depends(get_container)) -> dict[str, Any]:
     user = User(channel="web", language=body.language, country=(body.country or "").upper() or None,
                 email=body.email)
-    attribute(session, user, body.ref, body.src)
+    attribute(session, user, body.ref, body.src, container.engine.config.referral_bonus_points)
     session.add(user)
     session.flush()
     return {"id": str(user.id), "token": user.api_token}
@@ -70,16 +71,18 @@ class TelegramUser(BaseModel):
 
 
 @router.post("/users/telegram", dependencies=[Depends(require_bot)])
-def upsert_telegram_user(body: TelegramUser, session: Session = Depends(get_session)) -> dict[str, Any]:
+def upsert_telegram_user(body: TelegramUser, session: Session = Depends(get_session),
+                         container: Container = Depends(get_container)) -> dict[str, Any]:
     user = session.scalar(select(User).where(User.channel == "telegram", User.external_id == body.telegram_id))
     if user is None:
         user = User(channel="telegram", external_id=body.telegram_id, language=body.language,
                     country=(body.country or "").upper() or None, display_name=body.display_name)
-        attribute(session, user, body.ref, body.src)
+        attribute(session, user, body.ref, body.src, container.engine.config.referral_bonus_points)
         session.add(user)
         session.flush()
     elif body.ref and user.referred_by is None and not user.cases:
-        attribute(session, user, body.ref, body.src)  # opened the bot before, came back by an invitation
+        # opened the bot before, came back by an invitation
+        attribute(session, user, body.ref, body.src, container.engine.config.referral_bonus_points)
     return {"id": str(user.id), "token": user.api_token}
 
 
@@ -282,6 +285,12 @@ def get_case(case_id: uuid.UUID, user: User = Depends(current_user), session: Se
                 container.engine.qualify_later(session, case.id)
         except Exception:  # noqa: BLE001 — the model is still down: the case opens as it is, tried again next time
             log.exception("deferred classification of case %s failed", case.id)
+    if case.status == "intake" and not case.scenario_id and case.taxonomy:
+        try:  # left at the old «Выберите адресата» list: the system chooses the recipient now (owner 02.10)
+            with session.begin_nested():
+                container.engine.auto_choose_forum(session, case)
+        except Exception:  # noqa: BLE001 — the case opens as it is
+            log.exception("auto recipient for case %s failed", case.id)
     return case_view(container.engine, session, case)
 
 
@@ -526,7 +535,7 @@ class ForumIn(BaseModel):
 @router.post("/cases/{case_id}/forum")
 def choose_forum(case_id: uuid.UUID, body: ForumIn, user: User = Depends(current_user),
                  session: Session = Depends(get_session), container: Container = Depends(get_container)):
-    """Universal path: the user picks where to file from the pack's registry candidates."""
+    """Universal path: «Другой адресат» — the person changes the recipient the system chose (owner 02.10)."""
     case = load_case(case_id, session, user)
     try:
         reply = container.engine.choose_forum(session, case, body.forum_id, actor=f"user:{user.id}")

@@ -30,6 +30,12 @@ function dateMask(raw: string): string {
 
 /** PM 01.10: the document's draft before payment — the start readable, the rest blurred, and the blanks the person
  * can fill right here (what the interview did not ask, «не помню», a foreign seller without a BIN). */
+// PM 02.10: the applicant typed their name and address here and was asked again in «Оплата → Ваши данные» — the
+// field was typed but «Сохранить в документ» not pressed. Each field is now saved as soon as it is left; the payment
+// waits for that save (draftSaved) before it asks the server which data is still missing.
+let pendingSave: Promise<unknown> = Promise.resolve();
+export const draftSaved = () => pendingSave.catch(() => undefined);
+
 export function DraftPreview({ caseId, version, onCase }: { caseId: string; version: string; onCase: (c: CaseView) => void }) {
   const t = useT();
   const [d, setD] = useState<Draft | null>(null);
@@ -52,6 +58,23 @@ export function DraftPreview({ caseId, version, onCase }: { caseId: string; vers
       const fields = e instanceof ApiError ? (e.detail as { fields?: Record<string, string> })?.fields : undefined;
       if (fields) setErrors(fields); else setError(errorText(e));
     } finally { setBusy(false); }
+  }
+
+  // a field left with a value is saved at once (a wrong format is shown under it and asked again on «Сохранить»)
+  function saveField(field: string) {
+    const value = (values[field] ?? "").trim();
+    if (!value) return;
+    pendingSave = pendingSave.then(async () => {
+      try {
+        const out = await api<{ case: CaseView }>(`/v1/cases/${caseId}/facts`, { method: "POST", body: JSON.stringify({ values: { [field]: value } }) });
+        setValues((v) => { const { [field]: _, ...rest } = v; return rest; });
+        setErrors((x) => { const { [field]: _, ...rest } = x; return rest; });
+        onCase(out.case);
+      } catch (e) {
+        const fields = e instanceof ApiError ? (e.detail as { fields?: Record<string, string> })?.fields : undefined;
+        if (fields) setErrors((x) => ({ ...x, ...fields }));
+      }
+    });
   }
 
   if (!d) return null;
@@ -89,6 +112,7 @@ export function DraftPreview({ caseId, version, onCase }: { caseId: string; vers
                     inputMode={date || money || b.pattern ? "numeric" : b.type === "phone" ? "tel" : b.type === "email" ? "email" : undefined}
                     autoComplete="off" enterKeyHint="next"
                     onChange={(e) => setValues((v) => ({ ...v, [b.field]: date ? dateMask(e.target.value) : e.target.value }))}
+                    onBlur={() => saveField(b.field)}
                     aria-invalid={!!errors[b.field]} />
                   {money && <span aria-hidden className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-base text-muted">₸</span>}
                 </span>

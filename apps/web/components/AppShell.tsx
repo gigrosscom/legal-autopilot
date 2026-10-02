@@ -34,7 +34,44 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   // carry the page to its end, and the bottom bar must not cover the field (owner 01.10, iPhone)
   const [field, setField] = useState(false);
 
-  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [scrollKey]);
+  // Scroll only the conversation itself. `scrollIntoView` also scrolls every ancestor, the page included: on iPhone the
+  // page under this fixed screen then moved, Safari's toolbars collapsed and 100dvh changed, so the whole screen with
+  // its bottom bar and tab bar «floated» at every new message (owner 02.10).
+  const toEnd = (smooth = false) => {
+    const box = scroller.current;
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  };
+  const centre = (el: HTMLElement) => {
+    const box = scroller.current;
+    if (!box) return;
+    const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    box.scrollTo({ top: box.scrollTop + r.top - b.top - Math.max(0, (b.height - r.height) / 2) });
+  };
+
+  useEffect(() => { pinned.current = true; toEnd(); }, [scrollKey]);
+
+  // Cards load their parts after the jump to the end (the document card, «Отправьте другу»…): while the person is at
+  // the end, the conversation stays at the end as it grows, as in a messenger, instead of the end sliding away.
+  const pinned = useRef(true);
+  const content = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = content.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => { if (pinned.current && !contentField(scroller.current)) toEnd(); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // The page under this full-screen layout must not scroll at all (the conversation is the only thing that scrolls):
+  // otherwise a swipe past the end of the conversation carried the page, and the bars with it, on iPhone.
+  useEffect(() => {
+    const html = document.documentElement, body = document.body;
+    const was = [html.style.overflow, body.style.overflow, html.style.overscrollBehavior, body.style.overscrollBehavior];
+    html.style.overflow = body.style.overflow = "hidden";
+    html.style.overscrollBehavior = body.style.overscrollBehavior = "none";
+    window.scrollTo(0, 0);
+    return () => { [html.style.overflow, body.style.overflow, html.style.overscrollBehavior, body.style.overscrollBehavior] = was; };
+  }, []);
 
   // iOS Safari does not resize the layout for the keyboard: follow the visual viewport so the input bar
   // stays right above the keyboard and the top bar stays in view.
@@ -43,21 +80,35 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
     const el = root.current;
     if (!vv || !el) return;
     const fit = () => {
-      el.style.height = `${vv.height}px`;
-      el.style.transform = `translateY(${vv.offsetTop}px)`;
-      setKeyboard(window.innerHeight - vv.height > 150);  // the tab bar gives its room to the keyboard
+      const open = window.innerHeight - vv.height > 150;  // the keyboard is up
+      // only while the keyboard is up: iOS (above all a Home-screen app) does not always report the viewport's
+      // full height again after the keyboard closes, and a height left from it cut every screen short (owner 02.10)
+      el.style.height = open ? `${vv.height}px` : "";
+      el.style.transform = open && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+      setKeyboard(open);  // the tab bar gives its room to the keyboard
       const typing = contentField(scroller.current);
-      if (typing) typing.scrollIntoView({ block: "center" });  // the field stays in sight above the keyboard
-      else end.current?.scrollIntoView({ block: "end" });
+      if (typing) centre(typing);  // the field stays in sight above the keyboard
+      else toEnd();
     };
+    // the keyboard closing is not always followed by a resize event: look again once the field has let go
+    const later = () => { [100, 400].forEach((ms) => setTimeout(fit, ms)); };
     fit();
     vv.addEventListener("resize", fit);
     vv.addEventListener("scroll", fit);
-    return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); };
+    window.addEventListener("focusout", later);
+    window.addEventListener("orientationchange", later);
+    window.addEventListener("pageshow", fit);
+    return () => {
+      vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit);
+      window.removeEventListener("focusout", later); window.removeEventListener("orientationchange", later);
+      window.removeEventListener("pageshow", fit);
+    };
   }, []);
 
+  const showBar = !!bar && !(keyboard && field);
+
   return (
-    <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-dvh flex-col bg-surface lg:start-64">
+    <div ref={root} className="fixed inset-x-0 top-0 z-40 flex h-[var(--app-h,100dvh)] flex-col bg-surface lg:start-64">
       <header className="border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex min-h-14 max-w-3xl items-center gap-1 px-2 py-1 lg:h-16 lg:px-6">
           <Link href={back} aria-label={t("app.back")}
@@ -77,34 +128,39 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
         </div>
       </header>
 
+      <div className="relative flex min-h-0 flex-1 flex-col">
       <main id="main" ref={scroller}
         onFocus={(e) => {
           const el = contentField(e.currentTarget);
           setField(!!el);
           // after the keyboard has opened (iOS animates it ~300 ms): the field in the middle of what is left
-          if (el) [60, 350].forEach((ms) => setTimeout(() => { if (document.activeElement === el) el.scrollIntoView({ block: "center" }); }, ms));
+          if (el) [60, 350].forEach((ms) => setTimeout(() => { if (document.activeElement === el) centre(el); }, ms));
         }}
         onBlur={(e) => { const box = e.currentTarget; setTimeout(() => setField(!!contentField(box)), 0); }}
         onScroll={(e) => {
         const el = e.currentTarget;
-        setBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 240);
+        const left = el.scrollHeight - el.scrollTop - el.clientHeight;
+        setBelow(left > 240);
+        pinned.current = left < 48;
       }}
-        className={`relative min-h-0 flex-1 overflow-y-auto overscroll-contain ${wallpaper ? "chat-wallpaper" : ""}`}>
-        <div className="mx-auto max-w-3xl space-y-3 px-5 py-5 lg:px-8">
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${wallpaper ? "chat-wallpaper" : ""}`}>
+        {/* pb-8: the last card ends clear above the bottom bar (and the «down» button on its edge) */}
+        <div ref={content} className="mx-auto max-w-3xl space-y-3 px-5 pt-5 pb-8 lg:px-8">
           {children}
           <div ref={end} />
         </div>
+      </main>
+        {/* «down» floats in the conversation's own corner, above the bottom bar (as in WhatsApp), not in the text flow (owner 02.10) */}
         {below && (
-          <button type="button" onClick={() => end.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
-            aria-label={t("app.toEnd")}
-            className="sticky bottom-3 float-end me-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow-[0_2px_8px_rgb(0_0_0/0.15)]">
+          <button type="button" onClick={() => toEnd(true)} aria-label={t("app.toEnd")}
+            className="absolute bottom-3 end-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink ring-1 ring-line shadow-[0_2px_8px_rgb(0_0_0/0.12)]">
             <Icon name="chevronDown" size={20} />
           </button>
         )}
-      </main>
+      </div>
 
-      {bar && !(keyboard && field) && (
-        <div className={`${wallpaper ? "bg-[var(--chat-bg)]" : "bg-surface"} ${keyboard ? "pb-2" : tabs ? "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]" : "pb-[max(env(safe-area-inset-bottom),0.5rem)] lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
+      {showBar && (
+        <div className={`border-t border-line ${wallpaper ? "bg-[var(--chat-bg)]" : "bg-surface"} ${keyboard ? "pb-2" : tabs ? "pb-2 lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]" : "pb-[max(env(safe-area-inset-bottom),0.5rem)] lg:pb-[max(env(safe-area-inset-bottom),0.75rem)]"}`}>
           <div className="mx-auto max-w-3xl px-3 pt-2 lg:px-8">{bar}</div>
         </div>
       )}

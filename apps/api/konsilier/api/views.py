@@ -31,7 +31,7 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
     """Coverage level and what it means for this case (ADR 0001): shown to the user on every step."""
     cov = pack.coverage
     out: dict[str, Any] = {"level": qualifier.display_level(case.coverage_level, _scenario_is_draft(engine, case), bool(case.scenario_id)), "dispute": None, "forum": None, "reasons": [],
-                           "options": engine.forum_options(case), "upl_notice": None,
+                           "options": engine.forum_options(case), "other_forums": [], "upl_notice": None,
 }
     tax = case.taxonomy or {}
     if cov is not None:
@@ -39,7 +39,13 @@ def coverage_view(engine: CaseEngine, case: Case, pack: Any, lang: str) -> dict[
             d = cov.dispute(tax["dispute_id"])
             out["dispute"] = {"id": d.id, "title": pack.localized(d.title, lang), "branch": d.branch}
         if case.forum_id in cov.forums:
-            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang)
+            dispute = cov.disputes.get(tax.get("dispute_id"))
+            out["forum"] = engine.forum_option(pack, cov.forums[case.forum_id], lang, dispute)
+            # «почему»: the dispute's own route (routes.yaml) when it names this forum, else the pack's line
+            step = cov.route_step(tax.get("dispute_id"), case.forum_id)
+            why = step.why if step is not None else cov.routing.forum_why.get(case.forum_id)
+            out["forum"]["why"] = pack.localized(why, lang) if why else None
+            out["other_forums"] = engine.other_forums(case)  # «Другой адресат»
         if cov.routing.upl_notice:
             out["upl_notice"] = pack.localized(cov.routing.upl_notice.text, lang)
     out["reasons"] = [{"code": r, "label": pack.t(lang, f"routing.reasons.{r}", default=r)}
@@ -93,6 +99,8 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
         "deadline": None,
         "outcome": None,
         "coverage": coverage_view(engine, case, pack, lang),
+        # owner 02.10: who each step's document goes to and why — chosen by the system (routes.yaml)
+        "recipients": engine.recipient_route(case),
         "safety": {"hold_reason": case.hold_reason,
                    "hold_message": pack.t(lang, "safety.hold") if case.hold_reason else None,
                    "pending_ack": ack.ack_required if ack else None},

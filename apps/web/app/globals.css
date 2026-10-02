@@ -137,11 +137,15 @@ html[lang="ar"] body * {
   letter-spacing: 0 !important;
 }
 
-/* apple: outline 2px solid #0071e3, offset 1px (3px around buttons) */
-:focus-visible {
-  outline: 2px solid var(--color-action);
-  outline-offset: 1px;
-  border-radius: 0.5rem;
+/* apple: outline 2px solid #0071e3, offset 1px (3px around buttons). In the base layer (UX 02.10): unlayered, it beat
+   the utilities — dialogs focused on open (tabIndex -1, outline-none) showed a blue frame and lost their rounded
+   corners, and pill buttons turned square on keyboard focus. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-action);
+    outline-offset: 1px;
+    border-radius: 0.5rem;
+  }
 }
 
 @layer base {

@@ -8,6 +8,7 @@ type Row = {
   id: number; full_name: string; ecp_name: string | null; kind: string; organization: string | null; city: string | null;
   pilot: boolean; price: number | null; price_note: string; listed: boolean; has_account: boolean;
   requests: Record<"new" | "accepted" | "declined" | "paid", number>;
+  commission_due?: number;  // paid directly: 15 % of the requests the lawyer marked «оплачено клиентом»
 };
 type State = { lawyers: Row[]; commission_pct: number; payment_available: boolean; payment_channel: string[] };
 const KIND: Record<string, string> = { advocate: "адвокат", legal_consultant: "юридический консультант", human_rights: "правозащитник", other: "юрист" };
@@ -35,6 +36,7 @@ export function PilotLawyers() {
         </p>
       )}
       <InviteLink token={token} />
+      <DemoLink />
       {s?.lawyers.length === 0 && <p className="text-muted">Пока нет юристов, чей статус подтверждён.</p>}
       <ul className="space-y-3">
         {s?.lawyers.map((l) => <PilotRow key={l.id} row={l} token={token} onSaved={load} />)}
@@ -73,6 +75,7 @@ function PilotRow({ row, token, onSaved }: { row: Row; token: string; onSaved: (
         {[KIND[row.kind] ?? row.kind, row.organization, row.city].filter(Boolean).join(" · ")}
         {row.has_account ? "" : " · нет входа через ЭЦП"}
         {` · запросы: новых ${r.new}, принято ${r.accepted}, отказов ${r.declined}, оплачено ${r.paid}`}
+        {row.commission_due ? ` · комиссия к счёту ТОО: ${row.commission_due.toLocaleString("ru-RU")} ₸` : ""}
       </p>
       <div className="grid gap-2 sm:grid-cols-[10rem_1fr_auto]">
         <input className="min-h-11 rounded-xl bg-surface px-3 ring-1 ring-line" inputMode="numeric" placeholder="Цена, ₸" aria-label="Цена, ₸"
@@ -115,6 +118,26 @@ function InviteLink({ token }: { token: string }) {
         </div>
       )}
       {link && <p className="text-[14px] text-muted">Действует до {new Date(link.expires_at).toLocaleDateString("ru-RU")}.</p>}
+    </Card>
+  );
+}
+
+/** For the talks with lawyers (owner 02.10): the client's case screen with «Выбрать юриста» and made-up profiles, each
+ *  marked «Пример профиля». Only by this link — real clients never see these profiles. */
+function DemoLink() {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window === "undefined" ? "/case/demo?lawyers=demo" : `${window.location.origin}/case/demo?lawyers=demo`;
+  return (
+    <Card className="space-y-2">
+      <p className="text-[15px] text-muted">Демо для переговоров с юристами: экран дела клиента с кнопкой «Выбрать юриста» и вымышленными профилями (на каждом — «Пример профиля»). Клиенты эти профили не видят.</p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input readOnly value={url} onFocus={(e) => e.target.select()} aria-label="Ссылка на демо для юриста"
+          className="min-h-10 w-full rounded-xl bg-surface px-3 text-[15px] ring-1 ring-line" />
+        <button type="button" onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); }}
+          className="min-h-10 shrink-0 rounded-full bg-action px-4 text-[15px] font-semibold text-white">{copied ? "Скопировано" : "Ссылка на демо для юриста"}</button>
+        <a href={url} target="_blank" rel="noreferrer"
+          className="flex min-h-10 shrink-0 items-center justify-center rounded-full bg-surface px-4 text-[15px] font-medium ring-1 ring-line">Открыть</a>
+      </div>
     </Card>
   );
 }
