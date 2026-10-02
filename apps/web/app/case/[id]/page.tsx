@@ -681,11 +681,17 @@ function ApplicantForm({ caseId, fields, onDone }: { caseId: string; fields: App
       <p className="text-sm text-muted">{t(fields.every((f) => f.own !== false) ? "payment.applicant.lead" : "payment.blanks.lead")}</p>
       {fields.map((f) => (
         <label key={f.field} className="block text-sm">{f.label}
+          {f.type === "longtext" ? (  // BUG-16: «Дети» — names and birth dates of several children, not one line
+            <textarea className={`input mt-1 min-h-24 ${errors[f.field] ? "border-danger" : ""}`} required rows={3}
+              value={values[f.field] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))}
+              aria-invalid={!!errors[f.field]} />
+          ) : (
           <input className={`input mt-1 ${errors[f.field] ? "border-danger" : ""}`} required value={values[f.field] ?? ""}
             type={f.type === "phone" ? "tel" : f.type === "email" ? "email" : "text"}
             inputMode={f.type === "phone" ? "tel" : f.pattern ? "numeric" : undefined}
             autoComplete={f.own === false ? "off" : f.type === "phone" ? "tel" : f.field.endsWith("name") ? "name" : f.field.endsWith("address") ? "street-address" : undefined}
             onChange={(e) => setValues((v) => ({ ...v, [f.field]: e.target.value }))} aria-invalid={!!errors[f.field]} />
+          )}
           {errors[f.field] && <span className="text-danger">{t(`draft.error.${known.includes(errors[f.field]) ? errors[f.field] : "generic"}`)}</span>}
         </label>
       ))}

@@ -52,3 +52,22 @@ def test_the_payment_window_names_the_document(ctx):
     pay = api.get(f"/v1/cases/{case['id']}").json()["payment"]
     assert pay["title"] and pay["title"] != "Документ"
     assert pay["title"].startswith("Претензия")
+
+
+def test_alimony_asks_the_children_before_paying(ctx):
+    """QA BUG-16: «Дети» (children_info) came up only after the rest was filled — the client could not pay. It is in
+    the draft's blanks and the first list before paying, with the rest."""
+    from .test_e2e import web_user
+
+    ctx.container.engine.config.intake_max_questions = -1
+    ctx.container.settings.payment_requires_contact = False
+    api = web_user(ctx)
+    case = api.post("/v1/cases", expect=201, json={
+        "text": "Бывший муж не платит алименты на ребёнка, хочу взыскать алименты через суд", "country": "KZ"})["case"]
+    assert case["scenario"]["id"] == "kz.family.alimony"
+    cid = case["id"]
+    assert "children_info" in _blanks(api, cid)
+    r = api.c.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    fields = {f["field"]: f for f in r.json()["detail"]["fields"]}
+    assert r.status_code == 422 and fields["children_info"]["type"] == "longtext"
+    assert {"respondent_name", "respondent_address", "applicant_name"} <= set(fields)
