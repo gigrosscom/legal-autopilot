@@ -59,7 +59,7 @@ export function TabBar({ inline = false }: { inline?: boolean }) {
   const signed = useSignedIn();
   return (
     <nav aria-label={t("nav.main")}
-      className={`${inline ? "" : "fixed inset-x-0 bottom-0 z-30"} border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden`}>
+      className={`${inline ? "" : "fixed inset-x-0 bottom-[var(--app-gap,0px)] z-30"} border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden`}>
       <ul className="mx-auto grid max-w-lg grid-cols-5">
         {tabs.map((tab) => {
           const on = tab.match(path);

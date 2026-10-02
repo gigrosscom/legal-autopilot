@@ -227,7 +227,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
       </main>
 
       {/* phone: tab bar */}
-      <nav aria-label="Разделы" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav aria-label="Разделы" className="fixed inset-x-0 bottom-[var(--app-gap,0px)] z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
         <ul className="mx-auto grid max-w-lg grid-cols-5">
           {[...PHONE_TABS.map((k) => TABS.find((t) => t.key === k)!), { key: "more" as const, label: "Ещё", icon: "menu" as IconName }].map((t) => {
             const on = t.key === "more" ? !PHONE_TABS.includes(tab) : tab === t.key;
