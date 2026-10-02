@@ -49,3 +49,20 @@ def test_opened_article_and_its_terms_pass():
 def test_clean_reply_unchanged():
     text = "Что делать:\n1. **Направьте претензию продавцу.** Ответ — в течение 10 календарных дней."
     assert keep_checked(text, RULES, set()) == (text, [])
+
+
+def test_unchecked_article_in_brackets_goes_whole():
+    out, removed = keep_checked("Увольнение на больничном запрещено (статья 999 Трудового кодекса). Дальше.", RULES, set())
+    assert out == "Увольнение на больничном запрещено. Дальше." and removed == ["(статья 999 Трудового кодекса)"]
+    text = "Претензия — ответ 10 календарных дней (ст. 42-4 ЗоЗПП)."
+    assert keep_checked(text, RULES, set()) == (text, [])
+
+
+def test_months_checked_only_as_a_time_limit():
+    """ТК ст. 160 (with КС 81-НП, 88-НП): 1 and 2 months, 1 and 3 years are checked; «6 месяцев» is not."""
+    out, removed = keep_checked("В суд можно обратиться в течение шести месяцев.", RULES, set())
+    assert "шести месяцев" not in out and removed
+    text = "В суд — в течение двух месяцев со дня получения решения комиссии."
+    assert keep_checked(text, RULES, set()) == (text, [])
+    text = "Ноутбук держат уже пять месяцев, это нарушение."  # the person's fact, not a time limit
+    assert keep_checked(text, RULES, set()) == (text, [])

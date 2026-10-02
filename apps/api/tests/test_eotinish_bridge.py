@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -132,7 +132,9 @@ def test_validation_of_number_date_and_receipt(ctx):
     # today is fine (no response term on this step since the lawyer's check of 01.10)
     out = post(number="№ 12345").json()
     assert out["filing"]["number"] == "№ 12345"
-    assert out["case"]["actions"][-1]["submitted_at"].startswith(today.isoformat())
+    # stored in UTC; «today» is the pack's local date (Almaty is UTC+5: after 19:00 UTC it is already tomorrow there)
+    submitted = datetime.fromisoformat(out["case"]["actions"][-1]["submitted_at"])
+    assert submitted.astimezone(ctx.container.packs.pack("KZ").tz).date() == today
 
 
 def test_only_own_case(ctx):

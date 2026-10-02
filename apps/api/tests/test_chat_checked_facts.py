@@ -16,7 +16,7 @@ def test_checked_terms():
     for fact in ("10 calendar days of receiving the claim", "art. 42-4", "never over 20 calendar days",
                  "14 calendar days of the insurance contract", "art. 842 p. 2", "answer within 5 working days",
                  "insurance ombudsman", "art. 29-1", "art. 18 p. 1", "1.25 × the National Bank base rate", "art. 159",
-                 "art. 64", "art. 51-4", "art. 72, 73", "art. 82 p. 2, 3", "art. 22 p. 3-1"):
+                 "art. 64", "art. 51-4", "art. 72, 73", "art. 82 p. 2, 3", "art. 22 p. 3-1", "art. 160", "81-НП"):
         assert fact in RULES, fact
 
 

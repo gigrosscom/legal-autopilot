@@ -22,7 +22,7 @@ def test_nothing_above_contradicts_facts_first():
 def test_legal_limits_of_the_questions():
     r = flat(FACTS_FIRST_RULE)
     assert "never where to file" in r
-    assert "never names, addresses or ID numbers" in r
+    assert "never the person's own name, address or ID number" in r and "other side's name and address" in r
     assert "life or health is in danger" in r and "time limit may run out" in r
     assert "never also gives the solution" in r
     assert "no greeting or introduction before it" in r
