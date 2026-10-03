@@ -30,7 +30,21 @@ services:
       PUBLIC_API_URL: https://${API_DOMAIN}
       PUBLIC_SITE_URL: https://${SITE_DOMAIN}
       NCANODE_URL: http://ncanode:14579
+      # Court practice through a real browser (court-browser below, owner 02–03.10.2026); empty → plain HTTP
+      ZANN_COURT_BROWSER_URL: http://court-browser:8090
     volumes: [api_data:/data]
+
+  # A real Chromium for the court-practice collector (konsilier/zann/court.py): opens the open pages of sud.kz /
+  # sud.gov.kz one at a time (5–10 s apart, never faster than robots.txt Crawl-delay), never solves a captcha or a
+  # challenge (reports blocked(captcha) and stops). Not disguised: Chromium's own User-Agent + our name and contact.
+  # Internal only, no public port.
+  court-browser:
+    build: {context: court-browser}
+    restart: unless-stopped
+    mem_limit: 1g
+    shm_size: 256m
+    environment:
+      COURT_BROWSER_HOSTS: sud.kz,www.sud.kz,sud.gov.kz
 
   # ЭЦП verification (certificate chain to the national root CAs + OCSP). Internal only, no public port.
   ncanode:
