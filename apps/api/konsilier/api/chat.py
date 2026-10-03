@@ -390,6 +390,17 @@ def chat_document(case_id: uuid.UUID, user: User = Depends(current_user), sessio
                   container: Container = Depends(get_container)) -> dict[str, Any]:
     """The card under the chat's last reply: the document, its price and whether it is paid (P0 02.10)."""
     case = _case_for(session, case_id, user)
+    # P0 03.10: a chat case whose first message was too thin never got a scenario, so the card could never show. The
+    # card poll heals it here from the fuller chat text — synchronously, so it does not hang on a background thread
+    # that may not have run (requalify is a no-op once there is a scenario or nothing new was said since the last try).
+    if not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        try:
+            if container.engine.requalify_from_chat(session, case.id):
+                session.commit()
+                case = _case_for(session, case_id, user)
+        except Exception:  # noqa: BLE001 — the model is down or slow: the card opens as it is, tried on the next poll
+            session.rollback()
+            log.warning("chat/document: synchronous requalify failed for case %s", case_id, exc_info=True)
     return document_offer(session, container, case, case.language or "ru")
 
 
