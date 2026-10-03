@@ -292,3 +292,5 @@
 ## Входящие (почта info@)
 
 - 03.10 04:46 UTC — **Google Cloud Support** (cloudsupport@google.com), кейс 76002455 «GCP Account Suspension Inquiry», ответ по тикету, непрочитано. Не юрист/клиент пилота — передать Документологу (владеет Google-аккаунтами для грантов); ответ по существу без контекста тикета не черновлю. [открыть](https://mail.google.com/mail/?authuser=info@konsilier.com#all/thread-f:1877994984312828540)
+
+- 03.10 ~09:00 UTC — **Google Cloud Support** (кейс 76002455, приостановка GCP): просят скриншот ошибки. Черновик ответа подготовлен в треде (нужно прикрепить скриншот ошибки перед отправкой). [открыть](https://mail.google.com/mail/?authuser=info@konsilier.com#all/thread-f:1877994984312828540)
