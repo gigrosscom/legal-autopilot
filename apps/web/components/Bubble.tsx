@@ -16,7 +16,7 @@ export function Bubble({ mine, at, seen, children }: { mine: boolean; at?: strin
         {at && (
           <span className={`float-end ms-3 mt-1 flex translate-y-0.5 items-center gap-0.5 text-[11px] leading-none ${mine ? "text-[var(--chat-out-meta)]" : "text-muted"}`}>
             {time(at)}
-            {mine && <span aria-hidden className={seen ? "text-[#53bdeb]" : ""}>{seen ? "✓✓" : "✓"}</span>}
+            {mine && <span aria-hidden className={seen ? "font-semibold" : ""}>{seen ? "✓✓" : "✓"}</span>}
           </span>
         )}
         <span className="block clear-both" />

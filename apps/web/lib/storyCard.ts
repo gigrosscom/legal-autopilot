@@ -10,7 +10,7 @@ export async function storyCard(link: string, text: { title: string; line: strin
   const font = getComputedStyle(document.body).fontFamily || "sans-serif";
 
   const bg = g.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#0a6fe0");
+  bg.addColorStop(0, "#0866ff");
   bg.addColorStop(1, "#003f8a");
   g.fillStyle = bg;
   g.fillRect(0, 0, W, H);
