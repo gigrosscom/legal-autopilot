@@ -484,9 +484,7 @@ class CaseEngine:
                 sid, confidence, reason = ai.qualify(llm, candidates, self.packs.packs, text, case.language)
             except Exception:  # noqa: BLE001 — BUG-26: the model is down (quota, network); the words still decide
                 log.warning("qualify: the model failed for case %s, choosing by keywords", case.id, exc_info=True)
-                sid, confidence, reason = by_keywords(candidates, text)
-                if sid is None:
-                    raise
+                sid, confidence, reason = by_keywords(candidates, text)  # None: the universal path below
         case.qualification_confidence = confidence
         if sid is None:
             case.needs_review = True
@@ -722,7 +720,12 @@ class CaseEngine:
         self._save_vault(case, llm)
         self.read_unread_evidence(case, sc, pack)
         forum_name = pack.localized(pack.coverage.forums[forum_id].name, case.language)
-        intro = pack.t(case.language, "routing.universal_intro", forum=forum_name)
+        # PM 03.10 (family sweep): the documents of this dispute (routes.yaml), else neutral words — never «чеки, акты»
+        kinds, _money = self.documents_to_ask(case)
+        named = [pack.t(case.language, f"evidence.{k}", default="") for k in kinds if k != IDENTITY_KIND]
+        named = [x[:1].lower() + x[1:] for x in named if x]
+        documents = ", ".join(named) or pack.t(case.language, "chat_documents.any_neutral", default="")
+        intro = pack.t(case.language, "routing.universal_intro", forum=forum_name, documents=documents)
         reply = self.ack_reply(session, case) or self._next_step(session, case, sc, pack)
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply
@@ -987,6 +990,13 @@ class CaseEngine:
         f = sc.field(name)
         text = pack.localized(f.question, lang) if f.question else pack.t(
             lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name))
+        if f.type == "evidence" and not f.question and IDENTITY_KIND not in f.evidence_kinds and is_generic(sc.id):
+            # PM 03.10 (family sweep): the universal path's files were asked «договор, акт сверки, счёт-фактуру, чек»
+            # in a divorce — its own list (routes.yaml documents) or neutral words, never the purchase one
+            named = [pack.t(lang, f"evidence.{k}", default="") for k in f.evidence_kinds if k != "other"]
+            named = [x[:1].lower() + x[1:] for x in named if x]
+            docs = "; ".join(named) or pack.t(lang, "chat_documents.any_neutral", default="")
+            text = pack.t(lang, "interview.evidence_named", docs=docs, default="") or text
         kinds = [{"kind": k, "label": pack.t(lang, f"evidence.{k}", default=k)} for k in f.evidence_kinds]
         return Question(field=name, text=text, type=f.type, optional=f.optional, evidence_kinds=kinds,
                         pattern=f.pattern)

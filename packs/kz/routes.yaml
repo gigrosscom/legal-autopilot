@@ -344,8 +344,8 @@ routes:
 
   family.divorce:
     # ZANN 03.10: КоБС ст. 17 п. 1, ст. 19 п. 2; ГПК ст. 27 ч. 3, ст. 30 ч. 7
-    # документы, которые чат просит (пилот качества 03.10, Разработчик; состав подтверждает ZANN)
-    documents: [marriage_certificate, birth_certificate]
+    # документы, которые чат просит — ZANN 03.10 (team/zann/specs/2026-10-03-family-pilot.md § 1.1)
+    documents: [marriage_certificate, birth_certificate, id_document]
     steps:
       - forum: kz.court.juvenile
         label: {ru: "Суд по делам несовершеннолетних — иск о расторжении брака (без общих детей до 18 лет — районный суд)", kk: "Кәмелетке толмағандар істері жөніндегі сот — некені бұзу туралы талап арыз (18 жасқа дейінгі ортақ балалар болмаса — аудандық сот)"}
@@ -356,7 +356,7 @@ routes:
 
   family.child_residence:
     # ZANN 03.10: ГПК ст. 27 ч. 3 — определение места жительства ребёнка
-    documents: [birth_certificate]   # пилот качества 03.10; состав подтверждает ZANN
+    documents: [birth_certificate, housing_documents, child_references]   # ZANN 03.10, спецификация пилота § 1.1
     steps:
       - forum: kz.court.juvenile
         label: {ru: "Суд по делам несовершеннолетних — иск об определении места жительства ребёнка", kk: "Кәмелетке толмағандар істері жөніндегі сот — баланың тұрғылықты жерін анықтау туралы талап арыз"}
@@ -403,6 +403,7 @@ routes:
         norm: "ГПК РК, ст. 31 ч. 1, 3"
 
   family.alimony:
+    documents: [birth_certificate, marriage_certificate, divorce_certificate, pay_slip]   # ZANN 03.10, § 1.1
     steps:
       - forum: kz.court.juvenile
         label: {ru: "Суд по делам несовершеннолетних (где его нет — районный суд) — иск или судебный приказ", kk: "Кәмелетке толмағандар істері жөніндегі сот (ол жоқ жерде — аудандық сот) — талап арыз немесе сот бұйрығы"}

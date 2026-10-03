@@ -130,7 +130,12 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
             if fld.name not in seen:
                 intake.append(fld)
                 seen.add(fld.name)
-    intake.append(IntakeField(name="evidence", type="evidence", evidence_kinds=("other",), optional=True))
+    # ZANN 03.10 (family pilot): the dispute route's own documents (routes.yaml `documents`) are the files asked for,
+    # with «Другой документ» kept for anything else; without a list — any document
+    route = cov.routes.get(ref.dispute_id)
+    own = tuple(k for k in (route.documents if route is not None else ()) if k != "id_document")
+    intake.append(IntakeField(name="evidence", type="evidence", evidence_kinds=(*own, "other") if own else ("other",),
+                              optional=True))
     # a copy of the ID is attached to the document; personal data can also be typed in instead
     intake.append(IntakeField(name="identity_document", type="evidence", evidence_kinds=("id_document",),
                               optional=True))
