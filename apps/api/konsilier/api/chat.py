@@ -203,6 +203,11 @@ def asked_and_answered(rows: list[Any], question: str) -> bool:
     return False
 
 
+# «документов нет», «нет чека», «пришлю позже», «потом», «не могу прислать» — the person answered the request
+NO_DOCUMENTS = re.compile(r"(?<!\w)нет(?!\w)|позже|потом|не могу|не сохранил|не сохранилось|потерял|отсутству|"
+                          r"(?<!\w)жоқ(?!\w)|кейін", re.IGNORECASE)
+
+
 def needs_documents_line(text: str, *, asked_before: bool, offer: bool, files: bool, told: str) -> bool:
     """A fact-finding question (no solution, no offer) that does not ask for the documents, in a chat where they were
     never asked and none came, after a story (not «здравствуйте»). The QA gate (scripts/qa_gate.py) uses it too."""
@@ -555,6 +560,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         # PM 02.10 (P0 after #215): a solution comes only after the facts (R-29, decisions 225, 226, 229) and its steps
         # follow the case's route (R-35). The facts of this very message are read first (they would otherwise reach
         # the case only after the reply, and the bot would ask the sum it was just told).
+        docs_reminder = False
         if SOLUTION.search(text):
             eng = container.engine
             with container.session_factory() as s:
@@ -574,12 +580,21 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                     if asked_and_answered(rows, q):  # asked and answered: no loop, the solution with what there is
                         log.warning("chat=question_not_repeated case=%s field=%s", case_pk, missing[0])
                         q = ""
+                # owner 02.10 (decisions 225, 226; QA BUG-25): the documents asked are waited for — one reminder
+                # before the solution while none came and the person did not say there are none
+                if not q and not (ctx["case"].get("files") or body.attachments) and not NO_DOCUMENTS.search(asked_text):
+                    asked = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
+                    reminded = any((m.meta or {}).get("docs_reminder") for m in rows if m.role == "assistant")
+                    if asked and not reminded:
+                        q = pack.t(reply_lang if reply_lang in ("ru", "kk") else lang, "chat_documents.remind",
+                                   default="")
+                        docs_reminder = bool(q)
                 route = eng.recipient_route(cc) if cc is not None and not q else []
                 kinds = (eng.pack_of(cc).coverage.routing.document_kinds
                          if cc is not None and eng.pack_of(cc).coverage else {})
             if q:  # not yet: one question (and the documents, below), no solution and no card
                 own = [ln for ln in re.split(r"\[\[\s*MORE\s*\]\]", text)[0].splitlines() if ln.strip().endswith("?")]
-                text = own[-1].strip() if own else q
+                text = q if docs_reminder else own[-1].strip() if own else q
                 result.offer_document = False
                 log.info("chat=solution_held case=%s missing=%s", case_pk, missing)
             else:
@@ -648,6 +663,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
                                   # one sign for «the bot asks for the documents»: the upload buttons show under it
                                   "asked_documents": asked_docs and not result.offer_document,
+                                  "docs_reminder": docs_reminder,
                                   "usage": result.usage, "first_ms": first_ms,
                                   # P0 01.10: rounds cut before their end ("provider:reason") — continued, or the
                                   # reply ended at its last whole sentence (trimmed); counted hourly (chatspeed)
