@@ -145,3 +145,26 @@ def test_property_division_claim_and_documents(ctx):
     for lang in ("ru", "kk"):
         for k in (*route.documents, *route.documents_children):
             assert packs.pack("KZ").t(lang, f"evidence.{k}", default="") , (lang, k)
+
+
+def test_children_said_in_the_interview_move_the_case_and_stay_known(ctx):
+    """Family sweep F3: «двое детей 5 и 9 лет» answered in the interview (not the chat) — the children's court, and a
+    later message without the word «дети» does not bring the case back."""
+    import uuid
+
+    from konsilier.core.models import Case
+
+    from .test_e2e import web_user
+
+    api = web_user(ctx)
+    case = api.post("/v1/cases", expect=201, json={"text": "Хочу развестись с мужем, он против", "country": "KZ"})["case"]
+    if (case.get("coverage") or {}).get("forum") is None:
+        import pytest
+        pytest.skip("the test model did not classify it as a divorce")
+    cid = case["id"]
+    api.c.post(f"/v1/cases/{cid}/messages", headers=api.h, json={"text": "Двое детей 5 и 9 лет живут со мной"})
+    api.c.post(f"/v1/cases/{cid}/messages", headers=api.h, json={"text": "пропустить"})
+    with ctx.container.session_factory() as s:
+        c = s.get(Case, uuid.UUID(cid))
+        assert c.forum_id == "kz.court.juvenile" and c.taxonomy.get("children") == "yes"
+        assert ctx.container.engine.reroute_by_children(s, c) is False

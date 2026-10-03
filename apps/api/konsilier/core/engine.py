@@ -640,14 +640,16 @@ class CaseEngine:
                         "why": pack.localized(step.why, lang), "norm": step.norm})
         return out
 
-    def children_of(self, case: Case, session: Session | None = None) -> str:
+    def children_of(self, case: Case, session: Session | None = None, extra: str = "") -> str:
         """Common children under 18 by what the person told (the story, the facts and, with a session, every chat
         message): «yes» / «no» / «unknown»."""
         told = [case.initial_text or "", *(str(v) for v in (case.facts or {}).values() if isinstance(v, str))]
         if session is not None and case.id is not None:
             told += [m.text for m in session.scalars(select(ChatMessage).where(
                 ChatMessage.case_id == case.id, ChatMessage.role == "user")).all() if m.text]
-        return safety.minor_children("\n".join(told))
+        said = safety.minor_children("\n".join([*told, extra]))
+        # what the person once said stays known (an interview answer is not a chat message)
+        return said if said != "unknown" else str((case.taxonomy or {}).get("children") or "unknown")
 
     def _claim_unpriced(self, case: Case, sc: Scenario) -> bool:
         if not is_generic(sc.id):
@@ -656,7 +658,7 @@ class CaseEngine:
         route = cov.routes.get((case.taxonomy or {}).get("dispute_id") or "") if cov is not None else None
         return bool(route is not None and route.claim_unpriced)
 
-    def reroute_by_children(self, session: Session, case: Case) -> bool:
+    def reroute_by_children(self, session: Session, case: Case, text: str = "") -> bool:
         """PM 03.10 (family sweep F1): «детей нет» / «у нас сын 5 лет» told after the recipient was picked — the court
         follows (juvenile only with common minors, CPC art. 27 p. 3). Only before any document; True when changed."""
         if case.status not in (S.INTAKE.value, S.QUALIFIED.value) or case.actions or not case.forum_id \
@@ -668,10 +670,14 @@ class CaseEngine:
         if route is None or all(s.children is None for s in route.steps):
             return False
         options = [cov.forums[o["id"]] for o in self.other_forums(case)] + [cov.forums[case.forum_id]]
-        target = cov.first_forum(dispute_id, options, self.children_of(case, session))
+        children = self.children_of(case, session, text)
+        if children == "unknown":
+            return False  # nothing said about the children: the court stays
+        target = cov.first_forum(dispute_id, options, children)
         if target is None or target.id == case.forum_id:
             return False
         self.change_forum(session, case, target.id, actor="system")
+        case.taxonomy = {**(case.taxonomy or {}), "children": children}
         return True
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
@@ -1103,7 +1109,7 @@ class CaseEngine:
         ack = self.ack_reply(session, case)
         if ack is not None:
             return ack
-        if safety.minor_children(text) != "unknown" and self.reroute_by_children(session, case):
+        if safety.minor_children(text) != "unknown" and self.reroute_by_children(session, case, text):
             # PM 03.10 (family sweep F1): «детей нет» after the court was picked — the new court's questions follow
             return self._next_step(session, case, self.scenario_of(case), self.pack_of(case))
         sc, pack = self.scenario_of(case), self.pack_of(case)
