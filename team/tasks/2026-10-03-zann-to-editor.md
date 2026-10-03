@@ -13,3 +13,9 @@
 Также маршрут развода (packs/kz/routes.yaml, `family.divorce`, PR #242): тексты `why.kk` трёх шагов (дети есть / нет /
 неизвестно). Ветка с данными документов — `claude/team-docs-by-scenario` (PR #245). Правки — коммитом в те же ветки или
 списком сюда; ZANN проверит, что смысл не изменился.
+
+## Дополнение 03.10 (ветка claude/team-route-children = #242, тоже в #245)
+Новые kk-тексты (вычитать язык, смысл не менять):
+- `packs/kz/i18n/kk.yaml → evidence`: title_documents, property_rights_extract, vehicle_registration, marriage_contract, valuation.
+- `packs/kz/routes.yaml`: `family.property_division` и `family.personal_property` — `claim_demands.kk`, `steps[].why.kk`, `facts_ask.*.kk`, `document_title.kk`; `family.divorce` — `facts_ask.event_date.kk`.
+- `packs/kz/documents/response.yaml` — title.kk «Талап арызға пікір», attachments.kk.
