@@ -26,11 +26,11 @@ CARDS = {
     "s1-kk": ("Ақшаңызды, жалақыңызды не кепіліңізді қайтармай жүр ме?",
               ["Жағдайды жазыңыз — ЖИ оны тегін талдайды.", "Кінәрат-талапты бірнеше минутта дайындайды."],
               "Құжат — 1 990 ₸"),
-    "s2-ru": ("Сегодня запустили Konsiliér AI",
+    "s2-ru": ("Сегодня запустили Konsilier",
               ["Опишите проблему словами или голосом.", "Получите претензию, жалобу или заявление.",
                "Подаёте сами, онлайн."],
               "Документ — 1 990 ₸"),
-    "s2-kk": ("Бүгін Konsiliér AI іске қосылды",
+    "s2-kk": ("Бүгін Konsilier іске қосылды",
               ["Мәселені жазыңыз не айтып беріңіз.", "Кінәрат-талап, шағым не арыз алыңыз.",
                "Өзіңіз онлайн бересіз."],
               "Құжат — 1 990 ₸"),
@@ -49,7 +49,10 @@ def card(lang: str, title: str, lines: list[str], tag: str) -> Image.Image:
     im = Image.new("RGB", (r.RW, r.RH), r.WHITE)
     d = ImageDraw.Draw(im)
     side, width = r.SIDE, r.RW - 2 * r.SIDE
-    r.header(d, r.RW, False, None, top=r.SAFE_TOP - 120)
+    # product name Konsilier (decision 04.10); render.header still prints the old wordmark
+    top = r.SAFE_TOP - 120
+    kw = r.draw_k(d, side, top, 52, r.INK, r.ACCENT)
+    d.text((side + kw + 18, top + 8), "Konsilier", font=r.font(30, 600), fill=r.INK)
     for tsize in (84, 78, 72, 66, 60):
         tf = r.font(tsize, 700)
         if r.block_height(title, tf, width, 1.1) <= 4 * tsize * 1.1:
