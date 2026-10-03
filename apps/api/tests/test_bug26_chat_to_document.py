@@ -112,3 +112,55 @@ def test_the_offer_line_brings_the_button(ctx, monkeypatch, kind, ask):
     assert card["ready"] is True and card["title"], card  # the site shows «Составить документ» only when ready
     pay = api.c.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
     assert pay.status_code in (200, 422), pay.json()  # the bill or the form before it — never 409
+
+
+# prod dc5de58 (PM 03.10, browser): the free model never gives a solution or an offer — it loops on a clarifying
+# question («труба в квартире соседа или стояк?»). The person says «Составьте претензию», the model asks again, and the
+# card «Составить документ» never appears → no document. Owner 03.10: once the intake has begun and the person asks
+# for the document, the card appears with what there is; the blanks are filled in the form before payment.
+LOOP = ["Труба в квартире соседа или это общий стояк?", "А когда именно это произошло?", "Понятно, уточните детали."]
+
+
+@pytest.mark.parametrize("kind", list(CASES))
+@pytest.mark.parametrize("ask", ["Составьте претензию", "Хватит вопросов, дайте решение"])
+def test_the_clarifying_loop_still_brings_the_button(ctx, monkeypatch, kind, ask):
+    monkeypatch.setattr(ai, "extract_fields", lambda *a, **k: {})
+    monkeypatch.setattr(ai, "qualify", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("429")))
+    ctx.container.settings.background_jobs = "inline"
+    # the model only ever asks another clarifying question: no «Что делать:», no [[MORE]], no offer line, no card
+    ctx.container.chat_agent, ctx.container.chat_fallback_agent = _agent(*LOOP, *LOOP), None
+    api = web_user(ctx)
+    said = CASES[kind]
+    cid = api.post("/v1/cases", expect=201, json={"text": said[0], "country": "KZ", "defer": True})["case"]["id"]
+    first = _say(ctx, api, cid, said[0])
+    assert not first["offer_document"], first["text"]  # documents-first: no card in the first reply
+    r = _say(ctx, api, cid, ask)  # the person insists after the intake began — the card appears despite the loop
+    assert r["offer_document"], r["text"]
+    card = api.get(f"/v1/cases/{cid}/chat/document").json()
+    assert card["ready"] is True and card["title"], card  # «Составить документ» renders only when ready
+    pay = api.c.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    assert pay.status_code in (200, 422), pay.json()  # the bill or the form before it — never 409 no_document_path
+
+
+# prod dc5de58 (PM 03.10, browser root cause): classification runs in a background thread (background_jobs=thread), so
+# when the person insists before it finishes, scenario_id is still unset → has_path is False → no card, the loop went
+# on forever. background_jobs="off" reproduces it: the deferred requalify never runs, so the scenario is set only by
+# the synchronous requalify the insistence now triggers.
+@pytest.mark.parametrize("kind", list(CASES))
+def test_insisting_classifies_now_when_the_background_job_has_not_run(ctx, monkeypatch, kind):
+    monkeypatch.setattr(ai, "extract_fields", lambda *a, **k: {})
+    monkeypatch.setattr(ai, "qualify", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("429")))
+    ctx.container.settings.background_jobs = "off"  # the background classification never runs — the prod race
+    ctx.container.chat_agent, ctx.container.chat_fallback_agent = _agent(*LOOP, *LOOP), None
+    api = web_user(ctx)
+    said = CASES[kind]
+    cid = api.post("/v1/cases", expect=201, json={"text": said[0], "country": "KZ", "defer": True})["case"]["id"]
+    _say(ctx, api, cid, said[0])
+    with ctx.container.session_factory() as s:
+        assert not s.get(Case, uuid.UUID(cid)).scenario_id  # nothing classified it yet (the job was skipped)
+    r = _say(ctx, api, cid, "Составьте претензию")  # the insistence classifies the case here and now
+    assert r["offer_document"], r["text"]
+    with ctx.container.session_factory() as s:
+        assert s.get(Case, uuid.UUID(cid)).scenario_id, "classified synchronously on the insistence"
+    card = api.get(f"/v1/cases/{cid}/chat/document").json()
+    assert card["ready"] is True and card["title"], card

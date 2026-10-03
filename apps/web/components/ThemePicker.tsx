@@ -14,7 +14,7 @@ function Preview({ dark }: { dark: boolean }) {
       <rect width="120" height="72" fill={bg} />
       <rect x="10" y="10" width="44" height="7" rx="3.5" fill={text} />
       <rect x="10" y="26" width="76" height="14" rx="7" fill={fill} />
-      <rect x="54" y="46" width="56" height="14" rx="7" fill="#0a6fe0" />
+      <rect x="54" y="46" width="56" height="14" rx="7" fill="#0866ff" />
     </svg>
   );
 }
