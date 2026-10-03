@@ -24,7 +24,6 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
 }) {
   const t = useT();
   const { lang } = useLang();
-  const [tools, setTools] = useState(false);  // «›» pressed while typing: attach and camera shown again
   const box = useRef<HTMLTextAreaElement>(null);
   const discard = useRef(false);     // «cancel»: what is still being recognised is dropped
   const sendAfter = useRef(false);   // «send» while recording: sent once the words are in the box
@@ -37,7 +36,6 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
   const shown = value;
   const hasText = shown.trim().length > 0;
 
-  useEffect(() => { if (!value) setTools(false); }, [value]);
   useEffect(() => {  // grow with the text, up to a limit
     const el = box.current;
     if (!el) return;
@@ -72,51 +70,62 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     if (!busy && hasText) onSubmit();
   };
 
+  // Controls sit in their own row UNDER the field, as in the Claude / ChatGPT apps: attach (and the camera in the
+  // chat) on the left, microphone and send on the right. The message gets the full width on the row above them.
+  const round = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors";
   const attach = (
     <label title={t("chat.attach")}
-      className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-sand ${
-        large ? "h-11 w-11 text-ink" : "h-11 w-10 text-[var(--chat-accent)]"} ${busy ? "pointer-events-none opacity-40" : ""}`}>
-      <Icon name="plus" size={large ? 22 : 24} /><span className="sr-only">{t("chat.attach")}</span>
+      className={`${round} cursor-pointer text-ink hover:bg-sand-deep ${busy ? "pointer-events-none opacity-40" : ""}`}>
+      <Icon name="plus" size={24} /><span className="sr-only">{t("chat.attach")}</span>
       <input type="file" multiple accept="image/*,application/pdf,text/plain,.doc,.docx" className="sr-only" disabled={busy}
         onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
     </label>
   );
-  // as in ChatGPT: the microphone and «send» side by side; send turns blue once there is something to send
+  const camera = (
+    <label title={t("helper.photo")}
+      className={`${round} cursor-pointer text-ink hover:bg-sand-deep ${busy ? "pointer-events-none opacity-40" : ""}`}>
+      <Icon name="camera" size={23} /><span className="sr-only">{t("helper.photo")}</span>
+      <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy}
+        onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
+    </label>
+  );
+  // microphone: idle → neutral; recording → red and pulsing; turning speech into text → a spinner
   const micButton = dictation.transcribing ? (
-    <span role="status" title={t("chat.transcribing")}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink">
+    <span role="status" title={t("chat.transcribing")} className={`${round} text-ink`}>
       <Icon name="spinner" size={20} /><span className="sr-only">{t("chat.transcribing")}</span>
     </span>
   ) : dictation.supported ? (
     <button type="button" onClick={dictation.listening ? dictation.stop : record} disabled={busy}
       aria-pressed={dictation.listening} title={dictation.listening ? t("chat.micStop") : t("chat.mic")}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${dictation.listening
-        ? "bg-danger-strong text-white motion-safe:animate-pulse" : "text-ink hover:bg-sand"}`}>
+      className={`${round} ${dictation.listening
+        ? "bg-danger-strong text-white motion-safe:animate-pulse" : "text-ink hover:bg-sand-deep"}`}>
       <Icon name={dictation.listening ? "stop" : "mic"} size={21} />
       <span className="sr-only">{dictation.listening ? t("chat.micStop") : t("chat.mic")}</span>
     </button>
   ) : null;
-  const action = (
-    <span className="flex shrink-0 items-center gap-1">
-      {micButton}
-      {onStop ? (
-        <button type="button" onClick={onStop} title={t("chat.stop")}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-surface">
-          <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
-        </button>
-      ) : (
-      <button type="submit" disabled={busy || (!hasText && !dictation.listening) || dictation.transcribing} title={t("chat.send")}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-action text-white transition-colors disabled:bg-sand-deep disabled:text-muted">
-        <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
-      </button>
-      )}
-    </span>
+  // send: a solid round button in the brand colour with an up arrow, as in the Claude / ChatGPT apps;
+  // while the answer is being written it turns into «Стоп» (a square).
+  const sendButton = onStop ? (
+    <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-surface`}>
+      <span className="h-3.5 w-3.5 rounded-[3px] bg-current" /><span className="sr-only">{t("chat.stop")}</span>
+    </button>
+  ) : (
+    <button type="submit" disabled={busy || (!hasText && !dictation.listening) || dictation.transcribing} title={t("chat.send")}
+      className={`${round} bg-action text-white disabled:bg-sand-deep disabled:text-muted`}>
+      <Icon name={busy ? "spinner" : "arrowUp"} size={20} /><span className="sr-only">{t("chat.send")}</span>
+    </button>
+  );
+  const controlsRow = (
+    <div className="flex items-center justify-between gap-2">
+      <span className="flex items-center gap-0.5">{attach}{!large && camera}</span>
+      <span className="flex items-center gap-1.5">{!onStop && micButton}{sendButton}</span>
+    </div>
   );
 
   const filesList = files.length > 0 && (
-    <ul className="flex flex-wrap gap-2 px-2 pt-1 pb-2">
+    <ul className="flex flex-wrap gap-2 px-1 pt-1 pb-2">
       {files.map((f) => (
-        <li key={f.key} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sand py-1 ps-3 pe-1 text-xs">
+        <li key={f.key} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-sand-deep py-1 ps-3 pe-1 text-xs">
           <Icon name="paperclip" size={14} className="shrink-0" /><span className="truncate">{f.filename}</span>
           <button type="button" aria-label={t("chat.remove")} onClick={() => onRemove(f.key)}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink">
@@ -126,6 +135,8 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
       ))}
     </ul>
   );
+  // Big, crisp text as in the Claude app (owner, decisions.md 03.10): ≥ 20 px, roomy line-height, near-black ink in
+  // the light theme and near-white in the dark, placeholder no fainter than --color-muted. Never faint or small.
   const textarea = (
     <>
       <label htmlFor={large ? "home-input" : "chat-input"} className="sr-only">{placeholder}</label>
@@ -143,17 +154,17 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
         }}
         placeholder={dictation.transcribing ? t("chat.transcribing") : dictation.listening ? t("chat.listening") : placeholder}
         maxLength={4000}
-        className={`block w-full flex-1 resize-none border-0 bg-transparent shadow-none outline-none placeholder:text-muted ${
-          large ? "min-h-24 px-3 pt-2 text-[19px] leading-relaxed text-ink" : "min-h-10 px-3 py-2 text-[19px] leading-snug text-ink"}`}
+        className={`block w-full resize-none border-0 bg-transparent px-2 pt-1 pb-1 text-[20px] leading-[1.4] text-ink shadow-none outline-none placeholder:text-muted ${
+          large ? "min-h-[84px]" : "min-h-9"}`}
         style={{ outline: "none" }} /* the whole box shows focus */ />
     </>
   );
   // Recording, as in the Claude app (owner's sample 02.10): the words grow in the box above, and one row below —
   // «✕» (cancel) · the loudness wave · «■» (stop, keep the text to correct) · «↑» (send now)
-  const ctl = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full";
+  const ctl = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full";
   const recordingRow = waiting && (
-    <div className="flex items-center gap-2 px-1 pt-1">
-      <button type="button" onClick={cancel} title={t("chat.cancel")} className={`${ctl} bg-surface text-ink ring-1 ring-line hover:bg-sand`}>
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={cancel} title={t("chat.cancel")} className={`${ctl} bg-surface text-ink ring-1 ring-line hover:bg-sand-deep`}>
         <Icon name="x" size={20} /><span className="sr-only">{t("chat.cancel")}</span>
       </button>
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
@@ -166,7 +177,7 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
             </>}
       </div>
       <button type="button" onClick={stopKeep} disabled={!dictation.listening} title={t("chat.micStop")}
-        className={`${ctl} bg-surface text-ink ring-1 ring-line hover:bg-sand disabled:opacity-40`}>
+        className={`${ctl} bg-surface text-ink ring-1 ring-line hover:bg-sand-deep disabled:opacity-40`}>
         <span className="h-3.5 w-3.5 rounded-[3px] bg-current" /><span className="sr-only">{t("chat.micStop")}</span>
       </button>
       <button type="submit" title={t("chat.send")} className={`${ctl} bg-action text-white`}>
@@ -178,72 +189,17 @@ export function Composer({ value, setValue, files, onFiles, onRemove, onSubmit, 
     <p role="alert" className="px-3 pt-1 pb-1 text-xs text-danger">{t(`chat.errors.${dictation.error}`)}</p>
   );
 
-  if (large) return (
-    <form onSubmit={(e) => { e.preventDefault(); submit(); }}
-      className="rounded-[28px] border border-line bg-surface p-3 shadow-[var(--shadow-raised)] transition-colors focus-within:border-ink/30">
-      {filesList}
-      <div className="space-y-2">
-        {textarea}
-        {recordingRow || <div className="flex items-center justify-between">{attach}{action}</div>}
-      </div>
-      {errorLine}
-    </form>
-  );
-
-  // The chat's box, as in WhatsApp: «+» · the message · camera · one round button (microphone, or send once
-  // there is text, or stop while the answer is being written).
-  const round = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full";
-  const main = onStop ? (
-    <button type="button" onClick={onStop} title={t("chat.stop")} className={`${round} bg-ink text-surface`}>
-      <span className="h-3.5 w-3.5 rounded-[3px] bg-white" /><span className="sr-only">{t("chat.stop")}</span>
-    </button>
-  ) : dictation.transcribing ? (
-    <span role="status" title={t("chat.transcribing")} className={`${round} text-[var(--chat-accent)]`}>
-      <Icon name="spinner" size={22} /><span className="sr-only">{t("chat.transcribing")}</span>
-    </span>
-  ) : !hasText && dictation.supported ? (
-    <button type="button" onClick={record} disabled={busy} title={t("chat.mic")} className={`${round} bg-[var(--chat-accent-solid)] text-white`}>
-      <Icon name="mic" size={21} /><span className="sr-only">{t("chat.mic")}</span>
-    </button>
-  ) : (
-    // as in Messenger: a plain paper plane in the brand colour
-    <button type="submit" disabled={busy || !hasText} title={t("chat.send")}
-      className={`${round} text-[var(--chat-accent)] hover:bg-sand disabled:text-muted`}>
-      <Icon name={busy ? "spinner" : "send"} size={24} /><span className="sr-only">{t("chat.send")}</span>
-    </button>
-  );
-  const camera = (
-    <label title={t("helper.photo")}
-      className={`flex h-11 w-10 shrink-0 cursor-pointer items-center justify-center text-[var(--chat-accent)] ${busy ? "pointer-events-none opacity-40" : ""}`}>
-      <Icon name="camera" size={23} /><span className="sr-only">{t("helper.photo")}</span>
-      <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy}
-        onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); }} />
-    </label>
-  );
-  // While typing, the tools on the left fold into «›» so the message gets the width, as in Messenger.
-  const folded = hasText && !tools;
+  // One roomy panel for both the home page and the chat, in the Claude style: a soft filled field with big rounded
+  // corners and air top and bottom, the message on its own line, the controls on a row underneath.
+  const shell = `rounded-[24px] border border-line bg-[var(--chat-field)] px-2.5 pt-3 pb-2 transition-colors focus-within:border-ink/25${
+    large ? " shadow-[var(--shadow-raised)]" : ""}`;
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      {filesList}
-      {recordingRow ? (
-        <div className="rounded-[22px] bg-[var(--chat-field)] p-1 shadow-[var(--chat-shadow)]">
-          {textarea}
-          {recordingRow}
-        </div>
-      ) : (
-      <div className="flex items-end gap-1">
-        {folded ? (
-          <button type="button" onClick={() => setTools(true)} title={t("chat.attach")}
-            className="flex h-11 w-9 shrink-0 items-center justify-center text-[var(--chat-accent)]">
-            <Icon name="chevronDown" size={22} className="-rotate-90 rtl:rotate-90" /><span className="sr-only">{t("chat.attach")}</span>
-          </button>
-        ) : <>{attach}{camera}</>}
-        <div className="flex min-h-11 min-w-0 flex-1 items-end rounded-[22px] bg-[var(--chat-field)] shadow-[var(--chat-shadow)]">
-          {textarea}
-        </div>
-        {main}
+      <div className={shell}>
+        {filesList}
+        {textarea}
+        <div className="mt-1.5">{recordingRow || controlsRow}</div>
       </div>
-      )}
       {errorLine}
     </form>
   );
