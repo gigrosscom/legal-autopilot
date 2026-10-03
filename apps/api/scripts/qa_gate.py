@@ -10,7 +10,7 @@ with the production prompt, country rules and portal tools, and checks each case
   4. terms of days and article numbers: every one left in the reply is checked (keep_checked); the ones the server
      had to take out are listed — each is a model error the gate shows for the legal review.
 
-    cd apps/api && GEMINI_API_KEY=… python3 scripts/qa_gate.py            # all 30, report to stdout
+    cd apps/api && QA_GEMINI_API_KEY=… python3 scripts/qa_gate.py         # all 30 (its own key, never prod's)
     QA_ONLY=B5,B8 python3 scripts/qa_gate.py                              # some cases
     QA_REPORT=../../qa-gate.md python3 scripts/qa_gate.py                  # the markdown report to a file
 
@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import time
 import sys
 from pathlib import Path
 
@@ -35,7 +36,7 @@ from konsilier.api.chat import needs_documents_line  # noqa: E402
 from konsilier.chat import ChatAgent  # noqa: E402
 from konsilier.config import Settings  # noqa: E402
 from konsilier.core.packs import PackRegistry  # noqa: E402
-from konsilier.gemini import GeminiClient  # noqa: E402
+from konsilier.gemini import GeminiClient, GeminiUnavailable  # noqa: E402
 from konsilier.lawagent.sources import Adilet  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -52,9 +53,11 @@ def solution_shape(text: str) -> tuple[bool, int, bool]:
 
 def main() -> int:
     settings = Settings()
-    key = os.environ.get("GEMINI_API_KEY") or settings.gemini_api_key
+    # its own key (owner 03.10 / ZANN): ten runs of the gate on the production key used up the free tier's daily 500
+    # requests per model on 02.10 — the gate must never spend the production chat's quota
+    key = os.environ.get("QA_GEMINI_API_KEY")
     if not key:
-        print("GEMINI_API_KEY is not set")
+        print("QA_GEMINI_API_KEY is not set: the gate runs on its own Gemini key, never on the production one")
         return 2
     pack = PackRegistry.load(ROOT / "packs").pack("KZ")
     portal = [s for s in pack.manifest.legal_sources if "adilet.zan.kz" in str(s.url)]
@@ -75,6 +78,17 @@ def main() -> int:
     logging.getLogger("konsilier.chat").addHandler(Taken())
 
     def ask(history: list[dict[str, str]]) -> str:
+        """One reply; the free tier's per-minute limit is waited out, its daily limit stops the gate with a clear note."""
+        for attempt in range(5):
+            try:
+                return ask_once(history)
+            except GeminiUnavailable as e:
+                if "PerDay" in str(e) or attempt == 4:
+                    raise SystemExit(f"Gemini quota: {str(e)[:200]} — the gate stops; nothing is judged")
+                time.sleep(30)
+        return ""
+
+    def ask_once(history: list[dict[str, str]]) -> str:
         result = None
         for ev in agent.stream(history, context={"pack": pack, "lang": "ru", "case": {}, "key_acts": key_acts},
                                language="the language with ISO 639-1 code 'ru'", country="Kazakhstan",
