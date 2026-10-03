@@ -319,6 +319,44 @@ class CaseEngine:
         case.taxonomy = {**(case.taxonomy or {}), "chat_messages": len(told)}  # still unclear: try on the next one
         return False
 
+    def close_intake(self, session: Session, case: Case, actor: str = "system", reason: str = "") -> bool:
+        """BUG-26 (PM 03.10, P0): the chat never runs the interview, and since decision 226 (no question cap) nothing
+        else closed it — every chat case stayed in «intake», «Подготовить документ» answered 409 and no document
+        was made. The interview ends when the person asks for the document, sends the documents or says there are no
+        more («нет», «достаточно», «дай решение»): the scenario is worked out from all they told (the recipient is
+        the dispute's own route, else the first lawful one), what is still unknown stays a blank filled in the
+        draft before paying, and the case is qualified. True when the case is qualified (or was already)."""
+        if case.status != S.INTAKE.value:
+            return case.status == S.QUALIFIED.value
+        if case.hold_reason is not None:
+            return False  # held: nothing to close here
+        if not case.scenario_id and not (case.taxonomy or {}).get("dispute_id"):
+            said = [m.text.strip() for m in session.scalars(select(ChatMessage).where(
+                ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+                if m.text and m.text.strip()]
+            first = (case.initial_text or "").strip()
+            text = "\n".join([first, *[t for t in said if t != first]]).strip()[:8000]
+            if text:
+                case.taxonomy, case.qualification_confidence = {}, None
+                self.audit(session, case, "system", "requalify_from_chat", messages=len(said), reason="close_intake")
+                self._qualify_and_continue(session, case, text)
+        if not case.scenario_id:
+            options = self.forum_options(case)
+            if not options:
+                return False
+            self.choose_forum(session, case, options[0]["id"], actor="system")
+            if case.status != S.INTAKE.value or not case.scenario_id:
+                return case.status == S.QUALIFIED.value
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        missing = self.missing_fields(case, sc)
+        if missing:
+            case.skipped_fields = [*(case.skipped_fields or []),
+                                   *(n if sc.field(n).optional else DRAFT + n for n in missing)]
+        reply = self._next_step(session, case, sc, pack)
+        self.audit(session, case, actor, "intake_closed", reason=reason or None, blanks=[n for n in missing
+                                                                                     if not sc.field(n).optional])
+        return bool(reply.intake_complete)
+
     def start_case(self, session: Session, user: User, text: str, *, language: str | None = None,
                    channel: str | None = None, country: str | None = None,
                    defer_qualification: bool = False) -> tuple[Case, Reply]:

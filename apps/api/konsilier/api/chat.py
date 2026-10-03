@@ -208,6 +208,12 @@ NO_DOCUMENTS = re.compile(r"(?<!\w)нет(?!\w)|позже|потом|не мо�
                           r"(?<!\w)жоқ(?!\w)|кейін", re.IGNORECASE)
 
 
+# «достаточно», «дай решение», «больше нет»: the person ends the interview (BUG-26, PM 03.10)
+ENOUGH = re.compile(r"(?<!\w)(достаточно|хватит|больше\s+(?:ничего\s+)?нет|документов\s+(?:больше\s+)?нет|"
+                    r"дай(?:те)?\s+(?:уже\s+)?решение|жеткілікті|басқа\s+құжат\s+жоқ|шешім\s+беріңіз)(?!\w)",
+                    re.IGNORECASE)
+
+
 # the documents a person names in their own words («акт от КСК есть», «чек сохранился»), in the reply's language
 _TOLD_DOCS = (("акт", "акт", "акт"), ("чек", "чек", "чек"), ("квитанц", "квитанция", "түбіртек"),
               ("договор", "договор", "шарт"), ("расписк", "расписка", "қолхат"), ("переписк", "переписка", "хат алмасу"),
@@ -470,6 +476,13 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     # a question asked and answered is never asked again: the solution goes on with what there is (PM 02.10 P0)
     complete = not missing_now or (missing_now != ["scenario"]
                                    and asked_and_answered(rows, missing_question(container, case, reply_lang, missing_now[0])))
+    if complete and case.scenario_id and case.status == "intake" and (
+            body.attachments or case.evidence or ENOUGH.search(body.text)
+            or (NO_DOCUMENTS.search(body.text) and any((m.meta or {}).get("asked_documents") for m in rows))):
+        # BUG-26 (PM 03.10): the documents are sent, or the person says there are none / it is enough — the interview
+        # ends here; what is still unknown stays a blank filled in the draft
+        container.engine.close_intake(session, case, f"user:{user_pk}", reason="chat")
+        session.commit()
     if complete and ((offered and YES_AFTER_OFFER.search(body.text)) or WANTS_DOCUMENT.search(body.text)):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
