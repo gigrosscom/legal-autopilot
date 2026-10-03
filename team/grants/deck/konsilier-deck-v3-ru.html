@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Konsilier AI — презентация</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @font-face { font-family: 'Inter'; src: url('fonts/Inter.ttf') format('truetype'); font-weight: 100 900; font-style: normal; }
+  :root {
+    --ink: #0b172a;
+    --navy: #0e2a5a;
+    --accent: #8796b5;
+    --line: #e2e7ee;
+    --muted: #55617a;
+    --bg: #ffffff;
+    --soft: #f6f8fb;
+  }
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .slide {
+    width: 1280px; height: 720px; position: relative; overflow: hidden;
+    padding: 64px 80px 72px; background: var(--bg);
+    page-break-after: always; break-after: page;
+    display: flex; flex-direction: column;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -.01em; }
+  .brand svg { width: 22px; height: 22px; }
+  h1 { font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -.025em; color: var(--ink); max-width: 1000px; }
+  h1 .sub { color: var(--navy); }
+  .lead { margin-top: 14px; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 900px; }
+  .foot {
+    position: absolute; left: 80px; right: 80px; bottom: 28px;
+    display: flex; justify-content: space-between; font-size: 12px; color: var(--accent);
+    border-top: 1px solid var(--line); padding-top: 12px;
+  }
+  ul.pts { list-style: none; margin-top: 28px; display: grid; gap: 14px; }
+  ul.pts li { position: relative; padding-left: 22px; font-size: 18px; line-height: 1.45; color: var(--ink); }
+  ul.pts li::before { content: ""; position: absolute; left: 0; top: 11px; width: 8px; height: 2px; background: var(--navy); }
+  ul.pts.sm li { font-size: 16px; }
+  b, strong { font-weight: 600; color: var(--navy); }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 24px; background: var(--bg); }
+  .card h3 { font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 8px; letter-spacing: -.01em; }
+  .card p { font-size: 15px; line-height: 1.5; color: var(--muted); }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .num { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: .08em; margin-bottom: 14px; }
+  .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .cap { font-size: 12px; color: var(--accent); margin-top: 8px; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 500; color: var(--navy); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; margin-top: 10px; background: var(--soft); }
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .flow .step { flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 18px; }
+  .flow .arrow { width: 28px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 18px; }
+  .flow .step h3 { font-size: 16px; font-weight: 600; color: var(--navy); }
+  .flow .step p { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
+  .big { font-size: 64px; font-weight: 700; letter-spacing: -.03em; color: var(--navy); line-height: 1; }
+  .src { font-size: 12px; color: var(--accent); margin-top: 10px; line-height: 1.4; }
+  .label { font-size: 15px; color: var(--ink); margin-top: 10px; font-weight: 500; }
+  .col-head { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--navy); margin-bottom: 12px; }
+  .rule { height: 1px; background: var(--line); margin: 16px 0; }
+  .timeline { position: relative; margin-top: 8px; padding-left: 0; }
+  .tl-row { display: grid; grid-template-columns: 140px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .tl-row:last-child { border-bottom: 1px solid var(--line); }
+  .tl-date { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .tl-text { font-size: 16px; color: var(--ink); line-height: 1.45; }
+  .person { display: flex; gap: 18px; align-items: center; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 22px; letter-spacing: .02em; flex: none; }
+  .person .n { font-size: 20px; font-weight: 600; color: var(--ink); }
+  .person .r { font-size: 15px; color: var(--muted); margin-top: 3px; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .role { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--navy); font-weight: 500; }
+  .facts { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .contact { font-size: 20px; font-weight: 600; color: var(--navy); }
+  .cover { background: var(--navy); color:#fff; justify-content:center; }
+  .cover h1 { color:#fff; font-size:64px; max-width:1100px; }
+  .cover .lead { color:#c9d3e6; font-size:22px; max-width:1000px; }
+  .cover .eyebrow { color:#8fa3c8; }
+  table.cmp { width:100%; border-collapse:collapse; margin-top:26px; font-size:15px; }
+  table.cmp th, table.cmp td { border-bottom:1px solid var(--line); padding:11px 10px; text-align:left; vertical-align:top; }
+  table.cmp th { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+  table.cmp tr.us td { background:var(--soft); font-weight:600; color:var(--navy); }
+</style>
+</head>
+<body>
+<section class="slide cover"><div class="eyebrow">Konsilier AI · Pre-seed · октябрь 2026</div>
+<h1 style="margin-top:24px">Освободить миллиард людей от правового бессилия</h1>
+<p class="lead" style="margin-top:28px">ИИ, который читает все законы, разбирает дело и за секунды показывает любому путь через бюрократию — освобождая миллионы часов человеческого труда.</p>
+<div style="margin-top:56px;display:flex;gap:40px;font-size:18px;color:#c9d3e6"><span>konsilier.com</span><span>dev@konsilier.com</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">02 · Проблема</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Большинство людей остаются с законом один на один — и сдаются</h1>
+<div class="grid3" style="margin-top:40px;gap:32px">
+<div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">5,1 млрд</div><div class="label">людей в мире не имеют реального доступа к правовой защите</div><div class="src">World Justice Project, Measuring the Justice Gap (2019)</div></div>
+<div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">92%</div><div class="label">гражданских правовых проблем малообеспеченных американцев остаются без помощи или с недостаточной помощью</div><div class="src">Legal Services Corporation, The Justice Gap (2022)</div></div>
+<div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">Месяцы</div><div class="label">волокиты из-за возврата денег, невыплаченной зарплаты, мошеннического кредита или неправильного штрафа</div><div class="src">Типичные бытовые споры, которые мы закрываем</div></div></div>
+<ul class="pts sm" style="margin-top:36px"><li>Юрист стоит дороже самой претензии — и люди ничего не делают.</li><li>Кто пробует, не знает, что писать, кому и в какой срок. Обычные чат-боты уверенно ссылаются на несуществующие законы.</li></ul><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>2 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">03 · Решение</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Три клика от проблемы к действию</h1>
+<p class="lead">Рассказал, приложил доказательства, оплатил и подписал — остальное Konsilier AI делает по поручению человека.</p>
+<div class="flow" style="margin-top:34px">
+<div class="step"><h3>1 · Рассказать</h3><p>Голосом или текстом, своими словами. Договоры, чеки, скриншоты.</p></div><div class="arrow">&rarr;</div>
+<div class="step"><h3>2 · Понять</h3><p>ИИ сверяет факты с законом, цитирует официальный текст, выбирает путь: кому, куда, в какой срок.</p></div><div class="arrow">&rarr;</div>
+<div class="step"><h3>3 · Действовать</h3><p>Готовит претензию или жалобу, подпись ЭЦП, отправка второй стороне, контроль сроков.</p></div></div>
+<ul class="pts sm" style="margin-top:32px"><li>Понять — бесплатно, действовать — платно.</li><li>IT-сервис, не юрфирма: показывает путь, результат не обещает.</li></ul><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>3 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">04 · Продукт · работает на konsilier.com</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Работающий продукт, запуск 2 октября 2026</h1>
+<div class="grid3" style="margin-top:24px">
+<div><div class="shot"><img src="img/home.png" alt="Home page"></div><div class="cap">Главная</div></div>
+<div><div class="shot"><img src="img/app-chat.png" alt="AI chat"></div><div class="cap">ИИ-чат</div></div>
+<div><div class="shot"><img src="img/app-install.png" alt="Phone app"></div><div class="cap">Приложение (PWA)</div></div></div>
+<ul class="pts sm" style="margin-top:22px;grid-template-columns:1fr 1fr;gap:10px 40px">
+<li><b>21 сценарий</b> для Казахстана — каждый до готового документа.</li><li><b>Читает файлы</b> — PDF, фото, DOCX — и спрашивает только недостающее.</li>
+<li><b>Отправляет</b> подписанную претензию второй стороне по e-mail; напоминания о сроках.</li><li><b>Сайт, приложение, Telegram</b>; интерфейс на 5 языках.</li></ul><div class="foot"><span>Скриншоты: konsilier.com</span><span>4 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">05 · Почему сейчас</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Три сдвига делают это возможным только сейчас</h1>
+<div class="grid3" style="margin-top:40px">
+<div class="card"><div class="num">01</div><h3>Рассуждающий ИИ</h3><p>Модели читают сотни тысяч норм и за секунды рассуждают над фактами человека — за центы.</p></div>
+<div class="card"><div class="num">02</div><h3>Государство ушло в онлайн</h3><p>Электронная подача, порталы госуслуг и ЭЦП — документ подаётся без очереди и визита.</p></div>
+<div class="card"><div class="num">03</div><h3>Сдвиг доверия</h3><p>Люди уже спрашивают ИИ первым. Не хватает помощника, который опирается на официальный закон и действует.</p></div></div><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>5 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">06 · Технология</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>ИИ, опирающийся на закон, а не чат-бот</h1>
+<div class="grid4" style="margin-top:36px">
+<div class="card"><h3>Диалоговый</h3><p>Голосовое интервью собирает факты простыми словами.</p></div>
+<div class="card"><h3>Аналитический</h3><p>Сценарный движок по правилам выбирает документ, адресата и сроки — не модель.</p></div>
+<div class="card"><h3>Глубокое рассуждение</h3><p>Каждая норма цитируется только после получения официального текста.</p></div>
+<div class="card"><h3>Приватность</h3><p>Персональные данные обезличиваются до передачи модели.</p></div></div>
+<ul class="pts sm" style="margin-top:32px"><li><b>ZANN</b> — собственная правовая модель в разработке: поиск по открытым правовым корпусам и дообучение открытых моделей, качество — на нашем тесте Zann-Bench. Заменяет сторонние модели только там, где лучше.</li><li>Страновые пакеты (закон, сценарии, язык): новый рынок — это данные, а не новая разработка.</li></ul><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>6 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">07 · Бизнес-модель</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Понять — бесплатно, действовать — платно</h1>
+<div class="grid3" style="margin-top:40px">
+<div class="card"><div class="col-head">Бесплатно</div><div class="price">ИИ-чат</div><p>Объясняет ситуацию и путь, с дневным лимитом.</p></div>
+<div class="card"><div class="col-head">Документ</div><div class="price">≈ $4</div><p>1 990 ₸ в Казахстане. Создаётся после оплаты.</p></div>
+<div class="card"><div class="col-head">Дело под ключ</div><div class="price">≈ $20</div><p>9 990 ₸ — все документы одного дела.</p></div></div>
+<ul class="pts sm" style="margin-top:36px"><li>Цены Казахстана; для ЕС и США — по каждому рынку.</li><li>Рост: реферальные бонусы и органика; бюджет на рекламу $0.</li></ul><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>7 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">08 · Рынок и выход</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Доказать в Казахстане, масштабировать на Запад</h1>
+<div class="timeline" style="margin-top:30px">
+<div class="tl-row"><div class="tl-date">Сейчас</div><div class="tl-text"><b>Казахстан</b> — тестовый рынок: 20,5 млн человек, 93 % в интернете (stat.gov.kz; DataReportal 2026). Запуск 02.10.2026.</div></div>
+<div class="tl-row"><div class="tl-date">Далее</div><div class="tl-text"><b>Европейский союз и США</b> — основные рынки.</div></div>
+<div class="tl-row"><div class="tl-date">Затем</div><div class="tl-text"><b>Австралия, Канада, Япония, Юго-Восточная Азия.</b></div></div></div>
+<ul class="pts sm" style="margin-top:28px"><li>Один движок везде; страновой пакет добавляет местный закон, сценарии и язык.</li><li>Оценка рынка по странам — в дата-руме, со ссылками.</li></ul><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>8 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">09 · Результаты</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>День первый — и мы быстро движемся</h1>
+<div class="timeline" style="margin-top:30px">
+<div class="tl-row"><div class="tl-date">Сент. 2026</div><div class="tl-text">Продукт создан: сайт, приложение, Telegram-бот, 21 сценарий.</div></div>
+<div class="tl-row"><div class="tl-date">29.09.2026</div><div class="tl-text">Зарегистрировано ТОО «Konsilier AI» в Алматы.</div></div>
+<div class="tl-row"><div class="tl-date">30.09.2026</div><div class="tl-text">Заявка в NVIDIA Inception.</div></div>
+<div class="tl-row"><div class="tl-date">02.10.2026</div><div class="tl-text">Публичный запуск в Казахстане.</div></div></div>
+<p class="lead" style="font-size:16px">Выручки пока нет. Первые цифры пользователей и оплат добавим, как только они появятся — прогнозы за факты не выдаём.</p><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>9 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">10 · Конкуренты</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Для людей, на основе закона</h1>
+<table class="cmp"><tr><th></th><th>Для кого</th><th>Опора на официальный закон</th><th>Действует (готовит, отправляет, следит)</th></tr>
+<tr><td>Обычные чат-боты</td><td>Все</td><td>Нет — могут выдумать закон</td><td>Нет</td></tr>
+<tr><td>Сервисы типа LegalZoom</td><td>Люди, малый бизнес</td><td>Шаблоны</td><td>Частично, через платных юристов</td></tr>
+<tr><td>Инструменты типа Harvey</td><td>Юрфирмы</td><td>Да</td><td>Только для юристов</td></tr>
+<tr><td>DoNotPay</td><td>Люди</td><td>Слабо — решение FTC, 2024</td><td>Частично</td></tr>
+<tr class="us"><td>Konsilier AI</td><td>Люди и малый бизнес</td><td>Да — цитирует полученный текст</td><td>Да, от начала до конца</td></tr></table><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>10 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">11 · Команда</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Два основателя, операции ведут ИИ-агенты</h1>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;margin-top:40px"><div>
+<div class="person"><div class="avatar">NK</div><div><div class="n">Нурлан Хабибулла</div><div class="r">Основатель и CTO · создал продукт целиком</div></div></div><div class="rule"></div>
+<div class="person"><div class="avatar">ST</div><div><div class="n">Салтанат Тулегенова</div><div class="r">CEO · юрист</div></div></div></div>
+<div><div class="col-head">Операции ведут ИИ-агенты</div><div class="roles"><div class="role">Продакт-менеджер</div><div class="role">Разработчик</div><div class="role">Интегратор</div><div class="role">Тестировщик</div><div class="role">Документолог</div><div class="role">ZANN — ИИ-юрист</div></div>
+<p class="lead" style="font-size:16px;margin-top:18px">Основатели утверждают каждый расход, публикацию и исходящее сообщение.</p></div></div><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>11 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">12 · Что просим</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Присоединяйтесь: освободим миллиард людей от правового бессилия</h1>
+<div class="grid3" style="margin-top:36px">
+<div class="card"><div class="col-head">Продукт</div><p>Модель ZANN и вычисления; сценарии для первых рынков ЕС и США.</p></div>
+<div class="card"><div class="col-head">Выход на рынок</div><p>Запуск на первом западном рынке; страновые пакеты.</p></div>
+<div class="card"><div class="col-head">Команда</div><p>Найм инженеров и специалистов по правовому контенту.</p></div></div>
+<div style="margin-top:auto;margin-bottom:28px;display:flex;gap:40px;align-items:baseline"><span class="contact">dev@konsilier.com</span><span class="contact" style="color:var(--accent)">konsilier.com</span></div><div class="foot"><span>Konsilier AI — освободить миллиард людей от правового бессилия</span><span>12 / 12</span></div></section>
+</body>
+</html>

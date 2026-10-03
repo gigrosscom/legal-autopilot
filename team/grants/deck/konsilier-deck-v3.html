@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Konsilier AI Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @font-face { font-family: 'Inter'; src: url('fonts/Inter.ttf') format('truetype'); font-weight: 100 900; font-style: normal; }
+  :root {
+    --ink: #0b172a;
+    --navy: #0e2a5a;
+    --accent: #8796b5;
+    --line: #e2e7ee;
+    --muted: #55617a;
+    --bg: #ffffff;
+    --soft: #f6f8fb;
+  }
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .slide {
+    width: 1280px; height: 720px; position: relative; overflow: hidden;
+    padding: 64px 80px 72px; background: var(--bg);
+    page-break-after: always; break-after: page;
+    display: flex; flex-direction: column;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -.01em; }
+  .brand svg { width: 22px; height: 22px; }
+  h1 { font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -.025em; color: var(--ink); max-width: 1000px; }
+  h1 .sub { color: var(--navy); }
+  .lead { margin-top: 14px; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 900px; }
+  .foot {
+    position: absolute; left: 80px; right: 80px; bottom: 28px;
+    display: flex; justify-content: space-between; font-size: 12px; color: var(--accent);
+    border-top: 1px solid var(--line); padding-top: 12px;
+  }
+  ul.pts { list-style: none; margin-top: 28px; display: grid; gap: 14px; }
+  ul.pts li { position: relative; padding-left: 22px; font-size: 18px; line-height: 1.45; color: var(--ink); }
+  ul.pts li::before { content: ""; position: absolute; left: 0; top: 11px; width: 8px; height: 2px; background: var(--navy); }
+  ul.pts.sm li { font-size: 16px; }
+  b, strong { font-weight: 600; color: var(--navy); }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 24px; background: var(--bg); }
+  .card h3 { font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 8px; letter-spacing: -.01em; }
+  .card p { font-size: 15px; line-height: 1.5; color: var(--muted); }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .num { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: .08em; margin-bottom: 14px; }
+  .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .cap { font-size: 12px; color: var(--accent); margin-top: 8px; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 500; color: var(--navy); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; margin-top: 10px; background: var(--soft); }
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .flow .step { flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 18px; }
+  .flow .arrow { width: 28px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 18px; }
+  .flow .step h3 { font-size: 16px; font-weight: 600; color: var(--navy); }
+  .flow .step p { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
+  .big { font-size: 64px; font-weight: 700; letter-spacing: -.03em; color: var(--navy); line-height: 1; }
+  .src { font-size: 12px; color: var(--accent); margin-top: 10px; line-height: 1.4; }
+  .label { font-size: 15px; color: var(--ink); margin-top: 10px; font-weight: 500; }
+  .col-head { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--navy); margin-bottom: 12px; }
+  .rule { height: 1px; background: var(--line); margin: 16px 0; }
+  .timeline { position: relative; margin-top: 8px; padding-left: 0; }
+  .tl-row { display: grid; grid-template-columns: 140px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .tl-row:last-child { border-bottom: 1px solid var(--line); }
+  .tl-date { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .tl-text { font-size: 16px; color: var(--ink); line-height: 1.45; }
+  .person { display: flex; gap: 18px; align-items: center; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 22px; letter-spacing: .02em; flex: none; }
+  .person .n { font-size: 20px; font-weight: 600; color: var(--ink); }
+  .person .r { font-size: 15px; color: var(--muted); margin-top: 3px; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .role { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--navy); font-weight: 500; }
+  .facts { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .contact { font-size: 20px; font-weight: 600; color: var(--navy); }
+  .cover { background: var(--navy); color:#fff; justify-content:center; }
+  .cover h1 { color:#fff; font-size:64px; max-width:1100px; }
+  .cover .lead { color:#c9d3e6; font-size:22px; max-width:1000px; }
+  .cover .eyebrow { color:#8fa3c8; }
+  table.cmp { width:100%; border-collapse:collapse; margin-top:26px; font-size:15px; }
+  table.cmp th, table.cmp td { border-bottom:1px solid var(--line); padding:11px 10px; text-align:left; vertical-align:top; }
+  table.cmp th { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+  table.cmp tr.us td { background:var(--soft); font-weight:600; color:var(--navy); }
+</style>
+</head>
+<body>
+<section class="slide cover"><div class="eyebrow">Konsilier AI · Pre-seed · October 2026</div>
+<h1 style="margin-top:24px">Free a billion people from legal helplessness</h1>
+<p class="lead" style="margin-top:28px">AI that reads every law, reasons through the case and shows anyone the path through bureaucracy in seconds — freeing millions of hours of human work.</p>
+<div style="margin-top:56px;display:flex;gap:40px;font-size:18px;color:#c9d3e6"><span>konsilier.com</span><span>dev@konsilier.com</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">02 · Problem</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Most people face the law alone — and give up</h1>
+<div class="grid3" style="margin-top:40px;gap:32px">
+<div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">5.1B</div><div class="label">people lack meaningful access to justice worldwide</div><div class="src">World Justice Project, Measuring the Justice Gap (2019)</div></div>
+<div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">92%</div><div class="label">of civil legal problems of low-income Americans get no or inadequate legal help</div><div class="src">Legal Services Corporation, The Justice Gap (2022)</div></div>
+<div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">Months</div><div class="label">of red tape for a refund, unpaid wages, a fraudulent loan or a wrong fine</div><div class="src">Typical everyday disputes we cover</div></div></div>
+<ul class="pts sm" style="margin-top:36px"><li>A lawyer costs more than the claim, so people do nothing.</li><li>Those who try don't know what to write, to whom, or by what deadline. Generic chatbots answer confidently and cite laws that don't exist.</li></ul><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>2 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">03 · Solution</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Three clicks from problem to action</h1>
+<p class="lead">Tell it, attach proof, pay and sign — Konsilier AI does the rest on the person's behalf and instruction.</p>
+<div class="flow" style="margin-top:34px">
+<div class="step"><h3>1 · Tell</h3><p>Voice or text, in the person's own words. Upload contracts, receipts, screenshots.</p></div><div class="arrow">&rarr;</div>
+<div class="step"><h3>2 · Understand</h3><p>AI analyses facts against the law, cites the official text, picks the route: who, where, by when.</p></div><div class="arrow">&rarr;</div>
+<div class="step"><h3>3 · Act</h3><p>Drafts the claim or complaint, e-signature, sends it to the other party, tracks every deadline.</p></div></div>
+<ul class="pts sm" style="margin-top:32px"><li>Free to understand; paid to act.</li><li>An IT service, not a law firm: it shows the path, it does not promise the outcome.</li></ul><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>3 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">04 · Product · live at konsilier.com</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Live product, launched 2 October 2026</h1>
+<div class="grid3" style="margin-top:24px">
+<div><div class="shot"><img src="img/home.png" alt="Home page"></div><div class="cap">Home page</div></div>
+<div><div class="shot"><img src="img/app-chat.png" alt="AI chat"></div><div class="cap">AI chat</div></div>
+<div><div class="shot"><img src="img/app-install.png" alt="Phone app"></div><div class="cap">Phone app (PWA)</div></div></div>
+<ul class="pts sm" style="margin-top:22px;grid-template-columns:1fr 1fr;gap:10px 40px">
+<li><b>21 published scenarios</b> for Kazakhstan, each carried to a finished document.</li><li><b>Reads uploads</b> — PDF, photos, DOCX — and asks only what is missing.</li>
+<li><b>Sends</b> the signed claim to the other party by e-mail; deadline reminders.</li><li><b>Web, phone app, Telegram</b>; interface in 5 languages.</li></ul><div class="foot"><span>Screenshots: konsilier.com production build</span><span>4 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">05 · Why now</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Three shifts make this possible only now</h1>
+<div class="grid3" style="margin-top:40px">
+<div class="card"><div class="num">01</div><h3>Reasoning AI</h3><p>Models can now read hundreds of thousands of legal norms and reason over a person's facts in seconds — at a cost of cents.</p></div>
+<div class="card"><div class="num">02</div><h3>Government went online</h3><p>E-filing, e-government portals and e-signatures mean a document can be filed without a queue or a visit.</p></div>
+<div class="card"><div class="num">03</div><h3>Trust shift</h3><p>People already ask AI first. The gap is an assistant that is grounded in official law and actually acts.</p></div></div><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>5 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">06 · Technology</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Grounded AI, not a chatbot</h1>
+<div class="grid4" style="margin-top:36px">
+<div class="card"><h3>Conversational</h3><p>Voice-first interview that collects facts in plain language.</p></div>
+<div class="card"><h3>Analytical</h3><p>Rule-based scenario engine picks document, addressee and deadlines — not left to the model.</p></div>
+<div class="card"><h3>Deep reasoning</h3><p>Every statute cited only after the official text is retrieved.</p></div>
+<div class="card"><h3>Private</h3><p>Personal data is de-identified before text reaches a model.</p></div></div>
+<ul class="pts sm" style="margin-top:32px"><li><b>ZANN</b> — our own legal language model in development: retrieval over open legal corpora plus fine-tuning of open models, measured on our benchmark Zann-Bench. It replaces third-party models only where it scores better.</li><li>Country packs (law, scenarios, language) make each new market a data project, not a rebuild.</li></ul><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>6 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">07 · Business model</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Free to understand, paid to act</h1>
+<div class="grid3" style="margin-top:40px">
+<div class="card"><div class="col-head">Free</div><div class="price">AI chat</div><p>Explains the situation and the route, with a daily limit.</p></div>
+<div class="card"><div class="col-head">Per document</div><div class="price">≈ $4</div><p>KZT 1,990 in Kazakhstan. Created after payment.</p></div>
+<div class="card"><div class="col-head">Full case</div><div class="price">≈ $20</div><p>KZT 9,990 — every document one case needs.</p></div></div>
+<ul class="pts sm" style="margin-top:36px"><li>Kazakhstan prices; EU/US pricing to be set per market.</li><li>Growth: referral bonuses and organic social; marketing budget $0.</li></ul><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>7 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">08 · Market & go-to-market</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Prove it in Kazakhstan, scale to the West</h1>
+<div class="timeline" style="margin-top:30px">
+<div class="tl-row"><div class="tl-date">Now</div><div class="tl-text"><b>Kazakhstan</b> — test market: 20.5M people, 93% online (stat.gov.kz; DataReportal 2026). Launched 02.10.2026.</div></div>
+<div class="tl-row"><div class="tl-date">Next</div><div class="tl-text"><b>European Union and United States</b> — main markets.</div></div>
+<div class="tl-row"><div class="tl-date">Then</div><div class="tl-text"><b>Australia, Canada, Japan, Southeast Asia.</b></div></div></div>
+<ul class="pts sm" style="margin-top:28px"><li>Same engine everywhere; a country pack adds local law, scenarios and language.</li><li>Market sizing per country — in the data room, with sources.</li></ul><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>8 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">09 · Traction</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Day one — and moving fast</h1>
+<div class="timeline" style="margin-top:30px">
+<div class="tl-row"><div class="tl-date">Sept 2026</div><div class="tl-text">Product built: web app, phone app, Telegram bot, 21 scenarios.</div></div>
+<div class="tl-row"><div class="tl-date">29.09.2026</div><div class="tl-text">Konsilier AI LLP incorporated in Almaty.</div></div>
+<div class="tl-row"><div class="tl-date">30.09.2026</div><div class="tl-text">Applied to NVIDIA Inception.</div></div>
+<div class="tl-row"><div class="tl-date">02.10.2026</div><div class="tl-text">Public launch in Kazakhstan.</div></div></div>
+<p class="lead" style="font-size:16px">Pre-revenue. First user and payment numbers will be added as soon as they exist — we do not show forecasts as facts.</p><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>9 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">10 · Competition</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Built for people, grounded in law</h1>
+<table class="cmp"><tr><th></th><th>For whom</th><th>Grounded in official law</th><th>Acts (drafts, sends, tracks)</th></tr>
+<tr><td>Generic chatbots</td><td>Everyone</td><td>No — can invent laws</td><td>No</td></tr>
+<tr><td>LegalZoom-type services</td><td>Consumers, SMB</td><td>Templates</td><td>Partly, with paid lawyers</td></tr>
+<tr><td>Harvey-type tools</td><td>Law firms</td><td>Yes</td><td>For lawyers only</td></tr>
+<tr><td>DoNotPay</td><td>Consumers</td><td>Weak — FTC order, 2024</td><td>Partly</td></tr>
+<tr class="us"><td>Konsilier AI</td><td>People and small business</td><td>Yes — cites retrieved text</td><td>Yes, end to end</td></tr></table><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>10 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">11 · Team</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Lean founders, AI-run operations</h1>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;margin-top:40px"><div>
+<div class="person"><div class="avatar">NK</div><div><div class="n">Nurlan Khabibulla</div><div class="r">Founder &amp; CTO · built the product end to end</div></div></div><div class="rule"></div>
+<div class="person"><div class="avatar">ST</div><div><div class="n">Saltanat Tulegenova</div><div class="r">CEO · lawyer</div></div></div></div>
+<div><div class="col-head">Operations run by AI agents</div><div class="roles"><div class="role">Product manager</div><div class="role">Developer</div><div class="role">Integrations</div><div class="role">QA</div><div class="role">Documentation</div><div class="role">ZANN legal AI</div></div>
+<p class="lead" style="font-size:16px;margin-top:18px">Founders approve every spend, publication and outbound message.</p></div></div><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>11 / 12</span></div></section>
+<section class="slide"><div class="top"><span class="eyebrow">12 · Ask</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsilier AI</span></div><h1>Join us to free a billion people from legal helplessness</h1>
+<div class="grid3" style="margin-top:36px">
+<div class="card"><div class="col-head">Product</div><p>ZANN legal model and compute; scenario coverage for the first EU and US markets.</p></div>
+<div class="card"><div class="col-head">Go-to-market</div><p>Launch in the first Western market; country packs.</p></div>
+<div class="card"><div class="col-head">Team</div><p>Engineering and legal-content hires.</p></div></div>
+<div style="margin-top:auto;margin-bottom:28px;display:flex;gap:40px;align-items:baseline"><span class="contact">dev@konsilier.com</span><span class="contact" style="color:var(--accent)">konsilier.com</span></div><div class="foot"><span>Konsilier AI — free a billion people from legal helplessness</span><span>12 / 12</span></div></section>
+</body>
+</html>
