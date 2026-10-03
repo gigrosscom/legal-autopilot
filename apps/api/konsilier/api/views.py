@@ -163,7 +163,7 @@ def case_view(engine: CaseEngine, session: Session, case: Case, *, admin: bool =
                 "response_summary": a.response_summary,
                 "deadline": {"due_date": dl.due_date.isoformat(), "status": dl.status,
                              "norm_ref": dl.norm_ref} if dl else None,
-                "norm_refs": list(spec.norm_refs),
+                "norm_refs": [r for r in spec.norm_refs if "TODO" not in r],  # an unchecked norm is never shown
                 "filing": filing,
                 # «Отправить по e-mail» (api/delivery.py): may it be sent now, and the letters already sent
                 "email_send": send_state(container, session, case, a)
