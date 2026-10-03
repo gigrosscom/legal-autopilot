@@ -325,11 +325,13 @@ class CaseEngine:
         Each new message in the chat tries again with everything the person has told so far."""
         case = session.get(Case, case_id)
         if case is None or case.scenario_id or case.status != S.INTAKE.value \
-                or case.coverage_level not in (qualifier.LEVEL_VERIFIED, qualifier.LEVEL_UNIVERSAL) \
+                or case.coverage_level == qualifier.LEVEL_LAWYER \
                 or (case.taxonomy or {}).get("dispute_id"):
-            # classified, waiting for a forum (the chat picks it: auto_choose_forum), or handed to a lawyer. A case
-            # left on the universal path with no dispute is tried again too (P0 03.10, PM: the guard kept a divorce
-            # without a scenario — no card in the browser)
+            # classified, waiting for a forum (the chat picks it: auto_choose_forum), or handed to a lawyer. Bail only
+            # for the lawyer hand-off (terminal). Everything else with no scenario yet — a case whose first message was
+            # too thin so classification never landed (coverage_level stays None), one left VERIFIED without a scenario,
+            # or one on the universal path with no dispute — is tried again from the fuller chat text (P0 03.10, PM: the
+            # None guard kept labour/debt/divorce cases unclassified, so the «Составить документ» card never showed).
             return False
         said = [m.text.strip() for m in session.scalars(select(ChatMessage).where(
             ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
@@ -534,7 +536,14 @@ class CaseEngine:
         if business:  # only disputes a business can bring (contract breach, unpaid invoice, tax…)
             options = [o for o in options if "business" in o["applicant_roles"]] or options
             roles = ["business"]
-        result = ai.classify_taxonomy(llm, options, roles, text, lang)
+        try:
+            result = ai.classify_taxonomy(llm, options, roles, text, lang)
+        except Exception:  # noqa: BLE001 — BUG-26 (prod 03.10): the taxonomy model is down (quota/network). A dispute
+            # the words already decided (a direct rule) still routes — keyword-only, no model; without one the case
+            # stays unclassified (no_scenario) but is never left crashed, so the chat answers and tries again later.
+            log.warning("classify_taxonomy: the model failed for case %s, routing on the words alone", case.id,
+                        exc_info=True)
+            result = {"dispute_id": None, "role": None, "confidence": 0.0, "reason": "taxonomy model down", "flags": []}
         if direct is not None:  # the words decide the dispute; the model's flags (abuse, emergency…) still count
             result = {**result, "dispute_id": direct.dispute, "role": direct.role, "confidence": 1.0,
                       "reason": "direct rule"}
