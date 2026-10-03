@@ -86,3 +86,12 @@ Konsilier, но ассоциация с consigliere слабее.
 
 ## Решение владельца (03.10.2026)
 **Konsilier AI** (без «é»). Записано в decisions.md.
+
+## Миссия (MTP) — слепая оценка 03.10.2026
+8 оценщиков (маркетинг, бренд-риск, стратег, ZANN-юрист, SMM; независимые: инвестор США, пользователь ЕС, эксперт по MTP).
+Баллы из 50 / очки топ-3: G «Unlock the law for 8 billion people» 40,6/6 · **H «No one powerless before the law» 40,5/15** ·
+L «Put the power of the law in every hand» 40,4/12 · A 39,5/0 · B 39,4/5 · F «Every right within reach» 39,0/8 · I 37,9 ·
+C 35,9 · D 35,4 · J 34,1 · E 32,8 · K «Protection for everyone, in seconds» 29,9 (бренд-риск: опасно, как DoNotPay).
+Новые предложения панели: «No one stands alone before the law» (SMM, инвестор США), «No one fights the system alone»
+(пользователь ЕС), «Every right, usable by every person» (бренд-риск, юрист), «No one powerless before the law. Ever.».
+Предложение Документолога: «No one stands alone before the law» — решение за владельцем.
