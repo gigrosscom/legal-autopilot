@@ -674,7 +674,13 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 text = f"{text.rstrip()}\n\n{extra}"
                 yield _sse({"type": "text", "text": f"\n\n{extra}"})
                 asked_docs = True
-        if not result.offer_document and not held and has_path and OFFER_LINE.search(text):
+        if not result.offer_document and not held and has_path and (
+                OFFER_LINE.search(text)
+                # BUG-26 (owner 03.10): the intake has begun and the person asks for the document themselves
+                # («составьте претензию», «дайте решение», «хватит вопросов») — the card appears even when the free
+                # model asked one more clarifying question instead of offering; what is blank is asked in the form
+                # before payment. On the first reply documents-first still runs (R-30), so this holds off until then.
+                or (not first_reply and insists)):
             # BUG-26 (prod 03.10): «Претензию подготовлю с вашими данными — готовый PDF и Word» with no card under it
             result.offer_document = True
         if result.offer_document:
