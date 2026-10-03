@@ -3,7 +3,7 @@ c=lambda n,h,p:f'<div class="c"><div class="n">{n}</div><h3>{h}</h3><p>{p}</p></
 k=lambda h,p:f'<div class="c"><h3>{h}</h3><p>{p}</p></div>'
 st=lambda b,l,s:f'<div class="c"><div class="big">{b}</div><div class="lbl">{l}</div><div class="src">{s}</div></div>'
 T={'title':'Pitch Deck','foot':'AI assistant for legal questions',
-'cover':{'tag':'Pre-seed · October 2026','ey':'Our mission','h':'Free a billion people from legal helplessness','sub':'The law should work for everyone — not only for those who can afford a lawyer.','l':'konsilier.com · web, phone app, Telegram','r':'Konsilier AI LLP · dev@konsilier.com'},
+'cover':{'tag':'Pre-seed $500,000 · October 2026','ey':'Our mission','h':'Free a billion people from legal helplessness','sub':'The law should work for everyone — not only for those who can afford a lawyer.','l':'konsilier.com · web, phone app, Telegram','r':'Konsilier AI LLP · dev@konsilier.com'},
 'slides':[
 ('Problem','Millions of people face the law alone',
  '<div class="g g3">'+k('Expensive','A lawyer in Almaty charges KZT 4,200–25,000 for a claim letter and KZT 100–250k for court. For a KZT 30k dispute it does not pay off.')+k('Confusing','Laws are written in complex language. People know neither their rights, nor where to go, nor the deadline.')+k('Slow','Finding a lawyer, meetings, waiting — days and weeks, while the legal deadlines keep running.')+'</div>'
@@ -13,7 +13,7 @@ T={'title':'Pitch Deck','foot':'AI assistant for legal questions',
  '<div class="g g2" style="margin-top:18px">'+k('Need court? — "Find a lawyer"','The case is already assembled: lawyers respond, the client chooses. Free for the client.')+k('Where it runs','Web app, phone app (PWA), Telegram. Russian and Kazakh.')+'</div>'
  '<div class="note">Free to understand. Paid to act.</div>'),
 ('Key difference','Grounded in law — not a chatbot',
- '<div class="g g3">'+k('Norms only from the law','Articles and deadlines come from the official text (adilet.zan.kz). No article — it is flagged; the AI does not invent.')+k('Rules in code','Mandatory rules are checked against Kazakh law, encoded and covered by tests. A scenario engine — not the model — picks the route.')+k('Every document is checked','Correct parties, amounts in tenge, no empty fields. Personal data is de-identified before it reaches a model.')+'</div>'
+ '<div class="g g3">'+k('Norms only from the law','Articles and deadlines come from the official text (adilet.zan.kz). No article — it is flagged; the AI does not invent.')+k('Rules in code','Documents are drafted by Anthropic Claude under scenario rules. Mandatory rules are checked against Kazakh law, encoded and covered by tests. A scenario engine — not the model — picks the route.')+k('Every document is checked','Correct parties, amounts in tenge, no empty fields. Personal data is de-identified before it reaches a model.')+'</div>'
  '<div class="g g3" style="margin-top:18px">'+k('Free chat','40 messages a day, text and voice.')+k('20+ Kazakhstan scenarios','Consumer, debt, employment, housing, utilities, government, family.')+k('Deadline tracking','The app remembers dates and reminds until the case is done.')+'</div>'),
 ('Marketplace','Two-sided platform: client and lawyer',
  '<div class="g g2">'+k('Client','Question → free analysis → "Document" KZT 2,990 or "Document package" KZT 9,990 → optional "Find a lawyer" (free) → responses → choose a lawyer. The client pays the lawyer\'s fee directly.')+k('Lawyer','Tokens: 1 token = KZT 1,000, packs from 10. Response to a case — 1 token; a case won — 10/20/30/40 tokens by claim value. Paid before contact, not a fee share — bypassing the platform does not reduce our revenue.')+'</div>'
@@ -46,8 +46,8 @@ T={'title':'Pitch Deck','foot':'AI assistant for legal questions',
  '<div class="g g2">'+k('Nurlan Khabibulla','Founder & CTO. Designed and built the product end to end.')+k('Saltanat Tulegenova','CEO, director of the LLP. Lawyer.')+'</div>'
  '<div class="c" style="margin-top:18px"><h3>AI team</h3><p>Product manager, developer, integrations, QA, documentation, finance, marketing, brand-risk manager, AI legal agent. Founders approve every spend, publication and outbound message.</p>'
  '<span class="pill">Plan in 6 months: 9 people</span><span class="pill">4 ML engineers</span><span class="pill">3 account managers</span></div>'),
-('Ask','Join us to free a billion people from legal helplessness',
+('Ask','Raising $500,000 pre-seed',
  '<div class="g g3">'+k('Konsilier LM','GPUs and model training, corpus and Konsilier Bench — servers and GPUs ≈ KZT 0.9M a month.')+k('Team and office','9 people: CEO, 4 ML engineers, 3 account managers, accountant. ≈ KZT 10.1M a month; one-off ≈ KZT 7–8.5M.')+k('Go-to-market','50 → 490 active lawyers, then the first EU/US market. Team break-even ≈ 590 lawyer cases a month.')+'</div>'
- '<div class="note" style="font-size:22px">dev@konsilier.com · konsilier.com</div>'),
+ '<p class="lead" style="margin-top:22px">Join us to free a billion people from legal helplessness.</p><div class="note" style="font-size:22px">dev@konsilier.com · konsilier.com</div>'),
 ]}
 build(T,'en','konsilier-pitch-final-en.html')
