@@ -1,0 +1,838 @@
+<title>Брендбук Konsilier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=PT+Serif:wght@400;700&display=swap">
+<style>
+@font-face { font-family: "Inter"; font-weight: 100 900; src: url(fonts/inter-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Inter"; font-weight: 100 900; src: url(fonts/inter-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-weight: 100 900; src: url(fonts/inter-cyrillic.woff2) format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Inter"; font-weight: 100 900; src: url(fonts/inter-cyrillic-ext.woff2) format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+/* Layout: a long reference document — sticky contents rail on the left (desktop), one reading column, specimens
+   (swatches, logo plates, live components) break out to the full column width. Built on the product's own tokens. */
+:root {
+  /* product tokens (apps/web/app/globals.css, 03.10.2026) */
+  --ink: #0d0d0d; --ink-soft: #1f1f1f; --muted: #4f4f55; --faint: #6e6e73;
+  --line: #d2d2d7; --sand: #f0f0f0; --sand-deep: #e4e6eb; --surface: #ffffff;
+  --action: #0866ff; --action-hover: #075ce6; --brand: #0064e0; --brand-50: #e7f3ff; --brand-100: #cfe5ff;
+  --success: #17684d; --success-50: #e8f5ee; --danger: #a32e39; --danger-50: #fbf1f2;
+  --warning: #865416; --warning-50: #fbf5ec; --draft: #5b4a8a; --draft-50: #f4f2f9;
+  --navy: #0b172a; --slate: #8796b5;
+  --bubble-in: #f0f0f0; --bubble-out: #0866ff;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", Helvetica, "Segoe UI", Arial, sans-serif;
+  --font-doc: "Times New Roman", "PT Serif", "Liberation Serif", Georgia, serif;
+  --r-card: 18px; --r-ctrl: 12px; --r-pill: 980px;
+  --shadow: 2px 4px 12px rgb(0 0 0 / 0.08);
+  --canvas: #e9eaee;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #f2f2f4; --ink-soft: #e2e2e6; --muted: #b4b4ba; --faint: #9c9ca3;
+    --line: #3a3a3f; --sand: #232326; --sand-deep: #2e2e32; --surface: #141416;
+    --action: #0866ff; --action-hover: #075ce6; --brand: #5aa9ff; --brand-50: #10243d; --brand-100: #173a63;
+    --success: #5cc795; --success-50: #0f2b1f; --danger: #ff8a8f; --danger-50: #3a171b;
+    --warning: #e6ad5c; --warning-50: #33260f; --draft: #bcaef0; --draft-50: #231d3a;
+    --bubble-in: #2c2c30; --bubble-out: #0866ff;
+    --shadow: 0 2px 12px rgb(0 0 0 / 0.5);
+    --canvas: #0b0b0d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #f2f2f4; --ink-soft: #e2e2e6; --muted: #b4b4ba; --faint: #9c9ca3;
+  --line: #3a3a3f; --sand: #232326; --sand-deep: #2e2e32; --surface: #141416;
+  --action: #0866ff; --action-hover: #075ce6; --brand: #5aa9ff; --brand-50: #10243d; --brand-100: #173a63;
+  --success: #5cc795; --success-50: #0f2b1f; --danger: #ff8a8f; --danger-50: #3a171b;
+  --warning: #e6ad5c; --warning-50: #33260f; --draft: #bcaef0; --draft-50: #231d3a;
+  --bubble-in: #2c2c30; --bubble-out: #0866ff;
+  --shadow: 0 2px 12px rgb(0 0 0 / 0.5);
+  --canvas: #0b0b0d;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: 17px; line-height: 1.47;
+  -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; font-feature-settings: "cv11", "ss01"; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px;
+  display: grid; grid-template-columns: 1fr; gap: 40px; }
+@media (min-width: 1000px) { .wrap { grid-template-columns: 220px minmax(0, 1fr); gap: 56px; } }
+
+/* contents rail */
+.toc { display: none; }
+@media (min-width: 1000px) {
+  .toc { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start;
+    max-height: calc(100vh - 48px); overflow-y: auto; padding-top: 28px; }
+}
+.toc p { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.toc ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; counter-reset: t; }
+.toc a { display: flex; gap: 10px; padding: 6px 10px; border-radius: 10px; color: var(--muted); text-decoration: none; font-size: 14px; line-height: 1.3; }
+.toc a::before { counter-increment: t; content: counter(t, decimal-leading-zero); font-variant-numeric: tabular-nums; color: var(--faint); font-size: 12px; padding-top: 1px; }
+.toc a:hover { background: var(--sand); color: var(--ink); }
+
+main { min-width: 0; display: grid; gap: 28px; padding-top: 28px; }
+/* each section is a sheet of the book: running head on top, folio at the bottom */
+section { background: var(--surface); border-radius: 8px; box-shadow: var(--shadow); padding: 28px clamp(20px, 5vw, 56px) 40px;
+  scroll-margin-top: 16px; counter-increment: sheet; }
+section::before { content: "KONSILIER  /  БРЕНДБУК 1.0"; display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  color: var(--faint); padding-bottom: 12px; margin-bottom: 36px; border-bottom: 1px solid var(--line); white-space: pre; }
+section.cover::before { content: none; }
+.pb { height: 0; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(30px, 4.2vw, 40px); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 14px; }
+h3 { font-size: 21px; line-height: 1.25; letter-spacing: -0.015em; margin: 36px 0 12px; }
+p { margin: 0 0 14px; max-width: 68ch; }
+.lead { font-size: clamp(19px, 2.2vw, 21px); line-height: 1.4; color: var(--muted); max-width: 60ch; text-wrap: balance; }
+.small { font-size: 14px; color: var(--muted); }
+a { color: var(--brand); text-underline-offset: 0.2em; }
+:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; border-radius: 6px; }
+ul.plain { padding-left: 1.1em; margin: 0 0 14px; max-width: 68ch; } ul.plain li { margin: 4px 0; }
+
+/* cover */
+.cover { padding-top: 48px; padding-bottom: 56px; }
+.cover .mark { width: 72px; height: 72px; border-radius: 18px; background: #fff; box-shadow: var(--shadow), 0 0 0 1px var(--line);
+  display: grid; place-items: center; margin-bottom: 36px; }
+.cover h1 { font-size: clamp(44px, 7.6vw, 80px); line-height: 1.02; letter-spacing: -0.035em; }
+.cover h1 span { color: var(--muted); font-weight: 500; }
+.mission { margin-top: 32px; padding: 28px; border-radius: var(--r-card); background: var(--navy); color: #fff; max-width: 760px; }
+.mission .eyebrow { color: #b8c3d9; }
+.mission q { display: block; font-size: clamp(24px, 3.4vw, 34px); line-height: 1.18; letter-spacing: -0.02em; font-weight: 600; quotes: "«" "»"; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 24px; font-size: 14px; color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 600; }
+
+/* tables */
+.tbl { overflow-x: auto; margin: 8px 0 18px; border: 1px solid var(--line); border-radius: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.4; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--sand); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+td.wrap1 { white-space: normal; }
+.yes { color: var(--success); font-weight: 600; } .no { color: var(--danger); font-weight: 600; }
+
+/* callouts */
+.rule { margin: 18px 0; padding: 18px 20px; border-radius: 14px; background: var(--sand); font-weight: 600; font-size: 18px; line-height: 1.4; max-width: 760px; }
+.note { margin: 14px 0; padding: 14px 16px; border-radius: 12px; background: var(--warning-50); color: var(--ink); font-size: 15px; max-width: 760px; }
+.note b { color: var(--warning); }
+.dodont { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0 18px; }
+.dodont > div { min-width: 0; padding: 16px 18px; border-radius: 14px; font-size: 15px; }
+.dodont .do { background: var(--success-50); } .dodont .dont { background: var(--danger-50); }
+.dodont h4 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.dodont .do h4 { color: var(--success); } .dodont .dont h4 { color: var(--danger); }
+.dodont ul { margin: 0; padding-left: 1.1em; } .dodont li { margin: 4px 0; }
+
+/* logo plates */
+.plates { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0 8px; }
+.plate { min-width: 0; border-radius: var(--r-card); min-height: 168px; display: grid; place-items: center; padding: 28px; position: relative; }
+.plate .cap { position: absolute; left: 14px; bottom: 10px; font-size: 12px; }
+.plate.white { background: #ffffff; box-shadow: inset 0 0 0 1px #d2d2d7; } .plate.white .cap { color: #4f4f55; }
+.plate.black { background: #0d0d0d; } .plate.black .cap { color: #b4b4ba; }
+.plate.blue { background: #0866ff; } .plate.blue .cap { color: #e7f3ff; }
+.plate.navy { background: #0b172a; } .plate.navy .cap { color: #b8c3d9; }
+.plate.grey { background: #f0f0f0; } .plate.grey .cap { color: #4f4f55; }
+.wm { font-family: "Inter", var(--font); font-weight: 600; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; font-size: clamp(34px, 5vw, 46px); }
+.wm.on-white { color: #0d0d0d; } .wm.on-dark { color: #ffffff; }
+.clear { position: relative; display: inline-block; padding: 26px 30px; background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgb(8 102 255 / 0.12) 6px 7px);
+  border: 1px dashed #0866ff; border-radius: 4px; }
+.clear .wm { background: #fff; display: block; }
+.app-icons { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin: 14px 0 18px; }
+.app-icons figure { margin: 0; display: grid; gap: 8px; justify-items: center; font-size: 13px; color: var(--muted); text-align: center; }
+.tile { border-radius: 22%; display: grid; place-items: center; box-shadow: var(--shadow), 0 0 0 1px var(--line); }
+
+/* colour */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin: 12px 0 20px; }
+.sw { min-width: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+.sw .chip { height: 84px; display: flex; align-items: flex-end; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+.sw .info { padding: 10px 12px 12px; font-size: 13px; line-height: 1.4; }
+.sw .info b { display: block; font-size: 14px; }
+.sw code, code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+.sw .info span { color: var(--muted); }
+.ratio { display: flex; height: 34px; border-radius: 10px; overflow: hidden; margin: 10px 0 6px; border: 1px solid var(--line); }
+.ratio div { display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+
+/* type */
+.spec { display: grid; gap: 0; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.spec > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.spec > div:last-child { border-bottom: 0; }
+@media (min-width: 720px) { .spec > div { grid-template-columns: 190px minmax(0, 1fr); gap: 20px; align-items: baseline; } }
+.spec .lbl { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.spec .lbl b { display: block; color: var(--ink); font-size: 14px; }
+.spec .smp { min-width: 0; overflow-wrap: anywhere; }
+.docpage { background: #fff; color: #000; font-family: var(--font-doc); font-size: 15px; line-height: 1.35; padding: 28px 30px; border-radius: 6px;
+  box-shadow: var(--shadow), 0 0 0 1px var(--line); max-width: 520px; }
+.docpage .r { text-align: right; font-weight: 700; margin: 0 0 14px; }
+.docpage .c { text-align: center; font-weight: 700; margin: 0; }
+.docpage p { text-align: justify; text-indent: 1.25cm; margin: 10px 0 0; max-width: none; }
+.docpage .sig { display: flex; justify-content: space-between; margin-top: 18px; text-indent: 0; }
+.docpage .ai { font-size: 11px; color: #4f4f55; margin-top: 16px; text-indent: 0; }
+
+/* product components */
+.stage { border: 1px solid var(--line); border-radius: var(--r-card); padding: 22px; margin: 12px 0 20px; display: grid; gap: 18px; background: var(--surface); }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px;
+  border-radius: var(--r-pill); font-size: 15px; letter-spacing: -0.016em; border: 1px solid transparent; cursor: pointer; }
+.btn.lg { min-height: 48px; padding: 12px 22px; font-size: 17px; }
+.btn.primary { background: var(--action); color: #fff; } .btn.primary:hover { background: var(--action-hover); }
+.btn.ghost { background: transparent; color: var(--brand); border-color: var(--brand); }
+.btn.danger { background: #a32e39; color: #fff; }
+.btn[disabled] { opacity: 0.42; cursor: not-allowed; }
+.field { width: 100%; max-width: 380px; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctrl); padding: 10px 12px; }
+.field:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 4px rgb(8 102 255 / 0.15); }
+.tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 600; }
+.tag.ok { background: var(--success-50); color: var(--success); } .tag.draft { background: var(--draft-50); color: var(--draft); }
+.tag.warn { background: var(--warning-50); color: var(--warning); } .tag.info { background: var(--brand-50); color: var(--brand); }
+.chat { display: grid; gap: 10px; max-width: 460px; }
+.bub { max-width: 85%; padding: 8px 14px 6px; font-size: 18px; line-height: 1.45; border-radius: 20px; }
+.bub.in { background: var(--bubble-in); color: var(--ink); border-bottom-left-radius: 6px; justify-self: start; }
+.bub.out { background: var(--bubble-out); color: #fff; border-bottom-right-radius: 6px; justify-self: end; }
+.bub small { display: block; text-align: right; font-size: 11px; opacity: 1; margin-top: 2px; }
+.bub.in small { color: var(--muted); }
+.composer { border: 1px solid var(--line); background: var(--sand); border-radius: 24px; padding: 12px 10px 8px; max-width: 460px; }
+.composer .txt { font-size: 20px; line-height: 1.4; padding: 0 8px 6px; color: var(--muted); }
+.composer .ctl { display: flex; justify-content: space-between; align-items: center; }
+.ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); }
+.ic.send { background: var(--action); color: #fff; }
+.card-demo + p { margin-top: 16px; }
+.card-demo { background: var(--sand); border-radius: var(--r-card); padding: 22px; max-width: 460px; display: grid; gap: 10px; }
+.grid8 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 18px; }
+.grid8 > div { min-width: 0; background: var(--sand); border-radius: 12px; padding: 12px; font-size: 14px; }
+.grid8 .bar { height: 10px; background: var(--action); border-radius: 3px; margin-bottom: 8px; }
+.radii { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 18px; }
+.radii div { width: 96px; height: 72px; background: var(--brand-50); border: 1px solid var(--brand); display: grid; place-items: center; font-size: 13px; color: var(--ink); }
+.icons { display: flex; flex-wrap: wrap; gap: 18px; color: var(--ink); margin: 8px 0 16px; }
+.icons svg { width: 24px; height: 24px; }
+footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
+.contents ol { list-style: none; padding: 0; margin: 8px 0 0; counter-reset: c; border-top: 1px solid var(--line); }
+.contents li { display: flex; align-items: baseline; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 17px; }
+.contents li::before { counter-increment: c; content: counter(c, decimal-leading-zero); color: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; width: 22px; }
+.contents li a { color: var(--ink); text-decoration: none; flex: 1; min-width: 0; }
+.contents li small { color: var(--muted); font-size: 14px; flex: 1 1 100%; order: 3; padding-left: 36px; margin-top: -6px; }
+.contents li span { font-variant-numeric: tabular-nums; color: var(--muted); }
+.contents li { flex-wrap: wrap; }
+
+/* Print / PDF: A4 portrait, every section from a new page, light palette only */
+@page { size: A4; margin: 20mm 15mm 18mm; }
+@media print {
+  :root, :root[data-theme="dark"] {
+    --ink: #0d0d0d; --ink-soft: #1f1f1f; --muted: #4f4f55; --faint: #6e6e73; --line: #d2d2d7; --sand: #f0f0f0; --sand-deep: #e4e6eb;
+    --surface: #ffffff; --brand: #0064e0; --brand-50: #e7f3ff; --success: #17684d; --success-50: #e8f5ee; --danger: #a32e39;
+    --danger-50: #fbf1f2; --warning: #865416; --warning-50: #fbf5ec; --draft: #5b4a8a; --draft-50: #f4f2f9; --bubble-in: #f0f0f0;
+    --canvas: #ffffff; --shadow: none; color-scheme: light; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 11.5pt; }
+  .toc, footer.end { display: none; }
+  .wrap { display: block; max-width: none; padding: 0; }
+  main { display: block; padding: 0; }
+  section { break-before: page; box-shadow: none; border-radius: 0; padding: 0; }
+  section::before { content: none; }
+  section.cover { padding-top: 22mm; }
+  .cover h1 { font-size: 64pt; }
+  .cover .lead { font-size: 15pt; }
+  .mission { padding: 30px 32px; } .mission q { font-size: 26pt; }
+  .contents h2 { font-size: 24pt; } .contents .lead { font-size: 12.5pt; }
+  .contents li { padding: 7px 0; font-size: 12pt; }
+  .contents li { flex-wrap: nowrap; }
+  .contents li a { flex: 0 0 auto; }
+  .contents li small { flex: 1 1 auto; order: 0; padding-left: 6px; margin-top: 0; font-size: 9.5pt; }
+  section.cover { break-before: auto; min-height: 255mm; display: flex; flex-direction: column; padding-top: 30mm; }
+  section.cover .meta { margin-top: auto; }
+  .pb { break-before: page; }
+  h2 { font-size: 28pt; } h3 { font-size: 15pt; margin-top: 22px; }
+  .lead { font-size: 14pt; }
+  .tbl, .plate, .sw, .dodont > div, .spec > div, .stage, .docpage, .rule, .note, .app-icons, .card-demo, .chat, .clear, .radii, .grid8 > div, .contents li { break-inside: avoid; }
+  h3 { break-after: avoid; }
+  table { font-size: 10pt; }
+  .plates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .swatches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Содержание">
+    <p>Брендбук 1.0</p>
+    <ol>
+      <li><a href="#mission">Миссия и основа</a></li>
+      <li><a href="#names">Названия</a></li>
+      <li><a href="#voice">Голос бренда</a></li>
+      <li><a href="#konsi">Конси</a></li>
+      <li><a href="#logo">Логотип</a></li>
+      <li><a href="#color">Цвет</a></li>
+      <li><a href="#type">Типографика</a></li>
+      <li><a href="#layout">Сетка и формы</a></li>
+      <li><a href="#ui">Компоненты</a></li>
+      <li><a href="#icons">Иконки и изображения</a></li>
+      <li><a href="#a11y">Доступность и движение</a></li>
+      <li><a href="#docs">Документы клиента</a></li>
+      <li><a href="#use">Применение</a></li>
+      <li><a href="#promise">Обещания и риски</a></li>
+      <li><a href="#govern">Управление</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section class="cover" id="top">
+      <div class="mark" aria-hidden="true">
+        <svg width="44" height="44" viewBox="0 0 80 80"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></svg>
+      </div>
+      <p class="eyebrow">Руководство для команды и партнёров · Konsilier AI</p>
+      <h1>Konsilier<br><span>Брендбук</span></h1>
+      <p class="lead" style="margin-top:18px">Консильер — ИИ-помощник по правовым вопросам. Коротко — Конси. Здесь всё, что нужно, чтобы любой
+        экран, пост, письмо или документ выглядел и звучал как один продукт.</p>
+      <div class="mission">
+        <p class="eyebrow">Миссия</p>
+        <q>Освободить миллиард людей от правового бессилия.</q>
+      </div>
+      <div class="meta">
+        <span><b>Версия 1.0</b> · 03.10.2026</span>
+        <span>Основа: брендбук v0.9 (названия, голос, Конси) + действующий сайт и приложение</span>
+        <span>Визуальные значения сняты с кода konsilier.com</span>
+      </div>
+    </section>
+
+    <section class="contents" id="contents">
+      <p class="eyebrow">Содержание</p>
+      <h2>Как устроен брендбук</h2>
+      <p class="lead">Сначала смысл бренда и то, как мы говорим. Потом визуальная система, как она сделана в продукте. В конце — где и кто её применяет.</p>
+      <ol>
+        <li><a href="#mission">Миссия и основа</a><span>3</span><small>Обещание, аудитория, характер</small></li>
+        <li><a href="#names">Названия</a><span>4</span><small>Konsilier, Консильер, Конси, Konsilier AI, написание, дескриптор</small></li>
+        <li><a href="#voice">Голос бренда</a><span>6</span><small>Принципы, кто говорит, словарь интерфейса</small></li>
+        <li><a href="#konsi">Конси</a><span>8</span><small>Персонализация образа и её границы</small></li>
+        <li><a href="#logo">Логотип</a><span>9</span><small>Словесный знак, знак K, охранное поле, запреты</small></li>
+        <li><a href="#color">Цвет</a><span>12</span><small>Палитра, светлая и тёмная темы, контраст</small></li>
+        <li><a href="#type">Типографика</a><span>15</span><small>Шрифты, шкала, правила набора</small></li>
+        <li><a href="#layout">Сетка и формы</a><span>18</span><small>Отступы, ширины, скругления, тени</small></li>
+        <li><a href="#ui">Компоненты</a><span>19</span><small>Кнопки, поля, чат, карточка документа</small></li>
+        <li><a href="#icons">Иконки и изображения</a><span>21</span><small>Стиль иконок, что можно и нельзя показывать</small></li>
+        <li><a href="#a11y">Доступность и движение</a><span>22</span><small>Нормы WCAG, касание, анимация</small></li>
+        <li><a href="#docs">Документы клиента</a><span>23</span><small>Официальное оформление претензий и исков</small></li>
+        <li><a href="#use">Применение</a><span>24</span><small>Носители и короткое описание продукта</small></li>
+        <li><a href="#promise">Обещания и риски</a><span>25</span><small>Что нельзя обещать</small></li>
+        <li><a href="#govern">Управление</a><span>26</span><small>Кто отвечает, источники, версии</small></li>
+      </ol>
+    </section>
+
+    <section id="mission">
+      <p class="eyebrow">01 · Основа бренда</p>
+      <h2>Право должно становиться понятнее, а следующий шаг — яснее</h2>
+      <p class="lead">Консильер помогает человеку понять ситуацию, собрать факты, подготовить проект документа и увидеть,
+        что делать дальше. Без юридической подготовки и без страха перед сложным языком.</p>
+      <div class="rule">Обещание: помогаем разобраться в правовом вопросе и подготовить следующий шаг.</div>
+      <h3>Кому адресован продукт</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Аудитория</th><th>Что нужно</th><th>Как говорим</th></tr></thead>
+        <tbody>
+          <tr><td>Частный человек</td><td>Разобраться без юридической подготовки</td><td>Через жизненную ситуацию, не через отрасль права</td></tr>
+          <tr><td>Предприниматель</td><td>Понять условия, риски и порядок действий</td><td>Предметно: контекст, варианты, ограничения</td></tr>
+          <tr><td>Юрист, партнёр</td><td>Получить структурированные материалы дела</td><td>Точно разделяем факты, выводы ИИ и проверку специалиста</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Характер</h3>
+      <p>Спокойный, точный, уважительный, практичный. Мы не изображаем всесильного защитника и не обещаем результат дела.
+        Визуально это выражается так: много воздуха, крупный чёткий текст, один синий для действия, никаких
+        «юридических» декораций.</p>
+    </section>
+
+    <section id="names">
+      <p class="eyebrow">02 · Архитектура названий</p>
+      <h2>Один бренд, одно имя помощника, отдельная компания</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Название</th><th>Что это</th><th>Где используем</th></tr></thead>
+        <tbody>
+          <tr><td>Konsilier · Консильер</td><td class="wrap1">Бренд продукта и полное имя ИИ-помощника</td><td>Сайт, приложение, соцсети, магазины приложений, описание продукта</td></tr>
+          <tr><td>Конси · Konsi</td><td class="wrap1">Короткое имя того же помощника</td><td>Приветствие, переписка, уведомления, шапка чата</td></tr>
+          <tr><td>Konsilier AI</td><td class="wrap1">Компания: ТОО «Konsilier AI», англ. Konsilier AI LLP</td><td>Договоры, счета, печать, бланки, заявки, юридические тексты, подпись писем</td></tr>
+        </tbody>
+      </table></div>
+      <div class="rule">Konsilier — полное имя. Конси — короткое. Облик Конси выбирает пользователь, стандарт работы один.</div>
+      <div class="pb"></div>
+      <h3>Написание</h3>
+      <div class="dodont">
+        <div class="do"><h4>Пишем</h4><ul>
+          <li>Konsilier — латиницей, в логотипе и международных материалах</li>
+          <li>Консильер — по-русски и по-казахски в тексте</li>
+          <li>Конси — короткое имя в разговоре</li>
+          <li>Konsilier AI — только о компании</li>
+          <li>konsilier — в адресах и техническом коде</li>
+        </ul></div>
+        <div class="dont"><h4>Не пишем</h4><ul>
+          <li>Konsiliér, Консильéр — с é внутри слова (прежний вариант, выводится из оборота)</li>
+          <li>Konsilyer, Konsilier.AI, Konsil</li>
+          <li>Konsi Bot, «бот Конси», «адвокат Konsilier»</li>
+          <li>Konsilier AI как имя помощника в чате</li>
+        </ul></div>
+      </div>
+      <p>Ударение «Консильéр» показываем только в подсказке по произношению. В интерфейсе пишем «Консильер».</p>
+      <h3>Дескриптор</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Язык</th><th>Дескриптор</th></tr></thead>
+        <tbody>
+          <tr><td>Русский</td><td>ИИ-помощник по правовым вопросам</td></tr>
+          <tr><td>Казахский</td><td>Заң мәселелері бойынша ЖИ-көмекші</td></tr>
+          <tr><td>Английский</td><td>AI assistant for legal questions</td></tr>
+        </tbody>
+      </table></div>
+      <p class="small">Не заменять дескриптор на «юрист», «адвокат», «юридическая помощь». Новый язык утверждает редактор-носитель.</p>
+      <div class="note"><b>Переход.</b> На сайте и в приложении пока стоит прежнее написание «Konsiliér AI» / «Консильéр». Его нужно заменить на
+        «Konsilier» / «Консильер» одной правкой интерфейса. В официальных документах, печати и договорах уже используется «Konsilier AI».</div>
+    </section>
+
+    <section id="voice">
+      <p class="eyebrow">03 · Голос бренда</p>
+      <h2>Спокойно и понятно. Без канцелярита, давления и фамильярности</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Принцип</th><th>Как правильно</th><th>Избегаем</th></tr></thead>
+        <tbody>
+          <tr><td>Ясность</td><td>Сначала короткий вывод, потом основания и действия</td><td>Длинного вступления и непояснённых терминов</td></tr>
+          <tr><td>Точность</td><td>«По указанным вами данным…», «Нужно уточнить…»</td><td>«Точно выиграете», «Так работает везде»</td></tr>
+          <tr><td>Уважение</td><td>На «вы», без оценки человека</td><td>«Вы сами виноваты», назидательного тона</td></tr>
+          <tr><td>Практичность</td><td>Одно понятное следующее действие</td><td>Общих заверений без шага</td></tr>
+          <tr><td>Честность</td><td>Отделяем факт, предположение и ограничение</td><td>Уверенного тона вместо оснований</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Кто говорит</h3>
+      <p>«Я» — Конси, ясно обозначенный ИИ-помощник. «Мы» — компания или поддержка, когда действие действительно относится к ним.
+        Юрист пишет от своего имени и с указанием роли. Автоматический текст не выдаём за сообщение человека.</p>
+      <div class="pb"></div>
+      <h3>Словарь интерфейса</h3>
+      <div class="rule">Здравствуйте! Я Конси — ИИ-помощник Консильер. Расскажите, с каким правовым вопросом вам нужна помощь.</div>
+      <div class="tbl"><table>
+        <thead><tr><th>Элемент</th><th>Текст</th></tr></thead>
+        <tbody>
+          <tr><td>Шапка чата</td><td>Конси · ИИ-помощник Консильер</td></tr>
+          <tr><td>Главное действие</td><td>Новый вопрос</td></tr>
+          <tr><td>Поле сообщения</td><td>Опишите ситуацию своими словами…</td></tr>
+          <tr><td>Прикрепление</td><td>Добавить документ</td></tr>
+          <tr><td>Черновик</td><td>Проект готов к проверке. Проверьте факты и реквизиты.</td></tr>
+          <tr><td>Нужны данные</td><td>Для ответа нужно уточнить: …</td></tr>
+          <tr><td>Ошибка отправки</td><td>Сообщение не отправлено. Текст сохранён в поле ввода. Повторить</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Трудные ситуации</h3>
+      <p>Насилие, утрата, задержание, выселение: без шуток, праздничных реакций и навязчивых эмоций. Сначала главное ограничение и
+        подходящий канал срочной помощи, без непроверенных номеров и сроков.</p>
+      <p class="small">В интерфейсе продукта эмодзи не используем. В постах соцсетей — умеренно.</p>
+    </section>
+
+    <section id="konsi">
+      <p class="eyebrow">04 · Конси</p>
+      <h2>Персонализируется образ, а не компетентность</h2>
+      <p class="lead">Конси — короткое имя помощника Консильер. У него может быть свой облик, но он не человек, не адвокат и
+        не отдельная модель.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Пользователь может менять</th><th>Условие</th></tr></thead>
+        <tbody>
+          <tr><td>Аватар, тип образа</td><td>Из проверенного набора, без подмены роли ИИ реальным юристом</td></tr>
+          <tr><td>Цвет образа</td><td>Только цвет персонажа. Синий действия, цвета ошибок и проверок не меняются</td></tr>
+          <tr><td>Одежда, аксессуары</td><td>Нейтральные, без мантий, удостоверений и знаков «проверено юристом»</td></tr>
+          <tr><td>Анимация</td><td>Выбор из набора или полное отключение</td></tr>
+          <tr><td>Без персонажа</td><td>Тот же сервис и те же правила, понятные текстовые статусы</td></tr>
+        </tbody>
+      </table></div>
+      <div class="rule">Вы меняете только облик. Возможности помощника, правила проверки и доступ к данным остаются прежними.</div>
+      <p>Пока облик Конси не нарисован, его аватар в продукте — знак K в белом круге с тонкой рамкой (как в шапке чата).
+        Новые образы проходят проверку бренд- и риск-менеджера до выпуска.</p>
+    </section>
+
+    <section id="logo">
+      <p class="eyebrow">05 · Логотип</p>
+      <h2>Имя и знак</h2>
+      <p class="lead">У бренда два элемента. Словесный знак — само имя, набранное Inter SemiBold. Знак K — для иконок, аватара и
+        мест, где имя не помещается.</p>
+
+      <h3>Словесный знак</h3>
+      <p>Шрифт Inter SemiBold (600), межбуквенный интервал −3 % (−0.03em), без обводок и эффектов. Цвет — почти чёрный #0d0d0d
+        на светлом, белый на тёмном и на синем.</p>
+      <div class="plates">
+        <div class="plate white"><span class="wm on-white">Konsilier</span><span class="cap">Продукт · основной</span></div>
+        <div class="plate black"><span class="wm on-dark">Konsilier</span><span class="cap">На тёмном</span></div>
+        <div class="plate blue"><span class="wm on-dark">Konsilier</span><span class="cap">На синем #0866ff</span></div>
+        <div class="plate grey"><span class="wm on-white">Konsilier AI</span><span class="cap">Компания · документы, договоры</span></div>
+      </div>
+      <p class="small">Исходники: <code>docs/brand/konsilier-logo-plain-*.svg / .png</code> (чёрный, синий, белый), генератор — <code>docs/brand/make_logo.py</code>.
+        Варианты с «é» в той же папке больше не используем.</p>
+
+      <div class="pb"></div>
+      <h3>Знак K</h3>
+      <p>Вертикальный штрих и верхняя ветвь — тёмно-синий #0b172a, нижняя ветвь — серо-голубой #8796b5. Знак не перерисовываем и не
+        меняем его цвета, кроме монохромных версий.</p>
+      <div class="app-icons">
+        <figure><div class="tile" style="width:96px;height:96px;background:#fff"><svg width="58" height="58" viewBox="0 0 80 80" aria-label="Знак K"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></svg></div><figcaption>Иконка приложения</figcaption></figure>
+        <figure><div style="width:56px;height:56px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 0 0 1px #d2d2d7"><svg width="30" height="30" viewBox="0 0 80 80" aria-hidden="true"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></svg></div><figcaption>Аватар Конси</figcaption></figure>
+        <figure><div class="tile" style="width:32px;height:32px;border-radius:7px;background:#fff"><svg width="20" height="20" viewBox="0 0 80 80" aria-hidden="true"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></svg></div><figcaption>Favicon</figcaption></figure>
+        <figure><div class="tile" style="width:96px;height:96px;background:#0b172a"><svg width="58" height="58" viewBox="0 0 80 80" aria-hidden="true"><path fill="#ffffff" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></svg></div><figcaption>На тёмном</figcaption></figure>
+        <figure><div class="tile" style="width:96px;height:96px;background:#0b172a"><svg width="58" height="58" viewBox="0 0 80 80" aria-hidden="true"><path fill="#ffffff" d="M6 10h16v66H6zM28 40 47 22h20L47 40z"/><path fill="#0866ff" d="m28 45 21 31h20L47 45z"/><circle cx="68" cy="12" r="9" fill="#0866ff"/></svg></div><figcaption>Konsilier Ops<br>(внутреннее)</figcaption></figure>
+      </div>
+      <p class="small">Исходники: <code>apps/web/app/icon.svg</code>, <code>apps/web/public/icons/*</code>, <code>docs/brand/konsilier-icon.svg</code>.
+        Иконка Ops — только для внутреннего командного центра, в материалах для клиентов не используется.</p>
+
+      <div class="pb"></div>
+      <h3>Охранное поле и минимальный размер</h3>
+      <div class="row" style="align-items:flex-start;gap:28px">
+        <div class="clear"><span class="wm on-white" style="font-size:40px">Konsilier</span></div>
+        <ul class="plain" style="flex:1;min-width:240px">
+          <li>Охранное поле словесного знака — высота заглавной K со всех сторон. Внутрь не заходят текст, края и другие знаки.</li>
+          <li>Охранное поле знака K — четверть его ширины.</li>
+          <li>Минимум на экране: словесный знак — кегль 16 px (ширина около 64 px), знак K — 16 px.</li>
+          <li>Минимум в печати: словесный знак — 25 мм по ширине, знак K — 6 мм.</li>
+        </ul>
+      </div>
+
+      <h3>Чего нельзя</h3>
+      <div class="dodont">
+        <div class="dont"><h4>Нельзя</h4><ul>
+          <li>Растягивать, сжимать, наклонять, поворачивать</li>
+          <li>Добавлять тени, обводки, градиенты, объём, анимацию</li>
+          <li>Менять шрифт или интервал словесного знака</li>
+          <li>Ставить на пёстрые фото и фоны с низким контрастом</li>
+          <li>Заменять логотип аватаром Конси</li>
+          <li>Добавлять Фемиду, весы, гербы, госсимволику</li>
+        </ul></div>
+        <div class="do"><h4>Можно</h4><ul>
+          <li>Чёрный на белом или светло-сером</li>
+          <li>Белый на почти чёрном, тёмно-синем или синем #0866ff</li>
+          <li>Синий #0866ff на белом — для крупного размера, от 24 px</li>
+          <li>Знак K отдельно — иконки, аватар, favicon, водяной знак</li>
+        </ul></div>
+      </div>
+      <p class="small">Комбинация «знак K + словесный знак» в одной строке не утверждена. До отдельного решения используем элементы раздельно.</p>
+    </section>
+
+    <section id="color">
+      <p class="eyebrow">06 · Цвет</p>
+      <h2>Белый, серый и один синий для действия</h2>
+      <p class="lead">Палитра в духе мессенджера: белый фон, серые поверхности, почти чёрный текст. Синий — только там, где
+        человек что-то делает или переходит дальше.</p>
+      <div class="ratio" aria-label="Соотношение цветов на экране">
+        <div style="flex:60;background:#ffffff;color:#4f4f55">Белый 60 %</div>
+        <div style="flex:22;background:#f0f0f0;color:#4f4f55">Серый 22 %</div>
+        <div style="flex:10;background:#0d0d0d;color:#fff">Текст 10 %</div>
+        <div style="flex:8;background:#0866ff;color:#fff">8 %</div>
+      </div>
+      <p class="small">Ориентир для экрана: синий — не больше одного главного действия на виде.</p>
+
+      <h3>Основные цвета</h3>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:#0866ff;color:#fff">Синий действия</div><div class="info"><b><code>#0866ff</code></b><span>Кнопки, пузырь клиента, фокус. Белый текст 4,8 : 1</span></div></div>
+        <div class="sw"><div class="chip" style="background:#0064e0;color:#fff">Синий текста</div><div class="info"><b><code>#0064e0</code></b><span>Ссылки и синий текст. На белом 5,4 : 1, на сером 4,7 : 1</span></div></div>
+        <div class="sw"><div class="chip" style="background:#0d0d0d;color:#fff">Текст</div><div class="info"><b><code>#0d0d0d</code></b><span>Основной текст и логотип. 19,4 : 1</span></div></div>
+        <div class="sw"><div class="chip" style="background:#ffffff;color:#0d0d0d;box-shadow:inset 0 -1px 0 #d2d2d7">Фон</div><div class="info"><b><code>#ffffff</code></b><span>Основной фон</span></div></div>
+        <div class="sw"><div class="chip" style="background:#f0f0f0;color:#0d0d0d">Серый</div><div class="info"><b><code>#f0f0f0</code></b><span>Карточки, ответы Конси, поля</span></div></div>
+        <div class="sw"><div class="chip" style="background:#0b172a;color:#fff">Тёмно-синий знака</div><div class="info"><b><code>#0b172a</code></b><span>Только знак K и тёмные плашки</span></div></div>
+        <div class="sw"><div class="chip" style="background:#8796b5;color:#0b172a">Серо-голубой знака</div><div class="info"><b><code>#8796b5</code></b><span>Только нижняя ветвь K. Не для текста (3 : 1)</span></div></div>
+      </div>
+
+      <div class="pb"></div>
+      <h3>Нейтральные и служебные</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Роль</th><th>Светлая тема</th><th>Тёмная тема</th><th>Для чего</th></tr></thead>
+        <tbody>
+          <tr><td>Фон</td><td><code>#ffffff</code></td><td><code>#141416</code></td><td>Страница</td></tr>
+          <tr><td>Поверхность</td><td><code>#f0f0f0</code></td><td><code>#232326</code></td><td>Карточки, поля, входящие сообщения</td></tr>
+          <tr><td>Поверхность, нажатие</td><td><code>#e4e6eb</code></td><td><code>#2e2e32</code></td><td>Нажатое, чипы</td></tr>
+          <tr><td>Текст</td><td><code>#0d0d0d</code> · 19,4</td><td><code>#f2f2f4</code> · 16,5</td><td>Основной текст</td></tr>
+          <tr><td>Текст второй</td><td><code>#4f4f55</code> · 8,1</td><td><code>#b4b4ba</code> · 8,9</td><td>Подписи, пояснения</td></tr>
+          <tr><td>Текст третий</td><td><code>#6e6e73</code> · 5,1</td><td><code>#9c9ca3</code> · 6,7</td><td>Подсказки, мелкие пометки</td></tr>
+          <tr><td>Линии</td><td><code>#d2d2d7</code></td><td><code>#3a3a3f</code></td><td>Разделители, рамки</td></tr>
+          <tr><td>Ссылка</td><td><code>#0064e0</code> · 5,4</td><td><code>#5aa9ff</code> · 7,5</td><td>Ссылки и синий текст</td></tr>
+          <tr><td>Действие</td><td><code>#0866ff</code></td><td><code>#0866ff</code></td><td>Кнопки (белый текст 4,8)</td></tr>
+          <tr><td>Успех</td><td><code>#17684d</code> · 6,7</td><td><code>#5cc795</code> · 8,8</td><td>Оплачено, подписано, отправлено</td></tr>
+          <tr><td>Ошибка</td><td><code>#a32e39</code> · 7,0</td><td><code>#ff8a8f</code> · 8,1</td><td>Ошибки, удаление</td></tr>
+          <tr><td>Внимание</td><td><code>#865416</code> · 6,4</td><td><code>#e6ad5c</code> · 9,2</td><td>Сроки, предупреждения</td></tr>
+          <tr><td>Черновик</td><td><code>#5b4a8a</code> · 7,5</td><td><code>#bcaef0</code></td><td>Черновик ИИ, ждёт проверки</td></tr>
+        </tbody>
+      </table></div>
+      <p class="small">Цифра после кода — контраст с фоном по WCAG 2.2. Норма для обычного текста — не меньше 4,5 : 1. Источник значений — <code>apps/web/app/globals.css</code>.</p>
+      <div class="row" style="margin:6px 0 16px">
+        <span class="tag ok">✓ Оплачено</span><span class="tag draft">Черновик ИИ</span><span class="tag warn">Ответ до 12.10</span><span class="tag info">Сейчас</span>
+      </div>
+      <div class="dodont">
+        <div class="do"><h4>Правило</h4><ul>
+          <li>Синий означает действие: если по элементу нельзя нажать, он не синий</li>
+          <li>Цвет статуса всегда дублируется словом или иконкой</li>
+          <li>Новые цвета добавляются только токеном в <code>globals.css</code> с цифрой контраста</li>
+        </ul></div>
+        <div class="dont"><h4>Не делаем</h4><ul>
+          <li>Градиенты, неон, цветные фоны страниц</li>
+          <li>Прежний синий #0084ff — его контраст 3,7 : 1 ниже нормы</li>
+          <li>Цвет образа Конси вместо служебных цветов</li>
+        </ul></div>
+      </div>
+      <p class="small">Печать: экранные HEX не равны CMYK и Pantone. Печатные цвета утверждаем по цветопробе выбранной типографии.</p>
+    </section>
+
+    <section id="type">
+      <p class="eyebrow">07 · Типографика</p>
+      <h2>Крупный, чёткий текст без сжатия букв</h2>
+      <p class="lead">На устройствах Apple текст набирается системным SF Pro, на остальных — Inter. Арабский — Noto Sans Arabic.
+        Два начертания: обычное 400 и полужирное 600.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Роль</th><th>Шрифт</th><th>Где</th></tr></thead>
+        <tbody>
+          <tr><td>Интерфейс</td><td class="wrap1">SF Pro → Inter → Helvetica Neue → Arial</td><td>Сайт, приложение, /ops, письма</td></tr>
+          <tr><td>Логотип</td><td class="wrap1">Inter SemiBold 600, −0.03em</td><td>Только словесный знак</td></tr>
+          <tr><td>Арабский</td><td class="wrap1">Noto Sans Arabic, без отрицательного интервала</td><td>Интерфейс на ar</td></tr>
+          <tr><td>Документы клиента</td><td class="wrap1">Times New Roman 14 (PDF — Liberation Serif)</td><td>Претензии, жалобы, иски</td></tr>
+          <tr><td>Печать ТОО</td><td class="wrap1">Inter</td><td>Оттиск «KONSILIER AI»</td></tr>
+        </tbody>
+      </table></div>
+      <p class="small">Inter распространяется по лицензии SIL Open Font License и разрешён для сайта, приложения и печати. SF Pro не встраиваем: его лицензия разрешает использование только на платформах Apple.</p>
+
+      <div class="pb"></div>
+      <h3>Шкала</h3>
+      <div class="spec">
+        <div><span class="lbl"><b>Главный заголовок</b>40 → 52 px · 600 · 1.1 · −0.02em</span><span class="smp" style="font-size:clamp(32px,4.4vw,52px);font-weight:600;line-height:1.08;letter-spacing:-0.02em">ИИ-помощник по правовым вопросам</span></div>
+        <div><span class="lbl"><b>Заголовок раздела</b>32 → 40 → 48 px · 600 · −0.015em</span><span class="smp" style="font-size:clamp(28px,3.4vw,40px);font-weight:600;line-height:1.12;letter-spacing:-0.015em">Как это работает</span></div>
+        <div><span class="lbl"><b>Вводный абзац</b>19 → 21 px · 400 · 1.4</span><span class="smp" style="font-size:20px;line-height:1.4;color:var(--muted)">Объясню ваши права по закону и подготовлю претензию, жалобу или иск.</span></div>
+        <div><span class="lbl"><b>Поле ввода</b>20 px · 400 · 1.4 · не меньше 19 px</span><span class="smp" style="font-size:20px;line-height:1.4">У меня не возвращают предоплату за ремонт</span></div>
+        <div><span class="lbl"><b>Сообщение в чате</b>18 px · 400 · 1.45</span><span class="smp" style="font-size:18px;line-height:1.45">Срок ответа на претензию — 10 календарных дней.</span></div>
+        <div><span class="lbl"><b>Основной текст</b>17 px · 400 · 1.47</span><span class="smp" style="font-size:17px">Опишите ситуацию своими словами — Консильер задаст уточняющие вопросы.</span></div>
+        <div><span class="lbl"><b>Кнопка</b>15 px, крупная 17 px · 400</span><span class="smp" style="font-size:15px">Новый вопрос</span></div>
+        <div><span class="lbl"><b>Подпись</b>12–14 px · 400</span><span class="smp" style="font-size:13px;color:var(--muted)">Отправляя сообщение, вы принимаете Пользовательское соглашение</span></div>
+        <div><span class="lbl"><b>Надзаголовок</b>11 px · 600 · ПРОПИСНЫЕ · +0.08em</span><span class="smp" style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Этапы дела</span></div>
+      </div>
+      <h3>Правила набора</h3>
+      <ul class="plain">
+        <li>Кириллицу не сжимаем: основной текст с нормальным интервалом, отрицательный — только у заголовков.</li>
+        <li>Короткие абзацы и заголовки — ровный перенос (<code>text-wrap: balance</code>), без одного слова на последней строке.</li>
+        <li>Не разрываем имена, цены, даты и «версия 2026-09-29» — неразрывный пробел или <code>white-space: nowrap</code>.</li>
+        <li>Казахские составные слова — неразрывный дефис (кінәрат‑талап).</li>
+        <li>Кавычки «ёлочки», тире — длинное «—», числа с неразрывным пробелом: 1 990 ₸.</li>
+        <li>Ударение и другие знаки — только готовыми символами, без комбинируемых знаков (U+0301).</li>
+      </ul>
+    </section>
+
+    <section id="layout">
+      <p class="eyebrow">08 · Сетка и формы</p>
+      <h2>Шаг 4 и 8 px, мягкие углы, кнопки-таблетки</h2>
+      <h3>Отступы</h3>
+      <div class="grid8">
+        <div><div class="bar" style="width:4px"></div>4 px — внутри мелких элементов</div>
+        <div><div class="bar" style="width:8px"></div>8 px — между иконкой и текстом</div>
+        <div><div class="bar" style="width:12px"></div>12 px — между кнопками</div>
+        <div><div class="bar" style="width:24px"></div>24 px — внутри карточки</div>
+        <div><div class="bar" style="width:56px"></div>56 / 96 px — между разделами (телефон / компьютер)</div>
+      </div>
+      <ul class="plain">
+        <li>Ширина контента — до 1208 px, боковые поля 20 px. Чат и анкета — одна колонка до 768 px.</li>
+        <li>Контрольные ширины: 360, 390, 768, 1440 px. Горизонтальной прокрутки нет ни на одной.</li>
+        <li>Безопасные зоны iPhone: шапка и поле ввода учитывают вырез и полоску «Домой».</li>
+      </ul>
+      <h3>Скругления и тени</h3>
+      <div class="radii">
+        <div style="border-radius:8px">8 px</div>
+        <div style="border-radius:12px">12 px · поля</div>
+        <div style="border-radius:18px">18 px · карточки</div>
+        <div style="border-radius:24px">24 px · ввод</div>
+        <div style="border-radius:980px">таблетка</div>
+      </div>
+      <p>Карточка — серая заливка без рамки и тени. Тень только у того, что парит над страницей: поле ввода на главной, всплывающие окна, меню.
+        В тёмной теме тени темнее, карточки — #232326.</p>
+    </section>
+
+    <section id="ui">
+      <p class="eyebrow">09 · Компоненты</p>
+      <h2>Одна библиотека для сайта, приложения и /ops</h2>
+      <div class="stage">
+        <div class="row">
+          <button class="btn lg primary" type="button">Составить документ</button>
+          <button class="btn primary" type="button">Новый вопрос</button>
+          <button class="btn ghost" type="button">Скачать</button>
+          <button class="btn danger" type="button">Удалить дело</button>
+          <button class="btn primary" type="button" disabled>Отправить</button>
+        </div>
+        <div class="row"><label class="small" for="demo-field" style="width:100%;margin-bottom:-6px">Поле</label><input id="demo-field" class="field" value="Алматы, ул. Абая, 1" aria-label="Пример поля"></div>
+      </div>
+      <ul class="plain">
+        <li><b>Главная кнопка</b> — синяя таблетка, белый текст. Одна на экран.</li>
+        <li><b>Второстепенная</b> — прозрачная с синей рамкой и синим текстом.</li>
+        <li><b>Опасная</b> — красная, только для необратимых действий, с подтверждением на экране.</li>
+        <li><b>Касание</b> — не меньше 44 × 44 px у всех кнопок, ссылок и иконок.</li>
+        <li><b>Состояния</b> каждого элемента: обычное, наведение, нажатие, фокус (синяя рамка 2 px), недоступно (42 %), загрузка, ошибка.</li>
+        <li><b>Кнопки одного блока</b> одинаковые: шрифт, высота, ширина, радиус, стиль иконок. Кнопки Google и Apple оборачиваем в наш стиль.</li>
+      </ul>
+
+      <div class="pb"></div>
+      <h3>Чат</h3>
+      <div class="stage">
+        <div class="chat">
+          <div class="bub out">У меня не возвращают предоплату за ремонт<small>14:02 ✓✓</small></div>
+          <div class="bub in">Понял. Чтобы подготовить претензию, уточню: когда вы внесли предоплату и есть ли договор?<small>14:02</small></div>
+        </div>
+        <div class="composer" aria-hidden="true">
+          <div class="txt">Опишите ситуацию своими словами…</div>
+          <div class="ctl">
+            <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            <span style="display:flex;gap:6px"><span class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+            <span class="ic send"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span></span>
+          </div>
+        </div>
+      </div>
+      <ul class="plain">
+        <li>Диалог в пузырях, как в мессенджерах: клиент — синий справа, Конси — серый слева с аватаром K.</li>
+        <li>Документ предлагается кнопкой внутри ответа, только когда он нужен.</li>
+        <li>Поле ввода: текст 20 px, почти чёрный; «+» и камера слева, микрофон и «Отправить» справа под строкой.</li>
+        <li>Время и галочки в пузыре клиента — белые; прочитано — две галочки.</li>
+      </ul>
+
+      <h3>Карточка документа и статусы</h3>
+      <div class="card-demo">
+        <div style="font-weight:600;font-size:19px;text-wrap:balance">Претензия продавцу о возврате денег</div>
+        <div class="row"><span class="tag ok">✓ Оплачено</span><span class="tag warn">Ждём ответ до 12.10.2026</span></div>
+        <div class="row"><button class="btn ghost" type="button">Скачать</button><button class="btn ghost" type="button">Распечатать</button></div>
+      </div>
+      <p>Статусы проверки пишем только так: «Черновик ИИ», «Проверено юристом» (только при подтверждённой проверке конкретной версии),
+        «Источник требует уточнения».</p>
+    </section>
+
+    <section id="icons">
+      <p class="eyebrow">10 · Иконки и изображения</p>
+      <h2>Тонкие линейные иконки и реальные экраны</h2>
+      <div class="icons" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v13H3zM8 7V4h8v3"/></svg>
+      </div>
+      <ul class="plain">
+        <li>Иконки — линия 1,75 px, скруглённые концы, размер 20–24 px, цвет текста. Синие — только на кнопках-ссылках.</li>
+        <li>В интерфейсе эмодзи не используем.</li>
+        <li>Иллюстрации и визуалы в соцсетях: реальные экраны продукта, крупная типографика, белый и серый фон, синий акцент.</li>
+      </ul>
+      <div class="dodont">
+        <div class="dont"><h4>Не используем</h4><ul>
+          <li>Фемиду, весы, молоток судьи, колонны, книги законов</li>
+          <li>Стоковые фото «юристов в костюмах» и рукопожатий</li>
+          <li>Государственную символику и чужие фирменные знаки</li>
+          <li>Сгенерированные лица под видом реальных клиентов и юристов</li>
+        </ul></div>
+        <div class="do"><h4>Используем</h4><ul>
+          <li>Скриншоты реальной версии продукта</li>
+          <li>Жизненные ситуации словами: «Не выплатили зарплату»</li>
+          <li>Знак K и словесный знак по правилам раздела 05</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="a11y">
+      <p class="eyebrow">11 · Доступность и движение</p>
+      <h2>Минимализм — это не мелкий и бледный текст</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Область</th><th>Норма</th></tr></thead>
+        <tbody>
+          <tr><td>Контраст текста</td><td class="wrap1">Не меньше 4,5 : 1, крупный текст от 24 px — 3 : 1 (WCAG 2.2 AA)</td></tr>
+          <tr><td>Касание</td><td class="wrap1">44 × 44 px у всех основных элементов</td></tr>
+          <tr><td>Клавиатура</td><td class="wrap1">Всё доступно с клавиатуры, фокус виден</td></tr>
+          <tr><td>Цвет и статус</td><td class="wrap1">Цвет всегда дублируется словом или иконкой</td></tr>
+          <tr><td>Экранный диктор</td><td class="wrap1">У кнопок и полей есть подписи; декоративное скрыто</td></tr>
+          <tr><td>Темы</td><td class="wrap1">Светлая, тёмная, «как в системе» — для сайта, приложения и /ops</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Движение</h3>
+      <ul class="plain">
+        <li>Появление элементов — 0,35 с, сдвиг на 6 px снизу и проявление. Анимируем только прозрачность и сдвиг.</li>
+        <li>При «уменьшить движение» в системе анимаций нет.</li>
+        <li>Не показываем «Изучаю судебную практику», «Проверено юристом», если система этого действительно не делает.</li>
+        <li>После создания черновика — без «победных» эффектов.</li>
+      </ul>
+    </section>
+
+    <section id="docs">
+      <p class="eyebrow">12 · Документы клиента</p>
+      <h2>Официальное оформление, без бренда</h2>
+      <p class="lead">Претензии, жалобы и иски, которые клиент подписывает и подаёт, оформляются как официальные документы.
+        В них нет логотипа, синего цвета и персонажа.</p>
+      <div class="row" style="align-items:flex-start;gap:28px">
+        <div class="docpage" aria-label="Образец оформления документа">
+          <p class="r">ТОО «Магазин»<br>г. Алматы, ул. Абая, 1</p>
+          <p class="c">ПРЕТЕНЗИЯ</p>
+          <p class="c">о возврате денежных средств</p>
+          <p>Я, Иванов Иван Иванович, 15 сентября 2026 года внёс предоплату за ремонт квартиры в размере 300 000 тенге. Работы не выполнены.</p>
+          <p class="sig"><span>3 октября 2026 года</span><span>И. Иванов</span></p>
+          <p class="ai">Проект документа подготовлен с помощью ИИ-помощника Консильер.</p>
+        </div>
+        <ul class="plain" style="flex:1;min-width:240px">
+          <li>A4, поля 25 / 15 / 20 / 20 мм.</li>
+          <li>Times New Roman 14, приложения 12, одинарный интервал, абзац 1,25 см, по ширине.</li>
+          <li>Только чёрный текст. Название документа — полужирными прописными по центру.</li>
+          <li>Адресат справа полужирным, дата словами слева, «И. Фамилия» справа.</li>
+          <li>Номера страниц со второй, сверху по центру.</li>
+          <li>Одна короткая строка об ИИ в конце. Без логотипа, наклеек и имитации подписи Конси.</li>
+        </ul>
+      </div>
+      <p class="small">Источник — <code>apps/api/konsilier/core/docstyle.py</code> и правила юриста <code>team/legal-drafts/document-rules.md</code>.</p>
+    </section>
+
+    <section id="use">
+      <p class="eyebrow">13 · Применение</p>
+      <h2>Один смысл — разный уровень формальности</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Носитель</th><th>Как применяем</th></tr></thead>
+        <tbody>
+          <tr><td>Сайт, приложение</td><td class="wrap1">Словесный знак Konsilier в шапке, дескриптор при первом знакомстве; в чате — Конси</td></tr>
+          <tr><td>Иконка приложения</td><td class="wrap1">Знак K на белом</td></tr>
+          <tr><td>Соцсети</td><td class="wrap1">Аватар — знак K на белом; один тезис и один следующий шаг; реклама на казахском и русском</td></tr>
+          <tr><td>Магазины приложений</td><td class="wrap1">Реальные скриншоты текущей версии, ясное обозначение ИИ</td></tr>
+          <tr><td>Корпоративное письмо</td><td class="wrap1">«Команда Konsilier AI», реальные контакты, адрес info@konsilier.com</td></tr>
+          <tr><td>Договоры, счета, печать</td><td class="wrap1">Konsilier AI / KONSILIER AI, без синего и персонажа</td></tr>
+          <tr><td>Партнёрские материалы</td><td class="wrap1">Роли платформы, юриста и партнёра разделены; совместные знаки — после проверки прав</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Короткое описание продукта</h3>
+      <div class="rule">Konsilier — ИИ-помощник по правовым вопросам. Помогает разобраться в ситуации, подготовить проект документа и определить следующий шаг.</div>
+      <p class="small">Перед публикацией описание сверяется с текущей версией продукта. Не добавляем обещаний, которых продукт сейчас не выполняет.</p>
+    </section>
+
+    <section id="promise">
+      <p class="eyebrow">14 · Обещания и риски</p>
+      <h2>У любого сильного обещания есть основание</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Тема</th><th>Не допускается</th></tr></thead>
+        <tbody>
+          <tr><td>Результат</td><td class="wrap1">Гарантия победы или правильности для любого случая</td></tr>
+          <tr><td>Скорость</td><td class="wrap1">Выдуманные секунды, «самый быстрый в мире»</td></tr>
+          <tr><td>Популярность</td><td class="wrap1">Несуществующие пользователи, отзывы, оценки и награды</td></tr>
+          <tr><td>Приватность</td><td class="wrap1">«Никому не передаём», если работают внешние обработчики</td></tr>
+          <tr><td>Проверка юристом</td><td class="wrap1">Общий значок вместо проверки конкретной версии</td></tr>
+          <tr><td>Формулировки</td><td class="wrap1">«Юридическая помощь», «адвокат Konsilier», «IT-сервис, а не юридическая помощь»</td></tr>
+        </tbody>
+      </table></div>
+      <p>Нормы, сроки, адресатов и пошлины в рекламе и контенте не генерируем: ссылка на статью — только проверенная по adilet.zan.kz.</p>
+    </section>
+
+    <section id="govern">
+      <p class="eyebrow">15 · Управление</p>
+      <h2>Кто отвечает за бренд</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Роль</th><th>Принимает и проверяет</th></tr></thead>
+        <tbody>
+          <tr><td>Владелец</td><td class="wrap1">Названия, позиционирование, смена логотипа, цвета и стиля</td></tr>
+          <tr><td>UX/UI-дизайнер</td><td class="wrap1">Токены, компоненты, экраны до выкладки (390 / 1440, светлая и тёмная), доступность</td></tr>
+          <tr><td>Бренд- и риск-менеджер</td><td class="wrap1">Каждая публикация, оффер и рассылка до выхода; образы Конси</td></tr>
+          <tr><td>Редактор-лингвист</td><td class="wrap1">Тексты ru / kk / en, словарь интерфейса</td></tr>
+          <tr><td>ZANN</td><td class="wrap1">Юридическая точность утверждений и оформление документов</td></tr>
+          <tr><td>Продакт-менеджер</td><td class="wrap1">Порядок выкладки, журнал решений</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Источник истины</h3>
+      <ul class="plain">
+        <li>Решения владельца — <code>team/decisions.md</code>. Что не записано, не утверждено.</li>
+        <li>Цвета, шрифты, размеры — <code>apps/web/app/globals.css</code>. Брендбук описывает их, код их задаёт; при расхождении правим одно и другое вместе.</li>
+        <li>Логотип — <code>docs/brand/</code>, иконки — <code>apps/web/public/icons/</code>.</li>
+        <li>Правила дизайна из замечаний владельца — <code>team/ux-ui/rules.md</code>.</li>
+      </ul>
+      <h3>Журнал версий</h3>
+      <div class="tbl"><table>
+        <thead><tr><th>Версия</th><th>Что изменилось</th></tr></thead>
+        <tbody>
+          <tr><td>0.9 · 03.10.2026</td><td class="wrap1">Названия, голос, Конси и персонализация, требования к визуальному паспорту</td></tr>
+          <tr><td>1.0 · 03.10.2026</td><td class="wrap1">Миссия. Визуальный паспорт по действующему продукту: логотип, знак K, цвет #0866ff, типографика, сетка, компоненты, оформление документов, применение</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <footer class="end">Konsilier AI · Брендбук 1.0 · 03.10.2026. Внутренний документ для команды и партнёров.</footer>
+  </main>
+</div>
