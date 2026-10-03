@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     team_github_ref: str = "claude/ai-team"
     team_github_token: str = ""
     team_cache_seconds: int = 300
-    terms_version: str = "2026-09-29"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
+    terms_version: str = "2026-10-03"  # current wording of the Terms of Use (apps/web/lib/legal/terms.ts)
     # Document payment (konsilier/core/adapters/payment.py): manual_transfer — a transfer to the Kaspi number below,
     # confirmed by the clients desk in /ops; stub — every invoice is paid at once (tests, development only).
     # Recipient and number live only in the server's .env; while either is empty, documents are not issued.
