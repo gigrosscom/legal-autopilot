@@ -59,3 +59,14 @@ def test_a_divorce_case_goes_to_the_court_its_children_decide(ctx, text, forum):
     assert case["coverage"]["forum"]["id"] == forum
     steps = api.get(f"/v1/cases/{case['id']}").json()["recipients"]
     assert [s["key"] for s in steps] == [forum]
+
+
+def test_own_residence_only_outside_the_big_cities():
+    """CPC art. 30 p. 7 (checked 03.10): a divorce claim by the claimant's residence when the children live with them —
+    except district courts of the capital, cities of republican significance and regional centres. Never promised
+    without the exception."""
+    for step in COV.routes["family.divorce"].steps:
+        for lang, word in (("ru", "областн"), ("kk", "облыс орталығ")):
+            text = step.why[lang]
+            if ("своему" in text) if lang == "ru" else ("өз тұрғылықты" in text):
+                assert word in text, (step.children, lang)
