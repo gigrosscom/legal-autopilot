@@ -25,18 +25,21 @@ def test_complete_case_gets_the_offer(ctx):
 def test_no_offer_while_a_fact_is_missing_the_fact_is_asked(ctx):
     ctx.container.chat_agent = _agent(OFFER, OFFER, OFFER)
     api, cid = _case(ctx)
-    with ctx.container.session_factory() as s:  # the purchase date is not known yet (a fact, not a requisite)
+    # what was bought is not known yet (a fact, not a requisite); the story's date is read by rule (PM 02.10), so the
+    # fact taken away here is one the person's words do not hold
+    ctx.container.engine.facts_from_chat = lambda *a, **k: []  # the model reads nothing from the chat here
+    with ctx.container.session_factory() as s:
         c = s.get(Case, uuid.UUID(cid))
-        c.facts = {k: v for k, v in c.facts.items() if k != "purchase_date"}
+        c.facts = {k: v for k, v in c.facts.items() if k != "goods_description"}
         s.commit()
-        assert ctx.container.engine.facts_missing(c) == ["purchase_date"]
-    _say(ctx, api, cid, "Продавец не возвращает деньги, что делать?")
-    reply = _say(ctx, api, cid, "Чек есть, телефон за 180 000")
+        assert ctx.container.engine.facts_missing(c) == ["goods_description"]
+    reply = _say(ctx, api, cid, "Продавец не возвращает деньги, что делать?")
     assert not reply["offer_document"] and "кнопк" not in reply["text"].lower()
-    assert "Когда была покупка" in reply["text"]  # the missing fact is asked
+    assert "Что именно купили" in reply["text"]  # the missing fact is asked
     assert api.get(f"/v1/cases/{cid}/chat/document").json()["ready"] is False
-    # «составьте документ» does not jump over the missing fact either
-    assert not _say(ctx, api, cid, "Составьте претензию")["offer_document"]
+    # PM 02.10 P0 (#216 looped): asked and answered — never asked again, the chat goes on with what there is
+    again = _say(ctx, api, cid, "Чек есть, за 180 000")
+    assert "Что именно купили" not in again["text"]
 
 
 def test_the_bot_asking_for_documents_shows_the_upload_buttons(ctx):

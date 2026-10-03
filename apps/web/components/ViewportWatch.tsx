@@ -9,9 +9,16 @@ const editable = (el: Element | null) =>
 /**
  * The installed iPhone app (Home screen) can keep a short layout viewport after the on-screen keyboard closes:
  * 100dvh and `bottom: 0` then end in the middle of the screen — the tab bar hung mid-screen on /account and a case
- * was cut at ~60 % with an empty strip under it (owner 02.10). While no field is focused, the app's real height is
- * the tallest height the app has had in that orientation; it is published as `--app-h`, and `--app-gap` (≤ 0) moves a
- * bottom-fixed bar down to the app's real bottom. In a browser tab, or with a field focused, the browser's own sizes are left alone.
+ * was cut at ~60 % with an empty strip under it (owner 02.10), and the owner caught it again on /cases: the whole tab
+ * bar floated at ~60 % with the case list showing above AND below it. While no field is focused, the app's real height
+ * is the tallest height the app has had in that orientation; it is published as `--app-h`, and `--app-gap` (always ≤ 0)
+ * moves a bottom-fixed bar down to the app's real bottom. In a browser tab, or with a field focused, the browser's own
+ * sizes are left alone.
+ *
+ * The real height is read from `visualViewport` (the true visible area), not `window.innerHeight`: on the installed app
+ * `innerHeight` IS the stale short layout viewport, so measuring it could never catch the full screen and the correction
+ * never fired — the bar stayed at the short viewport's bottom, i.e. mid-screen (owner, /cases). `visualViewport` reports
+ * the full visible area even when the layout viewport is short, so the correction fires and the bar reaches the bottom.
  */
 export function ViewportWatch() {
   useEffect(() => {
@@ -29,11 +36,17 @@ export function ViewportWatch() {
       const phone = Math.min(screen.width, screen.height) < 600;
       // mid-rotation iOS can report the old orientation's sizes: count only sizes that agree with it
       const agrees = (landscape === "landscape") === (window.innerWidth > window.innerHeight);
-      if (!typing && agrees) tallest[landscape] = Math.max(tallest[landscape], window.innerHeight);
+      // The true visible area, in layout-viewport coordinates. When the layout viewport is the stale short one the
+      // keyboard left behind, visualViewport still spans the full screen — so this, not the short innerHeight, is the
+      // real height the bar must reach.
+      const vv = window.visualViewport;
+      const real = Math.max(window.innerHeight, vv ? Math.round(vv.offsetTop + vv.height) : 0);
+      if (!typing && agrees) tallest[landscape] = Math.max(tallest[landscape], real);
       const h = standalone && phone && !typing ? tallest[landscape] : 0;
       if (!h || h - window.innerHeight < 2) { root.removeProperty("--app-h"); root.removeProperty("--app-gap"); return; }
       root.setProperty("--app-h", `${h}px`);
-      root.setProperty("--app-gap", `${window.innerHeight - h}px`);
+      // Never positive: the bar is only ever pushed DOWN to the real bottom, never raised up into the middle.
+      root.setProperty("--app-gap", `${Math.min(0, window.innerHeight - h)}px`);
     };
     // the keyboard closing is not always followed by a resize event: look again once the field has let go
     const later = () => {
@@ -44,6 +57,7 @@ export function ViewportWatch() {
     fit();
     window.addEventListener("resize", fit);
     window.visualViewport?.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("scroll", fit);
     window.addEventListener("focusin", fit);
     window.addEventListener("focusout", later);
     window.addEventListener("orientationchange", later);
@@ -52,6 +66,7 @@ export function ViewportWatch() {
     return () => {
       window.removeEventListener("resize", fit);
       window.visualViewport?.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("scroll", fit);
       window.removeEventListener("focusin", fit);
       window.removeEventListener("focusout", later);
       window.removeEventListener("orientationchange", later);

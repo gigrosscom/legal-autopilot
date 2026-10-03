@@ -182,6 +182,32 @@ def route_steps_text(route: list[dict[str, Any]], lang: str) -> str:
     return "\n".join(lines)
 
 
+def missing_question(container: Container, case: Case, lang: str, field: str) -> str:
+    """The chat's words for the fact a solution still waits for (chat_ask), else the form's question."""
+    eng = container.engine
+    try:
+        sc, pack = eng.scenario_of(case), eng.pack_of(case)
+    except Exception:  # noqa: BLE001
+        return ""
+    lg = pack.lang(lang)
+    return pack.t(lg, f"chat_ask.{field}", default="") or eng.question_for(sc, pack, lg, field).text or ""
+
+
+def asked_and_answered(rows: list[Any], question: str) -> bool:
+    """The bot already asked this very question and the person wrote after it."""
+    if not question:
+        return False
+    for i, m in enumerate(rows):
+        if m.role == "assistant" and question in (m.text or ""):
+            return any(r.role == "user" for r in rows[i + 1:])
+    return False
+
+
+# «документов нет», «нет чека», «пришлю позже», «потом», «не могу прислать» — the person answered the request
+NO_DOCUMENTS = re.compile(r"(?<!\w)нет(?!\w)|позже|потом|не могу|не сохранил|не сохранилось|потерял|отсутству|"
+                          r"(?<!\w)жоқ(?!\w)|кейін", re.IGNORECASE)
+
+
 def needs_documents_line(text: str, *, asked_before: bool, offer: bool, files: bool, told: str) -> bool:
     """A fact-finding question (no solution, no offer) that does not ask for the documents, in a chat where they were
     never asked and none came, after a story (not «здравствуйте»). The QA gate (scripts/qa_gate.py) uses it too."""
@@ -423,7 +449,14 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     t_request = time.perf_counter()
     last_reply = next((m for m in reversed(rows[:-1]) if m.role == "assistant"), None)
     offered = bool(last_reply is not None and (last_reply.meta or {}).get("offer_document"))
-    complete = not container.engine.facts_missing(case)  # R-29: no offer while the case lacks its facts
+    # PM 02.10 P0: the sum and the date the person wrote are read by rule before anything else (a model that missed
+    # «450 000 тенге» kept the chat asking for it forever)
+    if container.engine.facts_from_text(session, case, [m.text for m in rows if m.role == "user"]):
+        session.commit()
+    missing_now = container.engine.facts_missing(case)
+    # a question asked and answered is never asked again: the solution goes on with what there is (PM 02.10 P0)
+    complete = not missing_now or (missing_now != ["scenario"]
+                                   and asked_and_answered(rows, missing_question(container, case, reply_lang, missing_now[0])))
     if complete and ((offered and YES_AFTER_OFFER.search(body.text)) or WANTS_DOCUMENT.search(body.text)):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
@@ -505,6 +538,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         with container.session_factory() as s:
             cc = s.get(Case, case_pk)
             missing = container.engine.facts_missing(cc) if cc is not None else []
+            if missing and missing != ["scenario"] and asked_and_answered(
+                    rows, missing_question(container, cc, reply_lang, missing[0])):
+                missing = []  # asked and answered already: the offer goes on with what there is (PM 02.10 P0)
             if result.offer_document and missing:
                 # R-29 (owner 02.10): no solution buttons and no paid offer while who, whom, what, when, how much is
                 # not known; if the bot did not ask anything itself, the next missing fact is asked (one question)
@@ -516,13 +552,15 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 if missing != ["scenario"] and not asked:
                     eng = container.engine
                     sc_cc, pack_cc = eng.scenario_of(cc), eng.pack_of(cc)
-                    q = eng.question_for(sc_cc, pack_cc, pack_cc.lang(reply_lang), missing[0]).text
+                    q = missing_question(container, cc, reply_lang, missing[0]) or \
+                        eng.question_for(sc_cc, pack_cc, pack_cc.lang(reply_lang), missing[0]).text
                     if q and q not in text:
                         text = f"{text}\n\n{q}".strip()
                         yield _sse({"type": "text", "text": f"\n\n{q}"})
         # PM 02.10 (P0 after #215): a solution comes only after the facts (R-29, decisions 225, 226, 229) and its steps
         # follow the case's route (R-35). The facts of this very message are read first (they would otherwise reach
         # the case only after the reply, and the bot would ask the sum it was just told).
+        docs_reminder = False
         if SOLUTION.search(text):
             eng = container.engine
             with container.session_factory() as s:
@@ -538,16 +576,25 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                     missing = eng.facts_missing(cc)
                 q = ""
                 if missing and missing != ["scenario"]:
-                    sc_cc, pack_cc = eng.scenario_of(cc), eng.pack_of(cc)
-                    lg = pack_cc.lang(reply_lang)
-                    q = pack_cc.t(lg, f"chat_ask.{missing[0]}", default="") or \
-                        eng.question_for(sc_cc, pack_cc, lg, missing[0]).text or ""
+                    q = missing_question(container, cc, reply_lang, missing[0])
+                    if asked_and_answered(rows, q):  # asked and answered: no loop, the solution with what there is
+                        log.warning("chat=question_not_repeated case=%s field=%s", case_pk, missing[0])
+                        q = ""
+                # owner 02.10 (decisions 225, 226; QA BUG-25): the documents asked are waited for — one reminder
+                # before the solution while none came and the person did not say there are none
+                if not q and not (ctx["case"].get("files") or body.attachments) and not NO_DOCUMENTS.search(asked_text):
+                    asked = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
+                    reminded = any((m.meta or {}).get("docs_reminder") for m in rows if m.role == "assistant")
+                    if asked and not reminded:
+                        q = pack.t(reply_lang if reply_lang in ("ru", "kk") else lang, "chat_documents.remind",
+                                   default="")
+                        docs_reminder = bool(q)
                 route = eng.recipient_route(cc) if cc is not None and not q else []
                 kinds = (eng.pack_of(cc).coverage.routing.document_kinds
                          if cc is not None and eng.pack_of(cc).coverage else {})
             if q:  # not yet: one question (and the documents, below), no solution and no card
                 own = [ln for ln in re.split(r"\[\[\s*MORE\s*\]\]", text)[0].splitlines() if ln.strip().endswith("?")]
-                text = own[-1].strip() if own else q
+                text = q if docs_reminder else own[-1].strip() if own else q
                 result.offer_document = False
                 log.info("chat=solution_held case=%s missing=%s", case_pk, missing)
             else:
@@ -616,6 +663,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                                   "offer_document": result.offer_document, "tool_calls": result.tool_calls,
                                   # one sign for «the bot asks for the documents»: the upload buttons show under it
                                   "asked_documents": asked_docs and not result.offer_document,
+                                  "docs_reminder": docs_reminder,
                                   "usage": result.usage, "first_ms": first_ms,
                                   # P0 01.10: rounds cut before their end ("provider:reason") — continued, or the
                                   # reply ended at its last whole sentence (trimmed); counted hourly (chatspeed)

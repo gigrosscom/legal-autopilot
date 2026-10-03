@@ -28,7 +28,7 @@ from .adapters.submission import SubmissionAdapter
 from .deadlines import DeadlineScheduler
 from .documents import PdfConverter, docx_text, render_docx
 from .docstyle import DocStyle
-from .fields import FieldError, display, looks_like_address, normalize
+from .fields import FieldError, date_in_text, display, looks_like_address, money_in_text, normalize
 from .llm import Attachment, LLMProvider, RedactingLLM
 from .generic import GenericRef, is_generic
 from .models import (
@@ -437,8 +437,7 @@ class CaseEngine:
         self._apply_values(case, sc, pack, values, llm, strict=False)
         self._save_vault(case, llm)
         self.read_unread_evidence(case, sc, pack)
-        intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language),
-                       first_action=pack.localized(sc.actions[0].title, case.language))
+        intro = self.intro(case, sc, pack)
         reply = self._next_step(session, case, sc, pack)
         if reply.intake_complete and self.config.intake_max_questions < 0:  # «3 клика»: straight to the draft
             reply.message = pack.t(case.language, "interview.intro_draft",
@@ -641,6 +640,36 @@ class CaseEngine:
         self.notifier.notify(session, case, "handoff", message)
         return Reply(message=message)
 
+    def facts_from_text(self, session: Session, case: Case, texts: list[str]) -> list[str]:
+        """PM 02.10 P0 (the chat asked «какую сумму?» after «ущерб примерно 450 000 тенге», again and again): the sum and
+        the date a solution waits for are read from the person's own words by rule, without a model — a model call that
+        fails or misses must not hold the case. Fills only empty fields; returns the fields filled."""
+        if not case.scenario_id:
+            return []
+        try:
+            sc, pack = self.scenario_of(case), self.pack_of(case)
+        except Exception:  # noqa: BLE001 — no scenario: nothing to fill
+            return []
+        names = {f.name: f for f in sc.intake}
+        facts, filled = dict(case.facts or {}), []
+        text = "\n".join(t for t in texts if t)
+        sums = [n for n in ("claim_amount", "amount") if n in names and names[n].type == "money"]
+        if sums and not any(facts.get(n) for n in sums):
+            value = money_in_text(text)
+            if value is not None:
+                facts[sums[0]] = str(value)
+                filled.append(sums[0])
+        dates = [n for n in ("event_date", "purchase_date") if n in names and names[n].type == "date"]
+        if dates and not any(facts.get(n) for n in dates):
+            d = date_in_text(text, pack.local_now().date())
+            if d is not None:
+                facts[dates[0]] = d.isoformat()
+                filled.append(dates[0])
+        if filled:
+            case.facts = facts
+            self.audit(session, case, "system", "facts_from_text", fields=filled)
+        return filled
+
     def facts_missing(self, case: Case) -> list[str]:
         """R-29 (owner 02.10): the facts the case still lacks before a solution and a paid offer — what happened, when,
         how much. Not the parties' requisites (names, addresses, ID numbers, e-mails — «сосед» is enough for the
@@ -827,6 +856,21 @@ class CaseEngine:
         if facts.get("claim_amount"):  # "how much you are owed", when it differs from what was paid
             case.amount_at_stake = Decimal(str(facts["claim_amount"]))
         return errors if strict else {}
+
+    def intro(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
+        """The plan shown once the scenario is chosen. A dispute names this scenario's own documents (a receipt for a
+        refund, a dismissal order for a dismissal); a service (visa, tender, study) asks no contracts or receipts and
+        tracks no reply deadline, so it has its own plan (backlog #43)."""
+        lang = case.language
+        names = dict(scenario=pack.localized(sc.title, lang), first_action=pack.localized(sc.actions[0].title, lang))
+        service = pack.t(lang, "interview.intro_service", default="", **names) if sc.kind == "service" else ""
+        if service:
+            return service
+        kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds if k != IDENTITY_KIND]
+        labels = [pack.t(lang, f"evidence.{k}", default="") for k in dict.fromkeys(kinds)]
+        labels = [x[:1].lower() + x[1:] for x in labels if x]
+        documents = ", ".join(labels) or pack.t(lang, "interview.documents_any", default="")
+        return pack.t(lang, "interview.intro", documents=documents, **names)
 
     def question_for(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> Question:
         f = sc.field(name)
