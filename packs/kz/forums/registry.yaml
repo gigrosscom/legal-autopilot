@@ -55,6 +55,9 @@ forums:
         applicant_roles: [complainant]
       - dispute_types: [tax.assessment_dispute]
         applicant_roles: [taxpayer, business]
+      # ZANN 03.10: refusal of a residence permit — an administrative act, complaint first (АППК ст. 91 ч. 1, 3, 5)
+      - dispute_types: [migration.residence]
+        applicant_roles: [migrant]
     document_types: [complaint]
     submission:
       - kind: portal
