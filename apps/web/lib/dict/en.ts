@@ -897,7 +897,7 @@ const en: Dict = {
     replyTo: "Reply to",
     cc: "Copy",
     subject: "Subject",
-    consent: "By pressing “Send” you instruct Konsiliér AI to pass your document to this recipient. We are a technical channel, not your representative.",
+    consent: "By pressing “Send” you instruct Konsiliér AI to pass your document to this recipient. We are a technical channel, not your representative. Details: Section 4 of the Terms of Use.",
     sendNow: "Send",
     change: "Change",
     needEmail: "The recipient's reply will come to your e-mail — confirm your e-mail with a code.",
