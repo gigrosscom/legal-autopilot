@@ -60,6 +60,9 @@ class Coverage:
         """The forum the route's first step names, when it is one of the candidates."""
         route = self.routes.get(dispute_id or "")
         steps = route.steps_for(children) if route is not None else ()
+        ids = {f.id for f in candidates}
+        # a step to «the court where your case is» counts only when the matter is pending (it is then a candidate)
+        steps = [s for s in steps if s.forum in ids or not (s.forum in self.forums and self.forums[s.forum].pending_only)]
         if not steps:
             return None
         first = steps[0].forum

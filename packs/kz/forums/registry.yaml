@@ -148,7 +148,7 @@ forums:
         applicant_roles: [parent]
       # ZANN 03.10: ГПК ст. 27 ч. 3 — расторжение брака супругов с общими несовершеннолетними детьми, раздел имущества
       # при наличии несовершеннолетних детей
-      - dispute_types: [family.divorce, family.property_division]
+      - dispute_types: [family.divorce, family.property_division, family.personal_property]
         applicant_roles: [spouse]
     document_types: [lawsuit]
     submission:

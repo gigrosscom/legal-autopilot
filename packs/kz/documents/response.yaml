@@ -1,0 +1,22 @@
+# Отзыв на иск (ГПК РК ст. 166) — ответчик по уже поданному иску: доводы по существу и доказательства. ZANN 03.10.
+# Подаётся не позднее 10 рабочих дней со дня получения копии иска (ст. 166 ч. 2); копии — по числу лиц в деле (ч. 1).
+id: response
+title: {ru: "Отзыв на исковое заявление", kk: "Талап арызға пікір"}
+template: kz/templates/generic/response.docx
+forum_types: [court]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: applicant_iin, optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - {name: applicant_address, pii: address}
+  - {name: applicant_phone, type: phone, pii: phone}
+  - {name: case_number, optional: true}
+  - {name: respondent_name}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Копии отзыва и приложений по числу лиц, участвующих в деле (ГПК РК, ст. 166 ч. 1)"
+    - "Документы, опровергающие требования истца: договор и дата покупки до брака, договор дарения, свидетельство о наследстве, брачный договор"
+  kk:
+    - "Пікір мен қосымшалардың іске қатысушы тұлғалар санына сай көшірмелері (ҚР АПК, 166-бап 1-бөлік)"
+    - "Талапкердің талаптарын теріске шығаратын құжаттар: некеге дейін сатып алу шарты мен күні, сыйға тарту шарты, мұраға құқық туралы куәлік, неке шарты"

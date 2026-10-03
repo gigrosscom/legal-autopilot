@@ -114,9 +114,16 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
     first: Forum = cov.forums[ref.forum_id]
     chain = [first, *cov.escalation_chain(first.id, dispute, ref.role)]
 
+    route = cov.routes.get(ref.dispute_id)
+
+    def own_step(forum_id: str):
+        return next((s for s in route.steps if s.forum == forum_id), None) if route is not None else None
+
     steps: list[tuple[Forum, object]] = []
     for forum in chain:
-        doc = cov.document_for(forum)
+        st = own_step(forum.id)
+        doc = cov.documents.get(st.document) if st is not None and st.document else None
+        doc = doc or cov.document_for(forum)
         if doc is None:
             break  # the pack has no document type for this forum: stop, the lawyer takes over
         steps.append((forum, doc))
@@ -132,7 +139,6 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
                 seen.add(fld.name)
     # ZANN 03.10 (family pilot): the dispute route's own documents (routes.yaml `documents`) are the files asked for,
     # with «Другой документ» kept for anything else; without a list — any document
-    route = cov.routes.get(ref.dispute_id)
     own = tuple(k for k in (route.documents if route is not None else ()) if k != "id_document")
     if route is not None and any(s.forum == ref.forum_id and s.children == "yes" for s in route.steps):
         own = (*own, *route.documents_children)  # the children's court: the children's documents too
@@ -154,12 +160,14 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
     actions: list[ActionSpec] = []
     own_title = dict(route.document_title) if route is not None else {}
     for i, (forum, doc) in enumerate(steps, 1):
+        st = own_step(forum.id)
         instructions = {lang: filing_steps(pack, lang, forum, doc) for lang in pack.manifest.languages}
         deadline = forum.response_deadline
         actions.append(ActionSpec(
             id=f"step_{i}",
             # a claim to the other party is titled by the document alone: the addressee is the respondent
-            title={lang: own_title[lang] if i == 1 and own_title.get(lang) else
+            title={lang: st.document_title[lang] if st is not None and st.document_title.get(lang) else
+                   own_title[lang] if i == 1 and own_title.get(lang) else
                    pack.localized(doc.title, lang) if forum.type == "private_org" else
                    pack.t(lang, "generic.action_title", document=pack.localized(doc.title, lang),
                           forum=pack.localized(forum.name, lang))
@@ -168,11 +176,13 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
             # a pre-trial claim goes to the other party itself; everything else to the body from the registry
             addressee=AddresseeSpec(party="respondent") if forum.type == "private_org" else AddresseeSpec(forum=forum.id),
             deadline=deadline,
-            norm_refs=(route.claim_norms if route is not None and route.claim_norms and forum.type == "court"
+            norm_refs=(st.norms if st is not None and st.norms else
+                       route.claim_norms if route is not None and route.claim_norms and forum.type == "court"
                        else (deadline.norm_ref,) if deadline else ("TODO",)),
             when=None if i == 1 else f"step_{i - 1}.response in [none, refusal, partial]",
             instructions=instructions,
-            demands={lang: (route.claim_demands.get(lang) or "{formal_demands}")
+            demands={lang: st.demands[lang] if st is not None and st.demands.get(lang) else
+                     (route.claim_demands.get(lang) or "{formal_demands}")
                      if route is not None and route.claim_demands and forum.type == "court" else "{formal_demands}"
                      for lang in pack.manifest.languages},
         ))

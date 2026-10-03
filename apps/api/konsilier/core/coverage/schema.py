@@ -36,7 +36,7 @@ FORUM_TYPES = (
     "court", "prosecutor", "police", "regulator", "ministry", "ombudsman", "local_authority",
     "arbitration", "mediation", "private_org",
 )
-DOCUMENT_TYPES = ("complaint", "claim_letter", "statement", "lawsuit", "motion", "appeal", "appeal_request")
+DOCUMENT_TYPES = ("complaint", "claim_letter", "statement", "lawsuit", "motion", "appeal", "appeal_request", "response")
 
 
 class _Strict(BaseModel):
@@ -259,6 +259,12 @@ class RouteStep(_Strict):
     # the step only for this answer to «common children under 18?» (safety.minor_children): divorce goes to the
     # juvenile court with them, to the registry office or the district court without (CMF art. 17 p. 1, art. 19 p. 2)
     children: Literal["yes", "no", "unknown"] | None = None
+    # this step's own document (a document type of the pack, e.g. «response» — a reply to a claim already filed), its
+    # title, demands and norms — over the forum's default document and the route's claim_* (ZANN 03.10, defence)
+    document: str | None = None
+    document_title: Localized = Field(default_factory=dict)
+    demands: Localized = Field(default_factory=dict)
+    norms: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _one_target(self) -> "RouteStep":
