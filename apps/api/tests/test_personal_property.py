@@ -74,3 +74,15 @@ def test_the_sum_is_asked_as_the_property_value_and_never_in_a_divorce(ctx):
         q = eng.question_for(sc, pack, "ru", "claim_amount").text
         assert "оцениваете имущество" in q and "ущерб" not in q
         assert "имущество" in eng.question_for(sc, pack, "kk", "claim_amount").text or "мүлік" in eng.question_for(sc, pack, "kk", "claim_amount").text
+
+
+def test_child_residence_and_alimony_claims_have_demands_and_norms(ctx):
+    from konsilier.core.generic import GenericRef
+
+    packs = ctx.container.engine.packs
+    res = packs.scenario(GenericRef("KZ", "family.child_residence", "parent", "kz.court.juvenile").scenario_id)
+    assert res.actions[0].demands["ru"].startswith("1. Определить место жительства") and res.actions[0].norm_refs == ("КоБС РК, ст. 73 п. 2",)
+    ali = packs.scenario(GenericRef("KZ", "family.alimony", "parent", "kz.court.juvenile").scenario_id)
+    d = ali.actions[0].demands["ru"]
+    assert "1/4" in d and "1/3" in d and "1/2" in d and "со дня обращения в суд" in d
+    assert ali.actions[0].norm_refs == ("КоБС РК, ст. 138 п. 2, ст. 139 п. 1, ст. 164 п. 2",)
