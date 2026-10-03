@@ -69,4 +69,8 @@ def test_the_family_sweep_has_no_files_loop_and_a_proper_title(ctx, monkeypatch)
         result = sweep.play_interview(ctx.client, case)
         bots = [t["bot"] for t in result["log"]]
         assert not any(b.count("Загрузите документы") and b == bots[i - 1] for i, b in enumerate(bots) if i), bots
-        assert "Исковое заявление о расторжении брака" in result["draft"], result["draft"][:400]
+        # the dispute's own title: a divorce, or (R-38, PM 03.10) keeping one's own property out of the division
+        assert ("Исковое заявление о расторжении брака" in result["draft"]
+                or "Исковое заявление о признании имущества личной собственностью" in result["draft"]
+                or "Отзыв на исковое заявление о разделе имущества" in result["draft"]), result["draft"][:400]
+        assert "Исковое заявление: " not in result["draft"]
