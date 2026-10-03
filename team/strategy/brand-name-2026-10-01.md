@@ -95,3 +95,6 @@ C 35,9 · D 35,4 · J 34,1 · E 32,8 · K «Protection for everyone, in seconds�
 Новые предложения панели: «No one stands alone before the law» (SMM, инвестор США), «No one fights the system alone»
 (пользователь ЕС), «Every right, usable by every person» (бренд-риск, юрист), «No one powerless before the law. Ever.».
 Предложение Документолога: «No one stands alone before the law» — решение за владельцем.
+
+## Решение владельца по миссии (03.10.2026)
+**Free a billion people from legal helplessness** — «Освободить миллиард людей от правового бессилия».
