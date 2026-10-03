@@ -20,7 +20,7 @@ export function AppShell({ title, subtitle, back = "/cases", sections = [], link
   title: string; subtitle?: string; back?: string; sections?: MoreSection[]; links?: MoreLink[];
   children: ReactNode; bar?: ReactNode; scrollKey?: unknown;
   wallpaper?: boolean;  // the chat's messenger background
-  avatar?: boolean;     // Konsiliér's icon beside the title, as a contact in a messenger
+  avatar?: boolean;     // Konsilier's icon beside the title, as a contact in a messenger
   tabs?: boolean;       // the app's tab bar under the screen (a conversation hides it, as the messengers do)
   // a live chat (interview) stays pinned to the newest message, like a messenger; a finished case (the ready
   // document with «Отправьте другу» at the very end) opens at the top, on the document — not scrolled down to the

@@ -16,15 +16,15 @@ default_language: ar
 status: planned
 compliance:
   ai_label:
-    ar: أُعدّ بمساعدة الذكاء الاصطناعي (Konsiliér AI).
-    en: Prepared with AI (Konsiliér AI).
+    ar: أُعدّ بمساعدة الذكاء الاصطناعي (Konsilier AI).
+    en: Prepared with AI (Konsilier AI).
   draft_disclaimer:
-    ar: "أعدّت خدمة Konsiliér AI التقنية هذا المستند بناءً على بياناتك."
-    en: "This document was prepared by the Konsiliér AI IT service based on your data."
+    ar: "أعدّت خدمة Konsilier AI التقنية هذا المستند بناءً على بياناتك."
+    en: "This document was prepared by the Konsilier AI IT service based on your data."
   service_disclaimer:
-    ar: يساعدك Konsiliér AI على إعداد المستندات وتقديمها ويتابع المواعيد. وإذا لزم
+    ar: يساعدك Konsilier AI على إعداد المستندات وتقديمها ويتابع المواعيد. وإذا لزم
       إيصال القضية إلى نتيجة، نُشرك محاميًا محترفًا من المنصة. تُقدَّم المستندات باسمك.
-    en: Konsiliér AI helps you prepare and file documents and keeps track of deadlines.
+    en: Konsilier AI helps you prepare and file documents and keeps track of deadlines.
       If your case needs to be seen through to the end, we will bring in a professional
       lawyer from the platform. Documents are filed in your name.
 # Official legal databases: we link to and cite them only (docs/legal-sources.md).

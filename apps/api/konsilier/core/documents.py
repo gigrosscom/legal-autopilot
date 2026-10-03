@@ -2,7 +2,7 @@
 
 Core guarantees, independent of the template:
   * the AI label from the pack is on every page footer — the one closing line (owner 01.10 «оставить одну»; owner
-    02.10: only «Подготовлено с помощью ИИ (Konsiliér AI).», without «Проверьте данные перед подачей»);
+    02.10: only «Подготовлено с помощью ИИ (Konsilier AI).», without «Проверьте данные перед подачей»);
   * `finish` — the last pass over every paragraph's text (gendered forms, amounts in words).
 """
 

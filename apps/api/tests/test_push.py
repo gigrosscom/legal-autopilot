@@ -120,7 +120,7 @@ def test_known_push_services_accepted():
 
 def test_payload_is_short_and_links_the_case():
     p = json.loads(payload("Документ   готов.\n" + "а" * 400, "abc"))
-    assert p["title"] == "Konsiliér" and p["url"] == "/case/abc"
+    assert p["title"] == "Konsilier" and p["url"] == "/case/abc"
     assert len(p["body"]) == 180 and p["body"].startswith("Документ готов. ") and p["body"].endswith("…")
     assert json.loads(payload("Бонус начислен"))["url"] == "/cases"
 
@@ -137,7 +137,7 @@ def test_every_notification_goes_to_every_device(push):
     n = notify(push, cid, "report_update", "Отчёт по делу: следующий шаг — подать претензию.")
     assert n.sent_via == "web,push" and n.error is None
     assert [e for e, _ in fake.sent] == [FCM + "phone", FCM + "laptop"]
-    assert fake.sent[0][1] == {"title": "Konsiliér", "body": "Отчёт по делу: следующий шаг — подать претензию.",
+    assert fake.sent[0][1] == {"title": "Konsilier", "body": "Отчёт по делу: следующий шаг — подать претензию.",
                                "url": f"/case/{cid}"}
     assert all(r.last_ok_at is not None for r in rows(push) if r.endpoint != FCM + "stranger")
 
@@ -263,7 +263,7 @@ def test_web_push_sender_signs_and_encrypts():
     assert sent["headers"]["content-encoding"] == "aes128gcm" and int(sent["headers"]["ttl"]) == 24 * 3600
     assert sent["headers"]["authorization"].startswith("vapid t=")
     plain = http_ece.decrypt(sent["data"], private_key=key, auth_secret=auth, version="aes128gcm")
-    assert json.loads(plain) == {"title": "Konsiliér", "body": "Документ готов", "url": "/case/abc"}
+    assert json.loads(plain) == {"title": "Konsilier", "body": "Документ готов", "url": "/case/abc"}
 
     for status, error in ((410, PushGone), (404, PushGone), (500, RuntimeError)):
         sender.http = FakeService(status)

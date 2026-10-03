@@ -68,7 +68,7 @@ function appWindow(): string | null {
 export function detect(storeKey: string = INSTALLED): Platform {
   const app = appWindow();
   if (storeKey !== INSTALLED) {
-    // «Konsiliér Ops» (/ops, its own manifest): trust only a positive signal of which window this is — a browser tab
+    // «Konsilier Ops» (/ops, its own manifest): trust only a positive signal of which window this is — a browser tab
     // must never hide the button (owner 01.10: the hint showed in an ordinary Chrome tab)
     if (app === "ops") return "installed";
     if (app === "client" && isStandalone()) return "otherApp";
@@ -136,7 +136,7 @@ function lateDialog(): Promise<PromptEvent | null> {
   });
 }
 
-/** Opens this page (/app, or /ops for Konsiliér Ops) in the device's real browser, from a browser inside another app. */
+/** Opens this page (/app, or /ops for Konsilier Ops) in the device's real browser, from a browser inside another app. */
 function realBrowserLink(platform: Platform, browser: "safari" | "chrome" = "safari"): string {
   const { host, pathname } = window.location;
   const page = `${host}${pathname.startsWith("/ops") ? "/ops" : "/app"}?install=1`;
@@ -262,7 +262,7 @@ export function InstallButton({ className, icon, onInstalled, storeKey, label }:
   const [waiting, setWaiting] = useState(false);
   const closeHint = useCallback(() => setHint(null), []);
   // inside another installed app's window the browser offers no install: open the page in the browser first
-  const otherAppText = "Сейчас открыто окно приложения Konsiliér AI. Нажмите ⋮ справа вверху → «Открыть в Chrome» (Open in Chrome) и там — «Установить на рабочий стол».";
+  const otherAppText = "Сейчас открыто окно приложения Konsilier AI. Нажмите ⋮ справа вверху → «Открыть в Chrome» (Open in Chrome) и там — «Установить на рабочий стол».";
   // /app?install=1 — the page was just opened in Safari / Chrome from another app's browser: continue at once
   useEffect(() => {
     if (platform !== "ios" && platform !== "iosBrowser") return;

@@ -48,11 +48,11 @@ const en: LawyerText = {
       cases: "cases",
       recovered: "recovered",
       mln: "M",
-      pending: "Konsiliér AI partner. A rating based on proven results will appear after the first completed cases.",
+      pending: "Konsilier AI partner. A rating based on proven results will appear after the first completed cases.",
       footer: "konsilier.com · book a lawyer",
     },
     form: {
-      title: "Become a Konsiliér AI partner",
+      title: "Become a Konsilier AI partner",
       invited: "Invited by a colleague",
       name: "Full name",
       kind: "Who you are",
@@ -78,7 +78,7 @@ const en: LawyerText = {
       doneTitle: "Application received",
       doneText: "We will check your status and get in touch. Meanwhile, here is your personal link. Every colleague who joins through it moves you up in case matching, and 10 invites give you priority in early case matching and a badge on your profile.",
       copy: "Copy",
-      share: "I'm joining Konsiliér AI, a platform where lawyers get ready cases with a case file, and clients pay for their work through the platform. Apply through my link: ",
+      share: "I'm joining Konsilier AI, a platform where lawyers get ready cases with a case file, and clients pay for their work through the platform. Apply through my link: ",
     },
     hero: {
       chip: "For advocates, lawyers and human rights defenders",
@@ -101,7 +101,7 @@ const en: LawyerText = {
       ["receipt", "Your own clients, no commission", "Invite your clients with your personal link and manage them in the CRM: deadlines and documents, with no commission on your fee."],
     ],
     partner: {
-      title: "The Konsiliér AI Partner program",
+      title: "The Konsilier AI Partner program",
       intro: "The first 100 verified lawyers, advocates and human rights defenders who run the platform pilot with us. The status is earned by taking part, not by signing up.",
       doesTitle: "What a partner does",
       does: ["Passes status and identity verification.", "Takes on 3–5 cases from the platform per month.", "Follows the standards: clear price before work starts, stage deadlines, progress updates on the case card.", "Once a month gives feedback on documents and scenarios: what to fix and what is missing."],
@@ -116,7 +116,7 @@ const en: LawyerText = {
       doesTitle: "What an expert does",
       does: ["Reviews the laws, deadlines and recipients in scenarios for their specialty.", "Reviews document templates (claims, complaints, applications).", "Updates the scenario when the law changes.", "Reviews disputed cases using the methodology."],
       getsTitle: "What an expert gets",
-      gets: ["\"Expert\" status and their name in every verified scenario: \"Scenario verified by: …\".", "First access to cases in their scenarios.", "Mentions in Konsiliér AI materials and social media."],
+      gets: ["\"Expert\" status and their name in every verified scenario: \"Scenario verified by: …\".", "First access to cases in their scenarios.", "Mentions in Konsilier AI materials and social media."],
     },
     pricing: {
       pilot: "The subscription for lawyers is paid from day one. Subscription payment and stage-by-stage payment through a payment partner are being set up — we will tell you in advance.",

@@ -1,5 +1,5 @@
 // Konsilier.AI service worker — makes the site installable, survives a lost connection, shows push notifications
-// and receives files shared to the app from other apps (Android: «Поделиться» → Консильéр).
+// and receives files shared to the app from other apps (Android: «Поделиться» → Консильер).
 // Privacy: cases and personal data are never cached. Only the app shell is: hashed build assets
 // (/_next/static, immutable), icons and the offline page. API calls go to another origin and are not touched.
 // Files shared to the app wait in the SHARED cache only until the /share page uploads them to a case or drops them.
@@ -65,7 +65,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data ? event.data.text() : "" }; }
-  event.waitUntil(self.registration.showNotification(data.title || "Konsiliér", {
+  event.waitUntil(self.registration.showNotification(data.title || "Konsilier", {
     body: data.body || "",
     icon: "/icons/icon-192.png",
     badge: "/icons/badge-96.png",

@@ -843,7 +843,7 @@ function PaymentDialog({ pay, busy, contact, applicant, caseId, onApplicant, onC
 }
 
 /** The proposed solution right after the story: document → addressee → how to file → what to attach. */
-/** What will be made and what to attach — once, as Konsiliér's message; files are added from the box below. */
+/** What will be made and what to attach — once, as Konsilier's message; files are added from the box below. */
 function PlanCard({ plan }: { plan: Plan }) {
   const t = useT();
   const portalName = (url: string | null) => (url ? url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "");
@@ -1056,7 +1056,7 @@ function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy
   );
 }
 
-/** Opt-in: the case, anonymised, may teach Konsiliér's own model. Off by default; can be withdrawn any time. */
+/** Opt-in: the case, anonymised, may teach Konsilier's own model. Off by default; can be withdrawn any time. */
 function TrainingConsent({ c, onChange }: { c: CaseView; onChange: (c: CaseView) => void }) {
   const t = useT();
   const [busy, setBusy] = useState(false);

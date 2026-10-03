@@ -153,11 +153,11 @@ def update_application(app_id: int, body: AppUpdate, session: Session = Depends(
         a.reject_reason = reason if body.status == "rejected" else None
         email = a.email or (a.contact if "@" in (a.contact or "") else None)
         if body.status == "verified":
-            _tell(session, container, a.user_id, email, "Konsiliér AI: заявка юриста подтверждена",
+            _tell(session, container, a.user_id, email, "Konsilier AI: заявка юриста подтверждена",
                   f"{a.full_name}, ваш статус проверен, доступ к кабинету юриста открыт, профиль появился в каталоге "
                   f"юристов: https://konsilier.com/lawyer")
         elif body.status == "rejected":
-            _tell(session, container, a.user_id, email, "Konsiliér AI: заявка юриста",
+            _tell(session, container, a.user_id, email, "Konsilier AI: заявка юриста",
                   f"{a.full_name}, подтвердить статус по заявке не удалось.\nПричина: {reason}\n\n"
                   f"Исправьте данные и подайте заявку заново на https://konsilier.com/for-lawyers или ответьте на это "
                   f"письмо (info@konsilier.com).")
@@ -178,15 +178,15 @@ def tickets(status: str | None = None, session: Session = Depends(get_session),
 
 # The desk's reply reaches the client in the language the ticket was written in (SupportTicket.language).
 REPLY_MAIL = {
-    "ru": ("Konsiliér AI: ответ на обращение №{n}",
+    "ru": ("Konsilier AI: ответ на обращение №{n}",
            "{text}\n\nОбращение №{n}. Ответить можно на странице https://konsilier.com/support"),
-    "kk": ("Konsiliér AI: №{n} өтінішке жауап",
+    "kk": ("Konsilier AI: №{n} өтінішке жауап",
            "{text}\n\n№{n} өтініш. Жауап беруге болады: https://konsilier.com/support"),
-    "en": ("Konsiliér AI: reply to your request No. {n}",
+    "en": ("Konsilier AI: reply to your request No. {n}",
            "{text}\n\nRequest No. {n}. You can reply at https://konsilier.com/support"),
-    "tr": ("Konsiliér AI: {n} numaralı başvurunuza yanıt",
+    "tr": ("Konsilier AI: {n} numaralı başvurunuza yanıt",
            "{text}\n\nBaşvuru No. {n}. Yanıtlamak için: https://konsilier.com/support"),
-    "ar": ("Konsiliér AI: الرد على طلبك رقم {n}",
+    "ar": ("Konsilier AI: الرد على طلبك رقم {n}",
            "{text}\n\nالطلب رقم {n}. يمكنك الرد على الصفحة https://konsilier.com/support"),
 }
 
@@ -391,7 +391,7 @@ def decide_invoice(session: Session, container: Container, invoice_id: int, deci
         else:
             text = (f"Перевод с кодом {inv.code} не найден. Проверьте сумму и комментарий к переводу и нажмите "
                     f"«Оплатить» ещё раз: {where}")
-        to, subject, sender = owner.email, f"Konsiliér AI: оплата {inv.code}", container.email_sender
+        to, subject, sender = owner.email, f"Konsilier AI: оплата {inv.code}", container.email_sender
 
         def send(_s: Session | None = None) -> None:
             try:

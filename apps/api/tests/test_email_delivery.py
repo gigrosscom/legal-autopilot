@@ -69,8 +69,8 @@ def test_send_happy_path_with_attachments_reply_to_copy_and_deadline(case):
     api.post(url(cid, aid, "/sign"), json={"session_id": start["session_id"], "cms": sign(start["data"])})
     pre = api.post(url(cid, aid, "/email/preview"), json={"to": "Shop@Example.kz"})
     assert pre["to"] == "shop@example.kz" and pre["reply_to"] == CLIENT and pre["cc"] == CLIENT
-    assert "Konsiliér AI" in pre["from"] and "claims@konsilier.com" in pre["from"]
-    assert "Sent via the Konsiliér AI service on behalf of the sender." in pre["text"]
+    assert "Konsilier AI" in pre["from"] and "claims@konsilier.com" in pre["from"]
+    assert "Sent via the Konsilier AI service on behalf of the sender." in pre["text"]
     assert "Ivan" in pre["text"] or "Иванов" in pre["text"]
     assert ctx.container.claims_mailer.sent == []  # a preview sends nothing
 
@@ -313,7 +313,7 @@ def test_resend_payload_has_attachments_reply_to_and_copy(monkeypatch):
         return R()
 
     monkeypatch.setattr(senders.httpx, "post", post)
-    mailer = senders.ResendEmail("key", "Konsiliér AI <claims@konsilier.com>")
+    mailer = senders.ResendEmail("key", "Konsilier AI <claims@konsilier.com>")
     rid = mailer.send_letter(to="shop@example.kz", subject="Claim", text="Hello", reply_to=CLIENT, cc=[CLIENT],
                              attachments=[("a.pdf", b"%PDF"), ("a.pdf.cms", b"CMS")], idempotency_key="filing-1")
     assert rid == "re_abc" and seen["url"] == "https://api.resend.com/emails"

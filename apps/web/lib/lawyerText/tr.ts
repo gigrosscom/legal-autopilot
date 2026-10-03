@@ -48,11 +48,11 @@ const tr: LawyerText = {
       cases: "dosya",
       recovered: "geri alındı",
       mln: "mn",
-      pending: "Konsiliér AI ortağı. Kanıtlanmış sonuçlara dayalı puan, ilk dosyalar tamamlandıktan sonra görünecek.",
+      pending: "Konsilier AI ortağı. Kanıtlanmış sonuçlara dayalı puan, ilk dosyalar tamamlandıktan sonra görünecek.",
       footer: "konsilier.com · avukattan randevu",
     },
     form: {
-      title: "Konsiliér AI ortağı olun",
+      title: "Konsilier AI ortağı olun",
       invited: "Sizi bir meslektaşınız davet etti",
       name: "Ad soyad",
       kind: "Mesleğiniz",
@@ -78,7 +78,7 @@ const tr: LawyerText = {
       doneTitle: "Başvurunuz alındı",
       doneText: "Statünüzü kontrol edip sizinle iletişime geçeceğiz. Bu arada kişisel bağlantınız burada. Bu bağlantıyla katılan her meslektaş sizi dosya dağıtımında öne çıkarır; 10 davetle erken dosya dağıtımında öncelik ve profilinizde bir rozet kazanırsınız.",
       copy: "Kopyala",
-      share: "Konsiliér AI'ya katılıyorum: avukatların dosya özetiyle hazır dosyalar aldığı, müvekkillerin ise ücreti platform üzerinden ödediği platform. Bağlantım üzerinden başvurun: ",
+      share: "Konsilier AI'ya katılıyorum: avukatların dosya özetiyle hazır dosyalar aldığı, müvekkillerin ise ücreti platform üzerinden ödediği platform. Bağlantım üzerinden başvurun: ",
     },
     hero: {
       chip: "Avukatlar, hukukçular ve insan hakları savunucuları için",
@@ -101,7 +101,7 @@ const tr: LawyerText = {
       ["receipt", "Kendi müvekkilleriniz: komisyonsuz", "Müvekkillerinizi kişisel bağlantıyla davet edin ve CRM'de yönetin: süreler ve belgeler, ücretinizden komisyon olmadan."],
     ],
     partner: {
-      title: "«Konsiliér AI Ortağı» programı",
+      title: "«Konsilier AI Ortağı» programı",
       intro: "Platformun pilot sürecini bizimle birlikte yürüten ilk 100 doğrulanmış hukukçu, avukat ve insan hakları savunucusu. Statü kayıtla değil, katılımla kazanılır.",
       doesTitle: "Ortak ne yapar",
       does: ["Statü ve kimlik doğrulamasından geçer.", "Platformdan ayda 3–5 dosya üstlenir.", "Standartlara uyar: iş başlamadan şeffaf ücret, aşama süreleri, kartta dosyanın seyrine dair notlar.", "Ayda bir belgeler ve senaryolar hakkında geri bildirim verir: neyin düzeltilmesi, neyin eksik olduğu."],
@@ -116,7 +116,7 @@ const tr: LawyerText = {
       doesTitle: "Uzman ne yapar",
       does: ["Kendi alanındaki senaryoda mevzuatı, süreleri ve muhatapları kontrol eder.", "Belge şablonlarını kontrol eder (ihtarnameler, şikâyetler, dilekçeler).", "Mevzuat değiştiğinde senaryoyu günceller.", "Tartışmalı durumları metodolojiye göre inceler."],
       getsTitle: "Uzman ne kazanır",
-      gets: ["«Uzman» statüsü ve her doğrulanmış senaryoda adı: «Senaryoyu kontrol eden: …».", "Kendi senaryolarındaki dosyaları ilk o alır.", "Konsiliér AI materyallerinde ve sosyal medyasında anılma."],
+      gets: ["«Uzman» statüsü ve her doğrulanmış senaryoda adı: «Senaryoyu kontrol eden: …».", "Kendi senaryolarındaki dosyaları ilk o alır.", "Konsilier AI materyallerinde ve sosyal medyasında anılma."],
     },
     pricing: {
       pilot: "Avukatlar için abonelik ilk günden itibaren ücretlidir. Abonelik ödemesi ve ödeme ortağı üzerinden aşamalı ödeme devreye alınıyor; önceden haber vereceğiz.",

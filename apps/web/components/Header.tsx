@@ -66,7 +66,7 @@ export default function Header() {
         {t("nav.skip")}
       </a>
       <div className="mx-auto flex h-12 max-w-[1208px] items-center justify-between gap-2 px-3 min-[360px]:gap-3 min-[360px]:px-5">
-        <Link href="/" className="flex min-h-11 items-center" aria-label="Konsiliér AI">
+        <Link href="/" className="flex min-h-11 items-center" aria-label="Konsilier">
           <Brand size={26} />
         </Link>
         <nav aria-label={t("nav.main")} className="hidden items-center gap-8 text-[12px] tracking-[-0.01em] lg:flex">

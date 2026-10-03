@@ -15,7 +15,7 @@ function size(bytes: number): string {
 }
 
 /**
- * Files shared to the installed app from another app (Android: «Поделиться» → Консильéр). public/sw.js keeps them;
+ * Files shared to the installed app from another app (Android: «Поделиться» → Консильер). public/sw.js keeps them;
  * here the person picks the case (or starts a new one) and they are uploaded as the case's documents.
  */
 export default function SharePage() {

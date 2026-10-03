@@ -1,4 +1,4 @@
-// Konsiliér AI Terms of Use — English translation of the Russian source in terms.ts.
+// Konsilier AI Terms of Use — English translation of the Russian source in terms.ts.
 import type { LegalDoc } from "./terms";
 
 const en: LegalDoc = {
@@ -6,7 +6,7 @@ const en: LegalDoc = {
   edition: "Version of 28 September 2026",
   summaryTitle: "Key points",
   summary: [
-    "Konsiliér AI is an information technology (IT) service. We are not an advocate or a legal consultant, and we do not provide legal assistance.",
+    "Konsilier AI is an information technology (IT) service. We are not an advocate or a legal consultant, and we do not provide legal assistance.",
     "AI answers are for general information only, and the documents we prepare are drafts. Review them carefully: AI can make mistakes. You make the decisions and file documents yourself.",
     "When legal assistance is needed, it is provided by advocates and legal consultants under a separate agreement made directly with you.",
     "Names, IINs and phone numbers are replaced with tags before any text is passed to AI. The Service's servers are located in Kazakhstan.",
@@ -16,7 +16,7 @@ const en: LegalDoc = {
     {
       h: "1. Definitions",
       p: [
-        "“Service”, “Platform” means the Konsiliér AI software: the konsilier.com website, the web application and the Telegram bot.",
+        "“Service”, “Platform” means the Konsilier AI software: the konsilier.com website, the web application and the Telegram bot.",
         "“Operator” means the legal entity that operates the Service: Konsilier AI LLP, BIN 260940036818, address: 222 Akseleu Seidimbek St., Kuramys microdistrict, Nauryzbay district, Almaty 050000, Republic of Kazakhstan.",
         "“User”, “you” means any individual or legal entity that uses the Service.",
         "“Lawyer” means an advocate or a legal consultant who is a member of a chamber of legal consultants, or a human rights organization, working with Users through the Platform.",

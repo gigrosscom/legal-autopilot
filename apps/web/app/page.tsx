@@ -9,7 +9,7 @@ import { handOff } from "@/lib/handoff";
 import { useT } from "@/lib/i18n";
 import { termsAccepted } from "@/lib/legal/terms";
 
-/** The home page is the message box: what Konsiliér is in two lines, the box, a few examples. Sending opens the
+/** The home page is the message box: what Konsilier is in two lines, the box, a few examples. Sending opens the
  *  chat with the message already on its way. */
 export default function Home() {
   const t = useT();

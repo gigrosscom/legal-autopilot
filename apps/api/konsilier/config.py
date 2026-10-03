@@ -282,10 +282,10 @@ class Settings(BaseSettings):
     report_every_days: int = 3  # next-step reminder when a case has not moved
     report_max_nudges: int = 5  # then stop reminding until something changes  # eGov Mobile fetches the document to sign from here
     resend_api_key: str | None = None  # e-mail codes via Resend; otherwise SMTP_HOST; otherwise disabled
-    email_from: str = "Konsiliér AI <no-reply@konsilier.com>"
+    email_from: str = "Konsilier AI <no-reply@konsilier.com>"
     # «Отправить по e-mail» from a case (owner 01.10.2026): the client's paid document goes to the other side from
     # this address, Reply-To and a copy to the client. Needs RESEND_API_KEY and the domain verified in Resend.
-    claims_email_from: str = "Konsiliér AI <claims@konsilier.com>"
+    claims_email_from: str = "Konsilier AI <claims@konsilier.com>"
     # Resend delivery webhooks (/v1/webhooks/resend, Svix signature): the «whsec_…» signing secret; empty → 404
     resend_webhook_secret: str = ""
     # replies from the other side into the case: Reply-To also claims+<token>@<domain of CLAIMS_EMAIL_FROM> and
@@ -307,7 +307,7 @@ class Settings(BaseSettings):
     sms_sender: str | None = None  # registered alpha name, if any
     ncanode_url: str | None = None  # e.g. http://ncanode:14579 — enables ЭЦП and eGov Mobile checks
     egov_org_bin: str | None = None  # BIN shown in eGov Mobile; eGov Mobile sign-in is off without it
-    egov_org_name: str = "Konsiliér AI"
+    egov_org_name: str = "Konsilier AI"
     phone_default_country_code: str = "7"  # for numbers typed without "+"
     dev_show_codes: bool = False  # tests/dev only: return the one-time code in the API response
     # «Войти через Google» / «Войти через Apple» (docs/auth-google-apple.md). Public ids, not secrets; empty → the

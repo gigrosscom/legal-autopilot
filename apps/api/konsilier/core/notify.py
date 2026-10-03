@@ -186,7 +186,7 @@ class Notifier:
         if not to or pack is None:
             return False
         lang = pack.lang(case.language)
-        subject = pack.t(lang, f"notify.subject.{kind}", default="Konsiliér AI")
+        subject = pack.t(lang, f"notify.subject.{kind}", default="Konsilier AI")
         body = "\n\n".join([text, pack.t(lang, "notify.open_case", link=self._link(case)),
                             pack.t(lang, "notify.footer", link=f"{self._site()}/account")])
         sender.send(to, subject, body)

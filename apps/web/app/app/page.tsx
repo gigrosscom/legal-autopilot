@@ -24,7 +24,7 @@ function PageQr() {
   );
 }
 
-/** «Консильéр на телефоне»: the icon, one line and one «Установить»; on a computer, a QR code to open it on the phone. */
+/** «Консильер на телефоне»: the icon, one line and one «Установить»; on a computer, a QR code to open it on the phone. */
 export default function AppPage() {
   const t = useT();
   const { platform } = useInstall();

@@ -218,15 +218,15 @@ notifications:
 # e-mail and SMS copies of key notifications (the site's bell gets the text above); {link} is the case page
 notify:
   subject:
-    payment: "Konsiliér AI: оплата по делу"
-    document: "Konsiliér AI: документ готов"
-    approval: "Konsiliér AI: проверка документа юристом"
-    deadline_reminder: "Konsiliér AI: срок ответа по делу"
-    deadline_expired: "Konsiliér AI: срок ответа истёк"
-    handoff: "Konsiliér AI: дело передано юристу"
-    lawyer: "Konsiliér AI: юрист по делу"
+    payment: "Konsilier AI: оплата по делу"
+    document: "Konsilier AI: документ готов"
+    approval: "Konsilier AI: проверка документа юристом"
+    deadline_reminder: "Konsilier AI: срок ответа по делу"
+    deadline_expired: "Konsilier AI: срок ответа истёк"
+    handoff: "Konsilier AI: дело передано юристу"
+    lawyer: "Konsilier AI: юрист по делу"
   open_case: "Открыть дело: {link}"
-  footer: "Konsiliér AI — ИИ-помощник по правовым вопросам. Отключить уведомления на почту: {link}"
+  footer: "Konsilier AI — ИИ-помощник по правовым вопросам. Отключить уведомления на почту: {link}"
   sms:
     payment_confirmed: "Konsilier: оплата получена, готовим документ. {link}"
     document_ready: "Konsilier: документ готов, скачайте его в деле: {link}"
@@ -251,8 +251,8 @@ reports:
   next_open: "Откройте дело — там показан следующий шаг."
   next_sign: "Подпишите ЭЦП документы с юристом: {titles}."
   open_case: "Открыть дело: {link}"
-  footer: "Konsiliér AI — ИИ-помощник по правовым вопросам. Отключить отчёты на почту: {link}"
-  subject_update: "Konsiliér AI: дело «{title}» — {status}"
+  footer: "Konsilier AI — ИИ-помощник по правовым вопросам. Отключить отчёты на почту: {link}"
+  subject_update: "Konsilier AI: дело «{title}» — {status}"
   subject_reminder: "Напоминание: следующий шаг по делу «{title}»"
 
 reminders:
@@ -261,7 +261,7 @@ reminders:
   expired: "Срок ответа на «{action}» истёк {date}. Если ответа нет — отметьте «Нет ответа», и мы подготовим следующий шаг."
 
 email:
-  body: "Здравствуйте! Во вложении — обращение заявителя. Ответ просим направить заявителю по контактам, указанным в документе. Документ подготовлен с помощью ИИ-сервиса Konsiliér AI по поручению заявителя."
+  body: "Здравствуйте! Во вложении — обращение заявителя. Ответ просим направить заявителю по контактам, указанным в документе. Документ подготовлен с помощью ИИ-сервиса Konsilier AI по поручению заявителя."
 
 llm_hints:
   response:
