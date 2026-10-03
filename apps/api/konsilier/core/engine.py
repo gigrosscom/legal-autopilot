@@ -325,8 +325,12 @@ class CaseEngine:
         Each new message in the chat tries again with everything the person has told so far."""
         case = session.get(Case, case_id)
         if case is None or case.scenario_id or case.status != S.INTAKE.value \
-                or case.coverage_level != qualifier.LEVEL_VERIFIED or (case.taxonomy or {}).get("dispute_id"):
-            return False  # classified, waiting for a forum, or handed to a lawyer
+                or case.coverage_level not in (qualifier.LEVEL_VERIFIED, qualifier.LEVEL_UNIVERSAL) \
+                or (case.taxonomy or {}).get("dispute_id"):
+            # classified, waiting for a forum (the chat picks it: auto_choose_forum), or handed to a lawyer. A case
+            # left on the universal path with no dispute is tried again too (P0 03.10, PM: the guard kept a divorce
+            # without a scenario — no card in the browser)
+            return False
         said = [m.text.strip() for m in session.scalars(select(ChatMessage).where(
             ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
             if m.text and m.text.strip()]
