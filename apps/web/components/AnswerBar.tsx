@@ -48,6 +48,10 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
     setValue("");
     if ((await onSend(out, shown)) === false) setValue((v) => v || kept);
   };
+  // A date reply sends on tap of a chip or on a calendar pick — one tap advances, like «Не помню» (PM 04.10: the date
+  // chips only selected the value and the skip button is hidden for dates, so people got stuck on «Когда это
+  // произошло?» with no visible way forward).
+  const sendDate = (v: string) => { if (v && !busy) void onSend(v, v.split("-").reverse().join(".")); };
   // several documents at once; the camera takes one photo at a time
   const fileInput = (capture: boolean) => (
     <input type="file" className="sr-only" disabled={busy} accept={capture ? "image/*" : DOC_ACCEPT} multiple={!capture}
@@ -89,7 +93,7 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {[[t("app.today"), today], [t("app.yesterday"), iso(y)], [t("app.weekAgo"), iso(week)], [t("app.monthAgo"), iso(month)]].map(([label, v]) => (
-            <button key={v} type="button" disabled={busy} onClick={() => setValue(v)}
+            <button key={v} type="button" disabled={busy} onClick={() => sendDate(v)}
               className={`min-h-10 shrink-0 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent-solid)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
           ))}
           {/* PM 01.10: the date is often not remembered — it stays a blank to fill in the draft */}
@@ -99,7 +103,8 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
         <label className="relative block">
           <span className="sr-only">{question?.text}</span>
           <Icon name="calendar" size={20} className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-[var(--chat-accent)]" />
-          <input type="date" max={today} value={value} onChange={(e) => setValue(e.target.value)}
+          <input type="date" max={today} value={value}
+            onChange={(e) => { const v = e.target.value; setValue(v); sendDate(v); }}
             className={`${common} ps-12`} aria-describedby="answer-hint" />
         </label>
       </div>
