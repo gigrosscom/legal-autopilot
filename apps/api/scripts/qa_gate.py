@@ -53,11 +53,12 @@ def solution_shape(text: str) -> tuple[bool, int, bool]:
 
 def main() -> int:
     settings = Settings()
-    # its own key (owner 03.10 / ZANN): ten runs of the gate on the production key used up the free tier's daily 500
-    # requests per model on 02.10 — the gate must never spend the production chat's quota
-    key = os.environ.get("QA_GEMINI_API_KEY")
+    # Its own key is preferred (ten runs on the production key used up the free tier's daily 500 requests per model on
+    # 02.10). Owner 03.10: when QA_GEMINI_API_KEY is not set, fall back to GEMINI_API_KEY so the gate runs on the key
+    # already provided (the quota is shared then — keep gate runs sparing). Set QA_GEMINI_API_KEY to isolate quotas.
+    key = os.environ.get("QA_GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if not key:
-        print("QA_GEMINI_API_KEY is not set: the gate runs on its own Gemini key, never on the production one")
+        print("neither QA_GEMINI_API_KEY nor GEMINI_API_KEY is set")
         return 2
     pack = PackRegistry.load(ROOT / "packs").pack("KZ")
     portal = [s for s in pack.manifest.legal_sources if "adilet.zan.kz" in str(s.url)]
