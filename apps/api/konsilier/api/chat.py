@@ -208,6 +208,12 @@ NO_DOCUMENTS = re.compile(r"(?<!\w)нет(?!\w)|позже|потом|не мо�
                           r"(?<!\w)жоқ(?!\w)|кейін", re.IGNORECASE)
 
 
+# «достаточно», «дай решение», «больше нет»: the person ends the interview (BUG-26, PM 03.10)
+ENOUGH = re.compile(r"(?<!\w)(достаточно|хватит|больше\s+(?:ничего\s+)?нет|документов\s+(?:больше\s+)?нет|"
+                    r"дай(?:те)?\s+(?:уже\s+)?решение|жеткілікті|басқа\s+құжат\s+жоқ|шешім\s+беріңіз)(?!\w)",
+                    re.IGNORECASE)
+
+
 # the documents a person names in their own words («акт от КСК есть», «чек сохранился»), in the reply's language
 _TOLD_DOCS = (("акт", "акт", "акт"), ("чек", "чек", "чек"), ("квитанц", "квитанция", "түбіртек"),
               ("договор", "договор", "шарт"), ("расписк", "расписка", "қолхат"), ("переписк", "переписка", "хат алмасу"),
@@ -276,6 +282,14 @@ WANTS_DOCUMENT = re.compile(
     r"\b(покажи|покажите|составь|составьте|составить|напиши|напишите|подготовь|подготовьте|сделай|сделайте|пришли|"
     r"пришлите|дай|дайте|хочу|нужен|нужна)\b[^?.!\n]{0,25}\b(документ|претензи|жалоб|иск|заявлени|текст)|"
     r"\bқұжат\w*\s+(жасаңыз|көрсетіңіз|керек)", re.IGNORECASE)
+# BUG-26 (prod 03.10): «дайте решение», «хватит вопросов», «составьте претензию» — the person has said all they will:
+# no more questions held before the solution and its buttons; what is still blank is asked in the form before payment
+GIVE_SOLUTION = re.compile(
+    r"\b(дай|дайте|скажи|скажите|покажи|покажите)\b[^?.!\n]{0,15}\b(решени|что делать)|хватит вопрос|достаточно|"
+    r"больше нечего|больше ничего|\bшешім\w*\s+(беріңіз|айтыңыз)", re.IGNORECASE)
+# the model's own offer line («Претензию подготовлю с вашими данными — готовый PDF и Word»): the card goes with it
+OFFER_LINE = re.compile(r"(подготовлю|составлю|подготовим|составим|дайындаймын|жасаймын)[^\n]{0,120}"
+                        r"(PDF|Word|документ|претензи|заявлени|жалоб|\bиск|құжат|талап|шағым)", re.IGNORECASE)
 # the text of a document written in the chat: a header, placeholders for the person's data, a signature line
 _DOC_SIGNS = [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in (
     r"^\s*\**\s*(ПРЕТЕНЗИЯ|ЖАЛОБА|ИСКОВОЕ\s+ЗАЯВЛЕНИЕ|ЗАЯВЛЕНИЕ|НАРАЗЫЛЫҚ|ШАҒЫМ|ТАЛАП\s+АРЫЗ)\b",
@@ -344,8 +358,11 @@ def document_offer(session: Session, container: Container, case: Case, lang: str
     paid = bool(case.paid) or any(a.unlocked_by is not None for a in case.actions)
     # owner 02.10: the ways to solve it under the answer — «Дело под ключ» shows its price too
     return {"title": title, "price": price, "currency": currency, "price_from": from_, "paid": paid,
-            # R-29: the ways to solve it only once the facts are there, and never under a chat naming another document
-            "ready": not eng.facts_missing(case) and not (case.taxonomy or {}).get("doc_mismatch"),
+            # R-29: the ways to solve it only once the facts are there, and never under a chat naming another document.
+            # BUG-26 (prod 03.10): the chat already decided to show the card (offer_document) — a fact the chat did not
+            # read is asked in the form before payment, it never hides the buttons under the offer
+            "ready": bool(case.scenario_id) and not (case.taxonomy or {}).get("doc_mismatch")
+            and (not eng.facts_missing(case) or eng.chat_offered(session, case)),
             "case_price": None if case.paid else float(eng.config.case_price), "case_paid": bool(case.paid)}
 
 
@@ -470,7 +487,17 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     # a question asked and answered is never asked again: the solution goes on with what there is (PM 02.10 P0)
     complete = not missing_now or (missing_now != ["scenario"]
                                    and asked_and_answered(rows, missing_question(container, case, reply_lang, missing_now[0])))
-    if complete and ((offered and YES_AFTER_OFFER.search(body.text)) or WANTS_DOCUMENT.search(body.text)):
+    insists = bool(WANTS_DOCUMENT.search(body.text) or GIVE_SOLUTION.search(body.text) or ENOUGH.search(body.text))
+    has_path = bool(case.scenario_id)
+    if complete and case.scenario_id and case.status == "intake" and (
+            body.attachments or case.evidence or ENOUGH.search(body.text)
+            or (NO_DOCUMENTS.search(body.text) and any((m.meta or {}).get("asked_documents") for m in rows))):
+        # BUG-26 (PM 03.10): the documents are sent, or the person says there are none / it is enough — the interview
+        # ends here; what is still unknown stays a blank filled in the draft
+        container.engine.close_intake(session, case, f"user:{user_pk}", reason="chat")
+        session.commit()
+    if (complete and offered and YES_AFTER_OFFER.search(body.text)) or \
+            (WANTS_DOCUMENT.search(body.text) and (complete or has_path)):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
             c = s.get(Case, case_pk)
@@ -551,9 +578,10 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         with container.session_factory() as s:
             cc = s.get(Case, case_pk)
             missing = container.engine.facts_missing(cc) if cc is not None else []
-            if missing and missing != ["scenario"] and asked_and_answered(
-                    rows, missing_question(container, cc, reply_lang, missing[0])):
-                missing = []  # asked and answered already: the offer goes on with what there is (PM 02.10 P0)
+            if missing and missing != ["scenario"] and (insists or asked_and_answered(
+                    rows, missing_question(container, cc, reply_lang, missing[0]))):
+                missing = []  # asked and answered already, or the person asks for the solution / the document:
+                # the offer goes on with what there is, the form before payment asks the rest (PM 02.10 P0, BUG-26)
             if result.offer_document and missing:
                 # R-29 (owner 02.10): no solution buttons and no paid offer while who, whom, what, when, how much is
                 # not known; if the bot did not ask anything itself, the next missing fact is asked (one question)
@@ -573,7 +601,7 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         # PM 02.10 (P0 after #215): a solution comes only after the facts (R-29, decisions 225, 226, 229) and its steps
         # follow the case's route (R-35). The facts of this very message are read first (they would otherwise reach
         # the case only after the reply, and the bot would ask the sum it was just told).
-        docs_reminder = False
+        docs_reminder = held = False
         if SOLUTION.search(text):
             eng = container.engine
             with container.session_factory() as s:
@@ -588,14 +616,15 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                     cc = s.get(Case, case_pk)
                     missing = eng.facts_missing(cc)
                 q = ""
-                if missing and missing != ["scenario"]:
+                if missing and missing != ["scenario"] and not insists:
                     q = missing_question(container, cc, reply_lang, missing[0])
                     if asked_and_answered(rows, q):  # asked and answered: no loop, the solution with what there is
                         log.warning("chat=question_not_repeated case=%s field=%s", case_pk, missing[0])
                         q = ""
                 # owner 02.10 (decisions 225, 226; QA BUG-25): the documents asked are waited for — one reminder
                 # before the solution while none came and the person did not say there are none
-                if not q and not (ctx["case"].get("files") or body.attachments) and not NO_DOCUMENTS.search(asked_text):
+                if not q and not insists and not (ctx["case"].get("files") or body.attachments) \
+                        and not NO_DOCUMENTS.search(asked_text):
                     asked = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
                     reminded = any((m.meta or {}).get("docs_reminder") for m in rows if m.role == "assistant")
                     if asked and not reminded:
@@ -613,7 +642,10 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 text = q if docs_reminder else own[-1].strip() if own else q
                 result.offer_document = False
                 log.info("chat=solution_held case=%s missing=%s", case_pk, missing)
+                held = True
             else:
+                if cc is not None and cc.scenario_id:
+                    result.offer_document = True  # BUG-26: the solution stands — its buttons go with it
                 # the facts are in: the solution starts with «Что делать:» — no greeting, no question before it
                 # (QA gate 02.10: K3, K6, K9 asked and solved in one reply)
                 head = re.search(r"(?m)^\s*(?:Что делать:|Не істеу керек:)", text)
@@ -642,6 +674,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 text = f"{text.rstrip()}\n\n{extra}"
                 yield _sse({"type": "text", "text": f"\n\n{extra}"})
                 asked_docs = True
+        if not result.offer_document and not held and has_path and OFFER_LINE.search(text):
+            # BUG-26 (prod 03.10): «Претензию подготовлю с вашими данными — готовый PDF и Word» with no card under it
+            result.offer_document = True
         if result.offer_document:
             # PM 02.10: the chat and the card name the same document — «Составлю исковое заявление» over a card
             # «Досудебная претензия» is a contradiction: the card is withheld and the case goes to a second look

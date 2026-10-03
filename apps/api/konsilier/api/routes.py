@@ -625,6 +625,10 @@ def list_forums(country: str, lang: str = "ru", branch: str | None = None,
 def prepare_next(case_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session),
                  container: Container = Depends(get_container)):
     case = load_case(case_id, session, user)
+    if case.status == "intake":
+        # BUG-26 (PM 03.10): «Подготовить документ» ends the interview — the chat never runs it, so nothing else did
+        container.engine.close_intake(session, case, f"user:{user.id}", reason="document_requested")
+        session.commit()  # kept when the applicant's form (422) follows: the scenario and the recipient stay chosen
     missing = applicant_blanks(container, case) if case.status == "qualified" else []
     if missing:  # PM 02.10: paid by credits, a plan or bonuses too — never a document with an empty addressee
         raise HTTPException(422, {"code": "applicant_data_required", "message": "applicant_data_required",
