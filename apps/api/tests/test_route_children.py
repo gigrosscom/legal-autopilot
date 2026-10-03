@@ -124,3 +124,24 @@ def test_the_template_says_unpriced():
 
     x = zipfile.ZipFile(Path(__file__).parents[3] / "packs/kz/templates/generic/lawsuit.docx").read("word/document.xml").decode()
     assert "{% elif unpriced %}не подлежит оценке" in x
+
+
+def test_property_division_claim_and_documents(ctx):
+    """PM 03.10 (family sweep): the property claim had no demand, no CMF norm; documents were a receipt list."""
+    from konsilier.core.generic import GenericRef
+
+    route = COV.routes["family.property_division"]
+    assert [s.forum for s in route.steps_for("yes")] == ["kz.court.juvenile"]
+    assert [s.forum for s in route.steps_for("no")] == [s.forum for s in route.steps_for("unknown")] == ["kz.court.district"]
+    assert not route.claim_unpriced  # the price is the value of the share (CPC art. 148 p. 2 sub. 7)
+    packs = ctx.container.engine.packs
+    district = packs.scenario(GenericRef("KZ", "family.property_division", "spouse", "kz.court.district").scenario_id)
+    kinds = {k for f in district.intake if f.type == "evidence" for k in f.evidence_kinds}
+    assert {"marriage_certificate", "title_documents", "property_rights_extract", "marriage_contract"} <= kinds
+    assert "birth_certificate" not in kinds and "receipt" not in kinds
+    demands = district.actions[0].demands["ru"]
+    assert "общей совместной собственностью" in demands and "по 1/2" in demands and "компенсацию" in demands
+    assert district.actions[0].norm_refs == ("КоБС РК, ст. 33 п. 1, 2, ст. 37 п. 1, 3, ст. 38 п. 1, 3",)
+    for lang in ("ru", "kk"):
+        for k in (*route.documents, *route.documents_children):
+            assert packs.pack("KZ").t(lang, f"evidence.{k}", default="") , (lang, k)
