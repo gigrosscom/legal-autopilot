@@ -1093,6 +1093,18 @@ class CaseEngine:
                 case.skipped_fields = [*(case.skipped_fields or []), pending]
                 return self._next_step(session, case, sc, pack)
             if f.type == "evidence":
+                # PM 03.10 (family sweep: «Составьте иск», «Достаточно, дайте решение» got «Загрузите документы…»
+                # again and again): the person ends the files — «нет», «достаточно», «составьте», «дайте решение» —
+                # or answered with words instead of a file a second time: the files question is closed, the interview
+                # goes on (files may still come later; the document is made from what is told)
+                reminded = pending in ((case.taxonomy or {}).get("files_reminded") or [])
+                if _ENDS_FILES.search(text) or reminded:
+                    case.skipped_fields = [*(case.skipped_fields or []), pending]
+                    self.audit(session, case, "user", "files_question_closed", field=pending,
+                               by="words" if _ENDS_FILES.search(text) else "second_reminder")
+                    return self._next_step(session, case, sc, pack)
+                case.taxonomy = {**(case.taxonomy or {}),
+                                 "files_reminded": [*((case.taxonomy or {}).get("files_reminded") or []), pending]}
                 q = self.question_for(sc, pack, lang, pending)
                 return Reply(message=f"{pack.t(lang, 'interview.upload_or_skip')}\n{q.text}", question=q)
             if f.pii or f.type == "longtext" or _reads_as_is(f, text, pack):
@@ -2426,6 +2438,12 @@ def _is_skip(text: str, pack: JurisdictionPack, lang: str) -> bool:
     words = pack.i18n.get(lang, {}).get("interview", {}).get("skip_words", []) or []
     t = text.strip().lower().strip(".!")
     return t in {w.lower() for w in words} or t in {"-", "—", "/skip"}
+
+
+# the person ends the files question in their own words (PM 03.10): no more files, enough, make the document
+_ENDS_FILES = re.compile(
+    r"(?<!\w)(нет|достаточно|хватит|больше\s+(?:ничего\s+)?нет|документов\s+(?:больше\s+)?нет|составь\w*|"
+    r"подготовь\w*|дай(?:те)?\s+решени\w*|что\s+делать|жоқ|жеткілікті|жасаңыз|шешім\s+беріңіз)(?!\w)", re.IGNORECASE)
 
 
 def _is_done(text: str, pack: JurisdictionPack, lang: str) -> bool:

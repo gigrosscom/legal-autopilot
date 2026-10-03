@@ -150,13 +150,15 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
     }
 
     actions: list[ActionSpec] = []
+    own_title = dict(route.document_title) if route is not None else {}
     for i, (forum, doc) in enumerate(steps, 1):
         instructions = {lang: filing_steps(pack, lang, forum, doc) for lang in pack.manifest.languages}
         deadline = forum.response_deadline
         actions.append(ActionSpec(
             id=f"step_{i}",
             # a claim to the other party is titled by the document alone: the addressee is the respondent
-            title={lang: pack.localized(doc.title, lang) if forum.type == "private_org" else
+            title={lang: own_title[lang] if i == 1 and own_title.get(lang) else
+                   pack.localized(doc.title, lang) if forum.type == "private_org" else
                    pack.t(lang, "generic.action_title", document=pack.localized(doc.title, lang),
                           forum=pack.localized(forum.name, lang))
                    for lang in pack.manifest.languages},
