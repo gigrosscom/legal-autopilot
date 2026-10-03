@@ -273,6 +273,9 @@ class RecipientRoute(_Strict):
     # the documents the chat asks for on this route (evidence kinds of the pack: i18n evidence.<kind>), for a dispute
     # of the universal path that has no scenario of its own (PM 03.10: a divorce was asked for «чек, гарантийный талон»)
     documents: tuple[str, ...] = ()
+    # the title of the dispute's first document («Исковое заявление о расторжении брака»), in place of «<kind>: <body>»
+    # where the body's label would end up in the document's subject line (ZANN 03.10, family pilot)
+    document_title: Localized = Field(default_factory=dict)
     # asked only on the step for common minor children (children: "yes"): a birth certificate is never asked in a
     # divorce without children (ZANN 03.10, family sweep F1)
     documents_children: tuple[str, ...] = ()

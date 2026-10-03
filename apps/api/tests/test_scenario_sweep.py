@@ -51,3 +51,22 @@ def test_without_a_key_the_sweep_runs_the_interview(ctx, monkeypatch):
     assert result["scenario"] and "family__divorce" in result["scenario"]
     assert "чек" not in result["log"][0]["bot"].lower()  # the divorce's files, not a purchase's
     assert "ИСКОВОЕ ЗАЯВЛЕНИЕ" in result["draft"] or "заявлени" in result["draft"].lower()
+
+
+def test_the_family_sweep_has_no_files_loop_and_a_proper_title(ctx, monkeypatch):
+    """PM 03.10: «Составьте иск» / «Достаточно, дайте решение» got «Загрузите документы…» again and again, and the
+    claim read «Исковое заявление: <суд>». The files question closes on such words; the title is the dispute's."""
+    monkeypatch.delenv("QA_GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("SWEEP_MODE", "interview")
+    monkeypatch.setattr(sweep, "ADMIN_TOKEN", "adm")
+    ctx.container.settings.background_jobs = "inline"
+    ctx.container.engine.config.approval_required_first_n = 0
+    from konsilier.core import ai
+
+    monkeypatch.setattr(ai, "qualify", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no model")))
+    matrix = yaml.safe_load((sweep.MATRICES / "family.yaml").read_text("utf-8"))
+    for case in matrix["cases"]:
+        result = sweep.play_interview(ctx.client, case)
+        bots = [t["bot"] for t in result["log"]]
+        assert not any(b.count("Загрузите документы") and b == bots[i - 1] for i, b in enumerate(bots) if i), bots
+        assert "Исковое заявление о расторжении брака" in result["draft"], result["draft"][:400]
