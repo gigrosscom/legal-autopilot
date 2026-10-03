@@ -488,16 +488,23 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     complete = not missing_now or (missing_now != ["scenario"]
                                    and asked_and_answered(rows, missing_question(container, case, reply_lang, missing_now[0])))
     insists = bool(WANTS_DOCUMENT.search(body.text) or GIVE_SOLUTION.search(body.text) or ENOUGH.search(body.text))
+    if case.status == "intake" and case.hold_reason is None and (insists or (complete and case.scenario_id and (
+            body.attachments or case.evidence
+            or (NO_DOCUMENTS.search(body.text) and any((m.meta or {}).get("asked_documents") for m in rows))))):
+        # BUG-26 (PM 03.10): the person asks for the document or the solution («составьте претензию», «достаточно»,
+        # «дайте решение»), sends the documents or says there are none — the interview ends here, whatever the model
+        # still wanted to ask (a pipe or a riser): the scenario and the recipient are chosen now, what is still
+        # unknown stays a blank of the form before payment
+        try:
+            with session.begin_nested():
+                container.engine.close_intake(session, case, f"user:{user_pk}", reason="chat")
+            session.commit()
+        except Exception:  # noqa: BLE001 — the chat answers anyway; «Составить документ» tries again
+            log.warning("chat: close_intake failed for case %s", case_pk, exc_info=True)
+        missing_now = container.engine.facts_missing(case)
+        complete = complete or not missing_now
     has_path = bool(case.scenario_id)
-    if complete and case.scenario_id and case.status == "intake" and (
-            body.attachments or case.evidence or ENOUGH.search(body.text)
-            or (NO_DOCUMENTS.search(body.text) and any((m.meta or {}).get("asked_documents") for m in rows))):
-        # BUG-26 (PM 03.10): the documents are sent, or the person says there are none / it is enough — the interview
-        # ends here; what is still unknown stays a blank filled in the draft
-        container.engine.close_intake(session, case, f"user:{user_pk}", reason="chat")
-        session.commit()
-    if (complete and offered and YES_AFTER_OFFER.search(body.text)) or \
-            (WANTS_DOCUMENT.search(body.text) and (complete or has_path)):
+    if (complete and offered and YES_AFTER_OFFER.search(body.text)) or (insists and has_path):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
             c = s.get(Case, case_pk)
