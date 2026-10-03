@@ -152,6 +152,9 @@ evidence:
   fine_decision: Постановление о штрафе
   birth_certificate: Свидетельство о рождении ребёнка
   marriage_certificate: Свидетельство о заключении брака
+  divorce_certificate: Свидетельство о расторжении брака или решение суда
+  housing_documents: Документы о жилье, где будет жить ребёнок
+  child_references: Справки и характеристики из школы или детского сада
   receipt: Чек или квитанция об оплате
   order_screenshot: Скриншот заказа
   correspondence: Переписка
