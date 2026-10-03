@@ -500,6 +500,17 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         except Exception:  # noqa: BLE001 — the chat still answers; the next message tries again
             session.rollback()
             log.warning("chat: synchronous requalify failed for case %s", case_pk, exc_info=True)
+    if not case.scenario_id and case.status == "intake" and (case.taxonomy or {}).get("dispute_id"):
+        # P0 03.10 (prod a73a9ee, browser): a universal-path case had its dispute (a divorce, a property division) but
+        # no recipient yet — only the case page chose it (get_case), the chat never did — so it had no scenario, the
+        # solution came without its card and «да давайте» got the documents reminder. The system picks the recipient
+        # here too (owner 02.10), and the card follows.
+        try:
+            with session.begin_nested():
+                if container.engine.auto_choose_forum(session, case):
+                    session.commit()
+        except Exception:  # noqa: BLE001 — the chat answers anyway; the case page tries again
+            log.warning("chat: auto_choose_forum failed for case %s", case_pk, exc_info=True)
     has_path = bool(case.scenario_id)
     if complete and case.scenario_id and case.status == "intake" and (
             body.attachments or case.evidence or ENOUGH.search(body.text)
@@ -508,7 +519,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         # ends here; what is still unknown stays a blank filled in the draft
         container.engine.close_intake(session, case, f"user:{user_pk}", reason="chat")
         session.commit()
-    if (complete and offered and YES_AFTER_OFFER.search(body.text)) or \
+    # «да давайте» right after the card: the card was shown, so its gate has passed — the paid offer again, never the
+    # model repeating «Составлю… PDF и Word» (P0 03.10, prod browser)
+    if (offered and has_path and YES_AFTER_OFFER.search(body.text)) or \
             (WANTS_DOCUMENT.search(body.text) and (complete or has_path)):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
