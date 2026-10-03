@@ -584,6 +584,27 @@ class CaseEngine:
                "pretrial": pretrial, "hint": hint}
         return out
 
+    def documents_to_ask(self, case: Case) -> tuple[list[str], bool]:
+        """The documents the chat asks for (evidence kinds) and whether the case is about money (PM 03.10, quality
+        pilot): the scenario's own set; for the universal path, its dispute route's (routes.yaml documents); else none
+        — then the chat asks in neutral words. «Money» decides whether the words may speak of receipts and sums: a
+        scenario with a sum among its facts, never a divorce or a child's residence."""
+        if not case.scenario_id:
+            return [], False
+        try:
+            sc, pack = self.scenario_of(case), self.pack_of(case)
+        except Exception:  # noqa: BLE001 — a scenario that went away: nothing to ask by name
+            return [], False
+        kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds
+                 if k not in (IDENTITY_KIND, "other")]
+        generic = is_generic(case.scenario_id)
+        if not kinds and pack.coverage is not None:
+            keys = [case.scenario_id, (case.taxonomy or {}).get("dispute_id")]
+            route = next((pack.coverage.routes[k] for k in keys if k and k in pack.coverage.routes), None)
+            kinds = list(route.documents) if route is not None else []
+        money = not generic and any(f.type == "money" for f in sc.intake)
+        return list(dict.fromkeys(kinds)), money
+
     def recipient_route(self, case: Case) -> list[dict[str, Any]]:
         """Who each step's document goes to and why (routes.yaml): by the case's scenario, else its dispute type."""
         if not case.jurisdiction and not case.scenario_id:

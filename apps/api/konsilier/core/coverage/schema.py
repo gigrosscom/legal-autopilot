@@ -267,6 +267,9 @@ class RouteStep(_Strict):
 class RecipientRoute(_Strict):
     steps: tuple[RouteStep, ...] = Field(min_length=1)
     note: Localized = Field(default_factory=dict)  # what the route does not cover («с несовершеннолетними детьми — …»)
+    # the documents the chat asks for on this route (evidence kinds of the pack: i18n evidence.<kind>), for a dispute
+    # of the universal path that has no scenario of its own (PM 03.10: a divorce was asked for «чек, гарантийный талон»)
+    documents: tuple[str, ...] = ()
 
 
 class RecipientRoutes(_Strict):
