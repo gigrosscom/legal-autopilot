@@ -119,7 +119,7 @@ def test_old_documents_lose_the_forbidden_phrase(ctx):
     with ctx.container.session_factory() as s:
         a = s.get(Action, uuid.UUID(action_id))
         doc = Document(io.BytesIO(ctx.container.storage.get(a.docx_key)))
-        doc.sections[0].footer.add_paragraph("Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей.")
+        doc.sections[0].footer.add_paragraph("Подготовлено с помощью ИИ (Konsilier AI). Проверьте данные перед подачей.")
         buf = io.BytesIO()
         doc.save(buf)
         ctx.container.storage.put(a.docx_key, buf.getvalue())
@@ -130,7 +130,7 @@ def test_old_documents_lose_the_forbidden_phrase(ctx):
         s.commit()
         after = docx_text(ctx.container.storage.get(a.docx_key))
     assert out["with_phrase"] == 1 and "Проверьте" not in after
-    assert "Подготовлено с помощью ИИ (Konsiliér AI)." in after
+    assert "Подготовлено с помощью ИИ (Konsilier AI)." in after
     assert after.replace(" ", "") == before.replace("Проверьте данные перед подачей.", "").replace(" ", "")
     assert strip_old_phrases(ctx.container.storage.get(a.docx_key)) is None  # nothing left to clean
 

@@ -21,7 +21,7 @@ export function Invite({ compact = false, big = false }: { compact?: boolean; bi
   async function share() {
     const text = t("invite.shareText");
     if (navigator.share) {
-      try { await navigator.share({ title: "Konsiliér AI", text, url: ref!.link }); return; } catch { /* closed: fall back to copy */ }
+      try { await navigator.share({ title: "Konsilier AI", text, url: ref!.link }); return; } catch { /* closed: fall back to copy */ }
     }
     try { await navigator.clipboard.writeText(`${text} ${ref!.link}`); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
   }

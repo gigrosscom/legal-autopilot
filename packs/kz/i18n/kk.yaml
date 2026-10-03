@@ -220,15 +220,15 @@ notifications:
 # e-mail and SMS copies of key notifications (the site's bell gets the text above); {link} is the case page
 notify:
   subject:
-    payment: "Konsiliér AI: іс бойынша төлем"
-    document: "Konsiliér AI: құжат дайын"
-    approval: "Konsiliér AI: құжатты заңгердің тексеруі"
-    deadline_reminder: "Konsiliér AI: іс бойынша жауап мерзімі"
-    deadline_expired: "Konsiliér AI: жауап мерзімі өтті"
-    handoff: "Konsiliér AI: іс заңгерге берілді"
-    lawyer: "Konsiliér AI: іс бойынша заңгер"
+    payment: "Konsilier AI: іс бойынша төлем"
+    document: "Konsilier AI: құжат дайын"
+    approval: "Konsilier AI: құжатты заңгердің тексеруі"
+    deadline_reminder: "Konsilier AI: іс бойынша жауап мерзімі"
+    deadline_expired: "Konsilier AI: жауап мерзімі өтті"
+    handoff: "Konsilier AI: іс заңгерге берілді"
+    lawyer: "Konsilier AI: іс бойынша заңгер"
   open_case: "Істі ашу: {link}"
-  footer: "Konsiliér AI — құқықтық мәселелер бойынша ЖИ-көмекшісі. Поштаға хабарламаларды өшіру: {link}"
+  footer: "Konsilier AI — құқықтық мәселелер бойынша ЖИ-көмекшісі. Поштаға хабарламаларды өшіру: {link}"
   sms:
     payment_confirmed: "Konsilier: төлем қабылданды, құжатты дайындап жатырмыз. {link}"
     document_ready: "Konsilier: құжат дайын, оны істен жүктеп алыңыз: {link}"
@@ -253,8 +253,8 @@ reports:
   next_open: "Істі ашыңыз — онда келесі қадам көрсетілген."
   next_sign: "Заңгермен жасалатын құжаттарға ЭЦҚ-мен қол қойыңыз: {titles}."
   open_case: "Істі ашу: {link}"
-  footer: "Konsiliér AI — құқықтық мәселелер бойынша ЖИ-көмекшісі. Поштаға есептерді өшіру: {link}"
-  subject_update: "Konsiliér AI: «{title}» ісі — {status}"
+  footer: "Konsilier AI — құқықтық мәселелер бойынша ЖИ-көмекшісі. Поштаға есептерді өшіру: {link}"
+  subject_update: "Konsilier AI: «{title}» ісі — {status}"
   subject_reminder: "Еске салу: «{title}» ісі бойынша келесі қадам"
 
 reminders:

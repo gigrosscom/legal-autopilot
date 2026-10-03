@@ -15,8 +15,8 @@ export function GET() {
 function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Konsiliér AI",
-    short_name: "Консильéр",
+    name: "Konsilier",
+    short_name: "Консильер",
     description: "ИИ-помощник по правовым вопросам: опишите проблему — подготовим документ, подскажем, куда подать, и проследим за сроками.",
     lang: "ru",
     dir: "ltr",
@@ -44,7 +44,7 @@ function manifest(): MetadataRoute.Manifest {
       { name: "Мои дела", short_name: "Мои дела", url: "/cases?source=app", icons: ICON },
       { name: "Чат", short_name: "Чат", url: "/chat?source=app", icons: ICON },
     ],
-    // Android: «Поделиться» → Консильéр in the gallery, files or mail; public/sw.js keeps the files and opens /share.
+    // Android: «Поделиться» → Консильер in the gallery, files or mail; public/sw.js keeps the files and opens /share.
     share_target: {
       action: "/share-target",
       method: "POST",

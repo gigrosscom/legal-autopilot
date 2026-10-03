@@ -391,7 +391,7 @@ def test_a_stray_chinese_word_never_reaches_the_person():
 
 
 def test_document_is_offered_only_when_the_reply_says_so():
-    events, _ = run("Вам нужна письменная претензия продавцу. Консильéр может её подготовить.\n[[DOCUMENT]]",
+    events, _ = run("Вам нужна письменная претензия продавцу. Консильер может её подготовить.\n[[DOCUMENT]]",
                     use_portal=False)
     res = events[-1]["result"]
     assert res.offer_document is True and "[[" not in res.text and res.text.endswith("подготовить.")

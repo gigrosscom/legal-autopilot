@@ -28,15 +28,15 @@ from .deps import current_user, get_container, get_session
 router = APIRouter(prefix="/v1")
 
 MESSAGES = {
-    "ru": ("Код входа Konsiliér AI: {code}. Никому его не сообщайте. Действует 10 минут.",
-           "Код входа в Konsiliér AI"),
-    "kk": ("Konsiliér AI кіру коды: {code}. Ешкімге айтпаңыз. 10 минут жарамды.", "Konsiliér AI кіру коды"),
-    "en": ("Your Konsiliér AI sign-in code: {code}. Do not share it. Valid for 10 minutes.",
-           "Your Konsiliér AI sign-in code"),
-    "ar": ("رمز الدخول إلى Konsiliér AI: {code}. لا تشاركه مع أحد. صالح لمدة 10 دقائق.",
-           "رمز الدخول إلى Konsiliér AI"),
-    "tr": ("Konsiliér AI giriş kodunuz: {code}. Kimseyle paylaşmayın. 10 dakika geçerlidir.",
-           "Konsiliér AI giriş kodu"),
+    "ru": ("Код входа Konsilier AI: {code}. Никому его не сообщайте. Действует 10 минут.",
+           "Код входа в Konsilier AI"),
+    "kk": ("Konsilier AI кіру коды: {code}. Ешкімге айтпаңыз. 10 минут жарамды.", "Konsilier AI кіру коды"),
+    "en": ("Your Konsilier AI sign-in code: {code}. Do not share it. Valid for 10 minutes.",
+           "Your Konsilier AI sign-in code"),
+    "ar": ("رمز الدخول إلى Konsilier AI: {code}. لا تشاركه مع أحد. صالح لمدة 10 دقائق.",
+           "رمز الدخول إلى Konsilier AI"),
+    "tr": ("Konsilier AI giriş kodunuz: {code}. Kimseyle paylaşmayın. 10 dakika geçerlidir.",
+           "Konsilier AI giriş kodu"),
 }
 
 
@@ -223,8 +223,8 @@ def egov_service(challenge_id: uuid.UUID, session: Session = Depends(get_session
     ch = _egov_challenge(session, challenge_id)
     s = container.settings
     return {
-        "description": "Вход в Konsiliér AI / Konsiliér AI жүйесіне кіру" if ch.kind == "egov"
-        else "Подписание документа в Konsiliér AI / Konsiliér AI құжатына қол қою",
+        "description": "Вход в Konsilier AI / Konsilier AI жүйесіне кіру" if ch.kind == "egov"
+        else "Подписание документа в Konsilier AI / Konsilier AI құжатына қол қою",
         "expiry_date": _mgov_date(ch.expires_at),
         "organisation": {"nameRu": s.egov_org_name, "nameKz": s.egov_org_name, "nameEn": s.egov_org_name,
                          "bin": s.egov_org_bin},
@@ -271,7 +271,7 @@ def egov_document(challenge_id: uuid.UUID, session: Session = Depends(get_sessio
             target.data, mime)]}
     nonce = base64.b64decode((ch.result or {}).get("nonce", ""))
     return {"signMethod": "CMS_WITH_DATA", "documentsToSign": [_mgov_doc(
-        ("Вход в Konsiliér AI", "Konsiliér AI жүйесіне кіру", "Sign in to Konsiliér AI"),
+        ("Вход в Konsilier AI", "Konsilier AI жүйесіне кіру", "Sign in to Konsilier AI"),
         [{"name": "Назначение", "value": "Подтверждение личности для входа"}], nonce, "text/plain")]}
 
 

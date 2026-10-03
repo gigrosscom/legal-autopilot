@@ -271,7 +271,7 @@ def reminders(container: Container):
                 where = f"{container.settings.public_site_url.rstrip('/')}/" + (
                     f"case/{inv.case_id}" if inv.case_id else "plans")
                 try:
-                    container.email_sender.send(owner.email, f"Konsiliér AI: оплата {inv.code}",
+                    container.email_sender.send(owner.email, f"Konsilier AI: оплата {inv.code}",
                                                 f"{text}\n\n{where}")
                 except Exception:  # noqa: BLE001
                     log.warning("payment reminder e-mail failed", exc_info=True)

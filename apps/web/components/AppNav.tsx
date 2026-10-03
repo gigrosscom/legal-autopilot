@@ -91,7 +91,7 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-line bg-sand px-4 py-6 lg:flex">
       <div className="flex items-center justify-between gap-2">
-        <Link href="/" className="px-2" aria-label="Konsiliér AI"><Brand size={28} /></Link>
+        <Link href="/" className="px-2" aria-label="Konsilier"><Brand size={28} /></Link>
         <NotificationBell />
       </div>
       <Link href="/start" className="btn-primary mt-8 min-h-12 justify-between px-4 text-base">
@@ -143,7 +143,7 @@ export function AppTopBar() {
   return (
     <header className="sticky top-0 z-20 border-b border-ink/[0.08] bg-bar/92 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:bg-bar/80 supports-[backdrop-filter]:backdrop-blur-[20px] supports-[backdrop-filter]:backdrop-saturate-[1.8] lg:hidden">
       <div className="flex h-14 items-center justify-between px-5">
-        <Link href="/" aria-label="Konsiliér AI"><Brand size={24} /></Link>
+        <Link href="/" aria-label="Konsilier"><Brand size={24} /></Link>
         <div className="flex items-center gap-1">
           {signed === false && (
             <SignInLink className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-brand hover:bg-ink/[0.05]" />

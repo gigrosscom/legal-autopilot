@@ -12,7 +12,7 @@ const KINDS = ["question", "complaint", "suggestion", "data"] as const;  // data
 const PLANS = ["case", "biz", "bizpro"] as const;
 type Kind = (typeof KINDS)[number] | "plan";
 
-/** Write to Konsiliér AI: a question, a complaint, a suggestion or a personal data request. Replies come by e-mail and show here. */
+/** Write to Konsilier AI: a question, a complaint, a suggestion or a personal data request. Replies come by e-mail and show here. */
 export default function SupportPage() {
   const t = useT();
   const { lang } = useLang();

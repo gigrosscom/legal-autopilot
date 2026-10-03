@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 # host are refused: the server posts to the endpoint, so it must never be an address someone picked.
 PUSH_HOSTS = ("fcm.googleapis.com", "android.googleapis.com", "updates.push.services.mozilla.com",
               "push.services.mozilla.com", ".push.apple.com", ".notify.windows.com")
-TITLE = "Konsiliér"
+TITLE = "Konsilier"
 BODY_MAX = 180
 MAX_FAILURES = 10  # failures in a row after which a subscription is dropped
 

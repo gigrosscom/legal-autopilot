@@ -45,7 +45,7 @@ function writeToken(v: string | null) {
   try { if (v) localStorage.setItem(TOKEN_KEY, v); else localStorage.removeItem(TOKEN_KEY); } catch {}
 }
 
-/** «Konsiliér Ops»: the owner's command centre, one app for the phone and the computer. */
+/** «Konsilier Ops»: the owner's command centre, one app for the phone and the computer. */
 export function CommandCentre() {
   const [token, setToken] = useState<string | null | undefined>(undefined);
   useEffect(() => { setToken(readToken()); }, []);
@@ -75,7 +75,7 @@ function SignIn({ onDone }: { onDone: (token: string) => void }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/ops/icon-192.png" alt="" width={72} height={72} className="mx-auto rounded-[18px]" />
         <div>
-          <h1 className="text-[28px] font-semibold">Konsiliér Ops</h1>
+          <h1 className="text-[28px] font-semibold">Konsilier Ops</h1>
           <p className="mt-2 text-[16px] text-muted">Командный центр владельца. Войдите ключом администратора — он задан в настройках сервера (ADMIN_TOKEN). Ключ хранится только на этом устройстве.</p>
         </div>
         <input type="password" autoComplete="current-password" value={value} onChange={(e) => setValue(e.target.value)}
@@ -167,7 +167,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/ops/icon-192.png" alt="" width={36} height={36} className="rounded-[10px]" />
           <div className="leading-tight">
-            <p className="text-[17px] font-semibold">Konsiliér</p>
+            <p className="text-[17px] font-semibold">Konsilier</p>
             <p className="text-[15px] text-muted">Команда</p>
           </div>
         </div>
@@ -211,7 +211,7 @@ function Centre({ token, onSignOut }: { token: string; onSignOut: () => void }) 
           <div className="flex min-w-0 items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/ops/icon-192.png" alt="" width={30} height={30} className="rounded-[8px]" />
-            <p className="truncate text-[17px] font-semibold">Konsiliér Ops</p>
+            <p className="truncate text-[17px] font-semibold">Konsilier Ops</p>
           </div>
           <div className="flex items-center gap-1">
             <InstallButton storeKey={INSTALL_KEY} label="Установить"

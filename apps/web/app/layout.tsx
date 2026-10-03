@@ -11,8 +11,8 @@ import { SITE_URL } from "@/lib/site";
 import { THEME_COLOR, THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const TITLE = "Konsiliér AI — ИИ-помощник по правовым вопросам";
-const DESCRIPTION = "Опишите проблему — Konsiliér AI объяснит ваши права по закону, подготовит претензию, жалобу или иск, "
+const TITLE = "Konsilier — ИИ-помощник по правовым вопросам";
+const DESCRIPTION = "Опишите проблему — Консильер объяснит ваши права по закону, подготовит претензию, жалобу или иск, "
   + "подскажет, куда подать, и проследит за сроками.";
 
 // Inter with cyrillic-ext covers Kazakh letters (ә ғ қ ң ө ұ ү һ і); Arabic gets its own face.
@@ -27,16 +27,16 @@ export const metadata: Metadata = {
   // QA BUG-07: link previews in Telegram, WhatsApp, Instagram and search results
   alternates: { canonical: "/" },
   openGraph: {
-    type: "website", siteName: "Konsiliér AI", locale: "ru_KZ", title: TITLE, description: DESCRIPTION,
+    type: "website", siteName: "Konsilier", locale: "ru_KZ", title: TITLE, description: DESCRIPTION,
     images: [{ url: "/og.png", width: 1200, height: 630, alt: TITLE }],
   },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/og.png"] },
   // Browser auto-translation rewrites text nodes behind React's back and crashes live pages (chat, forms).
   other: { google: "notranslate" },
   // installed app on iPhone / iPad: own icon, full screen, a status bar that matches the site
-  appleWebApp: { capable: true, title: "Konsiliér AI", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Konsilier", statusBarStyle: "default" },
   icons: { apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] },
-  applicationName: "Konsiliér AI",
+  applicationName: "Konsilier",
   manifest: "/manifest.webmanifest", // app/manifest.webmanifest/route.ts; /ops links its own (app/ops/layout.tsx)
   formatDetection: { telephone: false },
 };

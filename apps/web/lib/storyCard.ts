@@ -23,7 +23,7 @@ export async function storyCard(link: string, text: { title: string; line: strin
   }
   g.fillStyle = "#ffffff";
   g.font = `600 44px ${font}`;
-  g.fillText("Konsiliér AI", 276, 245);
+  g.fillText("Konsilier AI", 276, 245);
 
   g.font = `700 112px ${font}`;
   let y = wrap(g, text.title, 96, 470, W - 192, 124);

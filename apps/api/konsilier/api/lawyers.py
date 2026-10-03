@@ -199,7 +199,7 @@ def request_lawyer(case_id: uuid.UUID, body: LawyerRequestIn, user: User = Depen
                     test=user.is_test)
         return {"id": req.id, "case_id": str(case.id), "status": req.status}
     currency = container.engine.pack_of(case).currency
-    tell_lawyer(session, container, app, "Konsiliér AI: новый запрос клиента",
+    tell_lawyer(session, container, app, "Konsilier AI: новый запрос клиента",
                 f"{app.full_name}, клиент отправил вам запрос по делу (ваша цена {pilot.money(req.price)} {currency}). "
                 f"Откройте кабинет юриста, чтобы принять или отклонить его: https://konsilier.com/lawyer",
                 test=user.is_test)

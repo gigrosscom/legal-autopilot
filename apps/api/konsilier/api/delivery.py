@@ -63,7 +63,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "to": "Кому: {to}\n\n",
         "body": "Здравствуйте.\n\n{to}Направляю вам документ «{title}». Он во вложении{signed}.\n\n"
                 "Прошу рассмотреть его и ответить в установленный срок. Ответ на это письмо придёт мне напрямую: "
-                "{reply}.\n\nС уважением,\n{name}\n\n—\nОтправлено через сервис Konsiliér AI по поручению отправителя.",
+                "{reply}.\n\nС уважением,\n{name}\n\n—\nОтправлено через сервис Konsilier AI по поручению отправителя.",
         "signed": " вместе с файлом, подписанным моей ЭЦП (.cms)",
         "bounced": "Письмо «{title}» не доставлено на {to}: адрес не принимает почту. Проверьте адрес и отправьте ещё раз.",
         "delivered": "Письмо «{title}» доставлено на {to}.",
@@ -81,7 +81,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "to": "Кімге: {to}\n\n",
         "body": "Сәлеметсіз бе.\n\n{to}Сізге «{title}» құжатын жіберемін. Ол қосымшада{signed}.\n\n"
                 "Оны қарап, белгіленген мерзімде жауап беруіңізді сұраймын. Бұл хатқа жауап маған тікелей келеді: "
-                "{reply}.\n\nҚұрметпен,\n{name}\n\n—\nKonsiliér AI сервисі арқылы жіберушінің тапсырмасы бойынша жіберілді.",
+                "{reply}.\n\nҚұрметпен,\n{name}\n\n—\nKonsilier AI сервисі арқылы жіберушінің тапсырмасы бойынша жіберілді.",
         "signed": ", менің ЭЦҚ-мен қол қойылған файлмен бірге (.cms)",
         "bounced": "«{title}» хаты {to} мекенжайына жеткізілмеді: мекенжай хат қабылдамайды. Мекенжайды тексеріп, қайта жіберіңіз.",
         "delivered": "«{title}» хаты {to} мекенжайына жеткізілді.",
@@ -100,7 +100,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "body": "Hello,\n\n{to}Please find attached the document “{title}”{signed}.\n\n"
                 "I kindly ask you to review it and reply within the applicable time limit. Replies to this e-mail "
                 "come directly to me: {reply}.\n\nKind regards,\n{name}\n\n—\n"
-                "Sent via the Konsiliér AI service on behalf of the sender.",
+                "Sent via the Konsilier AI service on behalf of the sender.",
         "signed": ", together with the file signed with my electronic digital signature (.cms)",
         "bounced": "The letter “{title}” was not delivered to {to}: the address does not accept mail. Check the "
                    "address and send it again.",
@@ -851,7 +851,7 @@ def copy_to_me(case_id: uuid.UUID, action_id: uuid.UUID, user: User = Depends(cu
     lang = pack.lang(case.language)
     title = pack.localized(container.engine.scenario_of(case).action(action.action_id).title, lang)
     text = pack.t(lang, "copy_to_me.text", title=title,
-                  default=f"Ваш документ «{title}» во вложении: PDF для печати и Word для правок.\n\nKonsiliér AI")
+                  default=f"Ваш документ «{title}» во вложении: PDF для печати и Word для правок.\n\nKonsilier AI")
     try:
         mailer.send_letter(to=to, subject=pack.t(lang, "copy_to_me.subject", title=title, default=title),
                            text=text, attachments=files, idempotency_key=f"copy-{action.id}-{int(time.time() // 60)}")

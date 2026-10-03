@@ -16,16 +16,16 @@ default_language: tr
 status: planned
 compliance:
   ai_label:
-    tr: Yapay zekâ ile hazırlandı (Konsiliér AI).
-    en: Prepared with AI (Konsiliér AI).
+    tr: Yapay zekâ ile hazırlandı (Konsilier AI).
+    en: Prepared with AI (Konsilier AI).
   draft_disclaimer:
-    tr: "Bu belge, Konsiliér AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır."
-    en: "This document was prepared by the Konsiliér AI IT service based on your data."
+    tr: "Bu belge, Konsilier AI BT hizmeti tarafından verdiğiniz bilgilere göre hazırlanmıştır."
+    en: "This document was prepared by the Konsilier AI IT service based on your data."
   service_disclaimer:
-    tr: Konsiliér AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri
+    tr: Konsilier AI belgeleri hazırlamanıza ve sunmanıza yardım eder, süreleri
       takip eder. Dosyanın sonuca ulaştırılması gerekirse platformdaki
       profesyonel bir avukatı dahil ederiz. Belgeler sizin adınıza sunulur.
-    en: Konsiliér AI helps you prepare and file documents and keeps track of deadlines.
+    en: Konsilier AI helps you prepare and file documents and keeps track of deadlines.
       If your case needs to be seen through to the end, we will bring in a professional
       lawyer from the platform. Documents are filed in your name.
 # Official legal databases: we link to and cite them only (docs/legal-sources.md).

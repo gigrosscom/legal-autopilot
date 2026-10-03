@@ -100,7 +100,7 @@ def test_email_for_key_kinds_and_sms_only_for_critical(setup):
     n = notify(ctx, cid, "document", "Документ готов — скачайте его в карточке дела.", sms="document_ready")
     assert n.sent_via == "web,email,sms"
     to, subject, body = mail.sent[-1]
-    assert to == "client@mail.kz" and subject == "Konsiliér AI: документ готов"
+    assert to == "client@mail.kz" and subject == "Konsilier AI: документ готов"
     assert "Документ готов" in body and f"/case/{cid}" in body and "/account" in body
     to, _, text = sms.sent[-1]
     assert to == "+77011234567" and "документ готов" in text and text.endswith(f"/case/{cid}")
