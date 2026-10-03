@@ -10,7 +10,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
-  "theme_color": "#0084ff",
+  "theme_color": "#0866ff",
   "categories": ["business", "productivity"],
   "prefer_related_applications": false,
   "related_applications": [{ "platform": "webapp", "url": "https://konsilier.com/ops.webmanifest" }],
