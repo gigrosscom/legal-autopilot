@@ -725,6 +725,13 @@ def create_payment(case_id: uuid.UUID, body: PaymentIn, user: User = Depends(cur
     """A bill for one document (scenario price) or «Дело под ключ» (every document of the case). The owner confirms
     a phone first: the document and deadline reminders reach them, and the case is not lost with the browser."""
     case = load_case(case_id, session, user)
+    if case.status == "intake":
+        # BUG-26: a case led by the chat leaves the interview here — what it still lacks is asked in the form below
+        try:
+            with session.begin_nested():
+                container.engine.close_intake_for_document(session, case)
+        except EngineError as e:
+            raise engine_error(e) from e
     missing = applicant_blanks(container, case)
     if missing:  # PM 01.10: the applicant's own data on one screen right before paying, never a bill with «[ФИО]»
         raise HTTPException(422, {"code": "applicant_data_required", "message": "applicant_data_required",
