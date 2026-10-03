@@ -161,7 +161,9 @@ def extract_fields(llm: RedactingLLM, scenario: Scenario, pack: JurisdictionPack
     try:
         out = llm.complete_json(task="extract_fields", system=system, schema=schema, payload={
             "text": text, "language": lang, "current_field": current_field, "fields": specs})
-    except LLMError as e:
+    except Exception as e:  # noqa: BLE001 — BUG-26 (prod 03.10): extracting facts is best-effort. The model being
+        # down (quota/network, any exception type) must not roll back the case's classification — the facts are simply
+        # asked in the interview instead, so the scenario stands and the «Составить документ» card can still appear.
         log.warning("extract_fields failed: %s", e)
         return {current_field: text} if current_field else {}
     return {k: v for k, v in (out.get("values") or {}).items() if v not in (None, "") and k in names}
