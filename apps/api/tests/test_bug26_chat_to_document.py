@@ -86,3 +86,29 @@ def test_the_chat_ends_in_a_document(ctx, monkeypatch, kind, model_down):
     assert case["status"] == "action_ready", case["status"]
     a = case["actions"][0]
     assert a["downloadable"] and a["has_docx"]
+
+
+# prod d0868e0 (PM 03.10, browser): the model wrote the offer line without the [[DOCUMENT]] marker, a fact the solution
+# waits for was never read from the chat — «Претензию подготовлю с вашими данными — готовый PDF и Word», no button
+PROD_OFFER = ("Что делать:\n1. **Направьте продавцу претензию** о возврате денег.\n2. Если откажет — **иск в суд**.\n"
+              "[[MORE]]\nПретензию подготовлю с вашими данными — готовый PDF и Word.")
+
+
+@pytest.mark.parametrize("kind", list(CASES))
+@pytest.mark.parametrize("ask", ["Нет, дайте решение", "Составьте претензию"])
+def test_the_offer_line_brings_the_button(ctx, monkeypatch, kind, ask):
+    monkeypatch.setattr(ai, "extract_fields", lambda *a, **k: {})
+    monkeypatch.setattr(ai, "qualify", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("429")))
+    ctx.container.settings.background_jobs = "inline"
+    ctx.container.chat_agent, ctx.container.chat_fallback_agent = _agent(
+        "Когда это было?", PROD_OFFER, PROD_OFFER, PROD_OFFER), None
+    api = web_user(ctx)
+    said = CASES[kind]
+    cid = api.post("/v1/cases", expect=201, json={"text": said[0], "country": "KZ", "defer": True})["case"]["id"]
+    _say(ctx, api, cid, said[0])
+    r = _say(ctx, api, cid, ask)  # the person says all they will at the 2nd message, nothing read from the chat
+    assert r["offer_document"], r["text"]
+    card = api.get(f"/v1/cases/{cid}/chat/document").json()
+    assert card["ready"] is True and card["title"], card  # the site shows «Составить документ» only when ready
+    pay = api.c.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
+    assert pay.status_code in (200, 422), pay.json()  # the bill or the form before it — never 409
