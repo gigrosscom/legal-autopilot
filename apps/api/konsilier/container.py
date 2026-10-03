@@ -310,7 +310,8 @@ def build_container(settings: Settings, *, llm: LLMProvider | None = None, stora
     from .api.kaspi_push import reminders
 
     scheduler.extra_jobs.append(reminders(container))  # Kaspi «Оплатить» with no push 15 minutes later: remind once
-    from .api.delivery import followups
+    from .api.delivery import followups, unfiled
 
     scheduler.extra_jobs.append(followups(container))  # «Ответили?» a day after a document went out
+    scheduler.extra_jobs.append(unfiled(container))  # a ready document not marked filed a day later: ask once
     return container

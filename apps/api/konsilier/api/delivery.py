@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from ..container import Container
 from ..core.engine import EngineError
-from ..core.models import Action, Case, Filing, Identity, User, utcnow
+from ..core.models import Action, AuditLog, Case, Filing, Identity, User, utcnow
 from ..identity.senders import SendError
 from .deps import current_user, get_container, get_session, load_case
 
@@ -70,6 +70,10 @@ TEXTS: dict[str, dict[str, str]] = {
         "message": "Здравствуйте!\nНаправляю вам документ «{title}» — PDF прилагаю.\n"
                    "Прошу рассмотреть его и ответить в установленный срок.{name}",
         "replied": "Пришёл ответ на «{title}» от {sender}. Он сохранён в деле — откройте дело и отметьте, что в нём.",
+        "unfiled": "Документ «{title}» готов, но в деле не отмечено, что вы его подали. Уже отправили? Откройте дело и "
+                   "нажмите «Документ подан» с датой отправки — начнём считать срок ответа и напомним о нём{until}. "
+                   "Ещё не отправили — в деле написано, куда и как подать.",
+        "unfiled_until": " (если подать сегодня — ответ до {date})",
         "followup": "Прошло {hours} ч с отправки «{title}». Вам ответили? Откройте дело и отметьте ответ — или подождём "
                     "до срока, мы напомним.",
     },
@@ -84,6 +88,10 @@ TEXTS: dict[str, dict[str, str]] = {
         "message": "Сәлеметсіз бе!\nСізге «{title}» құжатын жіберемін — PDF қоса беріліп отыр.\n"
                    "Оны қарап, белгіленген мерзімде жауап беруіңізді сұраймын.{name}",
         "replied": "«{title}» хатына {sender} жауап берді. Жауап іске сақталды — істі ашып, онда не жазылғанын белгілеңіз.",
+        "unfiled": "«{title}» құжаты дайын, бірақ істе оны бергеніңіз белгіленбеген. Жіберіп қойдыңыз ба? Істі ашып, "
+                   "жіберген күнімен «Құжат берілді» түймесін басыңыз — жауап мерзімін санай бастаймыз және еске саламыз{until}. "
+                   "Әлі жібермесеңіз — істе қайда және қалай беру керегі жазылған.",
+        "unfiled_until": " (бүгін берсеңіз — жауап {date} дейін)",
         "followup": "«{title}» жіберілгеннен бері {hours} сағат өтті. Сізге жауап берді ме? Істі ашып, жауапты белгілеңіз — "
                     "әйтпесе мерзімге дейін күтеміз, еске саламыз.",
     },
@@ -100,6 +108,10 @@ TEXTS: dict[str, dict[str, str]] = {
         "message": "Hello,\nI am sending you the document “{title}” — the PDF is attached.\n"
                    "Please review it and reply within the applicable time limit.{name}",
         "replied": "A reply to “{title}” came from {sender}. It is saved in the case — open the case and record what it says.",
+        "unfiled": "“{title}” is ready, but the case does not show it as filed. Already sent it? Open the case and tap "
+                   "“Document filed” with the date you sent it — we will start counting the reply deadline and remind "
+                   "you{until}. Not sent yet — the case shows where and how to file it.",
+        "unfiled_until": " (if filed today, the reply is due by {date})",
         "followup": "{hours} h have passed since you sent “{title}”. Have they replied? Open the case and record the "
                     "reply — or we wait until the deadline and remind you.",
     },
@@ -646,6 +658,48 @@ def followups(container: Container) -> Any:
                                                    case.language)
             engine.notifier.notify(session, case, "delivery", _texts(case.language)["followup"].format(
                 title=title, hours=f"{container.settings.send_followup_hours:g}"))
+            sent += 1
+        return sent
+
+    return job
+
+
+def unfiled(container: Container) -> Any:
+    """Scheduler job (QA BUG-19): the response deadline and its reminders start when the document is marked filed.
+    A paid document left at «ready» a day later, with nothing marked, would never get one — ask once whether it was
+    sent, with the date the answer would be due if filed today."""
+
+    def job(session: Session, now: datetime) -> int:
+        engine = container.engine
+        hours = container.settings.unfiled_reminder_hours
+        if hours <= 0:
+            return 0
+        ready = session.scalars(select(Action).where(Action.kind == "document", Action.status == "ready",
+                                                     Action.updated_at <= now - timedelta(hours=hours))).all()
+        sent = 0
+        for action in ready:
+            case = session.get(Case, action.case_id)
+            if case is None or case.status != "action_ready" or not engine.document_unlocked(case, action):
+                continue
+            if session.scalar(select(AuditLog.id).where(AuditLog.case_id == case.id,
+                                                        AuditLog.event == "unfiled_reminded",
+                                                        AuditLog.data["action"].as_string() == str(action.id)).limit(1)):
+                continue
+            sc, pack = engine.scenario_of(case), engine.pack_of(case)
+            spec = sc.action(action.action_id)
+            rd = spec.deadline
+            if rd is None:
+                forum = engine.action_forum(case, spec)
+                rd = forum.response_deadline if forum is not None else None
+            texts = _texts(case.language)
+            until = ""
+            if rd is not None:
+                due = pack.add_days(now.astimezone(pack.tz).date(), rd.calendar_days, rd.business_days)
+                until = texts["unfiled_until"].format(date=due.strftime("%d.%m.%Y"))
+            engine.notifier.notify(session, case, "delivery", texts["unfiled"].format(
+                title=pack.localized(spec.title, case.language), until=until))
+            session.add(AuditLog(case_id=case.id, actor="scheduler", event="unfiled_reminded",
+                                 data={"action": str(action.id)}))
             sent += 1
         return sent
 
