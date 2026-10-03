@@ -40,7 +40,7 @@ def test_flood_dialog_question_documents_solution_card(ctx):
     assert _missing(ctx, cid), "the sum is not known yet"
     assert "[[MORE]]" not in r2["text"] and "Что делать" not in r2["text"]  # 2: no solution yet
     assert r2["text"].rstrip().endswith("?") and not r2["offer_document"]
-    r3 = _say(ctx, api, cid, "Ущерб 450 000 тенге, акт КСК есть.")
+    r3 = _say(ctx, api, cid, "Ущерб 450 000 тенге, акт КСК есть, фото пришлю позже.")  # documents answered
     assert not _missing(ctx, cid)  # the sum of this very message is read before the reply
     assert r3["text"].startswith("Что делать:\n1. **Направьте соседу претензию** на 450 000 ₸")  # 3: the person's facts
     assert r3["text"] != r2["text"]
