@@ -160,6 +160,24 @@ class EngineConfig:
 _NORM = re.compile(r"^(?P<act>.+?), (?:статья|статьи) (?P<art>[\w.-]+)$")
 
 
+def by_keywords(candidates: list[Scenario], text: str) -> tuple[str | None, float, str]:
+    """BUG-26 (prod 03.10): when the model that chooses the scenario does not answer, the chat case stayed without a
+    scenario for good — no document, no payment. The scenario's own keywords choose it then: the one with the most
+    keywords in the text, only when it is the single best and no «not_when» situation of it is named."""
+    low = text.lower()
+    scored = []
+    for sc in candidates:
+        cl = sc.classification
+        hits = {kw.lower() for kws in cl.keywords.values() for kw in kws if kw and kw.lower() in low}
+        if hits and not any(x.split("→")[0].strip().lower() in low for xs in cl.not_when.values() for x in xs
+                            if x.split("→")[0].strip()):
+            scored.append((len(hits), sc.id))
+    scored.sort(reverse=True)
+    if not scored or (len(scored) > 1 and scored[0][0] == scored[1][0]):
+        return None, 0.0, "keywords: no single match"
+    return scored[0][1], 0.5, f"keywords ({scored[0][0]}), the model was down"
+
+
 def group_norms(refs: Any) -> list[str]:
     """«Закон …, статья 30» + «Закон …, статья 42-4» → «Закон …, статьи 30 и 42-4» (P0 02.10: the act is named once)."""
     out: list[str] = []
@@ -294,6 +312,12 @@ class CaseEngine:
             if m.text and m.text.strip() != (case.initial_text or "").strip()]
         if said:
             self.facts_from_chat(session, case.id, "\n".join(said))
+
+    def _chat_said(self, session: Session, case: Case) -> list[str]:
+        first = (case.initial_text or "").strip()
+        return [m.text.strip() for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "user").order_by(ChatMessage.created_at)).all()
+            if m.text and m.text.strip() and m.text.strip() != first]
 
     def requalify_from_chat(self, session: Session, case_id: Any) -> bool:
         """A chat case whose first message said too little to classify («Здравствуйте, нужна помощь»): its taxonomy
@@ -446,9 +470,18 @@ class CaseEngine:
                     break
                 if p.coverage is not None and p.coverage.has_registry:
                     return self._route_universal(session, case, p, llm, text, direct=rule)
-        sid, confidence, reason = ((direct_sid, 1.0, "direct rule") if direct_sid else
-                                   ai.qualify(llm, candidates, self.packs.packs, text, case.language) if candidates
-                                   else (None, 0.0, "no business scenario"))
+        if direct_sid:
+            sid, confidence, reason = direct_sid, 1.0, "direct rule"
+        elif not candidates:
+            sid, confidence, reason = None, 0.0, "no business scenario"
+        else:
+            try:
+                sid, confidence, reason = ai.qualify(llm, candidates, self.packs.packs, text, case.language)
+            except Exception:  # noqa: BLE001 — BUG-26: the model is down (quota, network); the words still decide
+                log.warning("qualify: the model failed for case %s, choosing by keywords", case.id, exc_info=True)
+                sid, confidence, reason = by_keywords(candidates, text)
+                if sid is None:
+                    raise
         case.qualification_confidence = confidence
         if sid is None:
             case.needs_review = True
@@ -837,6 +870,32 @@ class CaseEngine:
         if filled:
             self.audit(session, case, "system", "draft_prefilled", fields=filled)
         return filled
+
+    def chat_offered(self, session: Session, case: Case) -> bool:
+        """The chat showed this case's document card («Составить документ»)."""
+        return any((m.meta or {}).get("offer_document") for m in session.scalars(select(ChatMessage).where(
+            ChatMessage.case_id == case.id, ChatMessage.role == "assistant")))
+
+    def close_intake_for_document(self, session: Session, case: Case) -> bool:
+        """BUG-26 (prod 03.10): a case led by the chat never left «Сбор информации» — the chat asks only what the
+        solution needs (R-29), the interview's own questions (the item, the applicant's data, the files) stay
+        unanswered, so «Составить документ» and the payment ended in 409. Once the facts are in or the chat showed
+        the document card, what the interview still lacks becomes blanks of the draft — the form before payment asks
+        them (applicant_blanks) and the document check stops a document without them. True if the intake is done."""
+        if case.status != S.INTAKE.value or not case.scenario_id:
+            return case.status != S.INTAKE.value
+        if self.facts_missing(case) and not self.chat_offered(session, case):
+            return False
+        sc, pack = self.scenario_of(case), self.pack_of(case)
+        missing = self.missing_fields(case, sc)
+        if missing:
+            # as «3 клика» did: a required answer is a blank of the draft; an optional one or the files (the chat
+            # asked for them, the person sends them when they have them) are not asked again
+            blank = [n for n in missing if not sc.field(n).optional and sc.field(n).type != "evidence"]
+            case.skipped_fields = [*(case.skipped_fields or []), *(DRAFT + n for n in blank),
+                                   *(n for n in missing if n not in blank)]
+            self.audit(session, case, "system", "intake_closed_for_document", blanks=blank)
+        return self._next_step(session, case, sc, pack).intake_complete
 
     def draft_blanks(self, case: Case, sc: Scenario) -> list[str]:
         """Required fields left blank for the draft («не помню», «пропустить», or past the question cap)."""
@@ -1319,6 +1378,10 @@ class CaseEngine:
             raise EngineError("subject_mismatch", f"the case is about {right}, not {case.scenario_id}")
 
     def prepare_next_action(self, session: Session, case: Case, actor: str) -> Action:
+        if not case.scenario_id and case.status == S.INTAKE.value and not case.taxonomy:
+            # BUG-26: the chat's background classification failed (the model was down) — try once more now
+            self._qualify_and_continue(session, case, "\n".join(x for x in (case.initial_text, *self._chat_said(
+                session, case)) if x)[:8000])
         if not case.scenario_id:
             raise EngineError("no_document_path")
         self.lock(session, case)
@@ -1337,8 +1400,7 @@ class CaseEngine:
             raise EngineError("on_hold")
         status = CaseStatus(case.status)
         if status == S.INTAKE:
-            reply = self._next_step(session, case, sc, pack)
-            if not reply.intake_complete:
+            if not self.close_intake_for_document(session, case):
                 raise EngineError("intake_incomplete")
             status = CaseStatus(case.status)
         # re-preparing a rejected document for the same action
