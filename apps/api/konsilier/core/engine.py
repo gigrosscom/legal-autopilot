@@ -168,9 +168,14 @@ def by_keywords(candidates: list[Scenario], text: str) -> tuple[str | None, floa
     scored = []
     for sc in candidates:
         cl = sc.classification
-        hits = {kw.lower() for kws in cl.keywords.values() for kw in kws if kw and kw.lower() in low}
-        if hits and not any(x.split("→")[0].strip().lower() in low for xs in cl.not_when.values() for x in xs
-                            if x.split("→")[0].strip()):
+        # a keyword from the start of a word, and two of them or one phrase of several words: one short stem alone
+        # decides nothing («брак» — a defect — is in «в браке», a marriage: PM 03.10, the family sweep caught it)
+        hits = {kw.lower() for kws in cl.keywords.values() for kw in kws
+                if kw and re.search(r"(?<!\w)" + re.escape(kw.lower()), low)}
+        if not hits or (len(hits) < 2 and not any(" " in h for h in hits)):
+            continue
+        if not any(x.split("→")[0].strip().lower() in low for xs in cl.not_when.values() for x in xs
+                   if x.split("→")[0].strip()):
             scored.append((len(hits), sc.id))
     scored.sort(reverse=True)
     if not scored or (len(scored) > 1 and scored[0][0] == scored[1][0]):
