@@ -437,8 +437,7 @@ class CaseEngine:
         self._apply_values(case, sc, pack, values, llm, strict=False)
         self._save_vault(case, llm)
         self.read_unread_evidence(case, sc, pack)
-        intro = pack.t(case.language, "interview.intro", scenario=pack.localized(sc.title, case.language),
-                       first_action=pack.localized(sc.actions[0].title, case.language))
+        intro = self.intro(case, sc, pack)
         reply = self._next_step(session, case, sc, pack)
         if reply.intake_complete and self.config.intake_max_questions < 0:  # «3 клика»: straight to the draft
             reply.message = pack.t(case.language, "interview.intro_draft",
@@ -857,6 +856,21 @@ class CaseEngine:
         if facts.get("claim_amount"):  # "how much you are owed", when it differs from what was paid
             case.amount_at_stake = Decimal(str(facts["claim_amount"]))
         return errors if strict else {}
+
+    def intro(self, case: Case, sc: Scenario, pack: JurisdictionPack) -> str:
+        """The plan shown once the scenario is chosen. A dispute names this scenario's own documents (a receipt for a
+        refund, a dismissal order for a dismissal); a service (visa, tender, study) asks no contracts or receipts and
+        tracks no reply deadline, so it has its own plan (backlog #43)."""
+        lang = case.language
+        names = dict(scenario=pack.localized(sc.title, lang), first_action=pack.localized(sc.actions[0].title, lang))
+        service = pack.t(lang, "interview.intro_service", default="", **names) if sc.kind == "service" else ""
+        if service:
+            return service
+        kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds if k != IDENTITY_KIND]
+        labels = [pack.t(lang, f"evidence.{k}", default="") for k in dict.fromkeys(kinds)]
+        labels = [x[:1].lower() + x[1:] for x in labels if x]
+        documents = ", ".join(labels) or pack.t(lang, "interview.documents_any", default="")
+        return pack.t(lang, "interview.intro", documents=documents, **names)
 
     def question_for(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> Question:
         f = sc.field(name)
