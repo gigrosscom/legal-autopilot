@@ -1,0 +1,17 @@
+# Test-only jurisdiction: proves a new country/scenario needs no core changes.
+country: XX
+name: {en: Testland}
+currency: TST
+timezone: UTC
+languages: [en]
+default_language: en
+status: test
+reminder_before_days: [1]
+authorities:
+  ombudsman:
+    name: {en: Testland Ombudsman}
+    submit_url: https://ombudsman.example
+compliance:
+  ai_label: {en: "Prepared with AI"}
+  draft_disclaimer: {en: "DRAFT: not reviewed by a lawyer"}
+  service_disclaimer: {en: "We are not lawyers."}

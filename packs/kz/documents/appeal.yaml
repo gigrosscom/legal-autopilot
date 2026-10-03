@@ -1,0 +1,21 @@
+# Универсальный тип документа (уровень 2). Реквизиты и шаблон не проверены юристом — TODO(lawyer).
+id: appeal
+title: {ru: "Апелляционная жалоба", kk: "Апелляциялық шағым"}
+template: kz/templates/generic/appeal.docx
+forum_types: [court]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: applicant_iin, optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - {name: applicant_address, pii: address}
+  - {name: applicant_phone, type: phone, pii: phone}
+  - {name: respondent_name}
+  - {name: event_date, type: date, optional: true}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Копия обжалуемого решения суда"
+    - "Квитанция об оплате госпошлины (размер уточнит юрист)"
+  kk:
+    - "Шағымданатын сот шешімінің көшірмесі"
+    - "Мемлекеттік баж төленгені туралы түбіртек (мөлшерін заңгер нақтылайды)"

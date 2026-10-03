@@ -1,0 +1,728 @@
+"use client";
+
+import Link from "next/link";
+import { use, useCallback, useEffect, useRef, useState } from "react";
+import { EmergencyPanel } from "@/components/EmergencyPanel";
+import { AnswerBar } from "@/components/AnswerBar";
+import { AppShell, type MoreLink, type MoreSection } from "@/components/AppShell";
+import { LevelBadge, LevelExplainer } from "@/components/LevelBadge";
+import RoadmapView from "@/components/Roadmap";
+import { SignDocument } from "@/components/SignDocument";
+import { Agreements } from "@/components/Agreements";
+import { FilePicker } from "@/components/FilePicker";
+import { GovServices } from "@/components/GovServices";
+import { LawQuestions } from "@/components/LawQuestions";
+import { StageProgress } from "@/components/StageProgress";
+import { Alert, Badge, Button, Icon, type IconName } from "@/components/ui";
+import {
+  api,
+  downloadFile,
+  errorText,
+  type CaseAction,
+  type CaseLawyer,
+  type Me,
+  type CaseView,
+  type Emergency,
+  type ForumOption,
+  type Proposal,
+  type Reply,
+  printFile,
+  shareFile,
+  type Plan,
+  saveFileAs,
+} from "@/lib/api";
+import { useLang, useT } from "@/lib/i18n";
+
+type Msg = { from: "bot" | "user"; text: string };
+
+// Question texts are shared with the Telegram bot, where people type everything («пропустить», dates as
+// ДД.ММ.ГГГГ). On the web the calendar and the «Пропустить» button do that, so those typing hints are hidden.
+const SKIP_WORD = /«(пропустить|өткізу|skip|atla|تخطي)»/i;
+function forScreen(text: string): string {
+  const out = text
+    .replace(/\s*\((ДД\.ММ\.ГГГГ|КК\.АА\.ЖЖЖЖ|DD\.MM\.YYYY|GG\.AA\.YYYY)\)/g, "")
+    .split(/(?<=[.?!])(\s+)/)  // sentences with the spaces / line breaks after them kept as separate items
+    .reduce((acc: string[], part, i, all) => (i % 2 === 0 && !SKIP_WORD.test(part) ? [...acc, part, all[i + 1] ?? ""] : acc), [])
+    .join("").trim();
+  return out || text;
+}
+
+function saveReply(id: string, reply: Reply) {
+  try {
+    sessionStorage.setItem(`konsilier.reply.${id}`, JSON.stringify(reply));
+  } catch {}
+}
+
+function readStoredReply(id: string): Partial<Reply> | null {
+  try {
+    const raw = sessionStorage.getItem(`konsilier.reply.${id}`);
+    if (!raw) return null;
+    return raw.startsWith("{") ? (JSON.parse(raw) as Reply) : { message: raw };
+  } catch {
+    return null;
+  }
+}
+
+export default function CasePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const t = useT();
+  const [c, setCase] = useState<CaseView | null>(null);
+  const [log, setLog] = useState<Msg[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [emergency, setEmergency] = useState<Emergency | null>(null);
+  const [pendingEvidence, setPendingEvidence] = useState<{ id: string; facts: Record<string, string> } | null>(null);
+
+  const push = (m: Msg) => setLog((l) => [...l, m]);
+
+  useEffect(() => {
+    api<CaseView>(`/v1/cases/${id}`)
+      .then((view) => {
+        setCase(view);
+        const first = readStoredReply(id);
+        const initial: Msg[] = [];
+        // The stored reply may be stale (e.g. "tell me more" before the case was qualified):
+        // show it only if it still leads to the question the case is waiting for.
+        if (first?.message && (!view.question || first.message.includes(view.question.text)))
+          initial.push({ from: "bot", text: first.message });
+        else if (view.question) initial.push({ from: "bot", text: view.question.text });
+        if (first?.emergency) setEmergency(first.emergency);
+        setLog(initial);
+      })
+      .catch((e) => setError(errorText(e)));
+  }, [id]);
+
+  const run = useCallback(async (fn: () => Promise<void>): Promise<boolean> => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      return true;
+    } catch (e) {
+      setError(errorText(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  function applyReply(out: { case: CaseView; reply: Reply }) {
+    setCase(out.case);
+    if (out.reply.message) {
+      push({ from: "bot", text: out.reply.message });
+      saveReply(id, out.reply);
+    }
+  }
+
+  async function sendAnswer(text: string, shown?: string): Promise<boolean> {
+    const ok = await run(async () => {
+      push({ from: "user", text: shown ?? text });
+      applyReply(await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/messages`, {
+        method: "POST", body: JSON.stringify({ text }),
+      }));
+    });
+    if (!ok) {
+      // Not delivered (bad connection): take the message back into the input so nothing is lost.
+      setLog((l) => (l.at(-1)?.from === "user" && l.at(-1)?.text === (shown ?? text) ? l.slice(0, -1) : l));
+    }
+    return ok;
+  }
+
+  async function chooseForum(f: ForumOption) {
+    await run(async () => {
+      push({ from: "user", text: f.name });
+      applyReply(await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/forum`, {
+        method: "POST", body: JSON.stringify({ forum_id: f.id }),
+      }));
+    });
+  }
+
+  async function acknowledge(kind: string) {
+    await run(async () => {
+      applyReply(await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/acknowledge`, {
+        method: "POST", body: JSON.stringify({ kind }),
+      }));
+    });
+  }
+
+  async function upload(file: File) {
+    await run(async () => {
+      const kind = c?.question?.evidence_kinds?.[0]?.kind ?? "other";
+      const form = new FormData();
+      form.append("file", file);
+      form.append("kind", kind);
+      push({ from: "user", text: file.name });
+      const out = await api<{ case: CaseView; evidence: { id: string; extracted_facts: Record<string, string> } }>(
+        `/v1/cases/${id}/evidence`, { method: "POST", body: form });
+      setCase(out.case);
+      setPendingEvidence({ id: out.evidence.id, facts: out.evidence.extracted_facts });
+    });
+  }
+
+  async function confirmEvidence() {
+    if (!pendingEvidence) return;
+    await run(async () => {
+      const out = await api<{ case: CaseView; reply: Reply }>(`/v1/cases/${id}/evidence/${pendingEvidence.id}/confirm`, {
+        method: "POST", body: JSON.stringify({}),
+      });
+      setPendingEvidence(null);
+      applyReply(out);
+    });
+  }
+
+  async function post(path: string, body: unknown = {}) {
+    await run(async () => {
+      const out = await api<{ case: CaseView; proposal?: Proposal }>(`/v1/cases/${id}${path}`, {
+        method: "POST", body: JSON.stringify(body),
+      });
+      setCase(out.case);
+    });
+  }
+
+  if (error && !c) return <div className="mx-auto max-w-2xl p-4"><Alert tone="danger" role="alert">{error}</Alert></div>;
+  if (!c) return <p className="p-4 text-muted">{t("common.loading")}</p>;
+
+  const last = c.actions.at(-1);
+  const proposal = c.proposal;
+  const q = c.question;
+  const cov = c.coverage;
+  const choosingForum = c.status === "intake" && !c.scenario && cov.options.length > 0;
+  const ack = c.status === "intake" ? c.safety.pending_ack : null;
+  const title = c.scenario?.title ?? cov.dispute?.title ?? t("case.untitled");
+  const interviewing = c.status === "intake" && !choosingForum && !ack;
+
+  const sections: MoreSection[] = [
+    ...(c.roadmap ? [{ key: "roadmap", icon: "map" as IconName, label: t("app.roadmap"), render: () => <RoadmapView roadmap={c.roadmap!} /> }] : []),
+    { key: "facts", icon: "document", label: t("app.facts"), render: () => <FactsPanel c={c} /> },
+    ...(c.actions.length > 0 ? [{ key: "docs", icon: "save" as IconName, label: t("app.documents"),
+      render: () => <>{c.actions.map((a) => <ActionCard key={a.id} caseId={c.id} a={a} />)}</> }] : []),
+    { key: "lawyer", icon: "lawyer", label: t("app.lawyer"), render: () => (
+      <>
+        <LawyerBlock caseId={c.id} />
+        <div className="card space-y-2 text-sm">
+          <p className="text-muted">{t("cta.caseLawyerText")}</p>
+          <Button href="/lawyers" variant="secondary" className="w-full" icon="lawyer">{t("cta.lawyer")}</Button>
+        </div>
+      </>) },
+    ...(c.status !== "intake" ? [{ key: "gov", icon: "building" as IconName, label: t("app.gov"), render: () => <GovServices caseId={c.id} /> }] : []),
+    ...(c.jurisdiction === "KZ" ? [{ key: "law", icon: "scroll" as IconName, label: t("app.law"), render: () => <LawQuestions caseId={c.id} /> }] : []),
+    { key: "about", icon: "info", label: t("app.about"), render: () => (
+      <>
+        <div className="card space-y-3">
+          <LevelBadge level={cov.level} />
+          <LevelExplainer level={cov.level} />
+          {cov.reasons.length > 0 && <ul className="flex flex-wrap gap-2">{cov.reasons.map((r) => <li key={r.code}><Badge tone="warning">{r.label}</Badge></li>)}</ul>}
+          {cov.forum && <p className="flex items-center gap-2 text-sm"><Icon name="building" size={18} className="text-brand" />{cov.forum.name}</p>}
+          <StageProgress stage={c.stage} />
+        </div>
+        {cov.upl_notice && <Alert tone="info" icon="info" title={t("case.uplTitle")}>{cov.upl_notice}</Alert>}
+        <ReportsHint />
+        <div className="rounded-2xl border border-line p-4 text-xs text-muted">
+          <p className="flex items-center gap-1.5 font-semibold text-ink"><Icon name="info" size={16} />{c.ai_label}</p>
+          <p className="mt-1">{c.service_disclaimer}</p>
+          <p className="mt-1">{t("legal.disclaimer")}</p>
+        </div>
+      </>) },
+  ];
+  const links: MoreLink[] = [
+    { href: `/chat/${c.id}`, icon: "sparkle", label: t("chat.open") },
+    { href: "/cases", icon: "briefcase", label: t("nav.cases") },
+    { href: "/account", icon: "user", label: t("app.account") },
+    { href: "/", icon: "home", label: t("app.home") },
+    { href: `/support?case=${c.id}`, icon: "mail", label: t("footer.support") },
+    { href: "/terms", icon: "scroll", label: t("legal.terms") },
+  ];
+
+  let bar: React.ReactNode = null;
+  if (pendingEvidence) {
+    bar = <Button className="min-h-12 w-full" disabled={busy} onClick={confirmEvidence} icon="check">{t("case.confirm")}</Button>;
+  } else if (interviewing) {
+    bar = <AnswerBar question={q && { ...q, optional: q.optional || SKIP_WORD.test(q.text) }} busy={busy} currency={c.currency} onSend={sendAnswer} onFile={upload}
+      onSkip={() => sendAnswer("пропустить")} onDone={() => sendAnswer("готово")} placeholder={t("case.morePlaceholder")} />;
+  } else if (c.status !== "intake") {
+    bar = <NextStepBar c={c} busy={busy} post={post} run={run} setCase={setCase} />;
+  }
+
+  return (
+    <AppShell title={title} subtitle={c.status_label} sections={sections} links={links} bar={bar}
+      scrollKey={`${log.length}-${busy}-${c.status}-${c.actions.length}-${pendingEvidence?.id ?? ""}`}>
+      {c.scenario?.draft_disclaimer && (
+        <p className="flex items-start gap-2 rounded-2xl bg-draft-50 px-3 py-2 text-xs text-draft">
+          <Icon name="info" size={16} className="mt-0.5" /><span><b>{t("case.draftTitle")}.</b> {c.scenario.draft_disclaimer}</span>
+        </p>
+      )}
+      {c.safety.hold_reason && <Alert tone="warning" title={t("case.holdTitle")}>{c.safety.hold_message}</Alert>}
+      {emergency && <EmergencyPanel info={emergency} onContinue={() => setEmergency(null)} />}
+
+      {c.plan && !choosingForum && (c.status === "intake" || c.status === "qualified") && (
+        <PlanCard plan={c.plan} busy={busy} onUpload={(f) => upload(f)} />
+      )}
+
+      <div className="space-y-2" aria-live="polite">
+        {log.map((m, i) => (
+          <div key={i} className={`flex ${m.from === "user" ? "justify-end" : ""}`}>
+            <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 ${m.from === "user" ? "rounded-ee-sm bg-brand text-white" : "rounded-es-sm bg-surface shadow-sm"}`}>
+              {m.from === "bot" ? forScreen(m.text) : m.text}
+            </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="flex">
+            <div className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 text-sm text-muted shadow-sm">
+              <Icon name="spinner" size={16} />{c.status === "intake" ? t("case.thinking") : t("case.working")}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {ack && (
+        <Alert tone={ack === "false_report" ? "warning" : "info"} title={t(`ack.${ack}.title`)}
+          actions={<Button disabled={busy} onClick={() => acknowledge(ack)} icon="check">{t(`ack.${ack}.button`)}</Button>}>
+          {log.at(-1)?.from === "bot" && log.at(-1)?.text ? log.at(-1)!.text : t(`ack.${ack}.text`)}
+        </Alert>
+      )}
+
+      {choosingForum && <ForumChoice options={cov.options} busy={busy} onChoose={chooseForum} />}
+
+      {pendingEvidence && (
+        <div className="rounded-2xl bg-brand-50 p-4 text-sm">
+          {Object.keys(pendingEvidence.facts).length > 0 ? (
+            <>
+              <p className="mb-1 font-semibold">{t("case.found")}:</p>
+              <ul className="list-inside list-disc">
+                {Object.entries(pendingEvidence.facts).map(([k, v]) => (
+                  <li key={k}>{(() => { const label = c.facts.find((f) => f.field === k)?.label; return label ? `${label}: ${v}` : v; })()}</li>
+                ))}
+              </ul>
+            </>
+          ) : <p>{t("case.nothingFound")}</p>}
+        </div>
+      )}
+
+      {c.status === "handed_to_lawyer" && (
+        <Alert tone="info" icon="lawyer" title={t("case.lawyerTitle")}
+          actions={<Button href="/lawyers" variant="secondary" iconEnd="arrowRight">{t("case.lawyerCta")}</Button>}>
+          {proposal?.message || log.find((m) => m.from === "bot")?.text || t("case.lawyerText")}
+        </Alert>
+      )}
+
+      {c.status !== "intake" && last && <ActionCard caseId={c.id} a={last} />}
+
+      {c.status === "awaiting_response" && proposal?.message && (
+        <div className="flex"><div className="max-w-[85%] rounded-2xl rounded-es-sm bg-surface px-4 py-2.5 shadow-sm">{proposal.message}</div></div>
+      )}
+
+      {c.outcome && (
+        <div className="card text-sm">
+          <p className="font-semibold">{t("case.outcome")}: {c.outcome.result}</p>
+          {c.outcome.amount_recovered && <p>{c.outcome.amount_recovered} {c.outcome.currency}</p>}
+          <p className="text-muted">{c.outcome.days_to_resolution} {t("case.days")}</p>
+        </div>
+      )}
+      {error && <Alert tone="danger" role="alert">{error}</Alert>}
+    </AppShell>
+  );
+}
+
+function FactsPanel({ c }: { c: CaseView }) {
+  const t = useT();
+  if (c.facts.length === 0 && c.evidence.length === 0) return <p className="text-sm text-muted">{t("app.noFacts")}</p>;
+  return (
+    <div className="space-y-3">
+      <dl className="divide-y divide-line rounded-2xl border border-line">
+        {c.facts.map((f) => (
+          <div key={f.field} className="px-4 py-2.5">
+            <dt className="text-xs text-muted">{f.label}</dt>
+            <dd className="break-words">{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {c.evidence.length > 0 && (
+        <ul className="space-y-1 text-sm">
+          {c.evidence.map((e) => <li key={e.id} className="flex items-center gap-2"><Icon name="paperclip" size={16} className="text-brand" />{e.filename}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** What to do now once the document stage has started: submitted? got a reply? close the case. */
+function NextStepBar({ c, busy, post, run, setCase }: {
+  c: CaseView; busy: boolean; post: (path: string, body?: unknown) => Promise<void>;
+  run: (fn: () => Promise<void>) => Promise<boolean>; setCase: (c: CaseView) => void;
+}) {
+  const t = useT();
+  const [responseText, setResponseText] = useState("");
+  const [showResponse, setShowResponse] = useState(false);
+  const [amount, setAmount] = useState("");
+  const last = c.actions.at(-1);
+  const proposal = c.proposal;
+  const big = "min-h-12 flex-1";
+
+  if (c.status === "qualified") {
+    return <Button className="min-h-12 w-full" disabled={busy} onClick={() => post("/actions/next")} icon="document">{t("case.prepare")}</Button>;
+  }
+  if (c.status === "action_ready" && last) {
+    if (last.approval_status === "pending" || last.approval_status === "rejected") {
+      return <p className="flex items-center gap-2 py-2 text-sm"><Icon name="lawyer" size={18} className="text-brand" />
+        {last.approval_status === "pending" ? t("case.awaitingApproval") : t("case.rejected")}</p>;
+    }
+    return (
+      <div className="space-y-2">
+      <p className="px-1 text-xs text-muted">{t("case.submittedHint")}</p>
+      <div className="flex gap-2">
+        <Button className={big} disabled={busy} icon="check" onClick={() => post(`/actions/${last.id}/submitted`, { via: "user_submits" })}>{t("case.submitted")}</Button>
+        {last.email_allowed && last.addressee?.email && (
+          <Button className={big} variant="secondary" disabled={busy} icon="mail" onClick={() => post(`/actions/${last.id}/submitted`, { via: "email" })}>{t("case.sendEmail")}</Button>
+        )}
+      </div>
+      </div>
+    );
+  }
+  if (c.status === "awaiting_response" && last && proposal) {
+    if (proposal.type === "wait" && !showResponse) {
+      return (
+        <div className="flex gap-2">
+          <Button className={big} icon="mail" onClick={() => setShowResponse(true)}>{t("case.gotResponse")}</Button>
+          <Button className={big} variant="secondary" disabled={busy} icon="hourglass"
+            onClick={() => post(`/actions/${last.id}/response`, { no_response: true })}>{t("case.noResponse")}</Button>
+        </div>
+      );
+    }
+    if (proposal.type === "wait") {
+      return (
+        <div className="space-y-2">
+          <label htmlFor="resp" className="sr-only">{t("case.responsePlaceholder")}</label>
+          <textarea id="resp" className="input" rows={3} placeholder={t("case.responsePlaceholder")}
+            value={responseText} onChange={(e) => setResponseText(e.target.value)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled={busy || !responseText.trim()}
+              onClick={() => post(`/actions/${last.id}/response`, { text: responseText }).then(() => setShowResponse(false))}>{t("case.responseSend")}</Button>
+            <FilePicker attachLabel={t("case.responseFile")} disabled={busy} onFile={(f) => {
+              run(async () => {
+                const form = new FormData();
+                form.append("file", f);
+                const out = await api<{ case: CaseView }>(`/v1/cases/${c.id}/actions/${last.id}/response/file`, { method: "POST", body: form });
+                setCase(out.case);
+                setShowResponse(false);
+              });
+            }} />
+            <button type="button" className="px-2 text-sm text-muted" onClick={() => setShowResponse(false)}>{t("app.cancel")}</button>
+          </div>
+        </div>
+      );
+    }
+    if (proposal.type === "clarify") {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          {(["full", "partial", "refusal", "none"] as const).map((cls) => (
+            <Button key={cls} variant="secondary" disabled={busy} className="min-h-12"
+              onClick={() => post(`/actions/${last.id}/response`, { response_class: cls })}>{t(`case.classes.${cls}`)}</Button>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        {(proposal.type === "prepare_action" || proposal.type === "handoff") && (
+          <Button className="min-h-12 w-full" disabled={busy} icon={proposal.type === "handoff" ? "lawyer" : "document"} onClick={() => post("/actions/next")}>
+            {proposal.type === "handoff" ? t("case.handoff") : proposal.title}
+          </Button>
+        )}
+        <details className="rounded-2xl border border-line px-3 py-2">
+          <summary className="cursor-pointer text-sm font-semibold">{t("case.close")}</summary>
+          <div className="space-y-2 pt-2">
+            <label htmlFor="amount" className="sr-only">{t("case.amountRecovered")}</label>
+            <input id="amount" className="input" inputMode="numeric"
+              placeholder={`${t("case.amountRecovered")}, ${c.currency ?? ""}`} value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))} />
+            <div className="grid grid-cols-3 gap-2">
+              {(["won", "partial", "lost"] as const).map((r) => (
+                <Button key={r} variant={r === proposal.suggested_result ? "primary" : "secondary"} disabled={busy}
+                  onClick={() => post("/close", { result: r, amount_recovered: amount || (r === "won" ? c.amount_at_stake : null) })}>
+                  {t(`case.close${r[0].toUpperCase()}${r.slice(1)}`)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </details>
+      </div>
+    );
+  }
+  return null;
+}
+
+/** The proposed solution right after the story: document → addressee → how to file → what to attach. */
+function PlanCard({ plan, busy, onUpload }: { plan: Plan; busy: boolean; onUpload: (f: File) => void }) {
+  const t = useT();
+  const portalName = (url: string | null) => (url ? url.replace(/^https?:\/\//, "").replace(/\/$/, "") : "");
+  return (
+    <section className="card space-y-4 border-brand/40" aria-labelledby="plan-title">
+      <h2 id="plan-title" className="flex items-center gap-2 text-lg font-semibold">
+        <Icon name="sparkle" className="text-brand" />{t("helper.planTitle")}
+      </h2>
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div className="rounded-xl bg-brand-50 p-3 sm:col-span-2">
+          <dt className="text-xs text-muted">{t("helper.planDoc")}</dt>
+          <dd className="flex items-center gap-2 font-semibold"><Icon name="document" size={18} className="text-brand" />{plan.document}</dd>
+        </div>
+        {plan.addressee && (
+          <div>
+            <dt className="text-xs text-muted">{t("helper.planTo")}</dt>
+            <dd className="flex items-center gap-1.5"><Icon name="building" size={16} className="text-brand" />{plan.addressee}</dd>
+          </div>
+        )}
+        {plan.channels.length > 0 && (
+          <div>
+            <dt className="text-xs text-muted">{t("helper.planVia")}</dt>
+            <dd className="flex flex-wrap gap-1.5">
+              {plan.channels.map((ch, i) => ch.url ? (
+                <a key={i} href={ch.url} target="_blank" rel="noreferrer" className="chip hover:text-brand">
+                  {ch.kind === "portal" ? portalName(ch.url) : t(`forum.channel.${ch.kind}`)}
+                </a>
+              ) : <span key={i} className="chip">{t(`forum.channel.${ch.kind}`)}</span>)}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {plan.attachments.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">{t("helper.planAttach")}</p>
+          <ul className="space-y-1.5 text-sm">
+            {plan.attachments.map((a) => (
+              <li key={a} className="flex gap-2"><Icon name="checkCircle" size={18} className="mt-0.5 text-brand" /><span>{a}</span></li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-2"><FilePicker onFile={onUpload} disabled={busy} /></div>
+        </div>
+      )}
+      <p className="flex items-center gap-2 text-sm text-muted">
+        <Icon name={plan.lawyer_check ? "lawyer" : "checkCircle"} size={18} className="text-brand" />
+        {plan.lawyer_check ? t("helper.planLawyer") : t("helper.planSelf")}
+      </p>
+    </section>
+  );
+}
+
+type MenuItem = { key: string; label: string; icon?: IconName; run: () => Promise<unknown> };
+
+/** Ready document: download (PDF / Word), print, save (PDF / Word, where you choose), send (WhatsApp, Telegram,
+ *  e-mail, another app) and sign with ЭЦП. */
+function DocumentToolbar({ caseId, a }: { caseId: string; a: CaseAction }) {
+  const t = useT();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [signOpen, setSignOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const pdf = `/v1/cases/${caseId}/actions/${a.id}/document?format=pdf`;
+  const docx = `/v1/cases/${caseId}/actions/${a.id}/document?format=docx`;
+  const main = a.has_pdf ? { path: pdf, name: `${a.action_id}.pdf` } : { path: docx, name: `${a.action_id}.docx` };
+  const signed = (a.signatures ?? []).length > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(null); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+
+  async function act(key: string, fn: () => Promise<unknown>) {
+    setOpen(null); setBusy(key); setErr(null); setNote(null);
+    try { await fn(); } catch (e) { setErr(errorText(e)); } finally { setBusy(null); }
+  }
+
+  // A file cannot be attached through a link: on phones the share sheet carries it to the chosen app;
+  // elsewhere the file is downloaded and the app opens with a prepared message to attach it to.
+  const sendTo = (app: "whatsapp" | "telegram" | "mail") => async () => {
+    const text = `${a.title}${a.addressee?.name ? ` — ${a.addressee.name}` : ""}`;
+    const coarse = matchMedia("(pointer: coarse)").matches;
+    if (coarse && await shareFile(main.path, main.name, text)) return;
+    if (!coarse) await downloadFile(main.path, main.name);
+    const url = app === "whatsapp" ? `https://wa.me/?text=${encodeURIComponent(text)}`
+      : app === "telegram" ? `https://t.me/share/url?url=${encodeURIComponent("https://konsilier.com")}&text=${encodeURIComponent(text)}`
+      : `mailto:${a.addressee?.email ?? ""}?subject=${encodeURIComponent(a.title)}&body=${encodeURIComponent(text)}`;
+    window.open(url, "_blank", "noopener");
+    setNote(t("helper.doc_fileReady"));
+  };
+
+  const formats = (run: (path: string, name: string) => Promise<unknown>): MenuItem[] => [
+    ...(a.has_pdf ? [{ key: "pdf", label: t("helper.doc_fmtPdf"), icon: "document" as IconName, run: () => run(pdf, `${a.action_id}.pdf`) }] : []),
+    { key: "docx", label: t("helper.doc_fmtWord"), icon: "document", run: () => run(docx, `${a.action_id}.docx`) },
+  ];
+  const tools: { key: string; icon: IconName; label: string; menu?: MenuItem[]; run?: () => Promise<unknown>; active?: boolean }[] = [
+    { key: "download", icon: "download", label: t("helper.doc_download"), menu: formats(downloadFile) },
+    ...(a.has_pdf ? [{ key: "print", icon: "printer" as IconName, label: t("helper.doc_print"), run: () => printFile(pdf) }] : []),
+    { key: "save", icon: "save", label: t("helper.doc_save"), menu: formats(saveFileAs) },
+    { key: "send", icon: "share", label: t("helper.doc_send"), menu: [
+      { key: "whatsapp", label: t("helper.doc_toWhatsapp"), icon: "send", run: sendTo("whatsapp") },
+      { key: "telegram", label: t("helper.doc_toTelegram"), icon: "send", run: sendTo("telegram") },
+      { key: "mail", label: t("helper.doc_toMail"), icon: "mail", run: sendTo("mail") },
+      { key: "other", label: t("helper.doc_toOther"), icon: "share", run: () => shareFile(main.path, main.name, a.title) },
+    ] },
+    { key: "sign", icon: signed ? "shieldCheck" : "key", label: signed ? t("helper.doc_signed") : t("helper.doc_sign"),
+      run: async () => setSignOpen((x) => !x), active: signOpen || signed },
+  ];
+
+  return (
+    <div className="space-y-2" ref={ref}>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" role="toolbar" aria-label={a.title}>
+        {tools.map((x) => (
+          <div key={x.key} className="relative">
+            <button type="button" disabled={busy !== null} aria-haspopup={x.menu ? "menu" : undefined}
+              aria-expanded={x.menu ? open === x.key : undefined}
+              onClick={() => (x.menu ? setOpen(open === x.key ? null : x.key) : act(x.key, x.run!))}
+              className={`flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-xs font-medium hover:border-brand hover:text-brand disabled:opacity-50 ${x.active ? "border-brand bg-brand-50 text-brand" : "border-line bg-surface"}`}>
+              <Icon name={busy === x.key ? "spinner" : x.icon} size={22} />
+              <span className="flex items-center gap-0.5">{x.label}{x.menu && <Icon name="chevronDown" size={12} />}</span>
+            </button>
+            {x.menu && open === x.key && (
+              <ul role="menu" className="absolute start-0 top-full z-20 mt-1 min-w-52 space-y-0.5 rounded-2xl border border-line bg-surface p-1 shadow-[var(--shadow-raised)]">
+                {x.menu.map((m) => (
+                  <li key={m.key} role="none">
+                    <button type="button" role="menuitem" onClick={() => act(x.key, m.run)}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-start text-sm hover:bg-brand-50 hover:text-brand">
+                      {m.icon && <Icon name={m.icon} size={16} />}{m.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+      {note && <p className="text-xs text-muted" aria-live="polite">{note}</p>}
+      {err && <p role="alert" className="text-xs text-danger">{err}</p>}
+      {(signOpen || signed) && (
+        <SignDocument base={`/v1/cases/${caseId}/actions/${a.id}`} fileBase={a.action_id} initial={a.signatures ?? []}
+          unavailable={t("helper.doc_signUnavailable")} />
+      )}
+    </div>
+  );
+}
+
+function ForumChoice({ options, busy, onChoose }: { options: ForumOption[]; busy: boolean; onChoose: (f: ForumOption) => void }) {
+  const t = useT();
+  return (
+    <section className="space-y-3" aria-labelledby="forum-choice">
+      <h2 id="forum-choice" className="text-lg font-semibold">{t("forum.chooseTitle")}</h2>
+      <p className="text-sm text-muted">{t("forum.chooseLead")}</p>
+      <ul className="grid gap-3 md:grid-cols-2">
+        {options.map((f) => (
+          <li key={f.id} className="card flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand">
+                <Icon name={f.type === "court" ? "landmark" : f.type === "mediation" ? "handshake" : "building"} />
+              </span>
+              <div className="min-w-0 space-y-1">
+                <p className="font-semibold leading-snug">{f.name}</p>
+                <p className="text-xs text-muted">{t(`forum.type.${f.type}`)}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone={f.legal_effect === "binding" ? "brand" : f.legal_effect === "advisory" ? "info" : "warning"}>
+                {t(`forum.effect.${f.legal_effect}`)}
+              </Badge>
+              <Badge tone={f.verified ? "brand" : "neutral"} icon={f.verified ? "shieldCheck" : "hourglass"}>
+                {f.verified ? t("forum.verified") : t("forum.unverified")}
+              </Badge>
+              {!f.deadline_known && <Badge>{t("forum.deadlineByLawyer")}</Badge>}
+            </div>
+            <p className="text-xs text-muted">{t("forum.channels")}: {f.channels.map((ch) => t(`forum.channel.${ch}`)).join(", ")}</p>
+            <Button className="mt-auto" disabled={busy} onClick={() => onChoose(f)} iconEnd="arrowRight">{t("forum.choose")}</Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ReportsHint() {
+  const t = useT();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    api<Me>("/v1/me").then((m) => setShow(!m.identities.some((i) => i.kind === "email"))).catch(() => setShow(false));
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="card flex flex-wrap items-center gap-3 text-sm">
+      <Icon name="mail" className="text-brand" />
+      <span className="flex-1">{t("reports.hint")}</span>
+      <Link href="/account" className="btn-ghost">{t("reports.hintCta")}</Link>
+    </div>
+  );
+}
+
+function LawyerBlock({ caseId }: { caseId: string }) {
+  const t = useT();
+  const [data, setData] = useState<CaseLawyer | null>(null);
+  useEffect(() => {
+    api<CaseLawyer>(`/v1/cases/${caseId}/lawyer`).then(setData).catch(() => setData(null));
+  }, [caseId]);
+  if (!data?.lawyer) return null;
+  return (
+    <section aria-labelledby="your-lawyer" className="space-y-3">
+      <div className="card flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand"><Icon name="lawyer" /></span>
+        <div>
+          <h2 id="your-lawyer" className="font-semibold">{t("agreements.yourLawyer")}: {data.lawyer.name}</h2>
+          <p className="text-sm text-muted">{t(`agreements.kind.${data.lawyer.kind}`)}{data.lawyer.organization ? ` · ${data.lawyer.organization}` : ""}</p>
+        </div>
+      </div>
+      <Agreements items={data.agreements} role="applicant" />
+    </section>
+  );
+}
+
+function ActionCard({ caseId, a }: { caseId: string; a: CaseAction }) {
+  const t = useT();
+  const { lang } = useLang();
+  if (a.kind === "handoff") {
+    return <div className="card flex items-center gap-2 text-sm"><Icon name="lawyer" className="text-brand" />{a.title}</div>;
+  }
+  return (
+    <div className="card space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">{a.sequence}. {a.title}</h3>
+        {a.response_label && <Badge>{t("case.response")}: {a.response_label}</Badge>}
+      </div>
+      {a.addressee?.name && <p className="flex items-center gap-1.5 text-sm text-muted"><Icon name="building" size={16} />{a.addressee.name}</p>}
+      {a.downloadable && <DocumentToolbar caseId={caseId} a={a} />}
+      {a.downloadable && a.instructions.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">{t("case.instructions")}</p>
+          <ol className="space-y-2 text-sm">
+            {a.instructions.map((s, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand">{i + 1}</span>
+                <span className="min-w-0 break-words pt-0.5"><Linkified text={s} /></span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {a.deadline && (
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          <Icon name="clock" size={18} className="text-brand" />
+          {t("case.deadline")}: <b className="tabular-nums">{new Date(a.deadline.due_date).toLocaleDateString(lang === "ar" ? "ar" : "ru-RU")}</b>
+          <Badge>{t(`case.deadlineStatus.${a.deadline.status}`)}</Badge>
+        </p>
+      )}
+      {a.response_summary && <p className="text-sm text-muted">«{a.response_summary}»</p>}
+    </div>
+  );
+}
+
+/** Plain text with http(s) links made clickable (filing portals in the instructions). */
+function Linkified({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s),;]+)/g);
+  return (
+    <>
+      {parts.map((p, i) => (/^https?:\/\//.test(p)
+        ? <a key={i} href={p} target="_blank" rel="noreferrer" className="link">{p.replace(/^https?:\/\//, "")}</a>
+        : <span key={i}>{p}</span>))}
+    </>
+  );
+}

@@ -1,0 +1,102 @@
+# ДЕМО-ПРОФИЛИ. Все люди и цифры вымышлены — только для показа того, как будет
+# выглядеть рейтинг по доказанным результатам. Любые совпадения случайны.
+# После запуска биржи профили и статистика берутся из проверенных дел платформы.
+disclaimer:
+  ru: "Пример рейтинга: так он будет выглядеть, когда юристы платформы закроют первые дела. Сейчас здесь показаны демо-профили."
+  kk: "Рейтинг үлгісі: платформа заңгерлері алғашқы істерді жапқанда ол осылай көрінеді. Қазір мұнда демо-профильдер көрсетілген."
+# Platform baseline success rate per category (won + 0.5·partial) / cases.
+baseline:
+  consumer: 0.62
+  credit_fraud: 0.48
+  debt_collectors: 0.55
+  labor: 0.58
+lawyers:
+  - id: demo-1
+    name: "Айгерим Н. (демо)"
+    title: {ru: Адвокат, kk: Адвокат}
+    organization: {ru: "Коллегия адвокатов (демо)", kk: "Адвокаттар алқасы (демо)"}
+    city: Алматы
+    years: 12
+    verified: {license: true, registry: "Реестр адвокатов — проверено (демо)", identity: true}
+    specializations: [consumer, credit_fraud]
+    languages: [ru, kk]
+    price_from: 25000
+    response_hours: 2
+    categories:
+      - {category: consumer, cases: 96, won: 71, partial: 14, claimed: 41200000, recovered: 33900000}
+      - {category: credit_fraud, cases: 38, won: 22, partial: 6, claimed: 58300000, recovered: 37100000}
+    milestones_total: 402
+    milestones_on_time: 391
+    reviews_count: 118
+    reviews_avg: 4.8
+  - id: demo-2
+    name: "Ерлан К. (демо)"
+    title: {ru: Юридический консультант, kk: Заң кеңесшісі}
+    organization: {ru: "Палата юридических консультантов (демо)", kk: "Заң кеңесшілері палатасы (демо)"}
+    city: Астана
+    years: 7
+    verified: {license: true, registry: "Реестр юрконсультантов — проверено (демо)", identity: true}
+    specializations: [credit_fraud, debt_collectors]
+    languages: [ru]
+    price_from: 15000
+    response_hours: 4
+    categories:
+      - {category: credit_fraud, cases: 64, won: 35, partial: 11, claimed: 91000000, recovered: 52400000}
+      - {category: debt_collectors, cases: 27, won: 17, partial: 3, claimed: 8900000, recovered: 6100000}
+    milestones_total: 251
+    milestones_on_time: 229
+    reviews_count: 73
+    reviews_avg: 4.6
+  - id: demo-3
+    name: "Динара С. (демо)"
+    title: {ru: Адвокат, kk: Адвокат}
+    organization: {ru: "Коллегия адвокатов (демо)", kk: "Адвокаттар алқасы (демо)"}
+    city: Шымкент
+    years: 4
+    verified: {license: true, registry: "Реестр адвокатов — проверено (демо)", identity: true}
+    specializations: [consumer, labor]
+    languages: [ru, kk]
+    price_from: 12000
+    response_hours: 3
+    categories:
+      - {category: consumer, cases: 9, won: 8, partial: 1, claimed: 2100000, recovered: 1950000}
+    milestones_total: 26
+    milestones_on_time: 26
+    reviews_count: 7
+    reviews_avg: 5.0
+  - id: demo-4
+    name: "Руслан Т. (демо)"
+    title: {ru: Юридический консультант, kk: Заң кеңесшісі}
+    organization: {ru: "Палата юридических консультантов (демо)", kk: "Заң кеңесшілері палатасы (демо)"}
+    city: Караганда
+    years: 15
+    verified: {license: true, registry: "Реестр юрконсультантов — проверено (демо)", identity: true}
+    specializations: [consumer, debt_collectors, labor]
+    languages: [ru]
+    price_from: 20000
+    response_hours: 8
+    categories:
+      - {category: consumer, cases: 140, won: 79, partial: 21, claimed: 52000000, recovered: 29800000}
+      - {category: labor, cases: 45, won: 24, partial: 8, claimed: 31000000, recovered: 17200000}
+    milestones_total: 610
+    milestones_on_time: 497
+    reviews_count: 150
+    reviews_avg: 4.1
+  - id: demo-5
+    name: "Правозащитный центр «Право» (демо)"
+    title: {ru: Правозащитная организация, kk: Құқық қорғау ұйымы}
+    organization: {ru: "НКО (демо)", kk: "ҮЕҰ (демо)"}
+    city: Алматы
+    years: 9
+    verified: {license: false, registry: "НКО — регистрация проверена (демо)", identity: true}
+    specializations: [credit_fraud, labor]
+    languages: [ru, kk]
+    price_from: 0
+    pro_bono: true
+    response_hours: 24
+    categories:
+      - {category: credit_fraud, cases: 52, won: 26, partial: 9, claimed: 44000000, recovered: 24600000}
+    milestones_total: 188
+    milestones_on_time: 170
+    reviews_count: 61
+    reviews_avg: 4.7

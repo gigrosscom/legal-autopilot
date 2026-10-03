@@ -1,0 +1,73 @@
+# Справки, которые человек получает сам на egov.kz (своей ЭЦП или через вход с SMS-кодом / eGov Mobile)
+# и загружает в дело как доказательство. Платформа только даёт ссылку: интеграции с egov.kz нет.
+# Ссылки подтверждены 27.09.2026 по результатам поиска на официальных доменах (egov.kz, data.egov.kz);
+# сами страницы из среды разработки не открывались — перепроверять при каждом обновлении пакета.
+# Отдельной услуги «адресная справка» с 01.11.2020 нет: адрес регистрации виден в личном кабинете egov.kz.
+services:
+  - id: pension_contributions
+    title: {ru: "Справка о пенсионных отчислениях (ЕНПФ)", kk: "Зейнетақы аударымдары туралы анықтама (БЖЗҚ)"}
+    url: "https://egov.kz/cms/ru/services/pass160_mtszn"
+    provider: "egov.kz · МТСЗН РК / ЕНПФ"
+    auth: ecp_or_egov_mobile
+    evidence_for: [labor]
+    note: {ru: "Показывает, какой работодатель и когда перечислял взносы — подтверждает трудовые отношения и зарплату.", kk: "Қай жұмыс беруші қашан жарна аударғанын көрсетеді — еңбек қатынастары мен жалақыны растайды."}
+    verified_on: 2026-09-27
+  - id: credit_report
+    title: {ru: "Персональный кредитный отчёт (ПКБ)", kk: "Жеке кредиттік есеп (БКБ)"}
+    url: "https://egov.kz/cms/ru/services/e_85"
+    provider: "egov.kz · ТОО «Первое кредитное бюро»"
+    auth: ecp
+    evidence_for: [finance, consumer]
+    note: {ru: "Все займы на ваше имя. Один отчёт в год бесплатно, дальше платно.", kk: "Сіздің атыңыздағы барлық қарыздар. Жылына бір есеп тегін, одан кейін ақылы."}
+    verified_on: 2026-09-27
+  - id: real_estate_encumbrances
+    title: {ru: "Справка о зарегистрированных правах и обременениях на недвижимость (форма 2)", kk: "Жылжымайтын мүлікке тіркелген құқықтар мен ауыртпалықтар туралы анықтама (2-нысан)"}
+    url: "https://egov.kz/cms/ru/services/pass076_mu"
+    provider: "egov.kz · МЮ РК"
+    auth: ecp_or_egov_mobile
+    evidence_for: [housing, family, inheritance, finance]
+    verified_on: 2026-09-27
+  - id: legal_entity_info
+    title: {ru: "Сведения о юридическом лице по БИН", kk: "БСН бойынша заңды тұлға туралы мәліметтер"}
+    url: "https://egov.kz/cms/ru/services/e_032"
+    provider: "egov.kz · МЮ РК"
+    auth: ecp_or_egov_mobile
+    evidence_for: [consumer, labor, commercial, finance]
+    note: {ru: "Точное название, адрес и руководитель продавца, работодателя или МФО — для документа.", kk: "Сатушының, жұмыс берушінің немесе МҚҰ-ның нақты атауы, мекенжайы және басшысы — құжат үшін."}
+    verified_on: 2026-09-27
+  - id: counterparty_check
+    title: {ru: "Проверка контрагента (открытые данные)", kk: "Контрагентті тексеру (ашық деректер)"}
+    url: "https://data.egov.kz/apps/view?appId=AVZT0xhkv7qpUunhUv_q"
+    provider: "data.egov.kz"
+    auth: none
+    evidence_for: [consumer, labor, commercial]
+    note: {ru: "Без входа. Не справка, а быстрая проверка компании.", kk: "Кірусіз. Анықтама емес, компанияны жылдам тексеру."}
+  - id: birth_certificate_repeat
+    title: {ru: "Повторное свидетельство о рождении", kk: "Туу туралы қайталама куәлік"}
+    url: "https://egov.kz/cms/ru/services/e_024"
+    provider: "egov.kz · МЮ РК (РАГС)"
+    auth: ecp_or_egov_mobile
+    evidence_for: [family]
+    note: {ru: "Онлайн — если рождение зарегистрировано после 13.08.2007. Нужна госпошлина.", kk: "Онлайн — егер туу 13.08.2007-ден кейін тіркелсе. Мемлекеттік баж керек."}
+    verified_on: 2026-09-27
+  - id: birth_certificate_spravka
+    title: {ru: "Справка о рождении", kk: "Туу туралы анықтама"}
+    url: "https://egov.kz/cms/ru/services/e_020"
+    provider: "egov.kz · МЮ РК"
+    auth: ecp_or_egov_mobile
+    evidence_for: [family]
+    verified_on: 2026-09-27
+  - id: criminal_record
+    title: {ru: "Справка о наличии либо отсутствии судимости", kk: "Сотталғандығының бар-жоғы туралы анықтама"}
+    url: "https://egov.kz/cms/ru/services/e_004"
+    provider: "egov.kz · КПСиСУ ГП РК"
+    auth: ecp_or_egov_mobile
+    evidence_for: [family, labor]
+    verified_on: 2026-09-27
+  - id: tax_debt
+    title: {ru: "Сведения об отсутствии (наличии) налоговой задолженности", kk: "Салық берешегінің жоқтығы (бар екені) туралы мәліметтер"}
+    url: "https://egov.kz/cms/ru/services/pass316_mf"
+    provider: "egov.kz · КГД МФ РК"
+    auth: ecp
+    evidence_for: [tax, labor]
+    verified_on: 2026-09-27

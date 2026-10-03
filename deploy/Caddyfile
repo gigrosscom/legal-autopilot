@@ -1,0 +1,19 @@
+{$SITE_DOMAIN}, www.{$SITE_DOMAIN} {
+	encode zstd gzip
+	# Hashed build assets never change — cache them forever.
+	@static path /_next/static/*
+	handle @static {
+		reverse_proxy web:3000
+	}
+	# Pages: always revalidate, so phones never show an outdated version after a deploy.
+	handle {
+		reverse_proxy web:3000 {
+			header_down Cache-Control "no-cache"
+		}
+	}
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:8000
+}

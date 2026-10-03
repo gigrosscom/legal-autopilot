@@ -1,0 +1,6 @@
+Konsilier AI legal skills implementation pack
+
+Give your AI legal agent either the .md or .txt file; both contain the same complete content.
+The pack contains 18 source entries, jurisdiction profiles, implementation instructions, and evaluation criteria. It links to upstream repositories; those repositories are not included or installed.
+
+Suggested instruction: Read the complete implementation pack, inspect its sources, then implement and evaluate the applicable skills within your authorized Konsilier project. Report actual changes, test results, dependencies, and limits.

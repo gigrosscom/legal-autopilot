@@ -1,0 +1,42 @@
+id: xx.test.dummy
+version: 1.0.0
+ontology: TEST.DUMMY
+jurisdiction: XX
+languages: [en]
+owner: lawyer:xx-01
+reviewed_at: 2026-01-15
+published: true
+title: {en: Dummy dispute}
+classification:
+  keywords: {en: [widget, dummy]}
+claim: {type: dummy, amount_field: amount}
+intake:
+  - counterparty:
+      question: {en: "Who owes you?"}
+  - amount:
+      type: money
+      question: {en: "How much?"}
+  - story:
+      type: longtext
+      question: {en: "What happened?"}
+parties:
+  respondent: {kind: business, name_field: counterparty}
+actions:
+  - id: letter
+    title: {en: Demand letter}
+    template: xx/templates/letter.docx
+    addressee: {party: respondent}
+    deadline: {business_days: 3, norm_ref: "Test Code s.1"}
+    norm_refs: ["Test Code s.1"]
+    demands: {en: "pay {amount} {currency}"}
+    instructions: {en: ["Send it to {addressee}."]}
+  - id: ombudsman
+    when: letter.response in [refusal, none] or letter.response == partial
+    title: {en: Ombudsman complaint}
+    template: xx/templates/letter.docx
+    addressee: {authority: ombudsman}
+  - id: lawyer
+    kind: handoff
+    when: ombudsman.response != full
+    title: {en: Lawyer}
+pricing: {model: free}

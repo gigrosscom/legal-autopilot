@@ -1,0 +1,23 @@
+# Универсальный тип документа (уровень 2). Реквизиты и шаблон не проверены юристом — TODO(lawyer).
+id: statement
+title: {ru: "Заявление", kk: "Арыз"}
+template: kz/templates/generic/statement.docx
+forum_types: [police,mediation,private_org]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: applicant_iin, optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - {name: applicant_address, pii: address}
+  - {name: applicant_phone, type: phone, pii: phone}
+  - {name: respondent_name}
+  - {name: event_date, type: date, optional: true}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Удостоверение личности (при подаче лично)"
+    - "Документы и фото, подтверждающие то, о чём вы пишете"
+    - "Контакты свидетелей, если они есть"
+  kk:
+    - "Жеке куәлік (өзіңіз бергенде)"
+    - "Жазғаныңызды растайтын құжаттар мен фото"
+    - "Куәгерлердің байланыс деректері, болса"

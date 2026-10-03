@@ -1,0 +1,21 @@
+# Ходатайство (уровень 2) — в орган или суд, где уже идёт производство по делу. Реквизиты не проверены юристом — TODO(lawyer).
+id: motion
+title: {ru: "Ходатайство", kk: "Өтінішхат"}
+template: kz/templates/generic/motion.docx
+forum_types: [court, police]
+required_fields:
+  - {name: applicant_name, pii: person}
+  - {name: applicant_iin, optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - {name: applicant_address, pii: address}
+  - {name: applicant_phone, type: phone, pii: phone}
+  - {name: case_number, optional: true}
+  - {name: respondent_name}
+  - {name: problem_description, type: longtext}
+  - {name: desired_outcome, type: longtext}
+attachments:
+  ru:
+    - "Копия документа о начале производства: талон-уведомление, определение суда или уведомление (если есть)"
+    - "Документы, которые подтверждают вашу просьбу"
+  kk:
+    - "Іс жүргізудің басталғаны туралы құжаттың көшірмесі: талон-хабарлама, сот ұйғарымы не хабарлама (болса)"
+    - "Өтінішіңізді растайтын құжаттар"

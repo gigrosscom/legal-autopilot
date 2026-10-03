@@ -1,0 +1,12 @@
+# Test-only registry: a single state court.
+forums:
+  - id: xx.court.civil
+    type: court
+    instance: first
+    name: {en: Testland Civil Court}
+    accepts: [{branches: [family, civil]}]
+    document_types: [lawsuit]
+    submission: [{kind: portal, url: "https://court.example"}]
+    languages: [en]
+    legal_effect: binding
+    source: test fixture

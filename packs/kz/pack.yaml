@@ -1,0 +1,133 @@
+# Jurisdiction pack: Kazakhstan. Pure data — the core never branches on country.
+country: KZ
+name: {ru: Казахстан, kk: Қазақстан}
+currency: KZT
+timezone: Asia/Almaty
+languages: [ru, kk]
+default_language: ru
+status: live
+# Non-working days for business_days deadlines. TODO(lawyer): confirm the 2026-2027 list
+# (movable dates such as Kurban ait and transfer days are set by government decree).
+holidays:
+  - 2026-01-01
+  - 2026-01-02
+  - 2026-01-07
+  - 2026-03-08
+  - 2026-03-09
+  - 2026-03-21
+  - 2026-03-23
+  - 2026-03-24
+  - 2026-05-01
+  - 2026-05-07
+  - 2026-05-09
+  - 2026-05-27
+  - 2026-07-06
+  - 2026-08-30
+  - 2026-08-31
+  - 2026-10-25
+  - 2026-10-26
+  - 2026-12-16
+reminder_before_days: [2, 0]
+authorities:
+  consumer_protection:
+    name:
+      ru: "Уполномоченный орган в сфере защиты прав потребителей (территориальное подразделение по месту нахождения продавца) (наименование уточнит юрист)"
+      kk: "Тұтынушылар құқығын қорғау саласындағы уәкілетті орган (сатушы орналасқан жердегі аумақтық бөлімше) (атауын заңгер нақтылайды)"
+    submit_url: https://eotinish.kz
+    norm_ref: TODO
+  arrf:
+    name:
+      ru: "Агентство Республики Казахстан по регулированию и развитию финансового рынка (АРРФР)"
+      kk: "Қазақстан Республикасының Қаржы нарығын реттеу және дамыту агенттігі (ҚНРДА)"
+    submit_url: https://eotinish.kz
+    norm_ref: TODO
+compliance:
+  ai_label:
+    ru: "Подготовлено с помощью ИИ (Konsiliér AI). Проверьте данные перед подачей."
+    kk: "ЖИ көмегімен дайындалған (Konsiliér AI). Тапсырар алдында деректерді тексеріңіз."
+  draft_disclaimer:
+    ru: "ЧЕРНОВИК: сценарий ещё не подписан юристом. Ссылки на нормы и сроки подлежат проверке."
+    kk: "ЖОБА: сценарийге заңгер әлі қол қоймаған. Нормаларға сілтемелер мен мерзімдер тексерілуге жатады."
+  service_disclaimer:
+    ru: "Konsiliér AI помогает подготовить и подать документы и следит за сроками. Если нужно довести дело до результата — подключим профессионального юриста платформы. Документы подаются от вашего имени."
+    kk: "Konsiliér AI құжаттарды дайындауға және беруге көмектеседі, мерзімдерді бақылайды. Істі нәтижеге жеткізу керек болса — платформаның кәсіби заңгерін қосамыз. Құжаттар сіздің атыңыздан беріледі."
+# Official legal databases: we link to and cite them only (docs/legal-sources.md).
+# verified_on: URL and operator confirmed online on that date; absent = not confirmed.
+legal_sources:
+- id: adilet
+  name:
+    en: Legal Information System Adilet
+    ru: ИПС «Әділет»
+    kk: «Әділет» АҚЖ
+  url: https://adilet.zan.kz/rus
+  operator: RSE «Institute of Legislation and Legal Information of the Republic of Kazakhstan», Ministry of Justice
+  kind: legislation
+  languages:
+  - kk
+  - ru
+  - en
+  access: web
+  api: unknown
+  terms_url: https://adilet.zan.kz/rus/terms
+  reuse_note: 'Terms: non-commercial copying of individual items allowed with the source «Әділет» and http://adilet.zan.kz/
+    indicated; other use needs written consent.'
+  verified_on: 2026-09-27
+  key_acts:  # verified_on is set once the code was opened on the portal and the title matched
+  - code: K1500000414
+    title:
+      ru: Трудовой кодекс Республики Казахстан
+    verified_on: 2026-09-28
+  - code: K940001000_
+    title:
+      ru: Гражданский кодекс Республики Казахстан (Общая часть)
+  - code: K990000409_
+    title:
+      ru: Гражданский кодекс Республики Казахстан (Особенная часть)
+  - code: K1400000235
+    title:
+      ru: Кодекс Республики Казахстан об административных правонарушениях
+  - code: K2000000350
+    title:
+      ru: Административный процедурно-процессуальный кодекс Республики Казахстан
+  - code: K1500000377
+    title:
+      ru: Гражданский процессуальный кодекс Республики Казахстан
+  - code: K1100000518
+    title:
+      ru: Кодекс Республики Казахстан «О браке (супружестве) и семье»
+  - code: K1500000375
+    title:
+      ru: Предпринимательский кодекс Республики Казахстан
+  - code: Z100000274_
+    title:
+      ru: Закон Республики Казахстан «О защите прав потребителей»
+- id: ekb
+  name:
+    en: Reference Control Bank of Legal Acts (electronic)
+    ru: Эталонный контрольный банк НПА РК
+    kk: НҚА эталондық бақылау банкі
+  url: https://zan.gov.kz/client/
+  operator: RSE «Institute of Legislation and Legal Information of the Republic of Kazakhstan», Ministry of Justice
+  kind: registry
+  languages:
+  - kk
+  - ru
+  access: web
+  api: unknown
+  reuse_note: Official source of normative acts in control status; free access, updated daily.
+  verified_on: 2026-09-27
+- id: court_acts
+  name:
+    en: Bank of Court Acts (Judicial Office)
+    ru: Банк судебных актов (Судебный кабинет)
+    kk: Сот актілерінің банкі (Сот кабинеті)
+  url: https://office.sud.kz/courtActs/index.xhtml
+  operator: Supreme Court of the Republic of Kazakhstan
+  kind: case_law
+  languages:
+  - kk
+  - ru
+  access: web
+  api: unknown
+  reuse_note: 'Contains personal data of parties: link only; any import needs legal review and depersonalization.'
+  verified_on: 2026-09-27

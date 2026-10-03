@@ -1,0 +1,66 @@
+# ПИЛОТНЫЙ ЧЕРНОВИК (этап 5 ADR-0001). Не опубликован: нормы, сроки и адресаты не проверены юристом.
+# Срок обжалования постановления критичен — вносит только юрист (TODO(lawyer)). До этого дела с
+# близким сроком уходят юристу через правило urgent_deadline_days.
+id: kz.administrative.fine_appeal
+version: 0.0.1
+ontology: ADMIN.FINE.APPEAL
+taxonomy: administrative.fine_appeal
+jurisdiction: KZ
+languages: [ru, kk]
+owner: lawyer:kz-01
+reviewed_at: null
+published: false
+title:
+  ru: Обжалование штрафа
+  kk: Айыппұлға шағымдану
+summary:
+  ru: Вы не согласны с постановлением о штрафе и хотите его обжаловать.
+  kk: Айыппұл туралы қаулымен келіспейсіз және оған шағымданғыңыз келеді.
+classification:
+  keywords:
+    ru: [штраф, постановлени, оштрафовали, обжаловать штраф]
+    kk: [айыппұл, қаулы, шағымдану]
+  examples:
+    ru:
+      - Выписали штраф за парковку, но я стоял там, где разрешено
+claim:
+  type: annulment
+  amount_field: amount
+intake:
+  - respondent_name
+  - event_date: {type: date}
+  - amount: {type: money, currency: KZT, optional: true, question: {ru: "Какая сумма штрафа, в тенге?", kk: "Айыппұл сомасы қанша, теңгемен?"}}
+  - problem_description: {type: longtext}
+  - applicant_name: {pii: person}
+  - applicant_iin: {optional: true, pii: id_number, pattern: '^\d{12}$'}
+  - applicant_address: {pii: address}
+  - applicant_phone: {type: phone, pii: phone}
+  - evidence: [fine_decision, correspondence, other]
+parties:
+  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin, address_field: applicant_address}
+  respondent: {kind: authority, name_field: respondent_name}
+actions:
+  - id: complaint_superior
+    title: {ru: Жалоба на постановление о штрафе, kk: Айыппұл туралы қаулыға шағым}
+    template: kz/templates/generic/complaint.docx
+    channel: user_submits
+    # TODO(lawyer): адресат жалобы (вышестоящий орган, прокуратура или суд) зависит от органа,
+    # вынесшего постановление. Пока — сторона-орган; юрист заменит на forum из реестра.
+    addressee: {party: respondent}
+    norm_refs: [TODO]
+    demands:
+      ru: "отменить постановление о наложении административного штрафа и прекратить производство по делу, о принятом решении сообщить мне."
+    instructions:
+      ru:
+        - "Срок обжалования ограничен — точный срок уточнит юрист. Не откладывайте подачу."
+        - "Приложите копию постановления и доказательства."
+        - "Сохраните отметку о приёме или регистрационный номер и нажмите «Документ подан»."
+      kk:
+        - "Шағымдану мерзімі шектеулі — нақты мерзімді заңгер нақтылайды. Беруді кешіктірмеңіз."
+        - "Қаулының көшірмесін және дәлелдерді тіркеңіз."
+        - "Қабылдау белгісін не тіркеу нөмірін сақтап, «Құжат тапсырылды» батырмасын басыңыз."
+  - id: handoff_lawyer
+    kind: handoff
+    when: complaint_superior.response in [none, refusal, partial]
+    title: {ru: Передача дела юристу (обжалование в суде), kk: Істі заңгерге беру (сотта шағымдану)}
+pricing: {model: fixed, amount: 1990, currency: KZT}

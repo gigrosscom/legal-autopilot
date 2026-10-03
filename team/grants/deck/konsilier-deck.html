@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Konsiliér AI Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @font-face { font-family: 'Inter'; src: url('fonts/Inter.ttf') format('truetype'); font-weight: 100 900; font-style: normal; }
+  :root {
+    --ink: #0b172a;
+    --navy: #0e2a5a;
+    --accent: #8796b5;
+    --line: #e2e7ee;
+    --muted: #55617a;
+    --bg: #ffffff;
+    --soft: #f6f8fb;
+  }
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .slide {
+    width: 1280px; height: 720px; position: relative; overflow: hidden;
+    padding: 64px 80px 72px; background: var(--bg);
+    page-break-after: always; break-after: page;
+    display: flex; flex-direction: column;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -.01em; }
+  .brand svg { width: 22px; height: 22px; }
+  h1 { font-size: 40px; line-height: 1.12; font-weight: 700; letter-spacing: -.025em; color: var(--ink); max-width: 1000px; }
+  h1 .sub { color: var(--navy); }
+  .lead { margin-top: 14px; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 900px; }
+  .foot {
+    position: absolute; left: 80px; right: 80px; bottom: 28px;
+    display: flex; justify-content: space-between; font-size: 12px; color: var(--accent);
+    border-top: 1px solid var(--line); padding-top: 12px;
+  }
+  ul.pts { list-style: none; margin-top: 28px; display: grid; gap: 14px; }
+  ul.pts li { position: relative; padding-left: 22px; font-size: 18px; line-height: 1.45; color: var(--ink); }
+  ul.pts li::before { content: ""; position: absolute; left: 0; top: 11px; width: 8px; height: 2px; background: var(--navy); }
+  ul.pts.sm li { font-size: 16px; }
+  b, strong { font-weight: 600; color: var(--navy); }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 24px; background: var(--bg); }
+  .card h3 { font-size: 18px; font-weight: 600; color: var(--navy); margin-bottom: 8px; letter-spacing: -.01em; }
+  .card p { font-size: 15px; line-height: 1.5; color: var(--muted); }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .num { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: .08em; margin-bottom: 14px; }
+  .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .cap { font-size: 12px; color: var(--accent); margin-top: 8px; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 500; color: var(--navy); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; margin-top: 10px; background: var(--soft); }
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .flow .step { flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 18px; }
+  .flow .arrow { width: 28px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 18px; }
+  .flow .step h3 { font-size: 16px; font-weight: 600; color: var(--navy); }
+  .flow .step p { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
+  .big { font-size: 64px; font-weight: 700; letter-spacing: -.03em; color: var(--navy); line-height: 1; }
+  .src { font-size: 12px; color: var(--accent); margin-top: 10px; line-height: 1.4; }
+  .label { font-size: 15px; color: var(--ink); margin-top: 10px; font-weight: 500; }
+  .col-head { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--navy); margin-bottom: 12px; }
+  .rule { height: 1px; background: var(--line); margin: 16px 0; }
+  .timeline { position: relative; margin-top: 8px; padding-left: 0; }
+  .tl-row { display: grid; grid-template-columns: 140px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .tl-row:last-child { border-bottom: 1px solid var(--line); }
+  .tl-date { font-size: 15px; font-weight: 600; color: var(--navy); }
+  .tl-text { font-size: 16px; color: var(--ink); line-height: 1.45; }
+  .person { display: flex; gap: 18px; align-items: center; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 22px; letter-spacing: .02em; flex: none; }
+  .person .n { font-size: 20px; font-weight: 600; color: var(--ink); }
+  .person .r { font-size: 15px; color: var(--muted); margin-top: 3px; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .role { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--navy); font-weight: 500; }
+  .facts { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .contact { font-size: 20px; font-weight: 600; color: var(--navy); }
+</style>
+</head>
+<body>
+
+<!-- Slide 1. Problem -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">01 · Problem</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>Everyday legal problems go unsolved because the first step is too hard</h1>
+  <div class="grid4" style="margin-top:36px">
+    <div class="card"><div class="num">REFUND</div><h3>Faulty product</h3><p>The shop refuses to return the money.</p></div>
+    <div class="card"><div class="num">WAGES</div><h3>Unpaid salary</h3><p>The employer delays or withholds pay.</p></div>
+    <div class="card"><div class="num">FRAUD</div><h3>Loan in my name</h3><p>Fraudsters took out a loan on someone else's documents.</p></div>
+    <div class="card"><div class="num">FINE</div><h3>Traffic fine</h3><p>A fine the driver believes is wrong.</p></div>
+  </div>
+  <ul class="pts sm" style="margin-top:34px">
+    <li>A lawyer is often too expensive for a small claim, so many people do nothing.</li>
+    <li>Those who try do not know what to write, where to file it or by what deadline.</li>
+    <li>Generic chatbots answer confidently but can cite laws that do not exist or no longer apply.</li>
+  </ul>
+  <div class="foot"><span>Konsiliér AI — AI assistant for legal questions</span><span>1 / 8</span></div>
+</section>
+
+<!-- Slide 2. Solution -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">02 · Solution</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>Konsiliér AI: understand your situation, then act</h1>
+  <p class="lead">An AI assistant for everyday legal questions. It explains, prepares and reminds; it does not promise an outcome.</p>
+  <div style="display:grid;grid-template-columns:1fr 440px;gap:40px;margin-top:30px;align-items:start">
+    <div>
+      <div class="flow">
+        <div class="step"><h3>Describe</h3><p>Free chat in plain Russian or Kazakh.</p></div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><h3>Understand</h3><p>Statutes cited only after opening the official text.</p><span class="chip">adilet.zan.kz</span></div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><h3>Document</h3><p>The service prepares the document.</p></div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><h3>File and track</h3><p>Where to file, plus deadline reminders.</p></div>
+      </div>
+      <ul class="pts sm" style="margin-top:26px">
+        <li>The AI cites a statute only after it opens the official text on adilet.zan.kz, and it shows the link.</li>
+        <li>The person files the document online (eOtinish, court e-filing, the agency's site); the app tracks the deadline.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="shot"><img src="img/home.png" alt="Konsiliér AI home page"></div>
+      <div class="cap">Home page, production build, September 2026</div>
+    </div>
+  </div>
+  <div class="foot"><span>Konsiliér AI — AI assistant for legal questions</span><span>2 / 8</span></div>
+</section>
+
+<!-- Slide 3. Product -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">03 · Product · live at konsilier.com</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>What works today</h1>
+  <div class="grid3" style="margin-top:24px">
+    <div><div class="shot"><img src="img/services.png" alt="Services page: Kazakhstan coverage by area of law"></div><div class="cap">Services: Kazakhstan coverage by area of law</div></div>
+    <div><div class="shot"><img src="img/app-chat.png" alt="Web app: start a question"></div><div class="cap">Web app: start a question in the AI chat</div></div>
+    <div><div class="shot"><img src="img/app-install.png" alt="Install page for the phone app (PWA)"></div><div class="cap">Phone app (PWA) with deadline notifications</div></div>
+  </div>
+  <ul class="pts sm" style="margin-top:22px;grid-template-columns:1fr 1fr;column-gap:40px;gap:10px 40px">
+    <li><b>Free AI chat</b> with a daily message limit, on free Google Gemini models. Documents are drafted by Anthropic Claude.</li>
+    <li><b>20 Kazakhstan scenarios</b>, each carried through to a finished document: refunds, unpaid wages, credit fraud, fine appeals, child support and more.</li>
+    <li><b>Filing guidance and deadline reminders</b> for each scenario. The user is asked to check the details before filing.</li>
+    <li><b>Telegram bot</b> that takes a case step by step in Russian and Kazakh.</li>
+    <li><b>Upload instead of typing:</b> the service reads PDFs, photos and DOCX files and asks only for what is missing.</li>
+    <li><b>Interface in five languages:</b> Russian, Kazakh, English, Turkish and Arabic.</li>
+  </ul>
+  <div class="foot"><span>Screenshots: konsilier.com production build, September 2026</span><span>3 / 8</span></div>
+</section>
+
+<!-- Slide 4. Market -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">04 · Market</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>Kazakhstan first: a country that is already online</h1>
+  <div class="grid3" style="margin-top:44px;gap:32px">
+    <div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">20.5M</div><div class="label">Population on 1 January 2026</div><div class="src">Bureau of National Statistics of Kazakhstan</div></div>
+    <div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">19.5M</div><div class="label">Internet users, 93.4% penetration, end of 2025</div><div class="src">DataReportal, Digital 2026: Kazakhstan</div></div>
+    <div style="border-top:2px solid var(--navy);padding-top:22px"><div class="big">16.9M</div><div class="label">Social media user identities, October 2025</div><div class="src">DataReportal, Digital 2026: Kazakhstan</div></div>
+  </div>
+  <ul class="pts sm" style="margin-top:40px">
+    <li>Acquisition runs on organic social media and a referral programme. Russian and Kazakh are covered from day one.</li>
+    <li>Next: the engine is country-agnostic, with data packs per country. 13 countries are planned (Central Asia, the Caucasus, Turkey, the Gulf, North Africa); <b>none of them is live yet</b>.</li>
+  </ul>
+  <div class="foot"><span>Sources: stat.gov.kz (published 13.02.2026); datareportal.com/reports/digital-2026-kazakhstan</span><span>4 / 8</span></div>
+</section>
+
+<!-- Slide 5. Business model -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">05 · Business model</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>Free to understand, paid to act</h1>
+  <div class="grid3" style="margin-top:40px">
+    <div class="card"><div class="col-head">Free</div><div class="price">AI chat</div><p>Chat with the AI assistant, with a daily message limit.</p></div>
+    <div class="card"><div class="col-head">Per document</div><div class="price">KZT 1,990</div><p>A fixed price per document in all 20 Kazakhstan scenarios. The document is created after payment.</p></div>
+    <div class="card"><div class="col-head">Full case</div><div class="price">KZT 9,990</div><p>Every document one case needs, in a single purchase.</p></div>
+  </div>
+  <ul class="pts sm" style="margin-top:36px">
+    <li>Payment today: Kaspi transfer, confirmed by the operator. Referral: after a friend's first payment, both get one free document.</li>
+    <li>No revenue forecast in this deck: the product launched on 28 September 2026.</li>
+  </ul>
+  <div class="foot"><span>Konsiliér AI — AI assistant for legal questions</span><span>5 / 8</span></div>
+</section>
+
+<!-- Slide 6. Traction -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">06 · Traction</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>Launched on 28 September 2026: day one</h1>
+  <p class="lead">We have only just started. No paying customers yet.</p>
+  <div class="timeline" style="margin-top:32px">
+    <div class="tl-row"><div class="tl-date">Before launch</div><div class="tl-text">20 Kazakhstan scenarios carried through to a finished document, statute checks against the official portal.</div></div>
+    <div class="tl-row"><div class="tl-date">28.09.2026</div><div class="tl-text">Product live: web app, PWA and Telegram bot.</div></div>
+    <div class="tl-row"><div class="tl-date">29.09.2026</div><div class="tl-text">ТОО «Konsilier AI» registered in Almaty, BIN 260940036818.</div></div>
+    <div class="tl-row"><div class="tl-date">Next 30 days</div><div class="tl-text">Growth through a referral programme and organic social media, with a marketing budget of KZT 0.</div></div>
+  </div>
+  <div class="foot"><span>Konsiliér AI — AI assistant for legal questions</span><span>6 / 8</span></div>
+</section>
+
+<!-- Slide 7. Team -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">07 · Team</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>A lean team, with AI in both the product and the operations</h1>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;margin-top:40px">
+    <div>
+      <div class="person"><div class="avatar">NK</div><div><div class="n">Nurlan Khabibulla</div><div class="r">Founder &amp; CTO · background in law, business and management; built the product end to end</div></div></div>
+      <div class="rule"></div>
+      <div class="person"><div class="avatar">ST</div><div><div class="n">Saltanat Tulegenova</div><div class="r">CEO · lawyer, student</div></div></div>
+      <div class="rule"></div>
+      <p class="facts">ТОО «Konsilier AI», registered 29.09.2026 in Almaty, Kazakhstan · BIN 260940036818<br>External funding raised: none</p>
+    </div>
+    <div>
+      <div class="col-head">Operations: six AI agent roles</div>
+      <div class="roles">
+        <div class="role">Project manager</div><div class="role">Marketing</div><div class="role">Content</div>
+        <div class="role">Client support</div><div class="role">Documentation</div><div class="role">Finance</div>
+      </div>
+      <p class="lead" style="font-size:16px;margin-top:18px">Each role reports to the founders twice a day. The founders approve every spend, publication and outbound message.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Konsiliér AI — AI assistant for legal questions</span><span>7 / 8</span></div>
+</section>
+
+<!-- Slide 8. Ask -->
+<section class="slide">
+  <div class="top"><span class="eyebrow">08 · Ask</span><span class="brand"><svg viewBox="0 0 32 32"><g transform="translate(7.5 6) scale(0.25)"><path fill="#0B172A" d="M6 4h16v72H6zM28 38 49 16h22L49 38z"/><path fill="#8796B5" d="m28 43 23 33h22L49 43z"/></g></svg>Konsiliér AI</span></div>
+  <h1>What we are asking for</h1>
+  <div class="grid3" style="margin-top:36px">
+    <div class="card" style="border-color:var(--navy)"><div class="col-head">NVIDIA Inception</div><p>Cloud credits to test self-hosted open models on NVIDIA GPUs for three steps: redacting personal data in Russian and Kazakh, routing messages to the right scenario, and statute search. DLI training for the team.</p></div>
+    <div class="card"><div class="col-head">Google for Startups</div><p>Cloud credits for Gemini: the chat runs on the free Gemini tier today, which caps how many people we can serve.</p></div>
+    <div class="card"><div class="col-head">AWS Activate</div><p>Credits for Claude on Amazon Bedrock (the provider layer already supports it). Document drafting on Claude is capped today at USD 3 a day.</p></div>
+  </div>
+  <ul class="pts sm" style="margin-top:32px">
+    <li>Why it matters: by our estimate the free model tier handles only a few hundred active users per day, while our month-one goal is 100,000 users.</li>
+  </ul>
+  <div style="margin-top:auto;margin-bottom:28px;display:flex;gap:40px;align-items:baseline">
+    <span class="contact">dev@konsilier.com</span><span class="contact" style="color:var(--accent)">konsilier.com</span>
+    <span class="facts">Nurlan Khabibulla, Founder &amp; CTO</span>
+  </div>
+  <div class="foot"><span>Konsiliér AI — AI assistant for legal questions</span><span>8 / 8</span></div>
+</section>
+
+</body>
+</html>

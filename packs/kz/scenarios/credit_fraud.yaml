@@ -1,0 +1,88 @@
+id: kz.money.credit_fraud
+version: 0.1.0
+ontology: MONEY.CREDIT.FRAUD
+taxonomy: finance.fraudulent_loan
+jurisdiction: KZ
+languages: [ru, kk]
+owner: lawyer:kz-01
+reviewed_at: null
+published: true
+title:
+  ru: Кредит или займ, оформленный мошенниками
+  kk: Алаяқтар рәсімдеген несие немесе қарыз
+summary:
+  ru: На ваше имя без вашего ведома оформили кредит в банке или займ в МФО.
+  kk: Сіздің хабарыңызсыз атыңызға банкте несие немесе МҚҰ-да қарыз рәсімделген.
+classification:
+  keywords:
+    ru: [кредит, займ, мфо, микрофинанс, мошенник, оформили, не брал, без моего ведома, без моего согласия, кредитн, взломали, звонили из банка]
+    kk: [несие, қарыз, алаяқ, рәсімдеп, банк]
+  examples:
+    ru:
+      - Мне пришло SMS, что на меня оформлен займ в МФО, я его не брал
+      - Мошенники взломали приложение банка и взяли кредит на моё имя
+claim:
+  type: credit_contract_challenge
+  amount_field: amount
+intake:
+  - lender_name
+  - lender_bin: {optional: true, pattern: '^\d{12}$'}
+  - contract_number: {optional: true}
+  - loan_date: {type: date}
+  - amount: {type: money, currency: KZT, question: {ru: "На какую сумму оформлен займ, в тенге?", kk: "Қарыз қандай сомаға рәсімделді, теңгемен?"}}
+  - problem_description: {type: longtext}
+  - police_report_number: {optional: true}
+  - applicant_name: {pii: person}
+  - applicant_iin: {pii: id_number, pattern: '^\d{12}$'}
+  - applicant_phone: {type: phone, pii: phone}
+  - lender_email: {type: email, optional: true}
+  - evidence: [credit_report, loan_notice, police_report, correspondence]
+  - identity_document: [id_document]
+parties:
+  applicant: {kind: person, name_field: applicant_name, id_field: applicant_iin}
+  respondent: {kind: business, name_field: lender_name, id_field: lender_bin, email_field: lender_email}
+actions:
+  - id: statement_to_lender
+    title: {ru: Заявление в банк / МФО о мошенническом займе, kk: Банкке / МҚҰ-ға алаяқтық қарыз туралы арыз}
+    template: kz/templates/money/statement_lender.docx
+    channel: email_or_user_submits
+    addressee: {party: respondent}
+    deadline: {calendar_days: 15, norm_ref: TODO}
+    norm_refs: [TODO]
+    demands:
+      ru: "провести служебное расследование по факту оформления займа от {loan_date} на сумму {amount} {currency} без моего волеизъявления; приостановить начисление вознаграждения, неустойки и взыскание; не передавать задолженность коллекторам; представить мне копии документов, на основании которых выдан заём, и сведения о способе идентификации заёмщика; по итогам — признать заём не оформленным мною и исключить сведения о нём из кредитной истории."
+    instructions:
+      ru:
+        - "Если ещё не сделали — подайте заявление в полицию (102 или ближайший отдел) и сохраните номер/талон: он понадобится банку и регулятору."
+        - "Подайте заявление в {addressee}: через отделение, официальный e-mail {addressee_email} или форму обращений в приложении/на сайте. Требуйте входящий номер."
+        - "Приложите: выписку из кредитного бюро, SMS/уведомления о займе, талон из полиции."
+        - "Нажмите «Документ подан» — мы отследим срок ответа ({deadline_days} дн.)."
+      kk:
+        - "Әлі жасамасаңыз — полицияға арыз беріңіз (102 не жақын бөлім) және нөмірін/талонын сақтаңыз: ол банкке және реттеушіге керек."
+        - "Арызды {addressee} ұйымына беріңіз: бөлімше, ресми {addressee_email} e-mail мекенжайы не қосымшадағы/сайттағы өтініш формасы арқылы. Кіріс нөмірін талап етіңіз."
+        - "Тіркеңіз: кредиттік бюродан үзінді көшірме, қарыз туралы SMS/хабарламалар, полиция талоны."
+        - "«Құжат тапсырылды» батырмасын басыңыз — жауап мерзімін ({deadline_days} күн) бақылаймыз."
+  - id: complaint_arrf
+    when: statement_to_lender.response in [none, refusal, partial]
+    title: {ru: Жалоба в АРРФР, kk: ҚНРДА-ға шағым}
+    template: kz/templates/money/complaint_arrf.docx
+    channel: user_submits
+    addressee: {authority: arrf}
+    deadline: {business_days: 15, norm_ref: TODO}
+    norm_refs: [TODO]
+    demands:
+      ru: "провести проверку действий {lender_name} при выдаче займа от {loan_date} на сумму {amount} {currency}, оформленного без моего волеизъявления, и при рассмотрении моего заявления; принять меры надзорного реагирования; о результатах сообщить мне."
+    instructions:
+      ru:
+        - "Зайдите на {submit_url} (ЭЦП или SMS-код) и выберите получателя — {addressee}."
+        - "Вставьте текст жалобы, приложите PDF, заявление в {lender_name}, их ответ (если был) и талон из полиции."
+        - "Сохраните регистрационный номер обращения и нажмите «Документ подан»."
+      kk:
+        - "{submit_url} сайтына кіріңіз (ЭЦҚ не SMS-код) және алушыны таңдаңыз — {addressee}."
+        - "Шағым мәтінін қойып, PDF-ті, {lender_name} ұйымына берілген арызды, олардың жауабын (болса) және полиция талонын тіркеңіз."
+        - "Өтініштің тіркеу нөмірін сақтап, «Құжат тапсырылды» батырмасын басыңыз."
+  - id: handoff_lawyer
+    kind: handoff
+    when: complaint_arrf.response in [none, refusal, partial]
+    title: {ru: Передача дела юристу, kk: Істі заңгерге беру}
+pricing: {model: fixed, amount: 1990, currency: KZT}

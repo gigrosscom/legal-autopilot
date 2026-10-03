@@ -1,0 +1,231 @@
+# Реестр органов и организаций (Казахстан) для универсального пути (уровень 2).
+# ВСЕ записи не проверены юристом (verified_at: null): пользователь видит «уточнит юрист»
+# вместо сроков и пошлин, документы уровня 2 выдаются только после одобрения юриста.
+# Наименования — родовые категории органов; точные наименования, подсудность, пошлины и сроки — TODO(lawyer).
+# Религиозные форумы в пакет KZ не добавляются (решение основателя, ADR 0001, раздел 6).
+forums:
+  # Досудебная претензия — самой организации или человеку, с которым спор (продавец, банк, работодатель,
+  # арендодатель, должник). Не орган: решения не выносит, но это обязательный или полезный первый шаг.
+  - id: kz.counterparty.claim
+    type: private_org
+    instance: first
+    name:
+      ru: "Организация или человек, с которым спор (досудебная претензия)"
+      kk: "Дау туындаған ұйым немесе адам (сотқа дейінгі талап-арыз)"
+    accepts:
+      - branches: [consumer, finance, housing, labor, civil]
+        applicant_roles: [consumer, borrower, tenant, landlord, employee, claimant]
+    document_types: [claim_letter]
+    submission:
+      - kind: in_person
+        note: {ru: "Вручите лично и попросите отметку о принятии на втором экземпляре", kk: "Өзіңіз тапсырып, екінші данаға қабылдау белгісін сұраңыз"}
+      - kind: post
+      - kind: email
+    languages: [ru, kk]
+    appeals_to: [kz.regulator.consumer, kz.regulator.financial, kz.labor_inspection, kz.court.district]
+    legal_effect: none
+    source: "Досудебное урегулирование: ГК РК, Закон о защите прав потребителей, ТК РК — ссылки проставит юрист"
+
+  - id: kz.court.district
+    type: court
+    instance: first
+    name:
+      ru: "Районный (городской) суд по подсудности (конкретный суд уточнит юрист)"
+      kk: "Сотталуы бойынша аудандық (қалалық) сот (нақты сотты заңгер нақтылайды)"
+    jurisdiction:
+      rule:
+        ru: "Как правило, по месту жительства ответчика; есть исключения — уточнит юрист."
+        kk: "Әдетте жауапкердің тұрғылықты жері бойынша; ерекшеліктер бар — заңгер нақтылайды."
+    accepts:
+      - branches: [civil, family, labor, housing, inheritance, consumer, finance]
+        applicant_roles: [claimant, victim, consumer, borrower, employee, tenant, landlord, heir, spouse, parent]
+    document_types: [lawsuit]
+    submission:
+      - kind: portal
+        url: https://office.sud.kz
+        note: {ru: "Судебный кабинет (вход по ЭЦП)", kk: "Сот кабинеті (ЭЦҚ арқылы кіру)"}
+      - kind: in_person
+    languages: [ru, kk]
+    fee: {note: {ru: "Размер госпошлины уточнит юрист", kk: "Мемлекеттік баж мөлшерін заңгер нақтылайды"}}
+    appeals_to: [kz.court.appeal]
+    legal_effect: binding
+    source: "TODO: ГПК РК, Закон о судебной системе — ссылки проставит юрист"
+
+  - id: kz.court.appeal
+    type: court
+    instance: appeal
+    name:
+      ru: "Суд апелляционной инстанции (областной суд) (уточнит юрист)"
+      kk: "Апелляциялық сатыдағы сот (облыстық сот) (заңгер нақтылайды)"
+    accepts:
+      - branches: [civil, family, labor, housing, inheritance, consumer, finance]
+    document_types: [appeal]
+    submission:
+      - kind: portal
+        url: https://office.sud.kz
+    languages: [ru, kk]
+    legal_effect: binding
+    source: "TODO: ГПК РК — ссылки проставит юрист"
+
+  - id: kz.police
+    type: police
+    instance: first
+    name:
+      ru: "Органы внутренних дел (полиция) по месту события"
+      kk: "Оқиға орны бойынша ішкі істер органдары (полиция)"
+    accepts:
+      - dispute_types: [criminal.crime_report]
+        applicant_roles: [victim]
+    document_types: [statement]
+    submission:
+      - kind: in_person
+        note: {ru: "Заявление регистрируется; попросите талон-уведомление", kk: "Арыз тіркеледі; талон-хабарлама сұраңыз"}
+    languages: [ru, kk]
+    appeals_to: [kz.prosecutor]
+    legal_effect: binding
+    source: "TODO: УПК РК — ссылки проставит юрист"
+
+  - id: kz.prosecutor
+    type: prosecutor
+    instance: any
+    name:
+      ru: "Органы прокуратуры по месту (уточнит юрист)"
+      kk: "Жергілікті прокуратура органдары (заңгер нақтылайды)"
+    accepts:
+      - dispute_types: [criminal.police_inaction, administrative.state_body_inaction]
+        applicant_roles: [victim, complainant]
+    document_types: [complaint]
+    submission:
+      - kind: portal
+        url: https://eotinish.kz
+        note: {ru: "Портал обращений (вход по ЭЦП или SMS)", kk: "Өтініштер порталы (ЭЦҚ не SMS арқылы)"}
+      - kind: in_person
+    languages: [ru, kk]
+    legal_effect: binding
+    source: "TODO: Закон о прокуратуре — ссылки проставит юрист"
+
+  - id: kz.regulator.financial
+    type: regulator
+    instance: first
+    name:
+      ru: "Агентство Республики Казахстан по регулированию и развитию финансового рынка (АРРФР)"
+      kk: "Қазақстан Республикасының Қаржы нарығын реттеу және дамыту агенттігі (ҚНРДА)"
+    accepts:
+      - dispute_types: [finance.bank_dispute, finance.debt_collectors]
+        applicant_roles: [borrower, consumer]
+    document_types: [complaint]
+    submission:
+      - kind: portal
+        url: https://eotinish.kz
+    languages: [ru, kk]
+    appeals_to: [kz.court.district]
+    legal_effect: binding
+    source: "TODO: подтвердить компетенцию и сроки рассмотрения"
+
+  - id: kz.regulator.consumer
+    type: regulator
+    instance: first
+    name:
+      ru: "Уполномоченный орган в сфере защиты прав потребителей (наименование уточнит юрист)"
+      kk: "Тұтынушылар құқығын қорғау саласындағы уәкілетті орган (атауын заңгер нақтылайды)"
+    accepts:
+      - dispute_types: [consumer.poor_service, housing.utilities]
+        applicant_roles: [consumer]
+    document_types: [complaint]
+    submission:
+      - kind: portal
+        url: https://eotinish.kz
+    languages: [ru, kk]
+    appeals_to: [kz.court.district]
+    legal_effect: binding
+    source: "TODO: Закон о защите прав потребителей — ссылки проставит юрист"
+
+  - id: kz.labor_inspection
+    type: local_authority
+    instance: first
+    name:
+      ru: "Местный орган по инспекции труда (наименование уточнит юрист)"
+      kk: "Еңбек инспекциясы жөніндегі жергілікті орган (атауын заңгер нақтылайды)"
+    accepts:
+      - dispute_types: [labor.unpaid_wages, labor.dismissal]
+        applicant_roles: [employee]
+    document_types: [complaint]
+    submission:
+      - kind: portal
+        url: https://eotinish.kz
+    languages: [ru, kk]
+    appeals_to: [kz.court.district]
+    legal_effect: binding
+    source: "TODO: Трудовой кодекс РК — ссылки проставит юрист"
+
+  - id: kz.ombudsman
+    type: ombudsman
+    instance: first
+    name:
+      ru: "Уполномоченный по правам человека в Республике Казахстан"
+      kk: "Қазақстан Республикасындағы Адам құқықтары жөніндегі уәкіл"
+    accepts:
+      - dispute_types: [administrative.state_body_inaction]
+        applicant_roles: [complainant]
+    document_types: [complaint]
+    submission:
+      - kind: post
+      - kind: in_person
+    languages: [ru, kk]
+    legal_effect: advisory
+    source: "TODO: подтвердить порядок обращения"
+
+  - id: kz.mediation
+    type: mediation
+    instance: first
+    name:
+      ru: "Медиатор (профессиональный или непрофессиональный) — по выбору сторон"
+      kk: "Медиатор (кәсіби не кәсіби емес) — тараптардың таңдауы бойынша"
+    accepts:
+      - branches: [civil, family, labor, housing, consumer]
+    document_types: [statement]
+    submission:
+      - kind: in_person
+    languages: [ru, kk]
+    legal_effect: advisory
+    source: "TODO: Закон о медиации — ссылки проставит юрист"
+
+  # Ходатайство — туда, где производство уже идёт (номер дела у пользователя есть или будет).
+  - id: kz.court.pending
+    type: court
+    instance: any
+    name:
+      ru: "Суд, в котором уже рассматривается ваше дело (ходатайство)"
+      kk: "Ісіңіз қаралып жатқан сот (өтінішхат)"
+    accepts:
+      - branches: [civil, family, labor, housing, inheritance, consumer, finance]
+    document_types: [motion]
+    submission:
+      - kind: portal
+        url: https://office.sud.kz
+      - kind: in_person
+    languages: [ru, kk]
+    legal_effect: binding
+    source: "TODO: ГПК РК — ходатайства участников процесса; ссылки проставит юрист"
+
+  - id: kz.police.case
+    type: police
+    instance: any
+    name:
+      ru: "Орган полиции, который уже проверяет ваше заявление (ходатайство)"
+      kk: "Арызыңызды тексеріп жатқан полиция органы (өтінішхат)"
+    accepts:
+      # заявление уже подано, а проверка стоит: ходатайство тому, кто её ведёт (или жалоба прокурору)
+      - dispute_types: [criminal.police_inaction]
+        applicant_roles: [victim, complainant]
+    document_types: [motion]
+    submission:
+      - kind: in_person
+        note: {ru: "Передайте следователю или в канцелярию, попросите отметку о принятии", kk: "Тергеушіге не кеңсеге беріп, қабылдау белгісін сұраңыз"}
+      - kind: portal
+        url: https://eotinish.kz
+    languages: [ru, kk]
+    appeals_to: [kz.prosecutor]
+    legal_effect: binding
+    source: "TODO: УПК РК — ходатайства потерпевшего; ссылки проставит юрист"
+
