@@ -368,7 +368,8 @@ class CaseEngine:
             options = self.forum_options(case)
             if not options:
                 return False
-            self.choose_forum(session, case, options[0]["id"], actor="system")
+            if not self.auto_choose_forum(session, case):  # the dispute's own route (children known), else the first
+                self.choose_forum(session, case, options[0]["id"], actor="system")
             if case.status != S.INTAKE.value or not case.scenario_id:
                 return case.status == S.QUALIFIED.value
         sc, pack = self.scenario_of(case), self.pack_of(case)
@@ -562,7 +563,7 @@ class CaseEngine:
         case.needs_review = not self.config.self_service
         # owner 02.10: the system picks the recipient — the dispute's own route (routes.yaml), else the pack rule
         # forum_order; the client only sees «Кому: …»
-        picked = cov.auto_forum(route.forums, route.dispute_id)
+        picked = cov.auto_forum(route.forums, route.dispute_id, safety.minor_children(text))
         if picked is not None:
             return self.choose_forum(session, case, picked.id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
@@ -601,7 +602,7 @@ class CaseEngine:
             return []
         lang = case.language
         out = []
-        for i, step in enumerate(route.steps, start=1):
+        for i, step in enumerate(route.steps_for(self.children_of(case)), start=1):
             if step.forum is not None:
                 kind, key, name = "forum", step.forum, pack.localized(cov.forums[step.forum].name, lang)
             elif step.authority is not None:
@@ -614,6 +615,11 @@ class CaseEngine:
                         "label": pack.localized(step.label, lang), "when": pack.localized(step.when, lang) or None,
                         "why": pack.localized(step.why, lang), "norm": step.norm})
         return out
+
+    def children_of(self, case: Case) -> str:
+        """Common children under 18 by what the person told (the story and the facts): «yes» / «no» / «unknown»."""
+        told = [case.initial_text or "", *(str(v) for v in (case.facts or {}).values() if isinstance(v, str))]
+        return safety.minor_children("\n".join(told))
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
         """Forums the user may still choose from (universal case waiting for a choice)."""
@@ -651,7 +657,8 @@ class CaseEngine:
             return False
         cov = self.pack_of(case).coverage
         options = {o["id"] for o in self.forum_options(case)}
-        picked = (cov.auto_forum([cov.forums[i] for i in cov.forums if i in options], case.taxonomy["dispute_id"])
+        picked = (cov.auto_forum([cov.forums[i] for i in cov.forums if i in options], case.taxonomy["dispute_id"],
+                                 self.children_of(case))
                   if cov else None)
         if picked is None:
             return False

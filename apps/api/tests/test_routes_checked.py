@@ -22,7 +22,7 @@ def test_new_routes_and_their_norms():
         "inheritance.acceptance": ("kz.notary", "ГК РК (Особенная часть), ст. 1072-1"),
     }
     for dispute, (forum, norm) in expect.items():
-        first = COV.routes[dispute].steps[0]
+        first = COV.routes[dispute].steps_for("unknown")[0]
         assert first.forum == forum and first.norm.startswith(norm), dispute
 
 

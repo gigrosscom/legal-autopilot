@@ -256,6 +256,9 @@ class RouteStep(_Strict):
     when: Localized = Field(default_factory=dict)  # condition for a later step: «если не ответили за 10 дней»
     why: Localized  # one line: why this addressee
     norm: str  # the norm behind it, as checked (act, article); "не подтверждено" when not opened
+    # the step only for this answer to «common children under 18?» (safety.minor_children): divorce goes to the
+    # juvenile court with them, to the registry office or the district court without (CMF art. 17 p. 1, art. 19 p. 2)
+    children: Literal["yes", "no", "unknown"] | None = None
 
     @model_validator(mode="after")
     def _one_target(self) -> "RouteStep":
@@ -267,6 +270,10 @@ class RouteStep(_Strict):
 class RecipientRoute(_Strict):
     steps: tuple[RouteStep, ...] = Field(min_length=1)
     note: Localized = Field(default_factory=dict)  # what the route does not cover («с несовершеннолетними детьми — …»)
+
+    def steps_for(self, children: str = "unknown") -> tuple[RouteStep, ...]:
+        """The steps for what is known of the children: a step bound to another answer is left out."""
+        return tuple(s for s in self.steps if s.children is None or s.children == children)
 
 
 class RecipientRoutes(_Strict):
