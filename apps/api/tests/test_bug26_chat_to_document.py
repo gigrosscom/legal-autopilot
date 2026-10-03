@@ -140,3 +140,27 @@ def test_the_clarifying_loop_still_brings_the_button(ctx, monkeypatch, kind, ask
     assert card["ready"] is True and card["title"], card  # «Составить документ» renders only when ready
     pay = api.c.post(f"/v1/cases/{cid}/payment", headers=api.h, json={"purpose": "document"})
     assert pay.status_code in (200, 422), pay.json()  # the bill or the form before it — never 409 no_document_path
+
+
+# prod dc5de58 (PM 03.10, browser root cause): classification runs in a background thread (background_jobs=thread), so
+# when the person insists before it finishes, scenario_id is still unset → has_path is False → no card, the loop went
+# on forever. background_jobs="off" reproduces it: the deferred requalify never runs, so the scenario is set only by
+# the synchronous requalify the insistence now triggers.
+@pytest.mark.parametrize("kind", list(CASES))
+def test_insisting_classifies_now_when_the_background_job_has_not_run(ctx, monkeypatch, kind):
+    monkeypatch.setattr(ai, "extract_fields", lambda *a, **k: {})
+    monkeypatch.setattr(ai, "qualify", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("429")))
+    ctx.container.settings.background_jobs = "off"  # the background classification never runs — the prod race
+    ctx.container.chat_agent, ctx.container.chat_fallback_agent = _agent(*LOOP, *LOOP), None
+    api = web_user(ctx)
+    said = CASES[kind]
+    cid = api.post("/v1/cases", expect=201, json={"text": said[0], "country": "KZ", "defer": True})["case"]["id"]
+    _say(ctx, api, cid, said[0])
+    with ctx.container.session_factory() as s:
+        assert not s.get(Case, uuid.UUID(cid)).scenario_id  # nothing classified it yet (the job was skipped)
+    r = _say(ctx, api, cid, "Составьте претензию")  # the insistence classifies the case here and now
+    assert r["offer_document"], r["text"]
+    with ctx.container.session_factory() as s:
+        assert s.get(Case, uuid.UUID(cid)).scenario_id, "classified synchronously on the insistence"
+    card = api.get(f"/v1/cases/{cid}/chat/document").json()
+    assert card["ready"] is True and card["title"], card
