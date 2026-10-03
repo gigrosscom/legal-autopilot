@@ -18,6 +18,7 @@ def test_new_routes_and_their_norms():
         "family.divorce": ("kz.court.juvenile", "КоБС РК, ст. 17 п. 1"),  # ГПК ст. 27 ч. 3
         "family.child_residence": ("kz.court.juvenile", "ГПК РК, ст. 27 ч. 3"),
         "inheritance.dispute": ("kz.court.district", "ГПК РК, ст. 31"),
+        "family.property_division": ("kz.court.district", "КоБС РК, ст. 37"),
         "tax.assessment_dispute": ("kz.gov.superior", "Налоговый кодекс РК 2025, ст. 191"),
         "inheritance.acceptance": ("kz.notary", "ГК РК (Особенная часть), ст. 1072-1"),
     }
