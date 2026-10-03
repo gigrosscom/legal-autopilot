@@ -66,6 +66,28 @@ def test_a_direct_dispute_classifies_when_the_taxonomy_model_is_down(ctx, monkey
         assert c.scenario_id or (c.taxonomy or {}).get("dispute_id"), (c.scenario_id, c.taxonomy, c.coverage_level)
 
 
+def test_the_scenario_survives_when_every_model_call_is_down(ctx, monkeypatch):
+    """P0 03.10 (prod 66e9379, browser): even after the universal router caught the taxonomy model, the debt case still
+    stayed «pending» — choose_forum sets the scenario and THEN calls extract_fields, which caught only LLMError, so a
+    different model error there rolled back the whole classification. extract_fields now degrades on any failure, so the
+    scenario (chosen from the words) persists and the card can appear. Here EVERY model call raises, as on prod."""
+    def boom(*a, **k):
+        raise RuntimeError("model down (quota) — any exception type")
+    monkeypatch.setattr(ai, "qualify", boom)
+    monkeypatch.setattr(ai, "classify_taxonomy", boom)
+    monkeypatch.setattr(ai, "extract_fields", boom)
+    ctx.container.settings.background_jobs = "off"
+    ctx.container.chat_agent, ctx.container.chat_fallback_agent = _agent("Опишите подробнее.", SOL, SOL, SOL), None
+    api = web_user(ctx)
+    debt = "Одолжил знакомому 500 000 тенге под расписку, срок прошёл, деньги не возвращает."
+    cid = api.post("/v1/cases", expect=201, json={"text": debt, "country": "KZ", "defer": True})["case"]["id"]
+    _say(ctx, api, cid, debt)
+    _say(ctx, api, cid, "Расписка есть. Составьте иск.")
+    with ctx.container.session_factory() as s:
+        c = s.get(Case, uuid.UUID(cid))
+        assert c.scenario_id, (c.scenario_id, c.taxonomy, c.coverage_level)  # chosen from the words, not rolled back
+
+
 def test_a_universal_case_without_a_dispute_is_classified_again(ctx, monkeypatch):
     """PM 03.10: the case went to the universal path with no dispute (the model was unsure); requalify_from_chat
     skipped every non-«verified» case, so it never got a scenario and never a card."""

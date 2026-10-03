@@ -703,11 +703,16 @@ class CaseEngine:
         case.currency = pack.currency
         self.audit(session, case, actor, "forum_chosen", forum=forum_id, scenario_id=sc.id)
         llm = self.llm_for(case)
-        values = ai.extract_fields(llm, sc, pack, case.language, case.initial_text or "", None,
-                                   self.missing_fields(case, sc))
-        self._apply_values(case, sc, pack, values, llm, strict=False)
-        self._save_vault(case, llm)
-        self.read_unread_evidence(case, sc, pack)
+        try:  # BUG-26 (prod 03.10): the scenario is already chosen from the words; pre-filling facts is best-effort, so
+            # a model outage here (any error) must not roll back the scenario — the facts are asked in the interview.
+            values = ai.extract_fields(llm, sc, pack, case.language, case.initial_text or "", None,
+                                       self.missing_fields(case, sc))
+            self._apply_values(case, sc, pack, values, llm, strict=False)
+            self._save_vault(case, llm)
+            self.read_unread_evidence(case, sc, pack)
+        except Exception:  # noqa: BLE001 — classification stands even when the model is down
+            log.warning("choose_forum: pre-filling facts failed for case %s, asking them in the interview", case.id,
+                        exc_info=True)
         forum_name = pack.localized(pack.coverage.forums[forum_id].name, case.language)
         intro = pack.t(case.language, "routing.universal_intro", forum=forum_name)
         reply = self.ack_reply(session, case) or self._next_step(session, case, sc, pack)
