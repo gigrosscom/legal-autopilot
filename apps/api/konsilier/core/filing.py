@@ -97,6 +97,8 @@ def filing_view(pack: "JurisdictionPack", sc: Scenario, spec: ActionSpec, *, lan
     if rd is not None:
         norm = _known(rd.norm_ref)
         response = {**_days(rd), "norm_ref": norm, "verified": norm is not None}
+        if today:  # QA BUG-19: a date before filing — the answer is due by it if the document is filed today
+            response["if_filed_today"] = pack.add_days(today, rd.calendar_days, rd.business_days).isoformat()
 
     # ---- the term to file: only when a lawyer put it into the data
     file_by = None

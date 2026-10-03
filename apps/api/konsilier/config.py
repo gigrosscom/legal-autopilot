@@ -294,6 +294,7 @@ class Settings(BaseSettings):
     email_send_per_case_day: int = 5  # letters per case in 24 hours
     email_send_per_user_hour: int = 10  # attempts per person in an hour
     send_followup_hours: float = 2.0  # «Ответили?» this long after sending (owner 01.10: 2–3 hours, not a day)
+    unfiled_reminder_hours: float = 24.0  # QA BUG-19: a ready document not marked filed — ask once (0 = off)
     sms_provider: str = ""  # mobizon | smsc | log ("log" only for development)
     sms_api_key: str | None = None  # Mobizon API key
     smsc_login: str | None = None
