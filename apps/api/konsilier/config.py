@@ -234,6 +234,11 @@ class Settings(BaseSettings):
     zann_court_sources: str = ""
     zann_court_refresh_days: int = 30  # walk the pages again for new documents (0 = never)
     zann_court_max_mb: float = 60.0
+    # the court-browser service (deploy/court-browser, a real Chromium): when set, pages and files go through it,
+    # one request every pause..pause+jitter seconds (never faster than the site's Crawl-delay); empty → plain HTTP
+    zann_court_browser_url: str = ""
+    zann_court_browser_pause: float = 5.0
+    zann_court_browser_jitter: float = 5.0
     zann_court_tz: str = "Asia/Almaty"
     chat_daily_limit: int = 40  # free consultation chat: messages per person per day (each one is a paid API call)
     anthropic_api_key: str | None = None

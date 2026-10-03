@@ -17,12 +17,14 @@ categories first), one request at a time with a pause (never shorter than the si
 
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import html
 import io
 import json
 import logging
+import random
 import re
 import threading
 import time
@@ -47,11 +49,11 @@ from .corpus import ZannCorpusJob, _aware, describe, retry_after, utcnow
 
 log = logging.getLogger(__name__)
 
-# Who we are, for the sites' logs — honestly (owner's rule: no disguise, no bypassing technical restrictions). sud.kz
-# (checked 01.10.2026) drops the connection for User-Agents with «collector», «spider», «bot» or «httpx», and the
-# sud.gov.kz file service answers 404 without a browser platform token: these are technical restrictions on robots,
-# so the collector reports state=blocked(robots_unreachable) and waits for a lawful route (permission of the Supreme
-# Court, Smart Bridge DODSVS-S-3457, or files saved by hand → zann-court-import). Not a browser string.
+# Who we are, for the sites' logs — honestly. sud.kz (checked 01.10.2026) drops the connection for User-Agents with
+# «collector», «spider», «bot» or «httpx», and the sud.gov.kz file service answers 404 without a browser platform
+# token; over plain HTTP the collector then reports state=blocked(robots_unreachable). The owner decided (02–03.10.2026)
+# to read the open pages through a real browser: ZANN_COURT_BROWSER_URL → deploy/court-browser (Chromium's own
+# User-Agent with our name and contact, no disguise, a captcha or challenge is never passed — BrowserFetcher).
 USER_AGENT = "Konsilier.AI/1.0 (+https://konsilier.com; Zann legal research; honours robots.txt and Crawl-delay)"
 FROM = "info@konsilier.com"
 ROBOTS_TOKEN = "konsilier.ai"
@@ -364,6 +366,66 @@ class CourtFetcher:
         raise RuntimeError("unreachable")
 
 
+class Blocked(Exception):
+    """The site answered with a captcha or a JS challenge instead of the page. Never solved or bypassed: the run stops
+    with state blocked(captcha) and the official route (an export, Smart Bridge) is the way on."""
+
+
+class BrowserFetcher:
+    """The same contract as CourtFetcher, through the court-browser service (deploy/court-browser: one real Chromium,
+    owner 02.10.2026 «настоящий браузер, только открытые страницы»): POST {url} → the page or file as it reached the
+    browser. One request at a time, a pause of ``delay`` + up to ``jitter`` seconds between them (raised to the site's
+    Crawl-delay by Collector.allowed), back-off on 429/5xx and on the service being down. A captcha or challenge page
+    raises Blocked — it is reported, not passed."""
+
+    def __init__(self, base_url: str, delay: float = 5.0, jitter: float = 5.0, retries: int = 3,
+                 timeout: float = 240.0, max_bytes: int = 60_000_000, sleep: Callable[[float], None] = time.sleep,
+                 client: httpx.Client | None = None, rand: Callable[[], float] = random.random):
+        self.base_url, self.delay, self.jitter, self.retries = base_url.rstrip("/"), delay, jitter, retries
+        self.max_bytes, self.sleep, self.rand = max_bytes, sleep, rand
+        self.client = client or httpx.Client(timeout=timeout)
+        self._last = 0.0
+
+    def __call__(self, url: str) -> Got:
+        for attempt in range(self.retries + 1):
+            wait = self._last + self.delay + self.jitter * self.rand() - time.monotonic()
+            if wait > 0:
+                self.sleep(wait)
+            self._last = time.monotonic()
+            try:
+                r = self.client.post(self.base_url + "/fetch", json={"url": url})
+            except httpx.TransportError:  # the browser service is restarting
+                if attempt == self.retries:
+                    raise
+                self.sleep(max(self.delay, 5.0) * 2 ** (attempt + 1))
+                continue
+            d = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            if d.get("blocked"):
+                raise Blocked(f"{d['blocked']} at {url}")
+            if r.status_code >= 500 or d.get("error"):  # the browser could not reach the site (reset, timeout)
+                if attempt == self.retries:
+                    raise httpx.TransportError(str(d.get("error") or f"court-browser HTTP {r.status_code}"))
+                self.sleep(max(self.delay, 5.0) * 2 ** (attempt + 1))
+                continue
+            status = int(d.get("status") or 0)
+            if status in (404, 410):
+                raise ActNotFound(url)
+            if status == 429 or status >= 500:
+                if attempt == self.retries:
+                    raise httpx.TransportError(f"HTTP {status} from {url}")
+                wait = retry_after(str(d.get("retry_after") or ""))
+                self.sleep(min(wait, 900.0) if wait is not None else max(self.delay, 5.0) * 2 ** (attempt + 1))
+                continue
+            if status >= 400:
+                raise ValueError(f"HTTP {status} from {url}")
+            data = base64.b64decode(d.get("body_b64") or "")
+            if len(data) > self.max_bytes:
+                raise ValueError(f"larger than {self.max_bytes} bytes")
+            self._last = time.monotonic()
+            return Got(data, d.get("content_type") or "", d.get("disposition") or "")
+        raise RuntimeError("unreachable")
+
+
 # ---------------------------------------------------------------------------------------------------- collector
 class SiteUnreachable(Exception):
     """robots.txt could not be read (resets, timeouts): nothing is fetched from that host in this run."""
@@ -382,7 +444,8 @@ class RunStats:
     masked: int = 0         # personal data replaced by labels in the stored texts
     bytes: int = 0          # gzip bytes stored
     stopped: str = ""       # budget | limit | idle | robots (closed by robots.txt) | unreachable (robots.txt not
-    #                         read: resets, timeouts) | errors (MAX_ERRORS_IN_A_ROW failures in a row)
+    #                         read: resets, timeouts) | errors (MAX_ERRORS_IN_A_ROW failures in a row) | captcha
+    #                         (a captcha or JS challenge answered instead of the page: never bypassed)
     error: str = ""         # the last error of the run
 
 
@@ -413,6 +476,8 @@ class Collector:
                 rules = Robots.parse(self.fetch(f"{parts.scheme}://{parts.netloc}/robots.txt").text, ROBOTS_TOKEN)
             except ActNotFound:
                 rules = Robots()
+            except Blocked:
+                raise
             except Exception as e:  # the site is unreachable: no rules, no crawling; the run stops as «unreachable»
                 raise SiteUnreachable(f"{host}: {describe(e)}") from e
             self._robots[host] = rules
@@ -446,6 +511,11 @@ class Collector:
                 before = stats.errors
                 try:
                     ok = self._page(arg, stats) if kind == "page" else self._doc(arg, stats)
+                except Blocked as e:
+                    log.warning("zann court: captcha or challenge, stopping (never bypassed): %s", e)
+                    stats.errors += 1
+                    stats.stopped, stats.error = "captcha", f"{e}"[:300]
+                    break
                 except SiteUnreachable as e:
                     log.warning("zann court: robots.txt unreadable, stopping: %s", e)
                     stats.errors += 1
@@ -522,6 +592,8 @@ class Collector:
                 row.state, row.done_at, row.found, row.error = "done", self.now(), 0, "404"
                 s.commit()
             return True
+        except Blocked:
+            raise
         except Exception as e:  # noqa: BLE001 — retried by a later step or run
             log.warning("zann court: page %s failed: %s", url, e)
             stats.errors += 1
@@ -583,6 +655,8 @@ class Collector:
                 d.state, d.fetched_at = "missing", self.now()
                 s.commit()
             return True
+        except Blocked:
+            raise
         except Exception as e:  # noqa: BLE001 — one bad file must not stop the run
             stats.errors += 1
             stats.error = f"{url}: {describe(e)}"[:300]
@@ -750,13 +824,14 @@ def court_metrics(session: Session) -> dict[str, Any]:
 STATUS_URL, STATUS_KIND = "#status", "status"
 STATES = {  # how a run ended → what the status line says
     "idle": "waiting", "budget": "waiting", "limit": "waiting",
-    "unreachable": "blocked(robots_unreachable)", "robots": "blocked(robots_closed)",
+    "unreachable": "blocked(robots_unreachable)", "robots": "blocked(robots_closed)", "captcha": "blocked(captcha)",
     "errors": "error(errors_in_a_row)",
 }
 
 
 def run_state(stopped: str, error: str = "") -> str:
-    """running | waiting | blocked(robots_unreachable) | blocked(robots_closed) | no_sources | error(<reason>)."""
+    """running | waiting | blocked(robots_unreachable) | blocked(robots_closed) | blocked(captcha) | no_sources |
+    error(<reason>)."""
     if stopped == "running":
         return "running"
     if stopped == "failed":
@@ -827,8 +902,12 @@ def build_collector(settings: Any, session_factory: sessionmaker[Session], stora
     site = load_site(settings.packs_dir, pick_country(settings.packs_dir, settings.zann_court_country))
     sources = tuple(x.strip() for x in settings.zann_court_sources.split(",") if x.strip())
     # ≤ 1–2 requests a second at most; a site's robots.txt Crawl-delay is applied on top by allowed()
-    fetch = fetch or CourtFetcher(delay=max(0.5, settings.zann_court_pause),
-                                  max_bytes=int(settings.zann_court_max_mb * 1_000_000), user_agent=site.user_agent)
+    max_bytes = int(settings.zann_court_max_mb * 1_000_000)
+    if fetch is None and settings.zann_court_browser_url:  # a real browser (deploy/court-browser), 1 page in 5–10 s
+        fetch = BrowserFetcher(settings.zann_court_browser_url, delay=max(1.0, settings.zann_court_browser_pause),
+                               jitter=max(0.0, settings.zann_court_browser_jitter), max_bytes=max_bytes)
+    fetch = fetch or CourtFetcher(delay=max(0.5, settings.zann_court_pause), max_bytes=max_bytes,
+                                  user_agent=site.user_agent)
     country = site.country
     return Collector(session_factory, storage, fetch, site, load_rules(settings.packs_dir, country), sources=sources,
                      refresh_days=settings.zann_court_refresh_days)
