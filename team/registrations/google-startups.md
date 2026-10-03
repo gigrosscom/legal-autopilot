@@ -1,4 +1,4 @@
-# Google for Startups Cloud Program — пакет заявки Konsiliér AI
+# Google for Startups Cloud Program — пакет заявки Konsilier AI
 
 Ведёт «Документация».
 
@@ -40,7 +40,7 @@ foundational structure and strategy and not only as a productivity/bolt-on layer
 
 ### 1.2. Требования и наше соответствие
 
-| Требование (официально) | Konsiliér AI | Источник |
+| Требование (официально) | Konsilier AI | Источник |
 |---|---|---|
 | Start: «Founded within the last 24 months» | ТОО зарегистрировано 29.09.2026 — да | [benefits](https://cloud.google.com/startup/benefits) |
 | Start: «Not yet received Google Cloud credits (beyond the free trial)» | Кредитов не получали (подтвердить владельцу) | там же |
@@ -145,7 +145,7 @@ accounts.google.com — проверено 30.09.2026), поэтому **точ�
 ### Тексты
 
 **Company / product description (~560 символов):**
-> Konsiliér AI is an AI legal assistant for people and small businesses in Kazakhstan, launched in September 2026 as a web app, an installable PWA and a Telegram bot. A free AI chat explains a user's rights in plain language and links every cited law to its official text on adilet.zan.kz. When action is needed, the user can buy a ready-to-file document under Kazakh law (claim, complaint, application) for KZT 1,990, or a full-case package for KZT 9,990. Personal data is de-identified before any text is sent to a language model. It is a software product, not a law firm.
+> Konsilier AI is an AI legal assistant for people and small businesses in Kazakhstan, launched in September 2026 as a web app, an installable PWA and a Telegram bot. A free AI chat explains a user's rights in plain language and links every cited law to its official text on adilet.zan.kz. When action is needed, the user can buy a ready-to-file document under Kazakh law (claim, complaint, application) for KZT 1,990, or a full-case package for KZT 9,990. Personal data is de-identified before any text is sent to a language model. It is a software product, not a law firm.
 
 **How is AI core to your product? (AI-first):**
 > AI is the product, not an add-on. Every user interaction starts in an AI chat that understands a legal problem described in Russian or Kazakh, maps it to one of 20 published Kazakhstan scenarios, and explains the relevant rules with links to official law texts. The chat runs on Google Gemini today. Documents are drafted by a language model from structured scenarios. Our roadmap is our own Russian/Kazakh legal language model, "Zann", built by fine-tuning open models on official legal texts.

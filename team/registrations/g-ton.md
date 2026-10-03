@@ -1,4 +1,4 @@
-# G-TON (Astana Hub) — заявка Konsiliér AI
+# G-TON (Astana Hub) — заявка Konsilier AI
 
 > ❌ **Отменено владельцем 01.10** — не подаём, не предлагать (decisions.md 01.10). Файл — архив.
 
@@ -34,7 +34,7 @@ Hub): https://astanahub.com/account/service/678231/request/689/create/
 
 ## 2. Ответы для формы (RU, вставлять как есть)
 
-**Название решения:** Konsiliér AI — ИИ-агент первой линии для обращений граждан.
+**Название решения:** Konsilier AI — ИИ-агент первой линии для обращений граждан.
 
 **Компания:** ТОО «Konsilier AI», БИН 260940036818, Алматы; сайт https://konsilier.com.
 

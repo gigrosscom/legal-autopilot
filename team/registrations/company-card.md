@@ -43,10 +43,10 @@
 
 ## Описание продукта (сверено с decisions и product.md на 30.09)
 
-**Одной строкой (RU):** Konsiliér AI — ИИ-помощник по юридическим вопросам для людей и малого бизнеса в Казахстане:
+**Одной строкой (RU):** Konsilier AI — ИИ-помощник по юридическим вопросам для людей и малого бизнеса в Казахстане:
 бесплатно объясняет права и за 1 990 ₸ готовит документ (претензию, жалобу, заявление) по законам РК.
 
-**One line (EN):** Konsiliér AI is an AI legal assistant for people and small businesses in Kazakhstan: it explains
+**One line (EN):** Konsilier AI is an AI legal assistant for people and small businesses in Kazakhstan: it explains
 rights for free and drafts a ready-to-file document (claim, complaint, application) under Kazakh law for 1,990 KZT.
 
 Правила для всех текстов заявок (из decisions):

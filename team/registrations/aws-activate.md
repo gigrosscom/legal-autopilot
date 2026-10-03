@@ -1,4 +1,4 @@
-# AWS Activate: пакет заявки Konsiliér AI
+# AWS Activate: пакет заявки Konsilier AI
 
 Ведёт «Документация».
 
@@ -70,7 +70,7 @@
 | Поле | Ответ |
 |---|---|
 | Company / Startup name | Konsilier AI LLP |
-| Product / brand name | Konsiliér AI |
+| Product / brand name | Konsilier AI |
 | Website | https://konsilier.com |
 | Company LinkedIn | https://www.linkedin.com/company/konsilier/ |
 | Country of incorporation / HQ | Kazakhstan |
@@ -90,10 +90,10 @@
 | Is the company government-owned or government-funded? | No |
 
 **Product description (short, ~1 sentence)**
-> Konsiliér AI is an AI legal assistant for people and small businesses in Kazakhstan: a free AI chat explains your rights with links to official law texts, and a ready-to-file legal document can be generated for a one-time fee.
+> Konsilier AI is an AI legal assistant for people and small businesses in Kazakhstan: a free AI chat explains your rights with links to official law texts, and a ready-to-file legal document can be generated for a one-time fee.
 
 **Product description (long)**
-> Konsiliér AI helps people and small businesses in Kazakhstan understand and act on everyday legal problems. A free AI chat explains the user's rights and links to the official texts of Kazakh law (adilet.zan.kz). When a formal document is needed, the service generates a ready-to-file claim, complaint or application under Kazakh law for a one-time fee of 1,990 KZT; a "full case" package costs 9,990 KZT. The product launched in September 2026 as a web app, an installable PWA and a Telegram bot, with 20 published Kazakhstan scenarios. Personal data is de-identified before any text is sent to a language model. Konsiliér AI is an AI tool: it does not provide lawyers and documents are drafts for the user to check before filing.
+> Konsilier AI helps people and small businesses in Kazakhstan understand and act on everyday legal problems. A free AI chat explains the user's rights and links to the official texts of Kazakh law (adilet.zan.kz). When a formal document is needed, the service generates a ready-to-file claim, complaint or application under Kazakh law for a one-time fee of 1,990 KZT; a "full case" package costs 9,990 KZT. The product launched in September 2026 as a web app, an installable PWA and a Telegram bot, with 20 published Kazakhstan scenarios. Personal data is de-identified before any text is sent to a language model. Konsilier AI is an AI tool: it does not provide lawyers and documents are drafts for the user to check before filing.
 
 **Target market**
 > Individuals and small businesses in Kazakhstan who need to understand their rights and prepare legal documents (claims, complaints, applications) without the cost of a law firm. Planned expansion through country packs for Central Asia, the Caucasus, Turkey and the MENA region.

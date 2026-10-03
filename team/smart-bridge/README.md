@@ -1,4 +1,4 @@
-# Заявки в Smart Bridge — пакет Konsiliér AI
+# Заявки в Smart Bridge — пакет Konsilier AI
 
 Подготовлено 29.09.2026. Цель: вход на konsilier.com через eGov и Mobile ID, подача заявлений в полицию прямо
 с сайта, статусы обращений eOtinish и — отдельным запросом — подача обращений в eOtinish.
