@@ -72,7 +72,7 @@ main { min-width: 0; display: grid; gap: 28px; padding-top: 28px; }
 /* each section is a sheet of the book: running head on top, folio at the bottom */
 section { background: var(--surface); border-radius: 8px; box-shadow: var(--shadow); padding: 28px clamp(20px, 5vw, 56px) 40px;
   scroll-margin-top: 16px; counter-increment: sheet; }
-section::before { content: "KONSILIER  /  БРЕНДБУК 1.0"; display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+section::before { content: "KONSILIER  /  БРЕНДБУК 1.1"; display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
   color: var(--faint); padding-bottom: 12px; margin-bottom: 36px; border-bottom: 1px solid var(--line); white-space: pre; }
 section.cover::before { content: none; }
 .pb { height: 0; }
@@ -249,7 +249,7 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
 
 <div class="wrap">
   <nav class="toc" aria-label="Содержание">
-    <p>Брендбук 1.0</p>
+    <p>Брендбук 1.1</p>
     <ol>
       <li><a href="#mission">Миссия и основа</a></li>
       <li><a href="#names">Названия</a></li>
@@ -283,7 +283,7 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
         <q>Освободить миллиард людей от правового бессилия.</q>
       </div>
       <div class="meta">
-        <span><b>Версия 1.0</b> · 03.10.2026</span>
+        <span><b>Версия 1.1</b> · 03.10.2026</span>
         <span>Основа: брендбук v0.9 (названия, голос, Конси) + действующий сайт и приложение</span>
         <span>Визуальные значения сняты с кода konsilier.com</span>
       </div>
@@ -295,20 +295,20 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
       <p class="lead">Сначала смысл бренда и то, как мы говорим. Потом визуальная система, как она сделана в продукте. В конце — где и кто её применяет.</p>
       <ol>
         <li><a href="#mission">Миссия и основа</a><span>3</span><small>Обещание, аудитория, характер</small></li>
-        <li><a href="#names">Названия</a><span>4</span><small>Konsilier, Консильер, Конси, Konsilier AI, написание, дескриптор</small></li>
-        <li><a href="#voice">Голос бренда</a><span>6</span><small>Принципы, кто говорит, словарь интерфейса</small></li>
-        <li><a href="#konsi">Конси</a><span>8</span><small>Персонализация образа и её границы</small></li>
-        <li><a href="#logo">Логотип</a><span>9</span><small>Словесный знак, знак K, охранное поле, запреты</small></li>
-        <li><a href="#color">Цвет</a><span>12</span><small>Палитра, светлая и тёмная темы, контраст</small></li>
-        <li><a href="#type">Типографика</a><span>15</span><small>Шрифты, шкала, правила набора</small></li>
-        <li><a href="#layout">Сетка и формы</a><span>18</span><small>Отступы, ширины, скругления, тени</small></li>
-        <li><a href="#ui">Компоненты</a><span>19</span><small>Кнопки, поля, чат, карточка документа</small></li>
-        <li><a href="#icons">Иконки и изображения</a><span>21</span><small>Стиль иконок, что можно и нельзя показывать</small></li>
-        <li><a href="#a11y">Доступность и движение</a><span>22</span><small>Нормы WCAG, касание, анимация</small></li>
-        <li><a href="#docs">Документы клиента</a><span>23</span><small>Официальное оформление претензий и исков</small></li>
-        <li><a href="#use">Применение</a><span>24</span><small>Носители и короткое описание продукта</small></li>
-        <li><a href="#promise">Обещания и риски</a><span>25</span><small>Что нельзя обещать</small></li>
-        <li><a href="#govern">Управление</a><span>26</span><small>Кто отвечает, источники, версии</small></li>
+        <li><a href="#names">Названия</a><span>4</span><small>Konsilier, Конси, Konsilier AI, Konsilier LM и Bench, написание</small></li>
+        <li><a href="#voice">Голос бренда</a><span>7</span><small>Принципы, кто говорит, словарь интерфейса</small></li>
+        <li><a href="#konsi">Конси</a><span>9</span><small>Персонализация образа и её границы</small></li>
+        <li><a href="#logo">Логотип</a><span>10</span><small>Словесный знак, знак K, охранное поле, запреты</small></li>
+        <li><a href="#color">Цвет</a><span>13</span><small>Палитра, светлая и тёмная темы, контраст</small></li>
+        <li><a href="#type">Типографика</a><span>16</span><small>Шрифты, шкала, правила набора</small></li>
+        <li><a href="#layout">Сетка и формы</a><span>19</span><small>Отступы, ширины, скругления, тени</small></li>
+        <li><a href="#ui">Компоненты</a><span>20</span><small>Кнопки, поля, чат, карточка документа</small></li>
+        <li><a href="#icons">Иконки и изображения</a><span>22</span><small>Стиль иконок, что можно и нельзя показывать</small></li>
+        <li><a href="#a11y">Доступность и движение</a><span>23</span><small>Нормы WCAG, касание, анимация</small></li>
+        <li><a href="#docs">Документы клиента</a><span>24</span><small>Официальное оформление претензий и исков</small></li>
+        <li><a href="#use">Применение</a><span>25</span><small>Носители и короткое описание продукта</small></li>
+        <li><a href="#promise">Обещания и риски</a><span>26</span><small>Что нельзя обещать</small></li>
+        <li><a href="#govern">Управление</a><span>27</span><small>Кто отвечает, источники, версии</small></li>
       </ol>
     </section>
 
@@ -342,6 +342,8 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
           <tr><td>Konsilier · Консильер</td><td class="wrap1">Бренд продукта и полное имя ИИ-помощника</td><td>Сайт, приложение, соцсети, магазины приложений, описание продукта</td></tr>
           <tr><td>Конси · Konsi</td><td class="wrap1">Короткое имя того же помощника</td><td>Приветствие, переписка, уведомления, шапка чата</td></tr>
           <tr><td>Konsilier AI</td><td class="wrap1">Компания: ТОО «Konsilier AI», англ. Konsilier AI LLP</td><td>Договоры, счета, печать, бланки, заявки, юридические тексты, подпись писем</td></tr>
+          <tr><td>Konsilier LM</td><td class="wrap1">Наша правовая языковая модель</td><td>Описание технологии, заявки, NVIDIA, инвесторы, пресса</td></tr>
+          <tr><td>Konsilier Bench</td><td class="wrap1">Наш бенчмарк качества правового ИИ</td><td>Отчёты о качестве, публикации, заявки, сравнение моделей</td></tr>
         </tbody>
       </table></div>
       <div class="rule">Konsilier — полное имя. Конси — короткое. Облик Конси выбирает пользователь, стандарт работы один.</div>
@@ -373,6 +375,28 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
         </tbody>
       </table></div>
       <p class="small">Не заменять дескриптор на «юрист», «адвокат», «юридическая помощь». Новый язык утверждает редактор-носитель.</p>
+      <div class="pb"></div>
+      <h3>Konsilier LM и Konsilier Bench</h3>
+      <p>Модель и бенчмарк называются по имени бренда, без отдельных имён.</p>
+      <ul class="plain">
+        <li>Так делают сильные компании: Mistral → Mistral Large, Cohere → Command.</li>
+        <li>Каждое упоминание модели и бенчмарка продвигает сам бренд Konsilier.</li>
+        <li>Товарные знаки уже проверены, нового риска нет.</li>
+        <li>Версии нумеруются просто: Konsilier LM 1, 2, 3.</li>
+        <li>Бенчмарк Konsilier Bench можно опубликовать открыто. Это сильный ход для инвесторов и NVIDIA: «мы задаём стандарт качества правового ИИ».</li>
+      </ul>
+      <div class="dodont">
+        <div class="do"><h4>Пишем</h4><ul>
+          <li>Konsilier LM 1 — номер версии через пробел</li>
+          <li>Konsilier Bench — в отчётах и публикациях</li>
+          <li>«ответы Konsilier LM 1 на Konsilier Bench» — так подписываем результаты</li>
+        </ul></div>
+        <div class="dont"><h4>Не пишем</h4><ul>
+          <li>Другие и прежние имена модели и бенчмарка</li>
+          <li>KonsilierLM, Konsilier-LM, Konsilier LM v1.0</li>
+          <li>Результаты Konsilier Bench без даты, версии модели и набора вопросов</li>
+        </ul></div>
+      </div>
       <div class="note"><b>Переход.</b> На сайте и в приложении пока стоит прежнее написание «Konsiliér AI» / «Консильéр». Его нужно заменить на
         «Konsilier» / «Консильер» одной правкой интерфейса. В официальных документах, печати и договорах уже используется «Konsilier AI».</div>
     </section>
@@ -812,7 +836,7 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
           <tr><td>UX/UI-дизайнер</td><td class="wrap1">Токены, компоненты, экраны до выкладки (390 / 1440, светлая и тёмная), доступность</td></tr>
           <tr><td>Бренд- и риск-менеджер</td><td class="wrap1">Каждая публикация, оффер и рассылка до выхода; образы Конси</td></tr>
           <tr><td>Редактор-лингвист</td><td class="wrap1">Тексты ru / kk / en, словарь интерфейса</td></tr>
-          <tr><td>ZANN</td><td class="wrap1">Юридическая точность утверждений и оформление документов</td></tr>
+          <tr><td>Юрист команды</td><td class="wrap1">Юридическая точность утверждений, оформление документов, эталоны Konsilier Bench</td></tr>
           <tr><td>Продакт-менеджер</td><td class="wrap1">Порядок выкладки, журнал решений</td></tr>
         </tbody>
       </table></div>
@@ -828,11 +852,12 @@ footer.end { padding: 8px 4px 0; font-size: 14px; color: var(--muted); }
         <thead><tr><th>Версия</th><th>Что изменилось</th></tr></thead>
         <tbody>
           <tr><td>0.9 · 03.10.2026</td><td class="wrap1">Названия, голос, Конси и персонализация, требования к визуальному паспорту</td></tr>
+          <tr><td>1.1 · 03.10.2026</td><td class="wrap1">Konsilier LM и Konsilier Bench — названия модели и бенчмарка</td></tr>
           <tr><td>1.0 · 03.10.2026</td><td class="wrap1">Миссия. Визуальный паспорт по действующему продукту: логотип, знак K, цвет #0866ff, типографика, сетка, компоненты, оформление документов, применение</td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <footer class="end">Konsilier AI · Брендбук 1.0 · 03.10.2026. Внутренний документ для команды и партнёров.</footer>
+    <footer class="end">Konsilier AI · Брендбук 1.1 · 03.10.2026. Внутренний документ для команды и партнёров.</footer>
   </main>
 </div>
