@@ -488,6 +488,18 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     complete = not missing_now or (missing_now != ["scenario"]
                                    and asked_and_answered(rows, missing_question(container, case, reply_lang, missing_now[0])))
     insists = bool(WANTS_DOCUMENT.search(body.text) or GIVE_SOLUTION.search(body.text) or ENOUGH.search(body.text))
+    if insists and not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        # BUG-26 (PM 03.10, prod race): the person asks for the document / the solution, but classification still runs
+        # in a background thread (background_jobs=thread) — scenario_id is not set yet, so «Составить документ» could
+        # not appear and the chat kept looping on the model's question. Classify now, in this request, from everything
+        # the person has told, so the card is offered at once (the recipient and the blanks follow as before).
+        try:
+            if container.engine.requalify_from_chat(session, case_pk):
+                session.commit()
+                case = session.get(Case, case_pk)
+        except Exception:  # noqa: BLE001 — the chat still answers; the next message tries again
+            session.rollback()
+            log.warning("chat: synchronous requalify failed for case %s", case_pk, exc_info=True)
     has_path = bool(case.scenario_id)
     if complete and case.scenario_id and case.status == "intake" and (
             body.attachments or case.evidence or ENOUGH.search(body.text)
@@ -674,7 +686,13 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 text = f"{text.rstrip()}\n\n{extra}"
                 yield _sse({"type": "text", "text": f"\n\n{extra}"})
                 asked_docs = True
-        if not result.offer_document and not held and has_path and OFFER_LINE.search(text):
+        if not result.offer_document and not held and has_path and (
+                OFFER_LINE.search(text)
+                # BUG-26 (owner 03.10): the intake has begun and the person asks for the document themselves
+                # («составьте претензию», «дайте решение», «хватит вопросов») — the card appears even when the free
+                # model asked one more clarifying question instead of offering; what is blank is asked in the form
+                # before payment. On the first reply documents-first still runs (R-30), so this holds off until then.
+                or (not first_reply and insists)):
             # BUG-26 (prod 03.10): «Претензию подготовлю с вашими данными — готовый PDF и Word» with no card under it
             result.offer_document = True
         if result.offer_document:
