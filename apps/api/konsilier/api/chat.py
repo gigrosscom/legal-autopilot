@@ -208,6 +208,19 @@ NO_DOCUMENTS = re.compile(r"(?<!\w)нет(?!\w)|позже|потом|не мо�
                           r"(?<!\w)жоқ(?!\w)|кейін", re.IGNORECASE)
 
 
+# the documents a person names in their own words («акт от КСК есть», «чек сохранился»), in the reply's language
+_TOLD_DOCS = (("акт", "акт", "акт"), ("чек", "чек", "чек"), ("квитанц", "квитанция", "түбіртек"),
+              ("договор", "договор", "шарт"), ("расписк", "расписка", "қолхат"), ("переписк", "переписка", "хат алмасу"),
+              ("смет", "смета", "смета"), ("скриншот", "скриншоты", "скриншоттар"), ("гарантийн", "гарантийный талон",
+              "кепілдік талоны"), ("постановлени", "постановление", "қаулы"), ("приказ", "приказ", "бұйрық"))
+
+
+def told_documents(text: str, lang: str) -> str:
+    low = (text or "").lower()
+    names = [kk if lang == "kk" else ru for stem, ru, kk in _TOLD_DOCS if re.search(rf"(?<!\w){stem}", low)]
+    return ", ".join(dict.fromkeys(names))
+
+
 def needs_documents_line(text: str, *, asked_before: bool, offer: bool, files: bool, told: str) -> bool:
     """A fact-finding question (no solution, no offer) that does not ask for the documents, in a chat where they were
     never asked and none came, after a story (not «здравствуйте»). The QA gate (scripts/qa_gate.py) uses it too."""
@@ -586,8 +599,11 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                     asked = any((m.meta or {}).get("asked_documents") for m in rows if m.role == "assistant")
                     reminded = any((m.meta or {}).get("docs_reminder") for m in rows if m.role == "assistant")
                     if asked and not reminded:
-                        q = pack.t(reply_lang if reply_lang in ("ru", "kk") else lang, "chat_documents.remind",
-                                   default="")
+                        lg = reply_lang if reply_lang in ("ru", "kk") else lang
+                        named = told_documents(" ".join(m.text for m in rows if m.role == "user"), lg)
+                        # PM 03.10: the person said «акт от КСК есть» — the reminder says so, not «не вижу документов»
+                        q = (pack.t(lg, "chat_documents.remind_named", docs=named, default="") if named else "") or \
+                            pack.t(lg, "chat_documents.remind", default="")
                         docs_reminder = bool(q)
                 route = eng.recipient_route(cc) if cc is not None and not q else []
                 kinds = (eng.pack_of(cc).coverage.routing.document_kinds
