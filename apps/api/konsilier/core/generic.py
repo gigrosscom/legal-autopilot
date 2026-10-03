@@ -137,6 +137,8 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
             if fld.name not in seen:
                 intake.append(fld)
                 seen.add(fld.name)
+    if route is not None and route.claim_unpriced:  # a divorce: no sum is asked or printed (CPC art. 148 p. 2 sub. 7)
+        intake = [f for f in intake if f.name not in ("amount", "claim_amount")]
     # ZANN 03.10 (family pilot): the dispute route's own documents (routes.yaml `documents`) are the files asked for,
     # with «Другой документ» kept for anything else; without a list — any document
     own = tuple(k for k in (route.documents if route is not None else ()) if k != "id_document")

@@ -190,7 +190,8 @@ def missing_question(container: Container, case: Case, lang: str, field: str) ->
     except Exception:  # noqa: BLE001
         return ""
     lg = pack.lang(lang)
-    return pack.t(lg, f"chat_ask.{field}", default="") or eng.question_for(sc, pack, lg, field).text or ""
+    return (eng.fact_ask(sc, pack, lg, field) or pack.t(lg, f"chat_ask.{field}", default="")
+            or eng.question_for(sc, pack, lg, field).text or "")
 
 
 def asked_and_answered(rows: list[Any], question: str) -> bool:

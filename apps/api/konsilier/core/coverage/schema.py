@@ -291,6 +291,9 @@ class RecipientRoute(_Strict):
     claim_demands: Localized = Field(default_factory=dict)
     claim_norms: tuple[str, ...] = ()
     claim_unpriced: bool = False
+    # the dispute's own words for a fact the solution waits for (field → text): «во сколько оцениваете имущество» for
+    # a division, never «во сколько оцениваете ущерб» (ZANN 03.10)
+    facts_ask: dict[str, Localized] = Field(default_factory=dict)
 
     def steps_for(self, children: str = "unknown") -> tuple[RouteStep, ...]:
         """The steps for what is known of the children: a step bound to another answer is left out."""

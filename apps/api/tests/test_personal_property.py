@@ -58,3 +58,19 @@ def test_alimony_is_not_taken_for_personal_property(ctx):
     cov = PackRegistry.load(Path(__file__).parents[3] / "packs").pack("KZ").coverage
     rule = direct_dispute(cov, "Бывший не платит алименты, квартира куплена до брака")
     assert rule is None or rule.dispute != "family.personal_property"
+
+
+def test_the_sum_is_asked_as_the_property_value_and_never_in_a_divorce(ctx):
+    """ZANN 03.10: «во сколько оцениваете ущерб» was asked in a property division; a divorce has no price at all."""
+    from konsilier.core.generic import GenericRef
+
+    eng = ctx.container.engine
+    packs, pack = eng.packs, eng.packs.pack("KZ")
+    div = packs.scenario(GenericRef("KZ", "family.divorce", "spouse", "kz.court.district").scenario_id)
+    assert not {f.name for f in div.intake} & {"amount", "claim_amount"}
+    assert eng.question_for(div, pack, "ru", "event_date").text == "Когда зарегистрирован брак?"
+    for dispute in ("family.property_division", "family.personal_property"):
+        sc = packs.scenario(GenericRef("KZ", dispute, "spouse", "kz.court.district").scenario_id)
+        q = eng.question_for(sc, pack, "ru", "claim_amount").text
+        assert "оцениваете имущество" in q and "ущерб" not in q
+        assert "имущество" in eng.question_for(sc, pack, "kk", "claim_amount").text or "мүлік" in eng.question_for(sc, pack, "kk", "claim_amount").text

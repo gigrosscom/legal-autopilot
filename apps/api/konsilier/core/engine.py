@@ -833,7 +833,7 @@ class CaseEngine:
             names = {f.name: f for f in sc.intake}
             if "event_date" in names and not facts.get("event_date"):
                 out.append("event_date")
-            sums = [n for n in ("claim_amount", "amount") if n in names]
+            sums = [n for n in ("claim_amount", "amount") if n in names]  # none in a divorce (claim_unpriced)
             if sums and not any(facts.get(n) for n in sums):
                 out.append(sums[0])
         return out
@@ -1028,10 +1028,21 @@ class CaseEngine:
         documents = ", ".join(labels) or pack.t(lang, "interview.documents_any", default="")
         return pack.t(lang, "interview.intro", documents=documents, **names)
 
+    def route_of(self, sc: Scenario, pack: JurisdictionPack) -> Any:
+        """The dispute route (routes.yaml) of a universal-path scenario, else None."""
+        if not is_generic(sc.id) or pack.coverage is None:
+            return None
+        return pack.coverage.routes.get(sc.ontology or "")
+
+    def fact_ask(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> str:
+        """The dispute's own question for a fact (routes.yaml facts_ask), else ""."""
+        route = self.route_of(sc, pack)
+        return pack.localized(route.facts_ask[name], lang) if route is not None and name in route.facts_ask else ""
+
     def question_for(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> Question:
         f = sc.field(name)
-        text = pack.localized(f.question, lang) if f.question else pack.t(
-            lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name))
+        text = self.fact_ask(sc, pack, lang, name) or (pack.localized(f.question, lang) if f.question else pack.t(
+            lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name)))
         if f.type == "evidence" and not f.question and IDENTITY_KIND not in f.evidence_kinds and is_generic(sc.id):
             # PM 03.10 (family sweep): the universal path's files were asked «договор, акт сверки, счёт-фактуру, чек»
             # in a divorce — its own list (routes.yaml documents) or neutral words, never the purchase one
