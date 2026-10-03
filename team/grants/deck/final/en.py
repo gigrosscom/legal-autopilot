@@ -3,7 +3,7 @@ c=lambda n,h,p:f'<div class="c"><div class="n">{n}</div><h3>{h}</h3><p>{p}</p></
 k=lambda h,p:f'<div class="c"><h3>{h}</h3><p>{p}</p></div>'
 st=lambda b,l,s:f'<div class="c"><div class="big">{b}</div><div class="lbl">{l}</div><div class="src">{s}</div></div>'
 T={'title':'Pitch Deck','foot':'AI assistant for legal questions',
-'cover':{'tag':'Pre-seed $500,000 · $5M valuation · October 2026','ey':'Our mission','h':'Free a billion people from legal helplessness','sub':'The law should work for everyone — not only for those who can afford a lawyer.','l':'konsilier.com · web, phone app, Telegram','r':'Konsilier AI LLP · dev@konsilier.com'},
+'cover':{'tag':'Pre-seed $500,000 · $5M post-money · October 2026','ey':'Our mission','h':'Free a billion people from legal helplessness','sub':'The law should work for everyone — not only for those who can afford a lawyer.','l':'konsilier.com · web, phone app, Telegram','r':'Konsilier AI LLP · dev@konsilier.com'},
 'slides':[
 ('Problem','Millions of people face the law alone',
  '<div class="g g3">'+k('Expensive','A lawyer in Almaty charges KZT 4,200–25,000 for a claim letter and KZT 100–250k for court. For a KZT 30k dispute it does not pay off.')+k('Confusing','Laws are written in complex language. People know neither their rights, nor where to go, nor the deadline.')+k('Slow','Finding a lawyer, meetings, waiting — days and weeks, while the legal deadlines keep running.')+'</div>'
@@ -46,7 +46,7 @@ T={'title':'Pitch Deck','foot':'AI assistant for legal questions',
  '<div class="g g2">'+k('Nurlan Khabibulla','Founder & CTO. Designed and built the product end to end.')+k('Saltanat Tulegenova','CEO, director of the LLP. Lawyer.')+'</div>'
  '<div class="c" style="margin-top:18px"><h3>AI team</h3><p>Product manager, developer, integrations, QA, documentation, finance, marketing, brand-risk manager, AI legal agent. Founders approve every spend, publication and outbound message.</p>'
  '<span class="pill">Plan in 6 months: 9 people</span><span class="pill">4 ML engineers</span><span class="pill">3 account managers</span></div>'),
-('Ask','Raising $500,000 at a $5M valuation',
+('Ask','Raising $500,000 for 10% · $5M post-money',
  '<div class="g g3">'+k('Konsilier LM','GPUs and model training, corpus and Konsilier Bench — servers and GPUs ≈ KZT 0.9M a month.')+k('Team and office','9 people: CEO, 4 ML engineers, 3 account managers, accountant. ≈ KZT 10.1M a month; one-off ≈ KZT 7–8.5M.')+k('Go-to-market','50 → 490 active lawyers, then the first EU/US market. Team break-even ≈ 590 lawyer cases a month.')+'</div>'
  '<p class="lead" style="margin-top:22px">Join us to free a billion people from legal helplessness.</p><div class="note" style="font-size:22px">dev@konsilier.com · konsilier.com</div>'),
 ]}
