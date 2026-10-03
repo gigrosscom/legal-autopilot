@@ -270,6 +270,18 @@ class RouteStep(_Strict):
 class RecipientRoute(_Strict):
     steps: tuple[RouteStep, ...] = Field(min_length=1)
     note: Localized = Field(default_factory=dict)  # what the route does not cover («с несовершеннолетними детьми — …»)
+    # the documents the chat asks for on this route (evidence kinds of the pack: i18n evidence.<kind>), for a dispute
+    # of the universal path that has no scenario of its own (PM 03.10: a divorce was asked for «чек, гарантийный талон»)
+    documents: tuple[str, ...] = ()
+    # asked only on the step for common minor children (children: "yes"): a birth certificate is never asked in a
+    # divorce without children (ZANN 03.10, family sweep F1)
+    documents_children: tuple[str, ...] = ()
+    # the claim to a court on this route (ZANN 03.10, family sweep: «прошу суд: [чего вы хотите добиться]», no norms):
+    # the standard demands (may use {formal_demands} — the person's own wishes in formal words), the norms they rest on,
+    # and whether the claim has no price (CPC art. 148 p. 2 sub. 7: the price only when the claim can be valued)
+    claim_demands: Localized = Field(default_factory=dict)
+    claim_norms: tuple[str, ...] = ()
+    claim_unpriced: bool = False
 
     def steps_for(self, children: str = "unknown") -> tuple[RouteStep, ...]:
         """The steps for what is known of the children: a step bound to another answer is left out."""

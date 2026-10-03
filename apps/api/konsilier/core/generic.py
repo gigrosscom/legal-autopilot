@@ -130,7 +130,14 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
             if fld.name not in seen:
                 intake.append(fld)
                 seen.add(fld.name)
-    intake.append(IntakeField(name="evidence", type="evidence", evidence_kinds=("other",), optional=True))
+    # ZANN 03.10 (family pilot): the dispute route's own documents (routes.yaml `documents`) are the files asked for,
+    # with «Другой документ» kept for anything else; without a list — any document
+    route = cov.routes.get(ref.dispute_id)
+    own = tuple(k for k in (route.documents if route is not None else ()) if k != "id_document")
+    if route is not None and any(s.forum == ref.forum_id and s.children == "yes" for s in route.steps):
+        own = (*own, *route.documents_children)  # the children's court: the children's documents too
+    intake.append(IntakeField(name="evidence", type="evidence", evidence_kinds=(*own, "other") if own else ("other",),
+                              optional=True))
     # a copy of the ID is attached to the document; personal data can also be typed in instead
     intake.append(IntakeField(name="identity_document", type="evidence", evidence_kinds=("id_document",),
                               optional=True))
@@ -159,10 +166,13 @@ def build_generic_scenario(pack: "JurisdictionPack", ref: GenericRef) -> Scenari
             # a pre-trial claim goes to the other party itself; everything else to the body from the registry
             addressee=AddresseeSpec(party="respondent") if forum.type == "private_org" else AddresseeSpec(forum=forum.id),
             deadline=deadline,
-            norm_refs=(deadline.norm_ref,) if deadline else ("TODO",),
+            norm_refs=(route.claim_norms if route is not None and route.claim_norms and forum.type == "court"
+                       else (deadline.norm_ref,) if deadline else ("TODO",)),
             when=None if i == 1 else f"step_{i - 1}.response in [none, refusal, partial]",
             instructions=instructions,
-            demands={lang: "{formal_demands}" for lang in pack.manifest.languages},
+            demands={lang: (route.claim_demands.get(lang) or "{formal_demands}")
+                     if route is not None and route.claim_demands and forum.type == "court" else "{formal_demands}"
+                     for lang in pack.manifest.languages},
         ))
     actions.append(ActionSpec(
         id="handoff_lawyer", kind="handoff", title=_loc(pack, "generic.handoff_title"),
