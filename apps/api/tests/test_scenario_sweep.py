@@ -74,3 +74,19 @@ def test_the_family_sweep_has_no_files_loop_and_a_proper_title(ctx, monkeypatch)
                 or "Исковое заявление о признании имущества личной собственностью" in result["draft"]
                 or "Отзыв на исковое заявление о разделе имущества" in result["draft"]), result["draft"][:400]
         assert "Исковое заявление: " not in result["draft"]
+
+
+def test_children_told_in_the_interview_send_the_divorce_to_the_juvenile_court(ctx, monkeypatch):
+    """PM 03.10 (sweep F3): «двое детей 5 и 9 лет» answered in the interview did not reroute — the children check read
+    the story, the facts and the chat, never the interview's answer. Without children: the district court."""
+    monkeypatch.delenv("QA_GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("SWEEP_MODE", "interview")
+    monkeypatch.setattr(sweep, "ADMIN_TOKEN", "adm")
+    ctx.container.settings.background_jobs = "inline"
+    ctx.container.engine.config.approval_required_first_n = 0
+    from konsilier.core import ai
+
+    monkeypatch.setattr(ai, "qualify", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no model")))
+    cases = {c["id"]: c for c in yaml.safe_load((sweep.MATRICES / "family.yaml").read_text("utf-8"))["cases"]}
+    assert "court__juvenile" in sweep.play_interview(ctx.client, cases["F3"])["scenario"]
+    assert "court__district" in sweep.play_interview(ctx.client, cases["F1"])["scenario"]
