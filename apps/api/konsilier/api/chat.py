@@ -144,15 +144,15 @@ def intake_note(container: Container, case: Case, lang: str) -> dict[str, Any]:
     if not case.scenario_id:
         return {}
     try:
-        sc = container.engine.scenario_of(case)
+        container.engine.scenario_of(case)  # a scenario that went away: no note
         pack = container.engine.pack_of(case)
     except Exception:  # noqa: BLE001 — a scenario that went away: the chat goes on without the note
         return {}
     came = {e.kind for e in case.evidence}
-    kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds
-             if k not in ("id_document", "other")]
+    kinds, money = container.engine.documents_to_ask(case)  # the scenario's own set (or its dispute route's)
     facts = case.facts or {}
     return {
+        "money": money,
         "documents_to_ask": [pack.t(lang, f"evidence.{k}", default=k) for k in kinds if k not in came],
         "documents_received": [pack.t(lang, f"evidence.{k}", default=k) for k in kinds if k in came],
         "facts_known": sorted(n for n in facts if not n.startswith("_")),
@@ -190,7 +190,8 @@ def missing_question(container: Container, case: Case, lang: str, field: str) ->
     except Exception:  # noqa: BLE001
         return ""
     lg = pack.lang(lang)
-    return pack.t(lg, f"chat_ask.{field}", default="") or eng.question_for(sc, pack, lg, field).text or ""
+    return (eng.fact_ask(sc, pack, lg, field) or pack.t(lg, f"chat_ask.{field}", default="")
+            or eng.question_for(sc, pack, lg, field).text or "")
 
 
 def asked_and_answered(rows: list[Any], question: str) -> bool:
@@ -235,10 +236,17 @@ def needs_documents_line(text: str, *, asked_before: bool, offer: bool, files: b
 
 
 def documents_line(pack: Any, lang: str, note: dict[str, Any]) -> str:
-    """The one sentence asking for the documents (owner 02.10), with this scenario's documents when known."""
+    """The one sentence asking for the documents (owner 02.10), with this scenario's documents when known. PM 03.10
+    (quality pilot, a divorce asked for «чек, гарантийный талон… суммы»): receipts and sums are named only in a case
+    about money; any other case is asked in neutral words."""
     docs = [d[:1].lower() + d[1:] for d in note.get("documents_to_ask") or []]
-    listed = "; ".join(docs) if docs else pack.t(lang, "chat_documents.any")
-    return pack.t(lang, "chat_documents.ask", docs=listed)
+    money = bool(note.get("money"))
+    # without a set of its own the list is neutral in every case: «чек, гарантийный талон» fit only purchases, and a
+    # purchase scenario has its own set (a tender or a grant was asked for them too — the invariant test caught it)
+    listed = "; ".join(docs) if docs else pack.t(lang, "chat_documents.any_neutral", default="") or \
+        pack.t(lang, "chat_documents.any")
+    key = "chat_documents.ask" if money else "chat_documents.ask_neutral"
+    return pack.t(lang, key, docs=listed, default="") or pack.t(lang, "chat_documents.ask", docs=listed)
 
 
 def _evidence_note(session: Session, case: Case, vault: PiiVault) -> list[dict[str, Any]]:
@@ -494,6 +502,8 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     # «450 000 тенге» kept the chat asking for it forever)
     if container.engine.facts_from_text(session, case, [m.text for m in rows if m.role == "user"]):
         session.commit()
+    if container.engine.reroute_by_children(session, case):  # «детей нет» / «у нас сын»: the court follows (PM 03.10)
+        session.commit()
     missing_now = container.engine.facts_missing(case)
     # a question asked and answered is never asked again: the solution goes on with what there is (PM 02.10 P0)
     complete = not missing_now or (missing_now != ["scenario"]
@@ -667,8 +677,11 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                         lg = reply_lang if reply_lang in ("ru", "kk") else lang
                         named = told_documents(" ".join(m.text for m in rows if m.role == "user"), lg)
                         # PM 03.10: the person said «акт от КСК есть» — the reminder says so, not «не вижу документов»
+                        money = bool((ctx["case"] or {}).get("money"))
                         q = (pack.t(lg, "chat_documents.remind_named", docs=named, default="") if named else "") or \
-                            pack.t(lg, "chat_documents.remind", default="")
+                            (pack.t(lg, "chat_documents.remind", default="") if money else
+                             pack.t(lg, "chat_documents.remind_neutral", default="")
+                             or pack.t(lg, "chat_documents.remind", default=""))
                         docs_reminder = bool(q)
                 route = eng.recipient_route(cc) if cc is not None and not q else []
                 kinds = (eng.pack_of(cc).coverage.routing.document_kinds

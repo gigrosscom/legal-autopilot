@@ -36,7 +36,7 @@ FORUM_TYPES = (
     "court", "prosecutor", "police", "regulator", "ministry", "ombudsman", "local_authority",
     "arbitration", "mediation", "private_org",
 )
-DOCUMENT_TYPES = ("complaint", "claim_letter", "statement", "lawsuit", "motion", "appeal", "appeal_request")
+DOCUMENT_TYPES = ("complaint", "claim_letter", "statement", "lawsuit", "motion", "appeal", "appeal_request", "response")
 
 
 class _Strict(BaseModel):
@@ -256,6 +256,15 @@ class RouteStep(_Strict):
     when: Localized = Field(default_factory=dict)  # condition for a later step: «если не ответили за 10 дней»
     why: Localized  # one line: why this addressee
     norm: str  # the norm behind it, as checked (act, article); "не подтверждено" when not opened
+    # the step only for this answer to «common children under 18?» (safety.minor_children): divorce goes to the
+    # juvenile court with them, to the registry office or the district court without (CMF art. 17 p. 1, art. 19 p. 2)
+    children: Literal["yes", "no", "unknown"] | None = None
+    # this step's own document (a document type of the pack, e.g. «response» — a reply to a claim already filed), its
+    # title, demands and norms — over the forum's default document and the route's claim_* (ZANN 03.10, defence)
+    document: str | None = None
+    document_title: Localized = Field(default_factory=dict)
+    demands: Localized = Field(default_factory=dict)
+    norms: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _one_target(self) -> "RouteStep":
@@ -267,6 +276,28 @@ class RouteStep(_Strict):
 class RecipientRoute(_Strict):
     steps: tuple[RouteStep, ...] = Field(min_length=1)
     note: Localized = Field(default_factory=dict)  # what the route does not cover («с несовершеннолетними детьми — …»)
+    # the documents the chat asks for on this route (evidence kinds of the pack: i18n evidence.<kind>), for a dispute
+    # of the universal path that has no scenario of its own (PM 03.10: a divorce was asked for «чек, гарантийный талон»)
+    documents: tuple[str, ...] = ()
+    # the title of the dispute's first document («Исковое заявление о расторжении брака»), in place of «<kind>: <body>»
+    # where the body's label would end up in the document's subject line (ZANN 03.10, family pilot)
+    document_title: Localized = Field(default_factory=dict)
+    # asked only on the step for common minor children (children: "yes"): a birth certificate is never asked in a
+    # divorce without children (ZANN 03.10, family sweep F1)
+    documents_children: tuple[str, ...] = ()
+    # the claim to a court on this route (ZANN 03.10, family sweep: «прошу суд: [чего вы хотите добиться]», no norms):
+    # the standard demands (may use {formal_demands} — the person's own wishes in formal words), the norms they rest on,
+    # and whether the claim has no price (CPC art. 148 p. 2 sub. 7: the price only when the claim can be valued)
+    claim_demands: Localized = Field(default_factory=dict)
+    claim_norms: tuple[str, ...] = ()
+    claim_unpriced: bool = False
+    # the dispute's own words for a fact the solution waits for (field → text): «во сколько оцениваете имущество» for
+    # a division, never «во сколько оцениваете ущерб» (ZANN 03.10)
+    facts_ask: dict[str, Localized] = Field(default_factory=dict)
+
+    def steps_for(self, children: str = "unknown") -> tuple[RouteStep, ...]:
+        """The steps for what is known of the children: a step bound to another answer is left out."""
+        return tuple(s for s in self.steps if s.children is None or s.children == children)
 
 
 class RecipientRoutes(_Strict):
