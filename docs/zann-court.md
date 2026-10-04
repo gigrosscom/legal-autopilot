@@ -81,9 +81,31 @@
   (deploy/update.sh, раз в 15 минут, рядом со строкой `zann …`):
   `zanncourt state=… last_error='…' last_run=… next_run=… docs=… done=… notext=… pending=… error=… pages=done/всего …`.
   `state`: `running` (идёт прогон), `waiting` (прогон закончен, ждёт `next_run`), `blocked(robots_unreachable)`
-  (robots.txt не прочитан), `blocked(robots_closed)` (robots.txt закрыл страницу), `no_sources` (нет пакета с
+  (robots.txt не прочитан), `blocked(robots_closed)` (robots.txt закрыл страницу), `blocked(captcha)` (капча или
+  JS-проверка вместо страницы — не проходится), `no_sources` (нет пакета с
   `zann/court.yaml` или неизвестные `ZANN_COURT_SOURCES`), `error(<причина>)`, `never_run`, `disabled`. Состояние,
   последняя ошибка и время прогонов хранятся в строке `#status` таблицы `zann_court_pages` (без миграции).
+
+### 3а. Через настоящий браузер (решение владельца 02–03.10.2026)
+
+sud.kz обрывает соединение любому клиенту, кроме браузера. Поэтому открытые страницы читаются через сервис
+`court-browser` (`deploy/court-browser/`, `ZANN_COURT_BROWSER_URL`): один Chromium (Playwright) в контейнере на
+нашем сервере в РК, без публичного порта.
+
+- **Только открытые страницы** сайтов из `COURT_BROWSER_HOSTS` (sud.kz, www.sud.kz, sud.gov.kz). Банк судебных
+  актов office.sud.kz не открывается: он в `blocked_hosts` пакета и в список хостов сервиса не входит.
+- **Капча и JS-проверка не проходятся.** Если вместо страницы пришла капча или проверка (reCAPTCHA, hCaptcha,
+  Cloudflare challenge/Turnstile), сервис отвечает `blocked`, прогон останавливается, в строке статуса —
+  `blocked(captcha)`. Скрипт reCAPTCHA формы обратной связи на обычной странице sud.kz капчей не считается: страница
+  с контентом (`id="page-title"`) отдаётся как есть.
+- **Не маскируется.** Без «stealth»-патчей; User-Agent — собственный Chromium с добавкой
+  `Konsilier.AI/1.0 (+https://konsilier.com; info@konsilier.com)`.
+- **Темп.** Один запрос за раз, пауза 5–10 с (`ZANN_COURT_BROWSER_PAUSE`=5 + случайно до
+  `ZANN_COURT_BROWSER_JITTER`=5), но не меньше `Crawl-delay` из robots.txt (у sud.kz 10 с). robots.txt читается
+  тем же браузером и соблюдается.
+- Страницы и robots.txt открываются переходом, файлы (PDF, DOCX…) скачиваются из страницы того же сайта — тем же
+  браузером с его cookie. Всё остальное (очередь, приоритеты, хранение, обезличивание) — как выше.
+- В строке консоли: `zanncourt state=… via=browser …` (`via=http` — без браузера).
 
 ## 4. Объём и время (оценка)
 
@@ -153,6 +175,8 @@ ZANN_COURT_PAUSE=1.0             # пауза между запросами, c (
 ZANN_COURT_SOURCES=               # пусто = все источники пакета (np,review,bulletin)
 ZANN_COURT_REFRESH_DAYS=30       # повторный обход страниц (новые документы)
 ZANN_COURT_MAX_MB=60             # файлы больше — пропускаются
+ZANN_COURT_BROWSER_URL=          # http://court-browser:8090 — через браузер (задан в docker-compose.prod.yml)
+ZANN_COURT_BROWSER_PAUSE=5       # пауза через браузер, c, + случайно до ZANN_COURT_BROWSER_JITTER=5
 ```
 
 Страна — `ZANN_COURT_COUNTRY` (пусто: единственный пакет с `zann/court.yaml`, сейчас kz); источники по

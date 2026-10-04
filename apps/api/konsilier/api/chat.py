@@ -398,6 +398,17 @@ def chat_document(case_id: uuid.UUID, user: User = Depends(current_user), sessio
                   container: Container = Depends(get_container)) -> dict[str, Any]:
     """The card under the chat's last reply: the document, its price and whether it is paid (P0 02.10)."""
     case = _case_for(session, case_id, user)
+    # P0 03.10: a chat case whose first message was too thin never got a scenario, so the card could never show. The
+    # card poll heals it here from the fuller chat text — synchronously, so it does not hang on a background thread
+    # that may not have run (requalify is a no-op once there is a scenario or nothing new was said since the last try).
+    if not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        try:
+            if container.engine.requalify_from_chat(session, case.id):
+                session.commit()
+                case = _case_for(session, case_id, user)
+        except Exception:  # noqa: BLE001 — the model is down or slow: the card opens as it is, tried on the next poll
+            session.rollback()
+            log.warning("chat/document: synchronous requalify failed for case %s", case_id, exc_info=True)
     return document_offer(session, container, case, case.language or "ru")
 
 
@@ -498,6 +509,29 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
     complete = not missing_now or (missing_now != ["scenario"]
                                    and asked_and_answered(rows, missing_question(container, case, reply_lang, missing_now[0])))
     insists = bool(WANTS_DOCUMENT.search(body.text) or GIVE_SOLUTION.search(body.text) or ENOUGH.search(body.text))
+    if insists and not case.scenario_id and case.status == "intake" and not (case.taxonomy or {}).get("dispute_id"):
+        # BUG-26 (PM 03.10, prod race): the person asks for the document / the solution, but classification still runs
+        # in a background thread (background_jobs=thread) — scenario_id is not set yet, so «Составить документ» could
+        # not appear and the chat kept looping on the model's question. Classify now, in this request, from everything
+        # the person has told, so the card is offered at once (the recipient and the blanks follow as before).
+        try:
+            if container.engine.requalify_from_chat(session, case_pk):
+                session.commit()
+                case = session.get(Case, case_pk)
+        except Exception:  # noqa: BLE001 — the chat still answers; the next message tries again
+            session.rollback()
+            log.warning("chat: synchronous requalify failed for case %s", case_pk, exc_info=True)
+    if not case.scenario_id and case.status == "intake" and (case.taxonomy or {}).get("dispute_id"):
+        # P0 03.10 (prod a73a9ee, browser): a universal-path case had its dispute (a divorce, a property division) but
+        # no recipient yet — only the case page chose it (get_case), the chat never did — so it had no scenario, the
+        # solution came without its card and «да давайте» got the documents reminder. The system picks the recipient
+        # here too (owner 02.10), and the card follows.
+        try:
+            with session.begin_nested():
+                if container.engine.auto_choose_forum(session, case):
+                    session.commit()
+        except Exception:  # noqa: BLE001 — the chat answers anyway; the case page tries again
+            log.warning("chat: auto_choose_forum failed for case %s", case_pk, exc_info=True)
     has_path = bool(case.scenario_id)
     if complete and case.scenario_id and case.status == "intake" and (
             body.attachments or case.evidence or ENOUGH.search(body.text)
@@ -506,7 +540,9 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
         # ends here; what is still unknown stays a blank filled in the draft
         container.engine.close_intake(session, case, f"user:{user_pk}", reason="chat")
         session.commit()
-    if (complete and offered and YES_AFTER_OFFER.search(body.text)) or \
+    # «да давайте» right after the card: the card was shown, so its gate has passed — the paid offer again, never the
+    # model repeating «Составлю… PDF и Word» (P0 03.10, prod browser)
+    if (offered and has_path and YES_AFTER_OFFER.search(body.text)) or \
             (WANTS_DOCUMENT.search(body.text) and (complete or has_path)):
         # the person wants the document: the paid offer at once, no model — the chat never writes it out (P0 02.10)
         with container.session_factory() as s:
@@ -687,7 +723,13 @@ def send(case_id: uuid.UUID, body: ChatIn, user: User = Depends(current_user),
                 text = f"{text.rstrip()}\n\n{extra}"
                 yield _sse({"type": "text", "text": f"\n\n{extra}"})
                 asked_docs = True
-        if not result.offer_document and not held and has_path and OFFER_LINE.search(text):
+        if not result.offer_document and not held and has_path and (
+                OFFER_LINE.search(text)
+                # BUG-26 (owner 03.10): the intake has begun and the person asks for the document themselves
+                # («составьте претензию», «дайте решение», «хватит вопросов») — the card appears even when the free
+                # model asked one more clarifying question instead of offering; what is blank is asked in the form
+                # before payment. On the first reply documents-first still runs (R-30), so this holds off until then.
+                or (not first_reply and insists)):
             # BUG-26 (prod 03.10): «Претензию подготовлю с вашими данными — готовый PDF и Word» with no card under it
             result.offer_document = True
         if result.offer_document:
