@@ -56,7 +56,7 @@ export function PushToggle({ compact = false, className = "" }: { compact?: bool
       {state === "ready" && <Button onClick={enable} disabled={busy} icon={busy ? "spinner" : "bell"}>{t("push.enable")}</Button>}
       {state === "denied" && <p className="text-warning" role="status">{t("push.denied")}</p>}
       {state === "needsInstall" && (
-        <p className="text-info">{t("push.ios")} <Link href="/app" className="link">{t("push.howTo")}</Link></p>
+        <p className="text-muted">{t("push.ios")} <Link href="/app" className="link">{t("push.howTo")}</Link></p>
       )}
       {state === "unsupported" && <p className="text-muted">{t("push.unsupported")}</p>}
     </section>

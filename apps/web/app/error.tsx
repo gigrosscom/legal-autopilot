@@ -28,9 +28,10 @@ export default function PageError({ error, reset }: { error: Error & { digest?: 
       <h1 className="text-xl font-semibold">{t("errors.title")}</h1>
       <p className="text-sm text-muted">{t("errors.saved")}</p>
       <p className="text-xs text-muted">{t("errors.translate")}</p>
-      <div className="flex justify-center gap-2">
-        <button className="btn-primary" onClick={() => window.location.reload()}>{t("errors.reload")}</button>
-        <button className="btn-ghost" onClick={() => reset()}>{t("errors.retry")}</button>
+      {/* phones: one button per row, full width — side by side «Обновить страницу» / «Попробовать снова» broke onto two lines */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+        <button className="btn-primary whitespace-nowrap" onClick={() => window.location.reload()}>{t("errors.reload")}</button>
+        <button className="btn-ghost whitespace-nowrap" onClick={() => reset()}>{t("errors.retry")}</button>
       </div>
     </div>
   );
