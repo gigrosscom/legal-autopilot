@@ -19,3 +19,8 @@
 - `packs/kz/i18n/kk.yaml → evidence`: title_documents, property_rights_extract, vehicle_registration, marriage_contract, valuation.
 - `packs/kz/routes.yaml`: `family.property_division` и `family.personal_property` — `claim_demands.kk`, `steps[].why.kk`, `facts_ask.*.kk`, `document_title.kk`; `family.divorce` — `facts_ask.event_date.kk`.
 - `packs/kz/documents/response.yaml` — title.kk «Талап арызға пікір», attachments.kk.
+
+## Дополнение 04.10 — домен долг/подряд/труд (PR #253, ветка claude/team-debt-labor)
+- `apps/api/konsilier/core/coverage/global_taxonomy.yaml` → `civil.work_payment`: title.kk, keywords.kk, examples.kk.
+- `packs/kz/routes.yaml` → `civil.work_payment`: document_title.kk, claim_demands.kk, facts_ask.*.kk, steps[].label.kk / why.kk.
+- `packs/kz/routing.yaml` → markers.kk для `civil.work_payment`, `labor.unpaid_wages`, `labor.dismissal`.
