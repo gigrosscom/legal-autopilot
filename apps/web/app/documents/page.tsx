@@ -59,24 +59,31 @@ export default function DocumentsPage() {
           <p className="text-sm font-semibold text-ink">{t("app.docs.count", { n: shown.length })}</p>
           <ul className="divide-y divide-line rounded-2xl border border-line">
             {shown.map(({ a, c, caseTitle }) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-3 p-4">
-                <Icon name="document" size={22} className="text-ink" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-ink">{a.title}</p>
-                  <p className="truncate text-sm text-muted">{caseTitle}</p>
-                </div>
-                <span className="chip">{status(a)}</span>
-                <div className="flex w-full gap-2 sm:w-auto">
-                  {a.has_pdf && (
-                    <button type="button" onClick={() => downloadFile(`/v1/cases/${c.id}/actions/${a.id}/document?format=pdf`, `${a.action_id}.pdf`)}
-                      className="btn-ghost min-h-10 flex-1 sm:flex-none"><Icon name="download" size={16} />PDF</button>
-                  )}
-                  {a.has_docx && (
-                    <button type="button" onClick={() => downloadFile(`/v1/cases/${c.id}/actions/${a.id}/document?format=docx`, `${a.action_id}.docx`)}
-                      className="btn-ghost min-h-10 flex-1 sm:flex-none"><Icon name="download" size={16} />DOCX</button>
-                  )}
-                  <Link href={`/case/${c.id}`} className="btn-ghost min-h-10 flex-1 sm:flex-none">{t("app.docs.open")}</Link>
-                </div>
+              <li key={a.id} className="space-y-4 p-4">
+                {/* the whole head opens the case (owner's iPhone 04.10: three pill buttons in a row broke «Открыть дело» onto two
+                    lines and cut the title); the document's own actions stay as two equal buttons under it */}
+                <Link href={`/case/${c.id}`} aria-label={`${t("app.docs.open")}: ${a.title}`}
+                  className="-mx-2 -mt-2 flex items-start gap-3 rounded-xl px-2 pt-2 pb-1 hover:bg-sand">
+                  <Icon name="document" size={22} className="mt-0.5 shrink-0 text-ink" />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="line-clamp-2 font-medium leading-snug text-balance text-ink">{a.title}</p>
+                    <p className="truncate text-sm text-muted">{caseTitle}</p>
+                    <span className="chip">{status(a)}</span>
+                  </div>
+                  <Icon name="chevronDown" size={20} className="mt-0.5 shrink-0 -rotate-90 text-muted rtl:rotate-90" />
+                </Link>
+                {(a.has_pdf || a.has_docx) && (
+                  <div className="flex gap-2">
+                    {a.has_pdf && (
+                      <button type="button" onClick={() => downloadFile(`/v1/cases/${c.id}/actions/${a.id}/document?format=pdf`, `${a.action_id}.pdf`)}
+                        className="btn-ghost flex-1 whitespace-nowrap sm:flex-none"><Icon name="download" size={16} />PDF</button>
+                    )}
+                    {a.has_docx && (
+                      <button type="button" onClick={() => downloadFile(`/v1/cases/${c.id}/actions/${a.id}/document?format=docx`, `${a.action_id}.docx`)}
+                        className="btn-ghost flex-1 whitespace-nowrap sm:flex-none"><Icon name="download" size={16} />DOCX</button>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

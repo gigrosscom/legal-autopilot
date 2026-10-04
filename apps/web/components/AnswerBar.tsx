@@ -94,11 +94,11 @@ export function AnswerBar({ question, busy, currency, onSend, onFiles, onSkip, o
         <div className="flex gap-2 overflow-x-auto pb-1">
           {[[t("app.today"), today], [t("app.yesterday"), iso(y)], [t("app.weekAgo"), iso(week)], [t("app.monthAgo"), iso(month)]].map(([label, v]) => (
             <button key={v} type="button" disabled={busy} onClick={() => sendDate(v)}
-              className={`min-h-10 shrink-0 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent-solid)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-[15px] font-semibold ${value === v ? "border-[var(--chat-accent)] bg-[var(--chat-accent-solid)] text-white" : "border-[var(--chat-accent)] text-[var(--chat-accent)]"}`}>{label}</button>
           ))}
           {/* PM 01.10: the date is often not remembered — it stays a blank to fill in the draft */}
           <button type="button" disabled={busy} onClick={() => onSend(t("app.dontRememberWord"), t("app.dontRemember"))}
-            className="min-h-10 shrink-0 rounded-full border border-line px-4 text-[15px] font-semibold text-ink">{t("app.dontRemember")}</button>
+            className="min-h-11 shrink-0 rounded-full border border-line px-4 text-[15px] font-semibold text-ink">{t("app.dontRemember")}</button>
         </div>
         <label className="relative block">
           <span className="sr-only">{question?.text}</span>

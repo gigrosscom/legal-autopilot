@@ -32,12 +32,12 @@ export function CaseBoard({ cards, onlyNonEmptyOnMobile = true, onOpen }: {
   const by = Object.fromEntries(COLUMNS.map((c) => [c, cards.filter((x) => x.stage === c)]));
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-2 lg:mx-0 lg:px-0">
-      <ol className="grid gap-3 lg:min-w-[1100px] lg:grid-cols-7">
+      <ol className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:min-w-[1100px] lg:grid-cols-7">
         {COLUMNS.map((col) => {
           const items = by[col];
           const hide = onlyNonEmptyOnMobile && items.length === 0 ? "hidden lg:flex" : "flex";
           return (
-            <li key={col} className={`${hide} flex-col gap-2 rounded-2xl bg-sand-deep/60 p-2`}>
+            <li key={col} className={`${hide} min-w-0 flex-col gap-2 rounded-2xl bg-sand-deep/60 p-2`}>
               <h3 className="flex items-center justify-between px-2 pt-1 text-sm font-semibold">
                 <span>{t(`board.${col}`)}</span>
                 <span className="rounded-full bg-surface px-2 text-xs text-muted tabular-nums">{items.length}</span>

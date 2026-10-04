@@ -172,8 +172,8 @@ function ReportsToggle({ me, onChange }: { me: Me; onChange: (m: Me) => void }) 
       <h2 id="reports" className="font-semibold">{t("reports.title")}</h2>
       <p className="text-muted">{t("reports.lead")}</p>
       {email ? (
-        <label className="flex items-center gap-2">
-          <input type="checkbox" className="h-5 w-5 accent-brand" checked={me.notify_email} disabled={busy}
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
+          <input type="checkbox" className="h-5 w-5 shrink-0 accent-brand" checked={me.notify_email} disabled={busy}
             onChange={(e) => toggle(e.target.checked)} />
           <span>{t("reports.toggle", { email: email.display })}</span>
         </label>

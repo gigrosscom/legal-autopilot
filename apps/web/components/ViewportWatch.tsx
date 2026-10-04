@@ -41,8 +41,12 @@ export function ViewportWatch() {
       // real height the bar must reach.
       const vv = window.visualViewport;
       const real = Math.max(window.innerHeight, vv ? Math.round(vv.offsetTop + vv.height) : 0);
-      if (!typing && agrees) tallest[landscape] = Math.max(tallest[landscape], real);
-      const h = standalone && phone && !typing ? tallest[landscape] : 0;
+      // The keyboard is up only when the visible area is really short. A field that merely keeps focus after the keyboard
+      // was swiped away (owner's iPhone 04.10, «Документы»: search field still focused, keyboard gone) must not freeze the
+      // tab bar mid-screen, so focus alone no longer counts as typing once the visible area is back to full height.
+      const keyboard = typing && (!vv || !tallest[landscape] || tallest[landscape] - real > 120);
+      if (!keyboard && agrees) tallest[landscape] = Math.max(tallest[landscape], real);
+      const h = standalone && phone && !keyboard ? tallest[landscape] : 0;
       if (!h || h - window.innerHeight < 2) { root.removeProperty("--app-h"); root.removeProperty("--app-gap"); return; }
       root.setProperty("--app-h", `${h}px`);
       // Never positive: the bar is only ever pushed DOWN to the real bottom, never raised up into the middle.
