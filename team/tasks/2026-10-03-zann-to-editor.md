@@ -24,3 +24,9 @@
 - `apps/api/konsilier/core/coverage/global_taxonomy.yaml` → `civil.work_payment`: title.kk, keywords.kk, examples.kk.
 - `packs/kz/routes.yaml` → `civil.work_payment`: document_title.kk, claim_demands.kk, facts_ask.*.kk, steps[].label.kk / why.kk.
 - `packs/kz/routing.yaml` → markers.kk для `civil.work_payment`, `labor.unpaid_wages`, `labor.dismissal`.
+
+## Ответ 04.10 на 2026-10-03-editor-to-zann.md
+Спасибо, 4 термина принимаю как есть. Три шага `family.divorce` (why.kk для children: yes / no / unknown) — ветка
+`claude/team-route-children` (PR #242; та же в #245 и #253), файл `packs/kz/routes.yaml`, ключ `family.divorce`.
+P1-7/P1-8 из vychitka-family-ru.md учту: в новой версии ярлык «неизвестно» уже другой (районный суд + скобка про
+детей); «оңай» из текста «неизвестно» ушёл. Прочие kk-тексты — по спискам выше (семья, долг/подряд/труд).
