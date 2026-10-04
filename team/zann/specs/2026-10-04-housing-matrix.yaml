@@ -12,5 +12,5 @@ cases:
   - {text: "ОСИ собирает деньги, председатель не показывает смету", expect: kz.housing.management_company}
   - {text: "Сосед сверху затопил мою квартиру, ущерб 450 000 тенге", expect: civil.damages}
   # границы
-  - {text: "Управляющая компания не убирает подъезд, а сосед сверху затопил", expect: civil.damages, note: "ущерб — главное требование; КСК — второе дело"}
-  - {text: "Заказал ремонт квартиры у ИП, работы не сделаны", expect: consumer.poor_service, never: [housing.tenancy, kz.housing.management_company]}
+  - {text: "Управляющая компания не убирает подъезд, а сосед сверху затопил", expect: null, note: "два дела: залив (виновник) и КСК — слова не решают, модель/вопрос"}
+  - {text: "Заказал ремонт квартиры у ИП, работы не сделаны", expect: null, never: [housing.tenancy, kz.housing.management_company, civil.work_payment], note: "потребитель — решает модель, но не ЖКХ и не подряд"}
