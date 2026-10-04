@@ -56,12 +56,16 @@ class Coverage:
     def dispute(self, dispute_id: str) -> DisputeType:
         return self.disputes[dispute_id]
 
-    def first_forum(self, dispute_id: str | None, candidates: list[Forum]) -> Forum | None:
+    def first_forum(self, dispute_id: str | None, candidates: list[Forum], children: str = "unknown") -> Forum | None:
         """The forum the route's first step names, when it is one of the candidates."""
         route = self.routes.get(dispute_id or "")
-        if route is None:
+        steps = route.steps_for(children) if route is not None else ()
+        ids = {f.id for f in candidates}
+        # a step to «the court where your case is» counts only when the matter is pending (it is then a candidate)
+        steps = [s for s in steps if s.forum in ids or not (s.forum in self.forums and self.forums[s.forum].pending_only)]
+        if not steps:
             return None
-        first = route.steps[0].forum
+        first = steps[0].forum
         return next((f for f in candidates if f.id == first), None)
 
     def candidate_forums(self, dispute: DisputeType, role: str, pending: bool = False) -> list[Forum]:
@@ -76,11 +80,11 @@ class Coverage:
         route = self.routes.get(dispute_id or "")
         return next((s for s in route.steps if s.forum == forum_id), None) if route and forum_id else None
 
-    def auto_forum(self, forums: list[Forum], dispute_id: str | None = None) -> Forum | None:
+    def auto_forum(self, forums: list[Forum], dispute_id: str | None = None, children: str = "unknown") -> Forum | None:
         """The step's recipient chosen by the system (owner 02.10): the first step of the dispute's own route
         (routes.yaml), else the first candidate in the pack's forum_order; none when neither names a candidate (then
         the person is asked one question, not shown a list)."""
-        first = self.first_forum(dispute_id, forums)
+        first = self.first_forum(dispute_id, forums, children)
         if first is not None:
             return first
         order = self.routing.forum_order
