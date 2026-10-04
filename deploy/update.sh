@@ -261,7 +261,8 @@ print(f\"enabled={c.settings.zann_corpus_enabled} acts={z['acts']} done={z['acts
 " </dev/null 2>&1 | tail -1) || true
     log "zann ${ZANN:-unavailable}"
     # Court practice from sud.kz (konsilier/zann/court.py): the collector's state first — running | waiting |
-    # blocked(robots_unreachable) | blocked(robots_closed) | no_sources | error(<reason>) | never_run | disabled —
+    # blocked(robots_unreachable) | blocked(robots_closed) | blocked(captcha) | no_sources | error(<reason>) |
+    # never_run | disabled — how it reads the site (via=browser: deploy/court-browser, via=http: plain requests) —
     # its last error, last and next run (UTC), then documents, files, by source and category.
     ZCOURT=$(timeout 60 docker compose -f deploy/docker-compose.prod.yml --env-file .env exec -T api python -c "
 from konsilier.config import get_settings
@@ -272,7 +273,8 @@ with c.session_factory() as s:
     z = court_metrics(s)
 st, p = z['status'], z['pages']
 state = st['state'] if c.settings.zann_court_enabled else 'disabled'
-print(f\"state={state} last_error={(st['last_error'] or '-')[:160]!r} last_run={st['last_run']} next_run={st['next_run']} docs={z['docs']} done={z['done']} notext={z['notext']} pending={z['pending']} error={z['error']} pages={p['done']}/{p['done'] + p['pending'] + p['error']} mb={round(z['bytes'] / 1e6, 1)} sources={z['by_source']} categories={z['by_category']} last={z['last_fetched_at']}\")
+via = 'browser' if c.settings.zann_court_browser_url else 'http'
+print(f\"state={state} via={via} last_error={(st['last_error'] or '-')[:160]!r} last_run={st['last_run']} next_run={st['next_run']} docs={z['docs']} done={z['done']} notext={z['notext']} pending={z['pending']} error={z['error']} pages={p['done']}/{p['done'] + p['pending'] + p['error']} mb={round(z['bytes'] / 1e6, 1)} sources={z['by_source']} categories={z['by_category']} last={z['last_fetched_at']}\")
 " </dev/null 2>&1 | tail -1) || true
     log "zanncourt ${ZCOURT:-unavailable}"
   fi
