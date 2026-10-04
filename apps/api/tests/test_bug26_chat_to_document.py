@@ -114,6 +114,19 @@ def test_the_offer_line_brings_the_button(ctx, monkeypatch, kind, ask):
     assert pay.status_code in (200, 422), pay.json()  # the bill or the form before it — never 409
 
 
+def test_one_short_stem_does_not_choose_the_scenario():
+    """PM 03.10 (family sweep): «брак» — a defect, a refund keyword — is in «в браке», a marriage; with the model down
+    a divorce went to «Возврат денег за товар». One stem alone decides nothing; two keywords or a phrase do."""
+    from pathlib import Path
+
+    from konsilier.core.engine import by_keywords
+    from konsilier.core.packs import PackRegistry
+
+    published = PackRegistry.load(Path(__file__).resolve().parents[3] / "packs").published("KZ")
+    assert by_keywords(published, "Хочу развестись, мы в браке 8 лет, квартира куплена в браке")[0] is None
+    assert by_keywords(published, CASES["refund"][0])[0] == "kz.consumer.refund"
+
+
 # prod dc5de58 (PM 03.10, browser): the free model never gives a solution or an offer — it loops on a clarifying
 # question («труба в квартире соседа или стояк?»). The person says «Составьте претензию», the model asks again, and the
 # card «Составить документ» never appears → no document. Owner 03.10: once the intake has begun and the person asks

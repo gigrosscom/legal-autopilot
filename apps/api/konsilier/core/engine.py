@@ -168,9 +168,14 @@ def by_keywords(candidates: list[Scenario], text: str) -> tuple[str | None, floa
     scored = []
     for sc in candidates:
         cl = sc.classification
-        hits = {kw.lower() for kws in cl.keywords.values() for kw in kws if kw and kw.lower() in low}
-        if hits and not any(x.split("→")[0].strip().lower() in low for xs in cl.not_when.values() for x in xs
-                            if x.split("→")[0].strip()):
+        # a keyword from the start of a word, and two of them or one phrase of several words: one short stem alone
+        # decides nothing («брак» — a defect — is in «в браке», a marriage: PM 03.10, the family sweep caught it)
+        hits = {kw.lower() for kws in cl.keywords.values() for kw in kws
+                if kw and re.search(r"(?<!\w)" + re.escape(kw.lower()), low)}
+        if not hits or (len(hits) < 2 and not any(" " in h for h in hits)):
+            continue
+        if not any(x.split("→")[0].strip().lower() in low for xs in cl.not_when.values() for x in xs
+                   if x.split("→")[0].strip()):
             scored.append((len(hits), sc.id))
     scored.sort(reverse=True)
     if not scored or (len(scored) > 1 and scored[0][0] == scored[1][0]):
@@ -374,7 +379,8 @@ class CaseEngine:
             options = self.forum_options(case)
             if not options:
                 return False
-            self.choose_forum(session, case, options[0]["id"], actor="system")
+            if not self.auto_choose_forum(session, case):  # the dispute's own route (children known), else the first
+                self.choose_forum(session, case, options[0]["id"], actor="system")
             if case.status != S.INTAKE.value or not case.scenario_id:
                 return case.status == S.QUALIFIED.value
         sc, pack = self.scenario_of(case), self.pack_of(case)
@@ -485,9 +491,7 @@ class CaseEngine:
                 sid, confidence, reason = ai.qualify(llm, candidates, self.packs.packs, text, case.language)
             except Exception:  # noqa: BLE001 — BUG-26: the model is down (quota, network); the words still decide
                 log.warning("qualify: the model failed for case %s, choosing by keywords", case.id, exc_info=True)
-                sid, confidence, reason = by_keywords(candidates, text)
-                if sid is None:
-                    raise
+                sid, confidence, reason = by_keywords(candidates, text)  # None: the universal path below
         case.qualification_confidence = confidence
         if sid is None:
             case.needs_review = True
@@ -575,7 +579,7 @@ class CaseEngine:
         case.needs_review = not self.config.self_service
         # owner 02.10: the system picks the recipient — the dispute's own route (routes.yaml), else the pack rule
         # forum_order; the client only sees «Кому: …»
-        picked = cov.auto_forum(route.forums, route.dispute_id)
+        picked = cov.auto_forum(route.forums, route.dispute_id, safety.minor_children(text))
         if picked is not None:
             return self.choose_forum(session, case, picked.id, actor="system")
         return Reply(message=pack.t(lang, "routing.choose_forum",
@@ -597,6 +601,27 @@ class CaseEngine:
                "pretrial": pretrial, "hint": hint}
         return out
 
+    def documents_to_ask(self, case: Case) -> tuple[list[str], bool]:
+        """The documents the chat asks for (evidence kinds) and whether the case is about money (PM 03.10, quality
+        pilot): the scenario's own set; for the universal path, its dispute route's (routes.yaml documents); else none
+        — then the chat asks in neutral words. «Money» decides whether the words may speak of receipts and sums: a
+        scenario with a sum among its facts, never a divorce or a child's residence."""
+        if not case.scenario_id:
+            return [], False
+        try:
+            sc, pack = self.scenario_of(case), self.pack_of(case)
+        except Exception:  # noqa: BLE001 — a scenario that went away: nothing to ask by name
+            return [], False
+        kinds = [k for f in sc.intake if f.type == "evidence" for k in f.evidence_kinds
+                 if k not in (IDENTITY_KIND, "other")]
+        generic = is_generic(case.scenario_id)
+        if not kinds and pack.coverage is not None:
+            keys = [case.scenario_id, (case.taxonomy or {}).get("dispute_id")]
+            route = next((pack.coverage.routes[k] for k in keys if k and k in pack.coverage.routes), None)
+            kinds = list(route.documents) if route is not None else []
+        money = not generic and any(f.type == "money" for f in sc.intake)
+        return list(dict.fromkeys(kinds)), money
+
     def recipient_route(self, case: Case) -> list[dict[str, Any]]:
         """Who each step's document goes to and why (routes.yaml): by the case's scenario, else its dispute type."""
         if not case.jurisdiction and not case.scenario_id:
@@ -614,7 +639,7 @@ class CaseEngine:
             return []
         lang = case.language
         out = []
-        for i, step in enumerate(route.steps, start=1):
+        for i, step in enumerate(route.steps_for(self.children_of(case)), start=1):
             if step.forum is not None:
                 kind, key, name = "forum", step.forum, pack.localized(cov.forums[step.forum].name, lang)
             elif step.authority is not None:
@@ -627,6 +652,46 @@ class CaseEngine:
                         "label": pack.localized(step.label, lang), "when": pack.localized(step.when, lang) or None,
                         "why": pack.localized(step.why, lang), "norm": step.norm})
         return out
+
+    def children_of(self, case: Case, session: Session | None = None, said: str = "") -> str:
+        """Common children under 18 by what the person told (the story, the facts, the answer just given and, with a
+        session, every chat message): «yes» / «no» / «unknown»."""
+        told = [case.initial_text or "", *(str(v) for v in (case.facts or {}).values() if isinstance(v, str)), said]
+        if session is not None and case.id is not None:
+            told += [m.text for m in session.scalars(select(ChatMessage).where(
+                ChatMessage.case_id == case.id, ChatMessage.role == "user")).all() if m.text]
+        found = safety.minor_children("\n".join(told))
+        # what the person once said stays known (an interview answer is not a chat message)
+        return found if found != "unknown" else str((case.taxonomy or {}).get("children") or "unknown")
+
+    def _claim_unpriced(self, case: Case, sc: Scenario) -> bool:
+        if not is_generic(sc.id):
+            return False
+        cov = self.pack_of(case).coverage
+        route = cov.routes.get((case.taxonomy or {}).get("dispute_id") or "") if cov is not None else None
+        return bool(route is not None and route.claim_unpriced)
+
+    def reroute_by_children(self, session: Session, case: Case, said: str = "") -> bool:
+        """PM 03.10 (family sweep F1): «детей нет» / «у нас сын 5 лет» told after the recipient was picked — the court
+        follows (juvenile only with common minors, CPC art. 27 p. 3). Only before any document; True when changed."""
+        if case.status not in (S.INTAKE.value, S.QUALIFIED.value) or case.actions or not case.forum_id \
+                or case.coverage_level != qualifier.LEVEL_UNIVERSAL or not (case.taxonomy or {}).get("dispute_id"):
+            return False
+        cov = self.pack_of(case).coverage
+        dispute_id = case.taxonomy["dispute_id"]
+        route = cov.routes.get(dispute_id) if cov is not None else None
+        if route is None or all(s.children is None for s in route.steps):
+            return False
+        options = [cov.forums[o["id"]] for o in self.other_forums(case)] + [cov.forums[case.forum_id]]
+        children = self.children_of(case, session, said)
+        if children == "unknown":
+            return False  # nothing said about the children: the court stays
+        target = cov.first_forum(dispute_id, options, children)
+        if target is None or target.id == case.forum_id:
+            return False
+        self.change_forum(session, case, target.id, actor="system")
+        case.taxonomy = {**(case.taxonomy or {}), "children": children}
+        return True
 
     def forum_options(self, case: Case) -> list[dict[str, Any]]:
         """Forums the user may still choose from (universal case waiting for a choice)."""
@@ -664,7 +729,8 @@ class CaseEngine:
             return False
         cov = self.pack_of(case).coverage
         options = {o["id"] for o in self.forum_options(case)}
-        picked = (cov.auto_forum([cov.forums[i] for i in cov.forums if i in options], case.taxonomy["dispute_id"])
+        picked = (cov.auto_forum([cov.forums[i] for i in cov.forums if i in options], case.taxonomy["dispute_id"],
+                                 self.children_of(case))
                   if cov else None)
         if picked is None:
             return False
@@ -714,7 +780,12 @@ class CaseEngine:
             log.warning("choose_forum: pre-filling facts failed for case %s, asking them in the interview", case.id,
                         exc_info=True)
         forum_name = pack.localized(pack.coverage.forums[forum_id].name, case.language)
-        intro = pack.t(case.language, "routing.universal_intro", forum=forum_name)
+        # PM 03.10 (family sweep): the documents of this dispute (routes.yaml), else neutral words — never «чеки, акты»
+        kinds, _money = self.documents_to_ask(case)
+        named = [pack.t(case.language, f"evidence.{k}", default="") for k in kinds if k != IDENTITY_KIND]
+        named = [x[:1].lower() + x[1:] for x in named if x]
+        documents = ", ".join(named) or pack.t(case.language, "chat_documents.any_neutral", default="")
+        intro = pack.t(case.language, "routing.universal_intro", forum=forum_name, documents=documents)
         reply = self.ack_reply(session, case) or self._next_step(session, case, sc, pack)
         reply.message = f"{intro}\n\n{reply.message}".strip()
         return reply
@@ -780,7 +851,7 @@ class CaseEngine:
             names = {f.name: f for f in sc.intake}
             if "event_date" in names and not facts.get("event_date"):
                 out.append("event_date")
-            sums = [n for n in ("claim_amount", "amount") if n in names]
+            sums = [n for n in ("claim_amount", "amount") if n in names]  # none in a divorce (claim_unpriced)
             if sums and not any(facts.get(n) for n in sums):
                 out.append(sums[0])
         return out
@@ -975,10 +1046,28 @@ class CaseEngine:
         documents = ", ".join(labels) or pack.t(lang, "interview.documents_any", default="")
         return pack.t(lang, "interview.intro", documents=documents, **names)
 
+    def route_of(self, sc: Scenario, pack: JurisdictionPack) -> Any:
+        """The dispute route (routes.yaml) of a universal-path scenario, else None."""
+        if not is_generic(sc.id) or pack.coverage is None:
+            return None
+        return pack.coverage.routes.get(sc.ontology or "")
+
+    def fact_ask(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> str:
+        """The dispute's own question for a fact (routes.yaml facts_ask), else ""."""
+        route = self.route_of(sc, pack)
+        return pack.localized(route.facts_ask[name], lang) if route is not None and name in route.facts_ask else ""
+
     def question_for(self, sc: Scenario, pack: JurisdictionPack, lang: str, name: str) -> Question:
         f = sc.field(name)
-        text = pack.localized(f.question, lang) if f.question else pack.t(
-            lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name))
+        text = self.fact_ask(sc, pack, lang, name) or (pack.localized(f.question, lang) if f.question else pack.t(
+            lang, f"fields.{name}.question", default=ai.field_label(sc, pack, lang, name)))
+        if f.type == "evidence" and not f.question and IDENTITY_KIND not in f.evidence_kinds and is_generic(sc.id):
+            # PM 03.10 (family sweep): the universal path's files were asked «договор, акт сверки, счёт-фактуру, чек»
+            # in a divorce — its own list (routes.yaml documents) or neutral words, never the purchase one
+            named = [pack.t(lang, f"evidence.{k}", default="") for k in f.evidence_kinds if k != "other"]
+            named = [x[:1].lower() + x[1:] for x in named if x]
+            docs = "; ".join(named) or pack.t(lang, "chat_documents.any_neutral", default="")
+            text = pack.t(lang, "interview.evidence_named", docs=docs, default="") or text
         kinds = [{"kind": k, "label": pack.t(lang, f"evidence.{k}", default=k)} for k in f.evidence_kinds]
         return Question(field=name, text=text, type=f.type, optional=f.optional, evidence_kinds=kinds,
                         pattern=f.pattern)
@@ -1049,6 +1138,10 @@ class CaseEngine:
         ack = self.ack_reply(session, case)
         if ack is not None:
             return ack
+        if safety.minor_children(text) != "unknown" and self.reroute_by_children(session, case, said=text):
+            # the interview's answer is not a chat message: it is passed in (family sweep F3 — «двое детей 5 и 9 лет»)
+            # PM 03.10 (family sweep F1): «детей нет» after the court was picked — the new court's questions follow
+            return self._next_step(session, case, self.scenario_of(case), self.pack_of(case))
         sc, pack = self.scenario_of(case), self.pack_of(case)
         lang = case.language
         llm = self.llm_for(case)
@@ -1075,6 +1168,18 @@ class CaseEngine:
                 case.skipped_fields = [*(case.skipped_fields or []), pending]
                 return self._next_step(session, case, sc, pack)
             if f.type == "evidence":
+                # PM 03.10 (family sweep: «Составьте иск», «Достаточно, дайте решение» got «Загрузите документы…»
+                # again and again): the person ends the files — «нет», «достаточно», «составьте», «дайте решение» —
+                # or answered with words instead of a file a second time: the files question is closed, the interview
+                # goes on (files may still come later; the document is made from what is told)
+                reminded = pending in ((case.taxonomy or {}).get("files_reminded") or [])
+                if _ENDS_FILES.search(text) or reminded:
+                    case.skipped_fields = [*(case.skipped_fields or []), pending]
+                    self.audit(session, case, "user", "files_question_closed", field=pending,
+                               by="words" if _ENDS_FILES.search(text) else "second_reminder")
+                    return self._next_step(session, case, sc, pack)
+                case.taxonomy = {**(case.taxonomy or {}),
+                                 "files_reminded": [*((case.taxonomy or {}).get("files_reminded") or []), pending]}
                 q = self.question_for(sc, pack, lang, pending)
                 return Reply(message=f"{pack.t(lang, 'interview.upload_or_skip')}\n{q.text}", question=q)
             if f.pii or f.type == "longtext" or _reads_as_is(f, text, pack):
@@ -2200,6 +2305,8 @@ class CaseEngine:
             "addressee": addressee,
             "narrative": narrative,
             "demands": demands,
+            # a claim with no price (a divorce): «не подлежит оценке», never «не указана» (ZANN 03.10)
+            "unpriced": self._claim_unpriced(case, sc),
             "norm_refs": group_norms(spec.norm_refs),  # unchecked («TODO») left out, each act named once
             "evidence": evidence,
             "previous_actions": previous,
@@ -2408,6 +2515,12 @@ def _is_skip(text: str, pack: JurisdictionPack, lang: str) -> bool:
     words = pack.i18n.get(lang, {}).get("interview", {}).get("skip_words", []) or []
     t = text.strip().lower().strip(".!")
     return t in {w.lower() for w in words} or t in {"-", "—", "/skip"}
+
+
+# the person ends the files question in their own words (PM 03.10): no more files, enough, make the document
+_ENDS_FILES = re.compile(
+    r"(?<!\w)(нет|достаточно|хватит|больше\s+(?:ничего\s+)?нет|документов\s+(?:больше\s+)?нет|составь\w*|"
+    r"подготовь\w*|дай(?:те)?\s+решени\w*|что\s+делать|жоқ|жеткілікті|жасаңыз|шешім\s+беріңіз)(?!\w)", re.IGNORECASE)
 
 
 def _is_done(text: str, pack: JurisdictionPack, lang: str) -> bool:

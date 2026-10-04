@@ -136,6 +136,7 @@ def examples(topics: str = "", lang: str = "ru", limit: int = 4, country: str | 
             if ex:
                 sources.append(ex)
                 covered.add(sc.taxonomy or "")
+    published = len(sources)  # a published scenario's example comes before the taxonomy's (it leads to a ready path)
     for pack in container.packs.packs.values():
         if pack.coverage is None or (country and pack.country != country.upper()) or \
                 (not country and pack.manifest.status != "live"):
@@ -148,7 +149,10 @@ def examples(topics: str = "", lang: str = "ru", limit: int = 4, country: str | 
     rng = random.Random()
     for s in sources:
         rng.shuffle(s)
-    rng.shuffle(sources)
+    head, tail = sources[:published], sources[published:]
+    rng.shuffle(head)
+    rng.shuffle(tail)
+    sources = head + tail
     out: list[str] = []
     for i in range(max((len(s) for s in sources), default=0)):
         for s in sources:

@@ -125,6 +125,25 @@ def direct_dispute(cov: Coverage | None, text: str):
     return next((r for r in cov.routing.direct if starts(r.markers) and not starts(r.unless)), None)
 
 
+# «детей нет», «без детей», «балалар жоқ»: said before the children words are looked for
+_NO_CHILDREN = re.compile(r"(?:нет|не\s+имеем|не\s+было)\s+(?:общих\s+)?(?:несовершеннолетних\s+)?(?:детей|ребенка|ребёнка)|"
+                          r"(?:детей|ребенка|ребёнка)\s+(?:у\s+нас\s+)?(?:нет|не\s+было)|без\s+детей|бездетн|"
+                          r"несовершеннолетних\s+(?:детей\s+)?нет|дети\s+(?:уже\s+)?(?:взрослые|совершеннолетн)|"
+                          r"балалар(?:ымыз)?\s+жоқ|баламыз\s+жоқ|ортақ\s+бала\s+жоқ", re.IGNORECASE)
+_CHILDREN = re.compile(r"(?<!\w)(?:реб[её]н\w*|дет(?:и|ей|ям|ьми|ях)|сын\w*|доч\w*|несовершеннолетн\w*|малыш\w*|"
+                       r"бала(?:лар\w*|мыз|м|ым|ны|ға|сы)?|ұлым\w*|қызым\w*)(?!\w)", re.IGNORECASE)
+
+
+def minor_children(text: str) -> str:
+    """«yes» / «no» / «unknown»: common children under 18, by the person's own words (the divorce route branches on
+    it: CMF art. 17 p. 1, art. 19 p. 2 sub. 1). «Детей нет» wins over the word «дети» in it; adult children are «no»."""
+    if not text:
+        return "unknown"
+    if _NO_CHILDREN.search(text):
+        return "no"
+    return "yes" if _CHILDREN.search(text) else "unknown"
+
+
 def matter_pending(cov: Coverage | None, text: str) -> bool:
     """The person says the matter is already in a court or with the police (routing.pending_markers, whole
     words): only then a motion to «the court where your case is» is offered."""

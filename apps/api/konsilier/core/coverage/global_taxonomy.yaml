@@ -79,6 +79,14 @@ branches:
         applicant_roles: [parent]
         counterparty_kinds: [person]
         sensitive: [children]
+      # ZANN 03.10 (PM decision): the spouse whose own property (bought before the marriage, a gift, an inheritance, a
+      # marriage contract) the other wants divided — a claim to keep it out of the division, or a reply to their claim
+      - id: family.personal_property
+        title: {ru: Личное имущество супруга — исключить из раздела, kk: Жұбайдың жеке мүлкі — бөлуден шығару, en: A spouse's own property kept out of the division}
+        keywords: {ru: [куплена до брака, купил до брака, купила до брака, до свадьбы, подарили, по договору дарения, унаследовал, унаследовала, по наследству, брачный договор, брачному договору], kk: [некеге дейін, сыйға тартты, мұраға, неке шарты], en: [before the marriage, gift, inherited, prenup]}
+        examples: {ru: ["Муж требует половину квартиры, которую мне подарили родители", "Жена хочет поделить квартиру, купленную мной до брака"], kk: ["Күйеуім ата-анам сыйға тартқан пәтердің жартысын талап етеді"], en: ["My wife wants half of the flat I bought before we married"]}
+        applicant_roles: [spouse]
+        counterparty_kinds: [person]
       - id: family.property_division
         title: {ru: Раздел имущества супругов, kk: Ерлі-зайыптылардың мүлкін бөлу, en: Division of marital property}
         keywords: {ru: [раздел имущества, делить квартиру], kk: [мүлікті бөлу], en: [property division]}
@@ -163,6 +171,14 @@ branches:
         examples: {ru: ["Дал знакомому в долг по расписке, он не возвращает", "Друг занял деньги и перестал отвечать"], kk: ["Танысыма қолхатпен қарыз бердім, қайтармайды"], en: ["I lent money against a receipt and it isn't paid back"]}
         applicant_roles: [claimant]
         counterparty_kinds: [person]
+      # ZANN 03.10 (owner's bug «субподрядчик RAMS»): a private person not paid for work done (contract for work or
+      # services, often without a written contract) — not a loan, not a wage; a sole trader or company goes to commercial
+      - id: civil.work_payment
+        title: {ru: Оплата выполненных работ или услуг, kk: Орындалған жұмыстар не қызметтер үшін төлем, en: Payment for work done}
+        keywords: {ru: [субподряд, выполнил работы, выполнили работы, за выполненные работы, сделал ремонт, акт выполненных работ, смет, бригад, на объекте], kk: [қосалқы мердігер, орындалған жұмыс, жөндеу жасадым], en: [subcontractor, work done, not paid for the work]}
+        examples: {ru: ["Сделал соседу ремонт, он не заплатил", "Работал субподрядчиком, за работы на объекте не заплатили, договора нет"], kk: ["Көршіге жөндеу жасадым, ақша төлемеді"], en: ["I did a renovation for a neighbour and he didn't pay"]}
+        applicant_roles: [claimant]
+        counterparty_kinds: [person, business]
       - id: civil.honor
         title: {ru: "Защита чести, достоинства и деловой репутации", kk: "Ар-намысты, қадір-қасиетті және іскерлік беделді қорғау", en: "Protection of honour, dignity and business reputation"}
         keywords: {ru: [клевет, оклеветал, оклеветала, порочащ, опровержени, честь и достоинств, деловую репутаци, деловой репутаци, ложные сведения, распространил ложь, распространила ложь, оскорбил в соцсет, написал обо мне ложь], kk: [жала жап, ар-намыс, теріске шығар, жалған мәлімет], en: [defamation, libel, slander, retraction]}
